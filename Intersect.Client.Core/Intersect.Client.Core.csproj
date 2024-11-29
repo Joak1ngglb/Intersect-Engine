@@ -89,6 +89,7 @@
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303" GeneratePathProperty="True" />
     <PackageReference Include="MonoGame.Library.SDL" Version="2.26.5.5" GeneratePathProperty="True" />
+    <PackageReference Include="Myra" Version="1.5.7" />
     <PackageReference Include="Steamworks.NET" Version="20.1.0" />
   </ItemGroup>
 

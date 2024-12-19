@@ -163,6 +163,7 @@ namespace Intersect.Editor.Forms.Editors
             lblPercentage6 = new Label();
             nudSpdPercentage = new DarkNumericUpDown();
             nudMRPercentage = new DarkNumericUpDown();
+            nudARPPercentage = new DarkNumericUpDown();
             nudDefPercentage = new DarkNumericUpDown();
             nudMagPercentage = new DarkNumericUpDown();
             nudStrPercentage = new DarkNumericUpDown();
@@ -176,11 +177,13 @@ namespace Intersect.Editor.Forms.Editors
             nudDef = new DarkNumericUpDown();
             nudMag = new DarkNumericUpDown();
             nudStr = new DarkNumericUpDown();
+            nudARP = new DarkNumericUpDown();
             lblSpd = new Label();
             lblMR = new Label();
             lblDef = new Label();
             lblMag = new Label();
             lblStr = new Label();
+            lblARP = new Label();
             cmbEquipmentSlot = new DarkComboBox();
             lblEquipmentSlot = new Label();
             grpWeaponProperties = new DarkGroupBox();
@@ -277,7 +280,9 @@ namespace Intersect.Editor.Forms.Editors
             ((ISupportInitialize)nudDefPercentage).BeginInit();
             ((ISupportInitialize)nudMagPercentage).BeginInit();
             ((ISupportInitialize)nudStrPercentage).BeginInit();
+            ((ISupportInitialize)nudARPPercentage).BeginInit();
             ((ISupportInitialize)nudSpd).BeginInit();
+            ((ISupportInitialize)nudARP).BeginInit();
             ((ISupportInitialize)nudMR).BeginInit();
             ((ISupportInitialize)nudDef).BeginInit();
             ((ISupportInitialize)nudMag).BeginInit();
@@ -1994,6 +1999,7 @@ namespace Intersect.Editor.Forms.Editors
             grpStatBonuses.Controls.Add(lblPercentage7);
             grpStatBonuses.Controls.Add(lblPercentage6);
             grpStatBonuses.Controls.Add(nudSpdPercentage);
+            grpStatBonuses.Controls.Add(nudARPPercentage);
             grpStatBonuses.Controls.Add(nudMRPercentage);
             grpStatBonuses.Controls.Add(nudDefPercentage);
             grpStatBonuses.Controls.Add(nudMagPercentage);
@@ -2004,12 +2010,14 @@ namespace Intersect.Editor.Forms.Editors
             grpStatBonuses.Controls.Add(lblPlus7);
             grpStatBonuses.Controls.Add(lblPlus6);
             grpStatBonuses.Controls.Add(nudSpd);
+            grpStatBonuses.Controls.Add(nudARP);
             grpStatBonuses.Controls.Add(nudMR);
             grpStatBonuses.Controls.Add(nudDef);
             grpStatBonuses.Controls.Add(nudMag);
             grpStatBonuses.Controls.Add(nudStr);
             grpStatBonuses.Controls.Add(lblSpd);
             grpStatBonuses.Controls.Add(lblMR);
+            grpStatBonuses.Controls.Add(lblARP);
             grpStatBonuses.Controls.Add(lblDef);
             grpStatBonuses.Controls.Add(lblMag);
             grpStatBonuses.Controls.Add(lblStr);
@@ -2100,6 +2108,20 @@ namespace Intersect.Editor.Forms.Editors
             nudMRPercentage.TabIndex = 76;
             nudMRPercentage.Value = new decimal(new int[] { 0, 0, 0, 0 });
             nudMRPercentage.ValueChanged += nudMRPercentage_ValueChanged;
+            // 
+            // nudARPPercentage
+            // 
+            nudARPPercentage.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudARPPercentage.ForeColor = System.Drawing.Color.Gainsboro;
+            nudARPPercentage.Location = new System.Drawing.Point(189, 182);
+            nudARPPercentage.Margin = new Padding(4, 3, 4, 3);
+            nudARPPercentage.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            nudARPPercentage.Minimum = new decimal(new int[] { -100, 0, 0, int.MinValue });
+            nudARPPercentage.Name = "nudARPPercentage";
+            nudARPPercentage.Size = new Size(76, 23);
+            nudARPPercentage.TabIndex = 84;
+            nudARPPercentage.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudARPPercentage.ValueChanged += nudARPPercentage_ValueChanged;
             // 
             // nudDefPercentage
             // 
@@ -2219,6 +2241,19 @@ namespace Intersect.Editor.Forms.Editors
             nudMR.Value = new decimal(new int[] { 0, 0, 0, 0 });
             nudMR.ValueChanged += nudMR_ValueChanged;
             // 
+            // nudARP
+            // 
+            nudARP.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudARP.ForeColor = System.Drawing.Color.Gainsboro;
+            nudARP.Location = new System.Drawing.Point(19, 182);
+            nudARP.Margin = new Padding(4, 3, 4, 3);
+            nudARP.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
+            nudARP.Name = "nudARP";
+            nudARP.Size = new Size(140, 23);
+            nudARP.TabIndex = 85;
+            nudARP.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudARP.ValueChanged += nudARP_ValueChanged;
+            // 
             // nudDef
             // 
             nudDef.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
@@ -2277,6 +2312,16 @@ namespace Intersect.Editor.Forms.Editors
             lblMR.Size = new Size(76, 15);
             lblMR.TabIndex = 46;
             lblMR.Text = "Magic Resist:";
+            // 
+            // lblARP
+            // 
+            lblARP.AutoSize = true;
+            lblARP.Location = new System.Drawing.Point(12, 133);
+            lblARP.Margin = new Padding(2, 0, 2, 0);
+            lblARP.Name = "lblARP";
+            lblARP.Size = new Size(76, 15);
+            lblARP.TabIndex = 46;
+            lblARP.Text = "Armor Penetration:";
             // 
             // lblDef
             // 
@@ -3043,11 +3088,13 @@ namespace Intersect.Editor.Forms.Editors
             ((ISupportInitialize)nudDefPercentage).EndInit();
             ((ISupportInitialize)nudMagPercentage).EndInit();
             ((ISupportInitialize)nudStrPercentage).EndInit();
+            ((ISupportInitialize)nudARPPercentage).EndInit();
             ((ISupportInitialize)nudSpd).EndInit();
             ((ISupportInitialize)nudMR).EndInit();
             ((ISupportInitialize)nudDef).EndInit();
             ((ISupportInitialize)nudMag).EndInit();
             ((ISupportInitialize)nudStr).EndInit();
+            ((ISupportInitialize)nudARP).EndInit();
             grpWeaponProperties.ResumeLayout(false);
             grpWeaponProperties.PerformLayout();
             ((ISupportInitialize)nudCritMultiplier).EndInit();
@@ -3143,11 +3190,13 @@ namespace Intersect.Editor.Forms.Editors
         private DarkNumericUpDown nudDef;
         private DarkNumericUpDown nudMag;
         private DarkNumericUpDown nudStr;
+        private DarkNumericUpDown nudARP;
         private Label lblSpd;
         private Label lblMR;
         private Label lblDef;
         private Label lblMag;
         private Label lblStr;
+        private Label lblARP;
         private DarkNumericUpDown nudScaling;
         private DarkNumericUpDown nudCritChance;
         private DarkNumericUpDown nudDamage;
@@ -3200,6 +3249,7 @@ namespace Intersect.Editor.Forms.Editors
         private DarkNumericUpDown nudDefPercentage;
         private DarkNumericUpDown nudMagPercentage;
         private DarkNumericUpDown nudStrPercentage;
+        private DarkNumericUpDown nudARPPercentage;
         private Label lblPlus5;
         private Label lblPlus4;
         private Label lblPlus8;

@@ -1336,7 +1336,10 @@ public partial class Player : Entity
                         var partyExperience = (int)(descriptor.Experience * multiplier) / partyMembersInXpRange.Length;
                         foreach (var partyMember in partyMembersInXpRange)
                         {
-                            partyMember.GiveExperience(partyExperience);
+                            //CustomChange
+                            partyMember.GiveExperience(
+                                ExpModifiedByLevel(descriptor.Level, partyExperience, partyMember.Level)
+                            );
                             partyMember.UpdateQuestKillTasks(entity);
                         }
 
@@ -1353,7 +1356,8 @@ public partial class Player : Entity
                     }
                     else
                     {
-                        GiveExperience(descriptor.Experience);
+                        //CustomChange
+                        GiveExperience(ExpModifiedByLevel(descriptor.Level, descriptor.Experience));
                         UpdateQuestKillTasks(entity);
                     }
 

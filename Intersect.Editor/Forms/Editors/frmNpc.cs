@@ -119,6 +119,9 @@ public partial class FrmNpc : EditorForm
         nudDef.Maximum = Options.MaxStatValue;
         nudMR.Maximum = Options.MaxStatValue;
         nudSpd.Maximum = Options.MaxStatValue;
+        nudARP.Maximum = Options.MaxStatValue;
+        nudVit.Maximum = Options.MaxStatValue;
+        nudWis.Maximum = Options.MaxStatValue;
         InitLocalization();
         UpdateEditor();
     }
@@ -178,6 +181,9 @@ public partial class FrmNpc : EditorForm
         lblMag.Text = Strings.NpcEditor.abilitypower;
         lblMR.Text = Strings.NpcEditor.magicresist;
         lblExp.Text = Strings.NpcEditor.exp;
+        lblARP.Text = Strings.NpcEditor.armorpen;
+        lblVit.Text = Strings.NpcEditor.vitality;
+        lblWis.Text = Strings.NpcEditor.wisdom;
 
         grpRegen.Text = Strings.NpcEditor.regen;
         lblHpRegen.Text = Strings.NpcEditor.hpregen;
@@ -298,6 +304,9 @@ public partial class FrmNpc : EditorForm
             nudDef.Value = mEditorItem.Stats[(int)Stat.Defense];
             nudMR.Value = mEditorItem.Stats[(int)Stat.MagicResist];
             nudSpd.Value = mEditorItem.Stats[(int)Stat.Speed];
+            nudARP.Value = mEditorItem.Stats[(int)Stat.ArmorPenetration];
+            nudVit.Value = mEditorItem.Stats[(int)Stat.Vitality];
+            nudWis.Value = mEditorItem.Stats[(int)Stat.Wisdom];
             nudHp.Value = mEditorItem.MaxVital[(int)Vital.Health];
             nudMana.Value = mEditorItem.MaxVital[(int)Vital.Mana];
             nudExp.Value = mEditorItem.Experience;
@@ -699,6 +708,18 @@ public partial class FrmNpc : EditorForm
     private void nudSpd_ValueChanged(object sender, EventArgs e)
     {
         mEditorItem.Stats[(int)Stat.Speed] = (int)nudSpd.Value;
+    }
+    private void nudARP_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Stats[(int)Stat.ArmorPenetration] = (int)nudARP.Value;
+    }
+    private void nudVit_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Stats[(int)Stat.Vitality] = (int)nudVit.Value;
+    }
+    private void nudWis_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Stats[(int)Stat.Wisdom] = (int)nudWis.Value;
     }
 
     private void nudDamage_ValueChanged(object sender, EventArgs e)

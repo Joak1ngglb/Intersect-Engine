@@ -990,7 +990,19 @@ public partial class FrmClass : EditorForm
 
     private void nudSpd_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.BaseStat[(int) Stat.Speed] = (int) nudSpd.Value;
+        mEditorItem.BaseStat[(int)Stat.Speed] = (int)nudSpd.Value;
+    }
+    private void nudARP_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.BaseStat[(int)Stat.ArmorPenetration] = (int)nudARP.Value;
+    }
+    private void nudVit_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.BaseStat[(int)Stat.Vitality] = (int)nudVit.Value;
+    }
+    private void nudWis_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.BaseStat[(int)Stat.Wisdom] = (int)nudWis.Value;
     }
 
     private void nudLevel_ValueChanged(object sender, EventArgs e)
@@ -1066,7 +1078,22 @@ public partial class FrmClass : EditorForm
 
     private void nudSpeedIncrease_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.StatIncrease[(int) Stat.Speed] = (int) nudSpeedIncrease.Value;
+        mEditorItem.StatIncrease[(int)Stat.Speed] = (int)nudSpeedIncrease.Value;
+        UpdateIncreases();
+    }
+    private void nudArmorPenIncrease_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.StatIncrease[(int)Stat.ArmorPenetration] = (int)nudArmorPenIncrease.Value;
+        UpdateIncreases();
+    }
+    private void nudVitalityIncrease_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.StatIncrease[(int)Stat.Vitality] = (int)nudVitalityIncrease.Value;
+        UpdateIncreases();
+    }
+    private void nudWisdomIncrease_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.StatIncrease[(int)Stat.Wisdom] = (int)nudWisdomIncrease.Value;
         UpdateIncreases();
     }
 

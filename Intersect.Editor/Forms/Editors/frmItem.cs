@@ -161,12 +161,16 @@ public partial class FrmItem : EditorForm
         nudDef.Maximum = Options.MaxStatValue;
         nudMR.Maximum = Options.MaxStatValue;
         nudSpd.Maximum = Options.MaxStatValue;
+        nudARP.Maximum = Options.MaxStatValue;
 
         nudStr.Minimum = -Options.MaxStatValue;
         nudMag.Minimum = -Options.MaxStatValue;
         nudDef.Minimum = -Options.MaxStatValue;
         nudMR.Minimum = -Options.MaxStatValue;
         nudSpd.Minimum = -Options.MaxStatValue;
+        nudARP.Minimum = -Options.MaxStatValue;
+        nudVit.Minimum = -Options.MaxStatValue;
+        nudWis.Minimum = -Options.MaxStatValue;
 
         InitLocalization();
         UpdateEditor();
@@ -233,6 +237,9 @@ public partial class FrmItem : EditorForm
         lblSpd.Text = Strings.ItemEditor.speedbonus;
         lblMag.Text = Strings.ItemEditor.abilitypowerbonus;
         lblMR.Text = Strings.ItemEditor.magicresistbonus;
+        lblARP.Text = Strings.ItemEditor.armorpenetrationbonus;
+        lblVit.Text = Strings.ItemEditor.vitalitybonus;
+        lblWis.Text = Strings.ItemEditor.wisdombonus;
         lblEffectPercent.Text = Strings.ItemEditor.bonusamount;
         lblEquipmentAnimation.Text = Strings.ItemEditor.equipmentanimation;
 
@@ -352,12 +359,18 @@ public partial class FrmItem : EditorForm
             nudDef.Value = mEditorItem.StatsGiven[2];
             nudMR.Value = mEditorItem.StatsGiven[3];
             nudSpd.Value = mEditorItem.StatsGiven[4];
+            nudARP.Value = mEditorItem.StatsGiven[5];
+            nudVit.Value = mEditorItem.StatsGiven[6];
+            nudWis.Value = mEditorItem.StatsGiven[7];
 
             nudStrPercentage.Value = mEditorItem.PercentageStatsGiven[0];
             nudMagPercentage.Value = mEditorItem.PercentageStatsGiven[1];
             nudDefPercentage.Value = mEditorItem.PercentageStatsGiven[2];
             nudMRPercentage.Value = mEditorItem.PercentageStatsGiven[3];
             nudSpdPercentage.Value = mEditorItem.PercentageStatsGiven[4];
+            nudARPPercentage.Value = mEditorItem.PercentageStatsGiven[5];
+            nudVitPercentage.Value = mEditorItem.PercentageStatsGiven[6];
+            nudWisPercentage.Value = mEditorItem.PercentageStatsGiven[7];
 
             nudHealthBonus.Value = mEditorItem.VitalsGiven[0];
             nudManaBonus.Value = mEditorItem.VitalsGiven[1];
@@ -862,6 +875,18 @@ public partial class FrmItem : EditorForm
     {
         mEditorItem.StatsGiven[4] = (int)nudSpd.Value;
     }
+    private void nudARP_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.StatsGiven[5] = (int)nudARP.Value;
+    }
+    private void nudVit_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.StatsGiven[6] = (int)nudVit.Value;
+    }
+    private void nudWis_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.StatsGiven[7] = (int)nudWis.Value;
+    }
 
     private void nudStrPercentage_ValueChanged(object sender, EventArgs e)
     {
@@ -886,6 +911,18 @@ public partial class FrmItem : EditorForm
     private void nudSpdPercentage_ValueChanged(object sender, EventArgs e)
     {
         mEditorItem.PercentageStatsGiven[4] = (int)nudSpdPercentage.Value;
+    }
+    private void nudARPPercentage_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.PercentageStatsGiven[5] = (int)nudARPPercentage.Value;
+    }
+    private void nudVitPercentage_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.PercentageStatsGiven[6] = (int)nudARPPercentage.Value;
+    }
+    private void nudWisPercentage_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.PercentageStatsGiven[7] = (int)nudARPPercentage.Value;
     }
 
     private void nudBag_ValueChanged(object sender, EventArgs e)
@@ -1529,9 +1566,12 @@ public partial class FrmItem : EditorForm
         {
             return;
         }
-        
+
         mEditorItem.EventTriggers[SelectedEventTrigger.Value] = EventBase.IdFromList(cmbEventTriggers.SelectedIndex - 1);
 
         PopulateEventTriggerList(lstEventTriggers.SelectedIndex);
+    }
+    private void lblPlus9_Click(object sender, EventArgs e)
+    {
     }
 }

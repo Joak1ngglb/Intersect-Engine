@@ -943,7 +943,7 @@ public partial class Player : Entity
             this.UpdateGlobalCooldown();
         }
     }
-    
+
     public void RemoveEvent(Guid id, bool sendLeave = true)
     {
         Event outInstance;
@@ -1150,6 +1150,16 @@ public partial class Player : Entity
             {
                 classVital = classDescriptor.BaseVital[vital] + classDescriptor.VitalIncrease[vital] * (Level - 1);
             }
+        }
+
+        // Add ArmorPenetration only to Health (vital == (int)Vital.Health)
+        if (vital == (int)Vital.Health)
+        {
+            classVital += Stat[(int)Enums.Stat.Vitality].Value();
+        }
+        if (vital == (int)Vital.Mana)
+        {
+            classVital += Stat[(int)Enums.Stat.Wisdom].Value();
         }
 
         var baseVital = classVital;
@@ -1532,7 +1542,7 @@ public partial class Player : Entity
         bool onHitTrigger = false,
         bool trapTrigger = false
     )
-    {   
+    {
         if (!trapTrigger && !ValidTauntTarget(target)) //Traps ignore taunts.
         {
             return;
@@ -2844,7 +2854,7 @@ public partial class Player : Entity
         var bankInterface = new BankInterface(this, ((IEnumerable<Item>)Bank).ToList(), new object(), null, Options.Instance.Bank.MaxSlots);
         return bankOverflow && bankInterface.TryDepositItem(item, sendUpdate);
     }
-    
+
     /// <summary>
     /// Creates an item source for the player entity.
     /// </summary>
@@ -2858,7 +2868,7 @@ public partial class Player : Entity
             Id = this.Id
         };
     }
-    
+
     /// <summary>
     /// Gives the player an item. NOTE: This method MAKES ZERO CHECKS to see if this is possible!
     /// Use TryGiveItem where possible!
@@ -3172,7 +3182,7 @@ public partial class Player : Entity
             return false;
         }
 
-        mapInstance.SpawnItem(AsItemSource(),X, Y, itemInSlot, itemDescriptor.IsStackable ? amount : 1, Id);
+        mapInstance.SpawnItem(AsItemSource(), X, Y, itemInSlot, itemDescriptor.IsStackable ? amount : 1, Id);
 
         itemInSlot.Quantity = Math.Max(0, itemInSlot.Quantity - amount);
 
@@ -5833,14 +5843,14 @@ public partial class Player : Entity
             PacketSender.SendPlayerEquipmentToProximity(this);
             PacketSender.SendEntityStats(this);
         }
-        
+
         CacheEquipmentTriggers();
         UnequipInvalidItems();
     }
 
     [NotMapped, JsonIgnore]
     private List<EventBase> CachedEquipmentOnHitTriggers { get; set; } = new List<EventBase>();
-    
+
     [NotMapped, JsonIgnore]
     private List<EventBase> CachedEquipmentOnDamageTriggers { get; set; } = new List<EventBase>();
 
@@ -5952,13 +5962,21 @@ public partial class Player : Entity
     //Stats
     public void UpgradeStat(int statIndex)
     {
-        if (Stat[statIndex].BaseStat + StatPointAllocations[statIndex] < Options.MaxStatValue && StatPoints > 0)
+        if (statIndex == 5)
         {
-            StatPointAllocations[statIndex]++;
-            StatPoints--;
-            PacketSender.SendEntityStats(this);
-            PacketSender.SendPointsTo(this);
-            UnequipInvalidItems();
+            PacketSender.SendChatMsg(this, "Nie mozesz ulepszyc statystyki armorpenetration.", ChatMessageType.Error);
+        }
+        else
+        {
+            // Ulepszanie statystyki
+            if (Stat[statIndex].BaseStat + StatPointAllocations[statIndex] < Options.MaxStatValue && StatPoints > 0)
+            {
+                StatPointAllocations[statIndex]++;
+                StatPoints--;
+                PacketSender.SendEntityStats(this);
+                PacketSender.SendPointsTo(this);
+                UnequipInvalidItems();
+            }
         }
     }
 
@@ -6919,7 +6937,7 @@ public partial class Player : Entity
         CommonEventTrigger trigger = CommonEventTrigger.None,
         string command = default,
         string parameter = default
-    ) 
+    )
     {
         if (eventDescriptor == null)
         {
@@ -7587,7 +7605,7 @@ public partial class Player : Entity
     [NotMapped, JsonIgnore] public CraftingState CraftingState { get; set; }
 
     [NotMapped, JsonIgnore] public Guid OpenCraftingTableId { get; set; }
-    
+
     [NotMapped, JsonIgnore] public bool CraftJournalMode { get; set; }
 
     #endregion
@@ -7635,7 +7653,7 @@ public partial class Player : Entity
     private bool JsonInShop => InShop != null;
 
     [JsonIgnore, NotMapped] public Bag InBag;
-    
+
     [JsonIgnore, NotMapped] public bool IsInBag => InBag != null;
 
     [JsonIgnore, NotMapped] public ShopBase InShop;

@@ -385,6 +385,10 @@ public partial class Player : Entity, IPlayer
 
     public void TryDropItem(int inventorySlotIndex)
     {
+        if (this.IsDead())
+        {
+            return;
+        }
         var inventorySlot = Inventory[inventorySlotIndex];
         if (!ItemBase.TryGet(inventorySlot.ItemId, out var itemDescriptor))
         {
@@ -482,6 +486,10 @@ public partial class Player : Entity, IPlayer
 
     public void TryUseItem(int index)
     {
+        if (this.IsDead())
+        {
+            return;
+        }
         if (!IsItemOnCooldown(index) &&
             index >= 0 && index < Globals.Me?.Inventory.Length && Globals.Me.Inventory[index]?.Quantity > 0)
         {
@@ -1118,6 +1126,10 @@ public partial class Player : Entity, IPlayer
     //Trade
     public void TryTradeItem(int index)
     {
+        if (this.IsDead())
+        {
+            return;
+        }
         var slot = Inventory[index];
         var quantity = slot.Quantity;
         var tradingItem = ItemBase.Get(slot.ItemId);
@@ -1220,6 +1232,10 @@ public partial class Player : Entity, IPlayer
 
     public void TryUseSpell(int index)
     {
+        if (this.IsDead())
+        {
+            return;
+        }
         if (Spells[index].Id != Guid.Empty &&
             (GetSpellRemainingCooldown(index) < Timing.Global.Milliseconds))
         {
@@ -1756,7 +1772,7 @@ public partial class Player : Entity, IPlayer
 
     public bool TryAttack()
     {
-        if (IsAttacking || IsBlocking || (IsMoving && !Options.Instance.PlayerOpts.AllowCombatMovement) || Globals.Me == default)
+        if (IsAttacking || IsBlocking || (IsMoving && !Options.Instance.PlayerOpts.AllowCombatMovement) || (this.IsDead()) || Globals.Me == default)
         {
             return false;
         }
@@ -2211,6 +2227,11 @@ public partial class Player : Entity, IPlayer
 
         //Check if player is crafting
         if (Globals.InCraft)
+        {
+            return;
+        }
+
+        if (this.IsDead())
         {
             return;
         }

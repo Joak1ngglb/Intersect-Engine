@@ -324,6 +324,12 @@ internal sealed partial class PacketHandler
         }
     }
 
+    //PlayerRespawnPacket
+    public void HandlePacket(IPacketSender packetSender, PlayerRespawnPacket packet)
+    {
+        Interface.Interface.GameUi?.GameMenu?.HideDeathWindow();
+    }
+
     //NpcEntityPacket
     public void HandlePacket(IPacketSender packetSender, NpcEntityPacket packet)
     {
@@ -1138,6 +1144,18 @@ internal sealed partial class PacketHandler
         if (en == null)
         {
             return;
+        }
+
+        // if (type == EntityType.GlobalEntity)
+        // {
+        //     // Create corpse
+        //     var corpseId = Guid.NewGuid();
+        //     Globals.Entities.Add(corpseId, new Corpse(corpseId, en));
+        // }
+
+        if (en.Id == Globals.Me.Id)
+        {
+            Interface.Interface.GameUi?.GameMenu?.ShowDeathWindow();
         }
 
         en.ClearAnimations(null);

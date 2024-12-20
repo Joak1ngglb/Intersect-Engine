@@ -506,6 +506,11 @@ public static partial class PacketSender
         }
     }
 
+    public static void SendRespawn()
+    {
+        Network.SendPacket(new RespawnPacket());
+    }
+
     public static void SendFadeCompletePacket()
     {
         Network.SendPacket(new FadeCompletePacket());

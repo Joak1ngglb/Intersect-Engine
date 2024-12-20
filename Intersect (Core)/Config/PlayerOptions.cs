@@ -106,5 +106,5 @@ public partial class PlayerOptions
     /// </summary>
     public int TradeRange { get; set; } = 6;
 
-    public int DeathSeconds { get; set; } = 10;
+    public int DeathSeconds { get; set; } = 60;
 }

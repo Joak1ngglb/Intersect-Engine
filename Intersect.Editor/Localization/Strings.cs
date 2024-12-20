@@ -1239,9 +1239,9 @@ Tick timer saved in server config.json.";
             {2, @"Defense"},
             {3, @"Magic Resist"},
             {4, @"Speed"},
-            {5, @"Armor Penetration"},
+            {5, @"Dextery"},
             {6, @"Vitality"},
-            {7, @"Wisdom"},
+            {7, @"Intelligence"},
         };
 
         public static Dictionary<int, LocalizedString> vitals = new Dictionary<int, LocalizedString>

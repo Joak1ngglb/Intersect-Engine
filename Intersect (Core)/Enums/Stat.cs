@@ -11,4 +11,10 @@ public enum Stat
     MagicResist,
 
     Speed,
+
+    ArmorPenetration,
+
+    Vitality,
+
+    Wisdom
 }

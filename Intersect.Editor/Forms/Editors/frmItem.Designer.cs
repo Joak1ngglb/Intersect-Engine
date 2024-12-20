@@ -120,6 +120,12 @@ namespace Intersect.Editor.Forms.Editors
             chkQuickCast = new DarkCheckBox();
             cmbTeachSpell = new DarkComboBox();
             lblSpell = new Label();
+            lblPercentage9 = new Label();
+            lblPercentage10 = new Label();
+            lblPercentage11 = new Label();
+            lblPlus9 = new Label();
+            lblPlus10 = new Label();
+            lblPlus11 = new Label();
             grpEquipment = new DarkGroupBox();
             grpStatRanges = new DarkGroupBox();
             lblStatRangeFrom = new Label();
@@ -162,7 +168,11 @@ namespace Intersect.Editor.Forms.Editors
             lblPercentage7 = new Label();
             lblPercentage6 = new Label();
             nudSpdPercentage = new DarkNumericUpDown();
+            nudARPPercentage = new DarkNumericUpDown();
+            nudVitPercentage = new DarkNumericUpDown();
+            nudWisPercentage = new DarkNumericUpDown();
             nudMRPercentage = new DarkNumericUpDown();
+            nudARP = new DarkNumericUpDown();
             nudDefPercentage = new DarkNumericUpDown();
             nudMagPercentage = new DarkNumericUpDown();
             nudStrPercentage = new DarkNumericUpDown();
@@ -172,12 +182,17 @@ namespace Intersect.Editor.Forms.Editors
             lblPlus7 = new Label();
             lblPlus6 = new Label();
             nudSpd = new DarkNumericUpDown();
+            nudVit = new DarkNumericUpDown();
+            nudWis = new DarkNumericUpDown();
             nudMR = new DarkNumericUpDown();
             nudDef = new DarkNumericUpDown();
             nudMag = new DarkNumericUpDown();
             nudStr = new DarkNumericUpDown();
             lblSpd = new Label();
             lblMR = new Label();
+            lblARP = new Label();
+            lblVit = new Label();
+            lblWis = new Label();
             lblDef = new Label();
             lblMag = new Label();
             lblStr = new Label();
@@ -273,11 +288,17 @@ namespace Intersect.Editor.Forms.Editors
             ((ISupportInitialize)nudHealthBonus).BeginInit();
             grpStatBonuses.SuspendLayout();
             ((ISupportInitialize)nudSpdPercentage).BeginInit();
+            ((ISupportInitialize)nudARPPercentage).BeginInit();
+            ((ISupportInitialize)nudVitPercentage).BeginInit();
+            ((ISupportInitialize)nudWisPercentage).BeginInit();
             ((ISupportInitialize)nudMRPercentage).BeginInit();
+            ((ISupportInitialize)nudARP).BeginInit();
             ((ISupportInitialize)nudDefPercentage).BeginInit();
             ((ISupportInitialize)nudMagPercentage).BeginInit();
             ((ISupportInitialize)nudStrPercentage).BeginInit();
             ((ISupportInitialize)nudSpd).BeginInit();
+            ((ISupportInitialize)nudVit).BeginInit();
+            ((ISupportInitialize)nudWis).BeginInit();
             ((ISupportInitialize)nudMR).BeginInit();
             ((ISupportInitialize)nudDef).BeginInit();
             ((ISupportInitialize)nudMag).BeginInit();
@@ -360,7 +381,7 @@ namespace Intersect.Editor.Forms.Editors
             // btnCancel
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new System.Drawing.Point(1008, 683);
+            btnCancel.Location = new System.Drawing.Point(1009, 695);
             btnCancel.Margin = new Padding(4, 3, 4, 3);
             btnCancel.Name = "btnCancel";
             btnCancel.Padding = new Padding(6);
@@ -371,7 +392,7 @@ namespace Intersect.Editor.Forms.Editors
             // 
             // btnSave
             // 
-            btnSave.Location = new System.Drawing.Point(779, 683);
+            btnSave.Location = new System.Drawing.Point(779, 695);
             btnSave.Margin = new Padding(4, 3, 4, 3);
             btnSave.Name = "btnSave";
             btnSave.Padding = new Padding(6);
@@ -1505,6 +1526,67 @@ namespace Intersect.Editor.Forms.Editors
             lblSpell.TabIndex = 11;
             lblSpell.Text = "Spell:";
             // 
+            // lblPercentage9
+            // 
+            lblPercentage9.AutoSize = true;
+            lblPercentage9.Location = new System.Drawing.Point(280, 261);
+            lblPercentage9.Margin = new Padding(2, 0, 2, 0);
+            lblPercentage9.Name = "lblPercentage9";
+            lblPercentage9.Size = new Size(17, 15);
+            lblPercentage9.TabIndex = 96;
+            lblPercentage9.Text = "%";
+            // 
+            // lblPercentage10
+            // 
+            lblPercentage10.AutoSize = true;
+            lblPercentage10.Location = new System.Drawing.Point(280, 302);
+            lblPercentage10.Margin = new Padding(2, 0, 2, 0);
+            lblPercentage10.Name = "lblPercentage10";
+            lblPercentage10.Size = new Size(17, 15);
+            lblPercentage10.TabIndex = 97;
+            lblPercentage10.Text = "%";
+            // 
+            // lblPercentage11
+            // 
+            lblPercentage11.AutoSize = true;
+            lblPercentage11.Location = new System.Drawing.Point(280, 343);
+            lblPercentage11.Margin = new Padding(2, 0, 2, 0);
+            lblPercentage11.Name = "lblPercentage11";
+            lblPercentage11.Size = new Size(17, 15);
+            lblPercentage11.TabIndex = 98;
+            lblPercentage11.Text = "%";
+            // 
+            // lblPlus9
+            // 
+            lblPlus9.AutoSize = true;
+            lblPlus9.Location = new System.Drawing.Point(164, 261);
+            lblPlus9.Margin = new Padding(2, 0, 2, 0);
+            lblPlus9.Name = "lblPlus9";
+            lblPlus9.Size = new Size(15, 15);
+            lblPlus9.TabIndex = 93;
+            lblPlus9.Text = "+";
+            lblPlus9.Click += lblPlus9_Click;
+            // 
+            // lblPlus10
+            // 
+            lblPlus10.AutoSize = true;
+            lblPlus10.Location = new System.Drawing.Point(164, 308);
+            lblPlus10.Margin = new Padding(2, 0, 2, 0);
+            lblPlus10.Name = "lblPlus10";
+            lblPlus10.Size = new Size(15, 15);
+            lblPlus10.TabIndex = 94;
+            lblPlus10.Text = "+";
+            // 
+            // lblPlus11
+            // 
+            lblPlus11.AutoSize = true;
+            lblPlus11.Location = new System.Drawing.Point(164, 343);
+            lblPlus11.Margin = new Padding(2, 0, 2, 0);
+            lblPlus11.Name = "lblPlus11";
+            lblPlus11.Size = new Size(15, 15);
+            lblPlus11.TabIndex = 95;
+            lblPlus11.Text = "+";
+            // 
             // grpEquipment
             // 
             grpEquipment.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
@@ -1524,7 +1606,7 @@ namespace Intersect.Editor.Forms.Editors
             grpEquipment.Margin = new Padding(4, 3, 4, 3);
             grpEquipment.Name = "grpEquipment";
             grpEquipment.Padding = new Padding(4, 3, 4, 3);
-            grpEquipment.Size = new Size(943, 834);
+            grpEquipment.Size = new Size(943, 963);
             grpEquipment.TabIndex = 12;
             grpEquipment.TabStop = false;
             grpEquipment.Text = "Equipment";
@@ -1993,8 +2075,15 @@ namespace Intersect.Editor.Forms.Editors
             grpStatBonuses.Controls.Add(lblPercentage8);
             grpStatBonuses.Controls.Add(lblPercentage7);
             grpStatBonuses.Controls.Add(lblPercentage6);
+            grpStatBonuses.Controls.Add(lblPercentage9);
+            grpStatBonuses.Controls.Add(lblPercentage10);
+            grpStatBonuses.Controls.Add(lblPercentage11);
             grpStatBonuses.Controls.Add(nudSpdPercentage);
+            grpStatBonuses.Controls.Add(nudARPPercentage);
+            grpStatBonuses.Controls.Add(nudVitPercentage);
+            grpStatBonuses.Controls.Add(nudWisPercentage);
             grpStatBonuses.Controls.Add(nudMRPercentage);
+            grpStatBonuses.Controls.Add(nudARP);
             grpStatBonuses.Controls.Add(nudDefPercentage);
             grpStatBonuses.Controls.Add(nudMagPercentage);
             grpStatBonuses.Controls.Add(nudStrPercentage);
@@ -2003,13 +2092,21 @@ namespace Intersect.Editor.Forms.Editors
             grpStatBonuses.Controls.Add(lblPlus8);
             grpStatBonuses.Controls.Add(lblPlus7);
             grpStatBonuses.Controls.Add(lblPlus6);
+            grpStatBonuses.Controls.Add(lblPlus9);
+            grpStatBonuses.Controls.Add(lblPlus10);
+            grpStatBonuses.Controls.Add(lblPlus11);
             grpStatBonuses.Controls.Add(nudSpd);
+            grpStatBonuses.Controls.Add(nudVit);
+            grpStatBonuses.Controls.Add(nudWis);
             grpStatBonuses.Controls.Add(nudMR);
             grpStatBonuses.Controls.Add(nudDef);
             grpStatBonuses.Controls.Add(nudMag);
             grpStatBonuses.Controls.Add(nudStr);
             grpStatBonuses.Controls.Add(lblSpd);
             grpStatBonuses.Controls.Add(lblMR);
+            grpStatBonuses.Controls.Add(lblARP);
+            grpStatBonuses.Controls.Add(lblVit);
+            grpStatBonuses.Controls.Add(lblWis);
             grpStatBonuses.Controls.Add(lblDef);
             grpStatBonuses.Controls.Add(lblMag);
             grpStatBonuses.Controls.Add(lblStr);
@@ -2018,7 +2115,7 @@ namespace Intersect.Editor.Forms.Editors
             grpStatBonuses.Margin = new Padding(4, 3, 4, 3);
             grpStatBonuses.Name = "grpStatBonuses";
             grpStatBonuses.Padding = new Padding(4, 3, 4, 3);
-            grpStatBonuses.Size = new Size(307, 250);
+            grpStatBonuses.Size = new Size(307, 381);
             grpStatBonuses.TabIndex = 40;
             grpStatBonuses.TabStop = false;
             grpStatBonuses.Text = "Stat Bonuses";
@@ -2087,6 +2184,48 @@ namespace Intersect.Editor.Forms.Editors
             nudSpdPercentage.Value = new decimal(new int[] { 0, 0, 0, 0 });
             nudSpdPercentage.ValueChanged += nudSpdPercentage_ValueChanged;
             // 
+            // nudARPPercentage
+            // 
+            nudARPPercentage.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudARPPercentage.ForeColor = System.Drawing.Color.Gainsboro;
+            nudARPPercentage.Location = new System.Drawing.Point(192, 259);
+            nudARPPercentage.Margin = new Padding(4, 3, 4, 3);
+            nudARPPercentage.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            nudARPPercentage.Minimum = new decimal(new int[] { -100, 0, 0, int.MinValue });
+            nudARPPercentage.Name = "nudARPPercentage";
+            nudARPPercentage.Size = new Size(76, 23);
+            nudARPPercentage.TabIndex = 84;
+            nudARPPercentage.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudARPPercentage.ValueChanged += nudARPPercentage_ValueChanged;
+            // 
+            // nudVitPercentage
+            // 
+            nudVitPercentage.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudVitPercentage.ForeColor = System.Drawing.Color.Gainsboro;
+            nudVitPercentage.Location = new System.Drawing.Point(192, 300);
+            nudVitPercentage.Margin = new Padding(4, 3, 4, 3);
+            nudVitPercentage.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            nudVitPercentage.Minimum = new decimal(new int[] { -100, 0, 0, int.MinValue });
+            nudVitPercentage.Name = "nudVitPercentage";
+            nudVitPercentage.Size = new Size(76, 23);
+            nudVitPercentage.TabIndex = 86;
+            nudVitPercentage.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudVitPercentage.ValueChanged += nudVitPercentage_ValueChanged;
+            // 
+            // nudWisPercentage
+            // 
+            nudWisPercentage.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudWisPercentage.ForeColor = System.Drawing.Color.Gainsboro;
+            nudWisPercentage.Location = new System.Drawing.Point(192, 341);
+            nudWisPercentage.Margin = new Padding(4, 3, 4, 3);
+            nudWisPercentage.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            nudWisPercentage.Minimum = new decimal(new int[] { -100, 0, 0, int.MinValue });
+            nudWisPercentage.Name = "nudWisPercentage";
+            nudWisPercentage.Size = new Size(76, 23);
+            nudWisPercentage.TabIndex = 87;
+            nudWisPercentage.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudWisPercentage.ValueChanged += nudWisPercentage_ValueChanged;
+            // 
             // nudMRPercentage
             // 
             nudMRPercentage.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
@@ -2100,6 +2239,19 @@ namespace Intersect.Editor.Forms.Editors
             nudMRPercentage.TabIndex = 76;
             nudMRPercentage.Value = new decimal(new int[] { 0, 0, 0, 0 });
             nudMRPercentage.ValueChanged += nudMRPercentage_ValueChanged;
+            // 
+            // nudARP
+            // 
+            nudARP.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudARP.ForeColor = System.Drawing.Color.Gainsboro;
+            nudARP.Location = new System.Drawing.Point(15, 259);
+            nudARP.Margin = new Padding(4, 3, 4, 3);
+            nudARP.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
+            nudARP.Name = "nudARP";
+            nudARP.Size = new Size(140, 23);
+            nudARP.TabIndex = 85;
+            nudARP.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudARP.ValueChanged += nudARP_ValueChanged;
             // 
             // nudDefPercentage
             // 
@@ -2176,7 +2328,7 @@ namespace Intersect.Editor.Forms.Editors
             // lblPlus7
             // 
             lblPlus7.AutoSize = true;
-            lblPlus7.Location = new System.Drawing.Point(164, 78);
+            lblPlus7.Location = new System.Drawing.Point(164, 79);
             lblPlus7.Margin = new Padding(2, 0, 2, 0);
             lblPlus7.Name = "lblPlus7";
             lblPlus7.Size = new Size(15, 15);
@@ -2186,18 +2338,18 @@ namespace Intersect.Editor.Forms.Editors
             // lblPlus6
             // 
             lblPlus6.AutoSize = true;
-            lblPlus6.Location = new System.Drawing.Point(164, 35);
+            lblPlus6.Location = new System.Drawing.Point(164, 34);
             lblPlus6.Margin = new Padding(2, 0, 2, 0);
             lblPlus6.Name = "lblPlus6";
             lblPlus6.Size = new Size(15, 15);
-            lblPlus6.TabIndex = 68;
+            lblPlus6.TabIndex = 95;
             lblPlus6.Text = "+";
             // 
             // nudSpd
             // 
             nudSpd.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
             nudSpd.ForeColor = System.Drawing.Color.Gainsboro;
-            nudSpd.Location = new System.Drawing.Point(18, 218);
+            nudSpd.Location = new System.Drawing.Point(15, 218);
             nudSpd.Margin = new Padding(4, 3, 4, 3);
             nudSpd.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
             nudSpd.Name = "nudSpd";
@@ -2206,11 +2358,37 @@ namespace Intersect.Editor.Forms.Editors
             nudSpd.Value = new decimal(new int[] { 0, 0, 0, 0 });
             nudSpd.ValueChanged += nudSpd_ValueChanged;
             // 
+            // nudVit
+            // 
+            nudVit.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudVit.ForeColor = System.Drawing.Color.Gainsboro;
+            nudVit.Location = new System.Drawing.Point(15, 300);
+            nudVit.Margin = new Padding(4, 3, 4, 3);
+            nudVit.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
+            nudVit.Name = "nudVit";
+            nudVit.Size = new Size(140, 23);
+            nudVit.TabIndex = 88;
+            nudVit.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudVit.ValueChanged += nudVit_ValueChanged;
+            // 
+            // nudWis
+            // 
+            nudWis.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudWis.ForeColor = System.Drawing.Color.Gainsboro;
+            nudWis.Location = new System.Drawing.Point(15, 341);
+            nudWis.Margin = new Padding(4, 3, 4, 3);
+            nudWis.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
+            nudWis.Name = "nudWis";
+            nudWis.Size = new Size(140, 23);
+            nudWis.TabIndex = 89;
+            nudWis.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudWis.ValueChanged += nudWis_ValueChanged;
+            // 
             // nudMR
             // 
             nudMR.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
             nudMR.ForeColor = System.Drawing.Color.Gainsboro;
-            nudMR.Location = new System.Drawing.Point(15, 171);
+            nudMR.Location = new System.Drawing.Point(14, 171);
             nudMR.Margin = new Padding(4, 3, 4, 3);
             nudMR.Maximum = new decimal(new int[] { 255, 0, 0, 0 });
             nudMR.Name = "nudMR";
@@ -2271,17 +2449,47 @@ namespace Intersect.Editor.Forms.Editors
             // lblMR
             // 
             lblMR.AutoSize = true;
-            lblMR.Location = new System.Drawing.Point(12, 152);
+            lblMR.Location = new System.Drawing.Point(15, 153);
             lblMR.Margin = new Padding(2, 0, 2, 0);
             lblMR.Name = "lblMR";
             lblMR.Size = new Size(76, 15);
             lblMR.TabIndex = 46;
             lblMR.Text = "Magic Resist:";
             // 
+            // lblARP
+            // 
+            lblARP.AutoSize = true;
+            lblARP.Location = new System.Drawing.Point(14, 241);
+            lblARP.Margin = new Padding(2, 0, 2, 0);
+            lblARP.Name = "lblARP";
+            lblARP.Size = new Size(108, 15);
+            lblARP.TabIndex = 90;
+            lblARP.Text = "Armor Penetration:";
+            // 
+            // lblVit
+            // 
+            lblVit.AutoSize = true;
+            lblVit.Location = new System.Drawing.Point(15, 282);
+            lblVit.Margin = new Padding(2, 0, 2, 0);
+            lblVit.Name = "lblVit";
+            lblVit.Size = new Size(46, 15);
+            lblVit.TabIndex = 91;
+            lblVit.Text = "Vitality:";
+            // 
+            // lblWis
+            // 
+            lblWis.AutoSize = true;
+            lblWis.Location = new System.Drawing.Point(14, 326);
+            lblWis.Margin = new Padding(2, 0, 2, 0);
+            lblWis.Name = "lblWis";
+            lblWis.Size = new Size(54, 15);
+            lblWis.TabIndex = 92;
+            lblWis.Text = "Wisdom:";
+            // 
             // lblDef
             // 
             lblDef.AutoSize = true;
-            lblDef.Location = new System.Drawing.Point(12, 104);
+            lblDef.Location = new System.Drawing.Point(15, 104);
             lblDef.Margin = new Padding(2, 0, 2, 0);
             lblDef.Name = "lblDef";
             lblDef.Size = new Size(44, 15);
@@ -2963,7 +3171,7 @@ namespace Intersect.Editor.Forms.Editors
             AutoScaleMode = AutoScaleMode.Font;
             AutoSize = true;
             BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
-            ClientSize = new Size(1241, 728);
+            ClientSize = new Size(1241, 749);
             ControlBox = false;
             Controls.Add(toolStrip);
             Controls.Add(btnCancel);
@@ -3039,11 +3247,17 @@ namespace Intersect.Editor.Forms.Editors
             grpStatBonuses.ResumeLayout(false);
             grpStatBonuses.PerformLayout();
             ((ISupportInitialize)nudSpdPercentage).EndInit();
+            ((ISupportInitialize)nudARPPercentage).EndInit();
+            ((ISupportInitialize)nudVitPercentage).EndInit();
+            ((ISupportInitialize)nudWisPercentage).EndInit();
             ((ISupportInitialize)nudMRPercentage).EndInit();
+            ((ISupportInitialize)nudARP).EndInit();
             ((ISupportInitialize)nudDefPercentage).EndInit();
             ((ISupportInitialize)nudMagPercentage).EndInit();
             ((ISupportInitialize)nudStrPercentage).EndInit();
             ((ISupportInitialize)nudSpd).EndInit();
+            ((ISupportInitialize)nudVit).EndInit();
+            ((ISupportInitialize)nudWis).EndInit();
             ((ISupportInitialize)nudMR).EndInit();
             ((ISupportInitialize)nudDef).EndInit();
             ((ISupportInitialize)nudMag).EndInit();
@@ -3143,11 +3357,17 @@ namespace Intersect.Editor.Forms.Editors
         private DarkNumericUpDown nudDef;
         private DarkNumericUpDown nudMag;
         private DarkNumericUpDown nudStr;
+        private DarkNumericUpDown nudARP;
+        private DarkNumericUpDown nudVit;
+        private DarkNumericUpDown nudWis;
         private Label lblSpd;
         private Label lblMR;
         private Label lblDef;
         private Label lblMag;
         private Label lblStr;
+        private Label lblARP;
+        private Label lblVit;
+        private Label lblWis;
         private DarkNumericUpDown nudScaling;
         private DarkNumericUpDown nudCritChance;
         private DarkNumericUpDown nudDamage;
@@ -3193,6 +3413,9 @@ namespace Intersect.Editor.Forms.Editors
         private Label lblPercentage5;
         private Label lblPercentage4;
         private Label lblPercentage8;
+        private Label lblPercentage9;
+        private Label lblPercentage10;
+        private Label lblPercentage11;
         private Label lblPercentage7;
         private Label lblPercentage6;
         private DarkNumericUpDown nudSpdPercentage;
@@ -3200,9 +3423,15 @@ namespace Intersect.Editor.Forms.Editors
         private DarkNumericUpDown nudDefPercentage;
         private DarkNumericUpDown nudMagPercentage;
         private DarkNumericUpDown nudStrPercentage;
+        private DarkNumericUpDown nudARPPercentage;
+        private DarkNumericUpDown nudVitPercentage;
+        private DarkNumericUpDown nudWisPercentage;
         private Label lblPlus5;
         private Label lblPlus4;
         private Label lblPlus8;
+        private Label lblPlus9;
+        private Label lblPlus10;
+        private Label lblPlus11;
         private Label lblPlus7;
         private Label lblPlus6;
         private DarkGroupBox grpRegen;

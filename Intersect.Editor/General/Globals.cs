@@ -139,7 +139,7 @@ public static partial class Globals
     public static MapInstance SelectionSource;
 
     //Selection Moving Copying and Pasting
-    public static int SelectionType = (int) SelectionTypes.AllLayers;
+    public static int SelectionType = (int)SelectionTypes.AllLayers;
 
     public static int TileDragX = 0;
 
@@ -172,23 +172,29 @@ public static partial class Globals
 
     public static string GetColorName(Color.ChatColor color)
     {
-        return Strings.Colors.presets[(int) color];
+        return Strings.Colors.presets[(int)color];
     }
 
     public static string GetStatName(int statnum)
     {
         switch (statnum)
         {
-            case (int) Stat.Attack:
+            case (int)Stat.Attack:
                 return "Attack";
-            case (int) Stat.AbilityPower:
+            case (int)Stat.AbilityPower:
                 return "Ability Power";
-            case (int) Stat.Defense:
+            case (int)Stat.Defense:
                 return "Defense";
-            case (int) Stat.MagicResist:
+            case (int)Stat.MagicResist:
                 return "Magic Resist";
-            case (int) Stat.Speed:
+            case (int)Stat.Speed:
                 return "Speed";
+            case (int)Stat.ArmorPenetration:
+                return "Armor Penetration";
+            case (int)Stat.Vitality:
+                return "Vitality";
+            case (int)Stat.Wisdom:
+                return "Wisdom";
             default:
                 return "Invalid Stat";
         }

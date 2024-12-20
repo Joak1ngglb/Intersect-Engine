@@ -127,20 +127,26 @@ public partial class Formulas
         try
         {
             expression.Parameters["BaseDamage"] = baseDamage;
-            expression.Parameters["ScalingStat"] = attacker.Stat[(int) scalingStat].Value();
+            expression.Parameters["ScalingStat"] = attacker.Stat[(int)scalingStat].Value();
             expression.Parameters["ScaleFactor"] = scaling / 100f;
             expression.Parameters["CritMultiplier"] = critMultiplier;
-            expression.Parameters["A_Attack"] = attacker.Stat[(int) Stat.Attack].Value();
-            expression.Parameters["A_Defense"] = attacker.Stat[(int) Stat.Defense].Value();
-            expression.Parameters["A_Speed"] = attacker.Stat[(int) Stat.Speed].Value();
-            expression.Parameters["A_AbilityPwr"] = attacker.Stat[(int) Stat.AbilityPower].Value();
-            expression.Parameters["A_MagicResist"] = attacker.Stat[(int) Stat.MagicResist].Value();
-            expression.Parameters["V_Attack"] = victim.Stat[(int) Stat.Attack].Value();
-            expression.Parameters["V_Defense"] = victim.Stat[(int) Stat.Defense].Value();
-            expression.Parameters["V_Speed"] = victim.Stat[(int) Stat.Speed].Value();
-            expression.Parameters["V_AbilityPwr"] = victim.Stat[(int) Stat.AbilityPower].Value();
-            expression.Parameters["V_MagicResist"] = victim.Stat[(int) Stat.MagicResist].Value();
-            expression.EvaluateFunction += delegate(string name, FunctionArgs args)
+            expression.Parameters["A_Attack"] = attacker.Stat[(int)Stat.Attack].Value();
+            expression.Parameters["A_Defense"] = attacker.Stat[(int)Stat.Defense].Value();
+            expression.Parameters["A_Speed"] = attacker.Stat[(int)Stat.Speed].Value();
+            expression.Parameters["A_AbilityPwr"] = attacker.Stat[(int)Stat.AbilityPower].Value();
+            expression.Parameters["A_MagicResist"] = attacker.Stat[(int)Stat.MagicResist].Value();
+            expression.Parameters["A_ArmorPenetration"] = attacker.Stat[(int)Stat.ArmorPenetration].Value();
+            expression.Parameters["A_Vitality"] = attacker.Stat[(int)Stat.Vitality].Value();
+            expression.Parameters["A_Wisdom"] = attacker.Stat[(int)Stat.Wisdom].Value();
+            expression.Parameters["V_Attack"] = victim.Stat[(int)Stat.Attack].Value();
+            expression.Parameters["V_Defense"] = victim.Stat[(int)Stat.Defense].Value();
+            expression.Parameters["V_Speed"] = victim.Stat[(int)Stat.Speed].Value();
+            expression.Parameters["V_AbilityPwr"] = victim.Stat[(int)Stat.AbilityPower].Value();
+            expression.Parameters["V_MagicResist"] = victim.Stat[(int)Stat.MagicResist].Value();
+            expression.Parameters["V_ArmorPenetration"] = victim.Stat[(int)Stat.ArmorPenetration].Value();
+            expression.Parameters["V_Vitality"] = victim.Stat[(int)Stat.Vitality].Value();
+            expression.Parameters["V_Wisdom"] = victim.Stat[(int)Stat.Wisdom].Value();
+            expression.EvaluateFunction += delegate (string name, FunctionArgs args)
             {
                 if (args == null)
                 {
@@ -159,7 +165,7 @@ public partial class Formulas
                 result = -result;
             }
 
-            return (long) Math.Round(result);
+            return (long)Math.Round(result);
         }
         catch (Exception ex)
         {
@@ -182,12 +188,12 @@ public partial class Formulas
             throw new ArgumentException($"{nameof(Random)}() requires 2 numerical parameters.");
         }
 
-        var min = (int) Math.Round(
-            (double) (parameters[0] ?? throw new NullReferenceException("First parameter is null."))
+        var min = (int)Math.Round(
+            (double)(parameters[0] ?? throw new NullReferenceException("First parameter is null."))
         );
 
-        var max = (int) Math.Round(
-            (double) (parameters[1] ?? throw new NullReferenceException("First parameter is null."))
+        var max = (int)Math.Round(
+            (double)(parameters[1] ?? throw new NullReferenceException("First parameter is null."))
         );
 
         return min >= max ? min : Randomization.Next(min, max + 1);

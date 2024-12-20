@@ -134,11 +134,17 @@ public partial class FrmSpell : EditorForm
         nudDef.Maximum = Options.MaxStatValue;
         nudMR.Maximum = Options.MaxStatValue;
         nudSpd.Maximum = Options.MaxStatValue;
+        nudARP.Maximum = Options.MaxStatValue;
+        nudVit.Maximum = Options.MaxStatValue;
+        nudWis.Maximum = Options.MaxStatValue;
         nudStr.Minimum = -Options.MaxStatValue;
         nudMag.Minimum = -Options.MaxStatValue;
         nudDef.Minimum = -Options.MaxStatValue;
         nudMR.Minimum = -Options.MaxStatValue;
         nudSpd.Minimum = -Options.MaxStatValue;
+        nudARP.Minimum = -Options.MaxStatValue;
+        nudVit.Minimum = -Options.MaxStatValue;
+        nudWis.Minimum = -Options.MaxStatValue;
 
         nudCastDuration.Maximum = Int32.MaxValue;
         nudCooldownDuration.Maximum = Int32.MaxValue;
@@ -228,6 +234,9 @@ public partial class FrmSpell : EditorForm
         lblSpd.Text = Strings.SpellEditor.speed;
         lblMag.Text = Strings.SpellEditor.abilitypower;
         lblMR.Text = Strings.SpellEditor.magicresist;
+        lblARP.Text = Strings.SpellEditor.armorpen;
+        lblVit.Text = Strings.SpellEditor.vitality;
+        lblWis.Text = Strings.SpellEditor.wisdom;
 
         grpEffectDuration.Text = Strings.SpellEditor.boostduration;
         lblBuffDuration.Text = Strings.SpellEditor.duration;
@@ -356,12 +365,18 @@ public partial class FrmSpell : EditorForm
             nudSpd.Value = mEditorItem.Combat.StatDiff[(int)Stat.Speed];
             nudMag.Value = mEditorItem.Combat.StatDiff[(int)Stat.AbilityPower];
             nudMR.Value = mEditorItem.Combat.StatDiff[(int)Stat.MagicResist];
+            nudARP.Value = mEditorItem.Combat.StatDiff[(int)Stat.ArmorPenetration];
+            nudVit.Value = mEditorItem.Combat.StatDiff[(int)Stat.Vitality];
+            nudWis.Value = mEditorItem.Combat.StatDiff[(int)Stat.Wisdom];
 
             nudStrPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Attack];
             nudDefPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Defense];
             nudMagPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.AbilityPower];
             nudMRPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.MagicResist];
             nudSpdPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Speed];
+            nudARPPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.ArmorPenetration];
+            nudVitPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Vitality];
+            nudWisPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Wisdom];
 
             chkFriendly.Checked = Convert.ToBoolean(mEditorItem.Combat.Friendly);
             cmbDamageType.SelectedIndex = mEditorItem.Combat.DamageType;
@@ -850,6 +865,18 @@ public partial class FrmSpell : EditorForm
     {
         mEditorItem.Combat.StatDiff[(int)Stat.Speed] = (int)nudSpd.Value;
     }
+    private void nudARP_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Combat.StatDiff[(int)Stat.ArmorPenetration] = (int)nudARP.Value;
+    }
+    private void nudVit_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Combat.StatDiff[(int)Stat.Vitality] = (int)nudVit.Value;
+    }
+    private void nudWis_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Combat.StatDiff[(int)Stat.Wisdom] = (int)nudWis.Value;
+    }
 
     private void nudStrPercentage_ValueChanged(object sender, EventArgs e)
     {
@@ -874,6 +901,18 @@ public partial class FrmSpell : EditorForm
     private void nudSpdPercentage_ValueChanged(object sender, EventArgs e)
     {
         mEditorItem.Combat.PercentageStatDiff[(int)Stat.Speed] = (int)nudSpdPercentage.Value;
+    }
+    private void nudARPPercentage_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Combat.PercentageStatDiff[(int)Stat.ArmorPenetration] = (int)nudARPPercentage.Value;
+    }
+    private void nudVitPercentage_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Combat.PercentageStatDiff[(int)Stat.Vitality] = (int)nudVitPercentage.Value;
+    }
+    private void nudWisPercentage_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Combat.PercentageStatDiff[(int)Stat.Wisdom] = (int)nudWisPercentage.Value;
     }
 
     private void nudBuffDuration_ValueChanged(object sender, EventArgs e)

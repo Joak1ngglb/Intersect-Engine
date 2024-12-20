@@ -585,11 +585,11 @@ public partial class Entity : IEntity
 
         if (this.IsDead())
         {
-            SpriteAnimation = SpriteAnimations.Death;
+            SpriteAnimation = SpriteAnimations.Dead;
         }
         else
         {
-            if (SpriteAnimation == SpriteAnimations.Death)
+            if (SpriteAnimation == SpriteAnimations.Dead)
             {
                 SpriteAnimation = SpriteAnimations.Normal;
             }
@@ -1921,7 +1921,7 @@ public partial class Entity : IEntity
     private void UpdateSpriteAnimation()
     {
         //Exit if textures haven't been loaded yet
-        if (AnimatedTextures.Count == 0 || SpriteAnimation == SpriteAnimations.Death)
+        if (AnimatedTextures.Count == 0 || SpriteAnimation == SpriteAnimations.Dead)
         {
             return;
         }
@@ -2000,7 +2000,7 @@ public partial class Entity : IEntity
             {
                 case SpriteAnimations.Cast:
                 case SpriteAnimations.Idle:
-                case SpriteAnimations.Death:
+                case SpriteAnimations.Dead:
                 case SpriteAnimations.Normal:
                     break;
                 case SpriteAnimations.Attack:
@@ -2154,7 +2154,7 @@ public partial class Entity : IEntity
 
                 break;
 
-            case SpriteAnimations.Death: break;
+            case SpriteAnimations.Dead: break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(spriteAnimation));
         }

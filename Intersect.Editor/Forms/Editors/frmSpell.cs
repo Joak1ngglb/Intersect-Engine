@@ -13,419 +13,419 @@ using Intersect.GameObjects.Maps.MapList;
 using Intersect.Utilities;
 using Graphics = System.Drawing.Graphics;
 
-namespace Intersect.Editor.Forms.Editors;
-
-
-public partial class FrmSpell : EditorForm
+namespace Intersect.Editor.Forms.Editors
 {
 
-    private List<SpellBase> mChanged = new List<SpellBase>();
-
-    private string mCopiedItem;
-
-    private SpellBase mEditorItem;
-
-    private List<string> mKnownFolders = new List<string>();
-
-    private List<string> mKnownCooldownGroups = new List<string>();
-
-    public FrmSpell()
+    public partial class FrmSpell : EditorForm
     {
-        ApplyHooks();
-        InitializeComponent();
-        Icon = Program.Icon;
 
-        cmbScalingStat.Items.Clear();
-        for (var i = 0; i < Enum.GetValues<Stat>().Length; i++)
+        private List<SpellBase> mChanged = new List<SpellBase>();
+
+        private string mCopiedItem;
+
+        private SpellBase mEditorItem;
+
+        private List<string> mKnownFolders = new List<string>();
+
+        private List<string> mKnownCooldownGroups = new List<string>();
+
+        public FrmSpell()
         {
-            cmbScalingStat.Items.Add(Globals.GetStatName(i));
+            ApplyHooks();
+            InitializeComponent();
+            Icon = Program.Icon;
+
+            cmbScalingStat.Items.Clear();
+            for (var i = 0; i < Enum.GetValues<Stat>().Length; i++)
+            {
+                cmbScalingStat.Items.Add(Globals.GetStatName(i));
+            }
+
+            lstGameObjects.Init(UpdateToolStripItems, AssignEditorItem, toolStripItemNew_Click, toolStripItemCopy_Click, toolStripItemUndo_Click, toolStripItemPaste_Click, toolStripItemDelete_Click);
+        }
+        private void AssignEditorItem(Guid id)
+        {
+            mEditorItem = SpellBase.Get(id);
+            UpdateEditor();
         }
 
-        lstGameObjects.Init(UpdateToolStripItems, AssignEditorItem, toolStripItemNew_Click, toolStripItemCopy_Click, toolStripItemUndo_Click, toolStripItemPaste_Click, toolStripItemDelete_Click);
-    }
-    private void AssignEditorItem(Guid id)
-    {
-        mEditorItem = SpellBase.Get(id);
-        UpdateEditor();
-    }
-
-    protected override void GameObjectUpdatedDelegate(GameObjectType type)
-    {
-        if (type == GameObjectType.Spell)
+        protected override void GameObjectUpdatedDelegate(GameObjectType type)
         {
-            InitEditor();
-            if (mEditorItem != null && !SpellBase.Lookup.Values.Contains(mEditorItem))
+            if (type == GameObjectType.Spell)
             {
-                mEditorItem = null;
-                UpdateEditor();
+                InitEditor();
+                if (mEditorItem != null && !SpellBase.Lookup.Values.Contains(mEditorItem))
+                {
+                    mEditorItem = null;
+                    UpdateEditor();
+                }
             }
         }
-    }
 
-    private void btnCancel_Click(object sender, EventArgs e)
-    {
-        foreach (var item in mChanged)
+        private void btnCancel_Click(object sender, EventArgs e)
         {
-            item.RestoreBackup();
-            item.DeleteBackup();
+            foreach (var item in mChanged)
+            {
+                item.RestoreBackup();
+                item.DeleteBackup();
+            }
+
+            Hide();
+            Globals.CurrentEditor = -1;
+            Dispose();
         }
 
-        Hide();
-        Globals.CurrentEditor = -1;
-        Dispose();
-    }
-
-    private void btnSave_Click(object sender, EventArgs e)
-    {
-        //Send Changed items
-        foreach (var item in mChanged)
+        private void btnSave_Click(object sender, EventArgs e)
         {
-            PacketSender.SendSaveObject(item);
-            item.DeleteBackup();
+            //Send Changed items
+            foreach (var item in mChanged)
+            {
+                PacketSender.SendSaveObject(item);
+                item.DeleteBackup();
+            }
+
+            Hide();
+            Globals.CurrentEditor = -1;
+            Dispose();
         }
 
-        Hide();
-        Globals.CurrentEditor = -1;
-        Dispose();
-    }
-
-    private void frmSpell_Load(object sender, EventArgs e)
-    {
-        cmbProjectile.Items.Clear();
-        cmbProjectile.Items.AddRange(ProjectileBase.Names);
-        cmbCastAnimation.Items.Clear();
-        cmbCastAnimation.Items.Add(Strings.General.None);
-        cmbCastAnimation.Items.AddRange(AnimationBase.Names);
-        cmbHitAnimation.Items.Clear();
-        cmbHitAnimation.Items.Add(Strings.General.None);
-        cmbHitAnimation.Items.AddRange(AnimationBase.Names);
-        cmbEvent.Items.Clear();
-        cmbEvent.Items.Add(Strings.General.None);
-        cmbEvent.Items.AddRange(EventBase.Names);
-        cmbTickAnimation.Items.Clear();
-        cmbTickAnimation.Items.Add(Strings.General.None);
-        cmbTickAnimation.Items.AddRange(AnimationBase.Names);
-
-        cmbSprite.Items.Clear();
-        cmbSprite.Items.Add(Strings.General.None);
-        var spellNames = GameContentManager.GetSmartSortedTextureNames(GameContentManager.TextureType.Spell);
-        cmbSprite.Items.AddRange(spellNames);
-
-        cmbTransform.Items.Clear();
-        cmbTransform.Items.Add(Strings.General.None);
-        var spriteNames = GameContentManager.GetSmartSortedTextureNames(GameContentManager.TextureType.Entity);
-        cmbTransform.Items.AddRange(spriteNames);
-
-        cmbCastSprite.Items.Clear();
-        cmbCastSprite.Items.Add(Strings.General.None);
-        cmbCastSprite.Items.AddRange(
-            GameContentManager.GetOverridesFor(GameContentManager.TextureType.Entity, "cast").ToArray()
-        );
-
-        nudWarpX.Maximum = (int)Options.MapWidth;
-        nudWarpY.Maximum = (int)Options.MapHeight;
-
-        cmbWarpMap.Items.Clear();
-        cmbWarpMap.Items.AddRange(MapList.OrderedMaps.Select(map => map?.Name).ToArray());
-        cmbWarpMap.SelectedIndex = 0;
-
-        nudStr.Maximum = Options.MaxStatValue;
-        nudMag.Maximum = Options.MaxStatValue;
-        nudDef.Maximum = Options.MaxStatValue;
-        nudMR.Maximum = Options.MaxStatValue;
-        nudSpd.Maximum = Options.MaxStatValue;
-        nudARP.Maximum = Options.MaxStatValue;
-        nudVit.Maximum = Options.MaxStatValue;
-        nudWis.Maximum = Options.MaxStatValue;
-        nudStr.Minimum = -Options.MaxStatValue;
-        nudMag.Minimum = -Options.MaxStatValue;
-        nudDef.Minimum = -Options.MaxStatValue;
-        nudMR.Minimum = -Options.MaxStatValue;
-        nudSpd.Minimum = -Options.MaxStatValue;
-        nudARP.Minimum = -Options.MaxStatValue;
-        nudVit.Minimum = -Options.MaxStatValue;
-        nudWis.Minimum = -Options.MaxStatValue;
-
-        nudCastDuration.Maximum = Int32.MaxValue;
-        nudCooldownDuration.Maximum = Int32.MaxValue;
-
-        InitLocalization();
-        UpdateEditor();
-    }
-
-    private void InitLocalization()
-    {
-        Text = Strings.SpellEditor.title;
-        toolStripItemNew.Text = Strings.SpellEditor.New;
-        toolStripItemDelete.Text = Strings.SpellEditor.delete;
-        toolStripItemCopy.Text = Strings.SpellEditor.copy;
-        toolStripItemPaste.Text = Strings.SpellEditor.paste;
-        toolStripItemUndo.Text = Strings.SpellEditor.undo;
-
-        grpSpells.Text = Strings.SpellEditor.spells;
-
-        grpGeneral.Text = Strings.SpellEditor.general;
-        lblName.Text = Strings.SpellEditor.name;
-        lblType.Text = Strings.SpellEditor.type;
-        cmbType.Items.Clear();
-        for (var i = 0; i < Strings.SpellEditor.types.Count; i++)
+        private void frmSpell_Load(object sender, EventArgs e)
         {
-            cmbType.Items.Add(Strings.SpellEditor.types[i]);
-        }
+            cmbProjectile.Items.Clear();
+            cmbProjectile.Items.AddRange(ProjectileBase.Names);
+            cmbCastAnimation.Items.Clear();
+            cmbCastAnimation.Items.Add(Strings.General.None);
+            cmbCastAnimation.Items.AddRange(AnimationBase.Names);
+            cmbHitAnimation.Items.Clear();
+            cmbHitAnimation.Items.Add(Strings.General.None);
+            cmbHitAnimation.Items.AddRange(AnimationBase.Names);
+            cmbEvent.Items.Clear();
+            cmbEvent.Items.Add(Strings.General.None);
+            cmbEvent.Items.AddRange(EventBase.Names);
+            cmbTickAnimation.Items.Clear();
+            cmbTickAnimation.Items.Add(Strings.General.None);
+            cmbTickAnimation.Items.AddRange(AnimationBase.Names);
 
-        lblIcon.Text = Strings.SpellEditor.icon;
-        lblDesc.Text = Strings.SpellEditor.description;
-        lblCastAnimation.Text = Strings.SpellEditor.castanimation;
-        lblSpriteCastAnimation.Text = Strings.SpellEditor.CastSpriteOverride;
-        lblHitAnimation.Text = Strings.SpellEditor.hitanimation;
-        chkBound.Text = Strings.SpellEditor.bound;
+            cmbSprite.Items.Clear();
+            cmbSprite.Items.Add(Strings.General.None);
+            var spellNames = GameContentManager.GetSmartSortedTextureNames(GameContentManager.TextureType.Spell);
+            cmbSprite.Items.AddRange(spellNames);
 
-        grpRequirements.Text = Strings.SpellEditor.requirements;
-        lblCannotCast.Text = Strings.SpellEditor.cannotcast;
-        btnDynamicRequirements.Text = Strings.SpellEditor.requirementsbutton;
+            cmbTransform.Items.Clear();
+            cmbTransform.Items.Add(Strings.General.None);
+            var spriteNames = GameContentManager.GetSmartSortedTextureNames(GameContentManager.TextureType.Entity);
+            cmbTransform.Items.AddRange(spriteNames);
 
-        grpSpellCost.Text = Strings.SpellEditor.cost;
-        lblHPCost.Text = Strings.SpellEditor.hpcost;
-        lblMPCost.Text = Strings.SpellEditor.manacost;
-        lblCastDuration.Text = Strings.SpellEditor.casttime;
-        lblCooldownDuration.Text = Strings.SpellEditor.cooldown;
-        lblCooldownGroup.Text = Strings.SpellEditor.CooldownGroup;
-        chkIgnoreGlobalCooldown.Text = Strings.SpellEditor.IgnoreGlobalCooldown;
-        chkIgnoreCdr.Text = Strings.SpellEditor.IgnoreCooldownReduction;
-
-        grpTargetInfo.Text = Strings.SpellEditor.targetting;
-        lblTargetType.Text = Strings.SpellEditor.targettype;
-        cmbTargetType.Items.Clear();
-        for (var i = 0; i < Strings.SpellEditor.targettypes.Count; i++)
-        {
-            cmbTargetType.Items.Add(Strings.SpellEditor.targettypes[i]);
-        }
-
-        lblCastRange.Text = Strings.SpellEditor.castrange;
-        lblProjectile.Text = Strings.SpellEditor.projectile;
-        lblHitRadius.Text = Strings.SpellEditor.hitradius;
-        lblDuration.Text = Strings.SpellEditor.duration;
-
-        grpCombat.Text = Strings.SpellEditor.combatspell;
-        grpDamage.Text = Strings.SpellEditor.damagegroup;
-        lblCritChance.Text = Strings.SpellEditor.critchance;
-        lblCritMultiplier.Text = Strings.SpellEditor.critmultiplier;
-        lblDamageType.Text = Strings.SpellEditor.damagetype;
-        lblHPDamage.Text = Strings.SpellEditor.hpdamage;
-        lblManaDamage.Text = Strings.SpellEditor.mpdamage;
-        chkFriendly.Text = Strings.SpellEditor.friendly;
-        cmbDamageType.Items.Clear();
-        for (var i = 0; i < Strings.Combat.damagetypes.Count; i++)
-        {
-            cmbDamageType.Items.Add(Strings.Combat.damagetypes[i]);
-        }
-
-        lblScalingStat.Text = Strings.SpellEditor.scalingstat;
-        lblScaling.Text = Strings.SpellEditor.scalingamount;
-
-        grpHotDot.Text = Strings.SpellEditor.hotdot;
-        chkHOTDOT.Text = Strings.SpellEditor.ishotdot;
-        lblTick.Text = Strings.SpellEditor.hotdottick;
-        lblTickAnimation.Text = Strings.SpellEditor.TickAnimation;
-
-        grpStats.Text = Strings.SpellEditor.stats;
-        lblStr.Text = Strings.SpellEditor.attack;
-        lblDef.Text = Strings.SpellEditor.defense;
-        lblSpd.Text = Strings.SpellEditor.speed;
-        lblMag.Text = Strings.SpellEditor.abilitypower;
-        lblMR.Text = Strings.SpellEditor.magicresist;
-        lblARP.Text = Strings.SpellEditor.armorpen;
-        lblVit.Text = Strings.SpellEditor.vitality;
-        lblWis.Text = Strings.SpellEditor.wisdom;
-
-        grpEffectDuration.Text = Strings.SpellEditor.boostduration;
-        lblBuffDuration.Text = Strings.SpellEditor.duration;
-        grpEffect.Text = Strings.SpellEditor.effectgroup;
-        lblEffect.Text = Strings.SpellEditor.effectlabel;
-        cmbExtraEffect.Items.Clear();
-        for (var i = 0; i < Strings.SpellEditor.effects.Count; i++)
-        {
-            cmbExtraEffect.Items.Add(Strings.SpellEditor.effects[i]);
-        }
-
-        lblSprite.Text = Strings.SpellEditor.transformsprite;
-
-        grpDash.Text = Strings.SpellEditor.dash;
-        lblRange.Text = Strings.SpellEditor.dashrange.ToString(scrlRange.Value);
-        grpDashCollisions.Text = Strings.SpellEditor.dashcollisions;
-        chkIgnoreMapBlocks.Text = Strings.SpellEditor.ignoreblocks;
-        chkIgnoreActiveResources.Text = Strings.SpellEditor.ignoreactiveresources;
-        chkIgnoreInactiveResources.Text = Strings.SpellEditor.ignoreinactiveresources;
-        chkIgnoreZDimensionBlocks.Text = Strings.SpellEditor.ignorezdimension;
-
-        grpWarp.Text = Strings.SpellEditor.warptomap;
-        lblMap.Text = Strings.Warping.map.ToString("");
-        lblX.Text = Strings.Warping.x.ToString("");
-        lblY.Text = Strings.Warping.y.ToString("");
-        lblWarpDir.Text = Strings.Warping.direction.ToString("");
-        cmbDirection.Items.Clear();
-        for (var i = -1; i < 4; i++)
-        {
-            cmbDirection.Items.Add(Strings.Direction.dir[(Direction)i]);
-        }
-
-        btnVisualMapSelector.Text = Strings.Warping.visual;
-
-        grpEvent.Text = Strings.SpellEditor.Event;
-
-        //Searching/Sorting
-        btnAlphabetical.ToolTipText = Strings.SpellEditor.sortalphabetically;
-        txtSearch.Text = Strings.SpellEditor.searchplaceholder;
-        lblFolder.Text = Strings.SpellEditor.folderlabel;
-
-        btnSave.Text = Strings.SpellEditor.save;
-        btnCancel.Text = Strings.SpellEditor.cancel;
-    }
-
-    private void UpdateEditor()
-    {
-        if (mEditorItem != null)
-        {
-            pnlContainer.Show();
-
-            txtName.Text = mEditorItem.Name;
-            cmbFolder.Text = mEditorItem.Folder;
-            txtDesc.Text = mEditorItem.Description;
-            cmbType.SelectedIndex = (int)mEditorItem.SpellType;
-
-            nudCastDuration.Value = mEditorItem.CastDuration;
-            nudCooldownDuration.Value = mEditorItem.CooldownDuration;
-            cmbCooldownGroup.SelectedItem = mEditorItem.CooldownGroup;
-            chkIgnoreGlobalCooldown.Checked = mEditorItem.IgnoreGlobalCooldown;
-            chkIgnoreCdr.Checked = mEditorItem.IgnoreCooldownReduction;
-
-            cmbCastAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.CastAnimationId) + 1;
-            cmbHitAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.HitAnimationId) + 1;
-            cmbTickAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.TickAnimationId) + 1;
-            cmbCastSprite.SelectedIndex = cmbCastSprite.FindString(
-                    TextUtils.NullToNone(mEditorItem.CastSpriteOverride)
+            cmbCastSprite.Items.Clear();
+            cmbCastSprite.Items.Add(Strings.General.None);
+            cmbCastSprite.Items.AddRange(
+                GameContentManager.GetOverridesFor(GameContentManager.TextureType.Entity, "cast").ToArray()
             );
 
-            chkBound.Checked = mEditorItem.Bound;
+            nudWarpX.Maximum = (int)Options.MapWidth;
+            nudWarpY.Maximum = (int)Options.MapHeight;
 
-            cmbSprite.SelectedIndex = cmbSprite.FindString(TextUtils.NullToNone(mEditorItem.Icon));
-            picSpell.BackgroundImage?.Dispose();
-            picSpell.BackgroundImage = null;
-            if (cmbSprite.SelectedIndex > 0)
+            cmbWarpMap.Items.Clear();
+            cmbWarpMap.Items.AddRange(MapList.OrderedMaps.Select(map => map?.Name).ToArray());
+            cmbWarpMap.SelectedIndex = 0;
+
+            nudStr.Maximum = Options.MaxStatValue;
+            nudMag.Maximum = Options.MaxStatValue;
+            nudDef.Maximum = Options.MaxStatValue;
+            nudMR.Maximum = Options.MaxStatValue;
+            nudSpd.Maximum = Options.MaxStatValue;
+            nudARP.Maximum = Options.MaxStatValue;
+            nudVit.Maximum = Options.MaxStatValue;
+            nudWis.Maximum = Options.MaxStatValue;
+            nudStr.Minimum = -Options.MaxStatValue;
+            nudMag.Minimum = -Options.MaxStatValue;
+            nudDef.Minimum = -Options.MaxStatValue;
+            nudMR.Minimum = -Options.MaxStatValue;
+            nudSpd.Minimum = -Options.MaxStatValue;
+            nudARP.Minimum = -Options.MaxStatValue;
+            nudVit.Minimum = -Options.MaxStatValue;
+            nudWis.Minimum = -Options.MaxStatValue;
+
+            nudCastDuration.Maximum = Int32.MaxValue;
+            nudCooldownDuration.Maximum = Int32.MaxValue;
+
+            InitLocalization();
+            UpdateEditor();
+        }
+
+        private void InitLocalization()
+        {
+            Text = Strings.SpellEditor.title;
+            toolStripItemNew.Text = Strings.SpellEditor.New;
+            toolStripItemDelete.Text = Strings.SpellEditor.delete;
+            toolStripItemCopy.Text = Strings.SpellEditor.copy;
+            toolStripItemPaste.Text = Strings.SpellEditor.paste;
+            toolStripItemUndo.Text = Strings.SpellEditor.undo;
+
+            grpSpells.Text = Strings.SpellEditor.spells;
+
+            grpGeneral.Text = Strings.SpellEditor.general;
+            lblName.Text = Strings.SpellEditor.name;
+            lblType.Text = Strings.SpellEditor.type;
+            cmbType.Items.Clear();
+            for (var i = 0; i < Strings.SpellEditor.types.Count; i++)
             {
-                picSpell.BackgroundImage = Image.FromFile("resources/spells/" + cmbSprite.Text);
+                cmbType.Items.Add(Strings.SpellEditor.types[i]);
             }
 
-            nudHPCost.Value = mEditorItem.VitalCost[(int)Vital.Health];
-            nudMpCost.Value = mEditorItem.VitalCost[(int)Vital.Mana];
+            lblIcon.Text = Strings.SpellEditor.icon;
+            lblDesc.Text = Strings.SpellEditor.description;
+            lblCastAnimation.Text = Strings.SpellEditor.castanimation;
+            lblSpriteCastAnimation.Text = Strings.SpellEditor.CastSpriteOverride;
+            lblHitAnimation.Text = Strings.SpellEditor.hitanimation;
+            chkBound.Text = Strings.SpellEditor.bound;
 
-            txtCannotCast.Text = mEditorItem.CannotCastMessage;
+            grpRequirements.Text = Strings.SpellEditor.requirements;
+            lblCannotCast.Text = Strings.SpellEditor.cannotcast;
+            btnDynamicRequirements.Text = Strings.SpellEditor.requirementsbutton;
 
-            UpdateSpellTypePanels();
-            if (mChanged.IndexOf(mEditorItem) == -1)
+            grpSpellCost.Text = Strings.SpellEditor.cost;
+            lblHPCost.Text = Strings.SpellEditor.hpcost;
+            lblMPCost.Text = Strings.SpellEditor.manacost;
+            lblCastDuration.Text = Strings.SpellEditor.casttime;
+            lblCooldownDuration.Text = Strings.SpellEditor.cooldown;
+            lblCooldownGroup.Text = Strings.SpellEditor.CooldownGroup;
+            chkIgnoreGlobalCooldown.Text = Strings.SpellEditor.IgnoreGlobalCooldown;
+            chkIgnoreCdr.Text = Strings.SpellEditor.IgnoreCooldownReduction;
+
+            grpTargetInfo.Text = Strings.SpellEditor.targetting;
+            lblTargetType.Text = Strings.SpellEditor.targettype;
+            cmbTargetType.Items.Clear();
+            for (var i = 0; i < Strings.SpellEditor.targettypes.Count; i++)
             {
-                mChanged.Add(mEditorItem);
-                mEditorItem.MakeBackup();
+                cmbTargetType.Items.Add(Strings.SpellEditor.targettypes[i]);
             }
+
+            lblCastRange.Text = Strings.SpellEditor.castrange;
+            lblProjectile.Text = Strings.SpellEditor.projectile;
+            lblHitRadius.Text = Strings.SpellEditor.hitradius;
+            lblDuration.Text = Strings.SpellEditor.duration;
+
+            grpCombat.Text = Strings.SpellEditor.combatspell;
+            grpDamage.Text = Strings.SpellEditor.damagegroup;
+            lblCritChance.Text = Strings.SpellEditor.critchance;
+            lblCritMultiplier.Text = Strings.SpellEditor.critmultiplier;
+            lblDamageType.Text = Strings.SpellEditor.damagetype;
+            lblHPDamage.Text = Strings.SpellEditor.hpdamage;
+            lblManaDamage.Text = Strings.SpellEditor.mpdamage;
+            chkFriendly.Text = Strings.SpellEditor.friendly;
+            cmbDamageType.Items.Clear();
+            for (var i = 0; i < Strings.Combat.damagetypes.Count; i++)
+            {
+                cmbDamageType.Items.Add(Strings.Combat.damagetypes[i]);
+            }
+
+            lblScalingStat.Text = Strings.SpellEditor.scalingstat;
+            lblScaling.Text = Strings.SpellEditor.scalingamount;
+
+            grpHotDot.Text = Strings.SpellEditor.hotdot;
+            chkHOTDOT.Text = Strings.SpellEditor.ishotdot;
+            lblTick.Text = Strings.SpellEditor.hotdottick;
+            lblTickAnimation.Text = Strings.SpellEditor.TickAnimation;
+
+            grpStats.Text = Strings.SpellEditor.stats;
+            lblStr.Text = Strings.SpellEditor.attack;
+            lblDef.Text = Strings.SpellEditor.defense;
+            lblSpd.Text = Strings.SpellEditor.speed;
+            lblMag.Text = Strings.SpellEditor.abilitypower;
+            lblMR.Text = Strings.SpellEditor.magicresist;
+            lblARP.Text = Strings.SpellEditor.armorpen;
+            lblVit.Text = Strings.SpellEditor.vitality;
+            lblWis.Text = Strings.SpellEditor.wisdom;
+
+            grpEffectDuration.Text = Strings.SpellEditor.boostduration;
+            lblBuffDuration.Text = Strings.SpellEditor.duration;
+            grpEffect.Text = Strings.SpellEditor.effectgroup;
+            lblEffect.Text = Strings.SpellEditor.effectlabel;
+            cmbExtraEffect.Items.Clear();
+            for (var i = 0; i < Strings.SpellEditor.effects.Count; i++)
+            {
+                cmbExtraEffect.Items.Add(Strings.SpellEditor.effects[i]);
+            }
+
+            lblSprite.Text = Strings.SpellEditor.transformsprite;
+
+            grpDash.Text = Strings.SpellEditor.dash;
+            lblRange.Text = Strings.SpellEditor.dashrange.ToString(scrlRange.Value);
+            grpDashCollisions.Text = Strings.SpellEditor.dashcollisions;
+            chkIgnoreMapBlocks.Text = Strings.SpellEditor.ignoreblocks;
+            chkIgnoreActiveResources.Text = Strings.SpellEditor.ignoreactiveresources;
+            chkIgnoreInactiveResources.Text = Strings.SpellEditor.ignoreinactiveresources;
+            chkIgnoreZDimensionBlocks.Text = Strings.SpellEditor.ignorezdimension;
+
+            grpWarp.Text = Strings.SpellEditor.warptomap;
+            lblMap.Text = Strings.Warping.map.ToString("");
+            lblX.Text = Strings.Warping.x.ToString("");
+            lblY.Text = Strings.Warping.y.ToString("");
+            lblWarpDir.Text = Strings.Warping.direction.ToString("");
+            cmbDirection.Items.Clear();
+            for (var i = -1; i < 4; i++)
+            {
+                cmbDirection.Items.Add(Strings.Direction.dir[(Direction)i]);
+            }
+
+            btnVisualMapSelector.Text = Strings.Warping.visual;
+
+            grpEvent.Text = Strings.SpellEditor.Event;
+
+            //Searching/Sorting
+            btnAlphabetical.ToolTipText = Strings.SpellEditor.sortalphabetically;
+            txtSearch.Text = Strings.SpellEditor.searchplaceholder;
+            lblFolder.Text = Strings.SpellEditor.folderlabel;
+
+            btnSave.Text = Strings.SpellEditor.save;
+            btnCancel.Text = Strings.SpellEditor.cancel;
         }
-        else
+
+        private void UpdateEditor()
         {
-            pnlContainer.Hide();
+            if (mEditorItem != null)
+            {
+                pnlContainer.Show();
+
+                txtName.Text = mEditorItem.Name;
+                cmbFolder.Text = mEditorItem.Folder;
+                txtDesc.Text = mEditorItem.Description;
+                cmbType.SelectedIndex = (int)mEditorItem.SpellType;
+
+                nudCastDuration.Value = mEditorItem.CastDuration;
+                nudCooldownDuration.Value = mEditorItem.CooldownDuration;
+                cmbCooldownGroup.SelectedItem = mEditorItem.CooldownGroup;
+                chkIgnoreGlobalCooldown.Checked = mEditorItem.IgnoreGlobalCooldown;
+                chkIgnoreCdr.Checked = mEditorItem.IgnoreCooldownReduction;
+
+                cmbCastAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.CastAnimationId) + 1;
+                cmbHitAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.HitAnimationId) + 1;
+                cmbTickAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.TickAnimationId) + 1;
+                cmbCastSprite.SelectedIndex = cmbCastSprite.FindString(
+                        TextUtils.NullToNone(mEditorItem.CastSpriteOverride)
+                );
+
+                chkBound.Checked = mEditorItem.Bound;
+
+                cmbSprite.SelectedIndex = cmbSprite.FindString(TextUtils.NullToNone(mEditorItem.Icon));
+                picSpell.BackgroundImage?.Dispose();
+                picSpell.BackgroundImage = null;
+                if (cmbSprite.SelectedIndex > 0)
+                {
+                    picSpell.BackgroundImage = Image.FromFile("resources/spells/" + cmbSprite.Text);
+                }
+
+                nudHPCost.Value = mEditorItem.VitalCost[(int)Vital.Health];
+                nudMpCost.Value = mEditorItem.VitalCost[(int)Vital.Mana];
+
+                txtCannotCast.Text = mEditorItem.CannotCastMessage;
+
+                UpdateSpellTypePanels();
+                if (mChanged.IndexOf(mEditorItem) == -1)
+                {
+                    mChanged.Add(mEditorItem);
+                    mEditorItem.MakeBackup();
+                }
+            }
+            else
+            {
+                pnlContainer.Hide();
+            }
+
+            UpdateToolStripItems();
         }
 
-        UpdateToolStripItems();
-    }
-
-    private void UpdateSpellTypePanels()
-    {
-        grpTargetInfo.Hide();
-        grpCombat.Hide();
-        grpWarp.Hide();
-        grpDash.Hide();
-        grpEvent.Hide();
-        cmbTargetType.Enabled = true;
-
-        // Reset our combat data location, since event type spells can move it.
-        grpCombat.Location = new System.Drawing.Point(grpEvent.Location.X, grpEvent.Location.Y);
-
-        if (cmbType.SelectedIndex == (int)SpellType.CombatSpell ||
-            cmbType.SelectedIndex == (int)SpellType.WarpTo ||
-            cmbType.SelectedIndex == (int)SpellType.Event)
+        private void UpdateSpellTypePanels()
         {
-            grpTargetInfo.Show();
-            grpCombat.Show();
-            cmbTargetType.SelectedIndex = (int)mEditorItem.Combat.TargetType;
-            UpdateTargetTypePanel();
+            grpTargetInfo.Hide();
+            grpCombat.Hide();
+            grpWarp.Hide();
+            grpDash.Hide();
+            grpEvent.Hide();
+            cmbTargetType.Enabled = true;
+
+            // Reset our combat data location, since event type spells can move it.
+            grpCombat.Location = new System.Drawing.Point(grpEvent.Location.X, grpEvent.Location.Y);
+
+            if (cmbType.SelectedIndex == (int)SpellType.CombatSpell ||
+                cmbType.SelectedIndex == (int)SpellType.WarpTo ||
+                cmbType.SelectedIndex == (int)SpellType.Event)
+            {
+                grpTargetInfo.Show();
+                grpCombat.Show();
+                cmbTargetType.SelectedIndex = (int)mEditorItem.Combat.TargetType;
+                UpdateTargetTypePanel();
 
             nudHPDamage.Value = mEditorItem.Combat.VitalDiff[(int)Vital.Health];
             nudMPDamage.Value = mEditorItem.Combat.VitalDiff[(int)Vital.Mana];
 
-            nudStr.Value = mEditorItem.Combat.StatDiff[(int)Stat.Attack];
-            nudDef.Value = mEditorItem.Combat.StatDiff[(int)Stat.Defense];
-            nudSpd.Value = mEditorItem.Combat.StatDiff[(int)Stat.Speed];
-            nudMag.Value = mEditorItem.Combat.StatDiff[(int)Stat.AbilityPower];
-            nudMR.Value = mEditorItem.Combat.StatDiff[(int)Stat.MagicResist];
-            nudARP.Value = mEditorItem.Combat.StatDiff[(int)Stat.ArmorPenetration];
-            nudVit.Value = mEditorItem.Combat.StatDiff[(int)Stat.Vitality];
-            nudWis.Value = mEditorItem.Combat.StatDiff[(int)Stat.Wisdom];
+                nudStr.Value = mEditorItem.Combat.StatDiff[(int)Stat.Attack];
+                nudDef.Value = mEditorItem.Combat.StatDiff[(int)Stat.Defense];
+                nudSpd.Value = mEditorItem.Combat.StatDiff[(int)Stat.Speed];
+                nudMag.Value = mEditorItem.Combat.StatDiff[(int)Stat.AbilityPower];
+                nudMR.Value = mEditorItem.Combat.StatDiff[(int)Stat.MagicResist];
+                nudARP.Value = mEditorItem.Combat.StatDiff[(int)Stat.ArmorPenetration];
+                nudVit.Value = mEditorItem.Combat.StatDiff[(int)Stat.Vitality];
+                nudWis.Value = mEditorItem.Combat.StatDiff[(int)Stat.Wisdom];
 
-            nudStrPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Attack];
-            nudDefPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Defense];
-            nudMagPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.AbilityPower];
-            nudMRPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.MagicResist];
-            nudSpdPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Speed];
-            nudARPPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.ArmorPenetration];
-            nudVitPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Vitality];
-            nudWisPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Wisdom];
+                nudStrPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Attack];
+                nudDefPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Defense];
+                nudMagPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.AbilityPower];
+                nudMRPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.MagicResist];
+                nudSpdPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Speed];
+                nudARPPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.ArmorPenetration];
+                nudVitPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Vitality];
+                nudWisPercentage.Value = mEditorItem.Combat.PercentageStatDiff[(int)Stat.Wisdom];
 
-            chkFriendly.Checked = Convert.ToBoolean(mEditorItem.Combat.Friendly);
-            cmbDamageType.SelectedIndex = mEditorItem.Combat.DamageType;
-            cmbScalingStat.SelectedIndex = mEditorItem.Combat.ScalingStat;
-            nudScaling.Value = mEditorItem.Combat.Scaling;
-            nudCritChance.Value = mEditorItem.Combat.CritChance;
-            nudCritMultiplier.Value = (decimal)mEditorItem.Combat.CritMultiplier;
+                chkFriendly.Checked = Convert.ToBoolean(mEditorItem.Combat.Friendly);
+                cmbDamageType.SelectedIndex = mEditorItem.Combat.DamageType;
+                cmbScalingStat.SelectedIndex = mEditorItem.Combat.ScalingStat;
+                nudScaling.Value = mEditorItem.Combat.Scaling;
+                nudCritChance.Value = mEditorItem.Combat.CritChance;
+                nudCritMultiplier.Value = (decimal)mEditorItem.Combat.CritMultiplier;
 
-            chkHOTDOT.Checked = mEditorItem.Combat.HoTDoT;
-            nudBuffDuration.Value = mEditorItem.Combat.Duration;
-            nudTick.Value = mEditorItem.Combat.HotDotInterval;
-            cmbExtraEffect.SelectedIndex = (int)mEditorItem.Combat.Effect;
-            cmbExtraEffect_SelectedIndexChanged(null, null);
-        }
-        else if (cmbType.SelectedIndex == (int)SpellType.Warp)
-        {
-            grpWarp.Show();
-            for (var i = 0; i < MapList.OrderedMaps.Count; i++)
+                chkHOTDOT.Checked = mEditorItem.Combat.HoTDoT;
+                nudBuffDuration.Value = mEditorItem.Combat.Duration;
+                nudTick.Value = mEditorItem.Combat.HotDotInterval;
+                cmbExtraEffect.SelectedIndex = (int)mEditorItem.Combat.Effect;
+                cmbExtraEffect_SelectedIndexChanged(null, null);
+            }
+            else if (cmbType.SelectedIndex == (int)SpellType.Warp)
             {
-                if (MapList.OrderedMaps[i].MapId == mEditorItem.Warp.MapId)
+                grpWarp.Show();
+                for (var i = 0; i < MapList.OrderedMaps.Count; i++)
                 {
-                    cmbWarpMap.SelectedIndex = i;
+                    if (MapList.OrderedMaps[i].MapId == mEditorItem.Warp.MapId)
+                    {
+                        cmbWarpMap.SelectedIndex = i;
 
-                    break;
+                        break;
+                    }
                 }
+
+                nudWarpX.Value = mEditorItem.Warp.X;
+                nudWarpY.Value = mEditorItem.Warp.Y;
+                cmbDirection.SelectedIndex = mEditorItem.Warp.Dir;
+            }
+            else if (cmbType.SelectedIndex == (int)SpellType.Dash)
+            {
+                grpDash.Show();
+                scrlRange.Value = mEditorItem.Combat.CastRange;
+                lblRange.Text = Strings.SpellEditor.dashrange.ToString(scrlRange.Value);
+                chkIgnoreMapBlocks.Checked = mEditorItem.Dash.IgnoreMapBlocks;
+                chkIgnoreActiveResources.Checked = mEditorItem.Dash.IgnoreActiveResources;
+                chkIgnoreInactiveResources.Checked = mEditorItem.Dash.IgnoreInactiveResources;
+                chkIgnoreZDimensionBlocks.Checked = mEditorItem.Dash.IgnoreZDimensionAttributes;
             }
 
-            nudWarpX.Value = mEditorItem.Warp.X;
-            nudWarpY.Value = mEditorItem.Warp.Y;
-            cmbDirection.SelectedIndex = mEditorItem.Warp.Dir;
-        }
-        else if (cmbType.SelectedIndex == (int)SpellType.Dash)
-        {
-            grpDash.Show();
-            scrlRange.Value = mEditorItem.Combat.CastRange;
-            lblRange.Text = Strings.SpellEditor.dashrange.ToString(scrlRange.Value);
-            chkIgnoreMapBlocks.Checked = mEditorItem.Dash.IgnoreMapBlocks;
-            chkIgnoreActiveResources.Checked = mEditorItem.Dash.IgnoreActiveResources;
-            chkIgnoreInactiveResources.Checked = mEditorItem.Dash.IgnoreInactiveResources;
-            chkIgnoreZDimensionBlocks.Checked = mEditorItem.Dash.IgnoreZDimensionAttributes;
-        }
-
-        if (cmbType.SelectedIndex == (int)SpellType.Event)
-        {
-            grpEvent.Show();
-            cmbEvent.SelectedIndex = EventBase.ListIndex(mEditorItem.EventId) + 1;
-            // Move our combat data down a little bit, it's not a very clean solution but it'll let us display it properly.
-            grpCombat.Location = new System.Drawing.Point(grpEvent.Location.X, grpEvent.Location.Y + grpEvent.Size.Height + 5);
-        }
+            if (cmbType.SelectedIndex == (int)SpellType.Event)
+            {
+                grpEvent.Show();
+                cmbEvent.SelectedIndex = EventBase.ListIndex(mEditorItem.EventId) + 1;
+                // Move our combat data down a little bit, it's not a very clean solution but it'll let us display it properly.
+                grpCombat.Location = new System.Drawing.Point(grpEvent.Location.X, grpEvent.Location.Y + grpEvent.Size.Height + 5);
+            }
 
         if (cmbType.SelectedIndex == (int)SpellType.WarpTo)
         {
@@ -434,132 +434,188 @@ public partial class FrmSpell : EditorForm
             cmbTargetType.Enabled = false;
             UpdateTargetTypePanel();
         }
-
         if (cmbType.SelectedIndex == (int)SpellType.Resurrection)
         {
             grpTargetInfo.Show();
         }
-    }
 
-    private void UpdateTargetTypePanel()
-    {
-        lblHitRadius.Hide();
-        nudHitRadius.Hide();
-        lblCastRange.Hide();
-        nudCastRange.Hide();
-        lblProjectile.Hide();
-        cmbProjectile.Hide();
-        lblDuration.Hide();
-        nudDuration.Hide();
-
-        if (cmbTargetType.SelectedIndex == (int)SpellTargetType.Single)
+        private void UpdateTargetTypePanel()
         {
-            lblCastRange.Show();
-            nudCastRange.Show();
-            nudCastRange.Value = mEditorItem.Combat.CastRange;
-            if (cmbType.SelectedIndex == (int)SpellType.CombatSpell)
+            lblHitRadius.Hide();
+            nudHitRadius.Hide();
+            lblCastRange.Hide();
+            nudCastRange.Hide();
+            lblProjectile.Hide();
+            cmbProjectile.Hide();
+            lblDuration.Hide();
+            nudDuration.Hide();
+
+            if (cmbTargetType.SelectedIndex == (int)SpellTargetType.Single)
+            {
+                lblCastRange.Show();
+                nudCastRange.Show();
+                nudCastRange.Value = mEditorItem.Combat.CastRange;
+                if (cmbType.SelectedIndex == (int)SpellType.CombatSpell)
+                {
+                    lblHitRadius.Show();
+                    nudHitRadius.Show();
+                    nudHitRadius.Value = mEditorItem.Combat.HitRadius;
+                }
+            }
+
+            if (cmbTargetType.SelectedIndex == (int)SpellTargetType.AoE &&
+                cmbType.SelectedIndex == (int)SpellType.CombatSpell)
             {
                 lblHitRadius.Show();
                 nudHitRadius.Show();
                 nudHitRadius.Value = mEditorItem.Combat.HitRadius;
             }
+
+            if (cmbTargetType.SelectedIndex < (int)SpellTargetType.Self)
+            {
+                lblCastRange.Show();
+                nudCastRange.Show();
+                nudCastRange.Value = mEditorItem.Combat.CastRange;
+            }
+
+            if (cmbTargetType.SelectedIndex == (int)SpellTargetType.Projectile)
+            {
+                lblProjectile.Show();
+                cmbProjectile.Show();
+                cmbProjectile.SelectedIndex = ProjectileBase.ListIndex(mEditorItem.Combat.ProjectileId);
+            }
+
+            if (cmbTargetType.SelectedIndex == (int)SpellTargetType.OnHit)
+            {
+                lblDuration.Show();
+                nudDuration.Show();
+                nudDuration.Value = mEditorItem.Combat.OnHitDuration;
+            }
+
+            if (cmbTargetType.SelectedIndex == (int)SpellTargetType.Trap)
+            {
+                lblDuration.Show();
+                nudDuration.Show();
+                nudDuration.Value = mEditorItem.Combat.TrapDuration;
+            }
         }
 
-        if (cmbTargetType.SelectedIndex == (int)SpellTargetType.AoE &&
-            cmbType.SelectedIndex == (int)SpellType.CombatSpell)
+        private void txtName_TextChanged(object sender, EventArgs e)
         {
-            lblHitRadius.Show();
-            nudHitRadius.Show();
-            nudHitRadius.Value = mEditorItem.Combat.HitRadius;
+            mEditorItem.Name = txtName.Text;
+            lstGameObjects.UpdateText(txtName.Text);
         }
 
-        if (cmbTargetType.SelectedIndex < (int)SpellTargetType.Self)
+        private void cmbType_SelectedIndexChanged(object sender, EventArgs e)
         {
-            lblCastRange.Show();
-            nudCastRange.Show();
-            nudCastRange.Value = mEditorItem.Combat.CastRange;
+            if (cmbType.SelectedIndex != (int)mEditorItem.SpellType)
+            {
+                mEditorItem.SpellType = (SpellType)cmbType.SelectedIndex;
+                UpdateSpellTypePanels();
+            }
         }
 
-        if (cmbTargetType.SelectedIndex == (int)SpellTargetType.Projectile)
+        private void cmbSprite_SelectedIndexChanged(object sender, EventArgs e)
         {
-            lblProjectile.Show();
-            cmbProjectile.Show();
-            cmbProjectile.SelectedIndex = ProjectileBase.ListIndex(mEditorItem.Combat.ProjectileId);
+            mEditorItem.Icon = cmbSprite.Text;
+            picSpell.BackgroundImage?.Dispose();
+            picSpell.BackgroundImage = null;
+            picSpell.BackgroundImage = cmbSprite.SelectedIndex > 0
+                ? Image.FromFile("resources/spells/" + cmbSprite.Text)
+                : null;
         }
 
-        if (cmbTargetType.SelectedIndex == (int)SpellTargetType.OnHit)
+        private void cmbTargetType_SelectedIndexChanged(object sender, EventArgs e)
         {
-            lblDuration.Show();
-            nudDuration.Show();
-            nudDuration.Value = mEditorItem.Combat.OnHitDuration;
+            mEditorItem.Combat.TargetType = (SpellTargetType)cmbTargetType.SelectedIndex;
+            UpdateTargetTypePanel();
         }
 
-        if (cmbTargetType.SelectedIndex == (int)SpellTargetType.Trap)
+        private void chkHOTDOT_CheckedChanged(object sender, EventArgs e)
         {
-            lblDuration.Show();
-            nudDuration.Show();
-            nudDuration.Value = mEditorItem.Combat.TrapDuration;
+            mEditorItem.Combat.HoTDoT = chkHOTDOT.Checked;
         }
-    }
 
-    private void txtName_TextChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Name = txtName.Text;
-        lstGameObjects.UpdateText(txtName.Text);
-    }
-
-    private void cmbType_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        if (cmbType.SelectedIndex != (int)mEditorItem.SpellType)
+        private void txtDesc_TextChanged(object sender, EventArgs e)
         {
-            mEditorItem.SpellType = (SpellType)cmbType.SelectedIndex;
-            UpdateSpellTypePanels();
+            mEditorItem.Description = txtDesc.Text;
         }
-    }
 
-    private void cmbSprite_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Icon = cmbSprite.Text;
-        picSpell.BackgroundImage?.Dispose();
-        picSpell.BackgroundImage = null;
-        picSpell.BackgroundImage = cmbSprite.SelectedIndex > 0
-            ? Image.FromFile("resources/spells/" + cmbSprite.Text)
-            : null;
-    }
-
-    private void cmbTargetType_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.TargetType = (SpellTargetType)cmbTargetType.SelectedIndex;
-        UpdateTargetTypePanel();
-    }
-
-    private void chkHOTDOT_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.HoTDoT = chkHOTDOT.Checked;
-    }
-
-    private void txtDesc_TextChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Description = txtDesc.Text;
-    }
-
-    private void cmbExtraEffect_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.Effect = (SpellEffect)cmbExtraEffect.SelectedIndex;
-
-        lblSprite.Visible = false;
-        cmbTransform.Visible = false;
-        picSprite.Visible = false;
-
-        if (cmbExtraEffect.SelectedIndex == 6) //Transform
+        private void cmbExtraEffect_SelectedIndexChanged(object sender, EventArgs e)
         {
-            lblSprite.Visible = true;
-            cmbTransform.Visible = true;
-            picSprite.Visible = true;
+            mEditorItem.Combat.Effect = (SpellEffect)cmbExtraEffect.SelectedIndex;
 
-            cmbTransform.SelectedIndex =
-                cmbTransform.FindString(TextUtils.NullToNone(mEditorItem.Combat.TransformSprite));
+            lblSprite.Visible = false;
+            cmbTransform.Visible = false;
+            picSprite.Visible = false;
 
+            if (cmbExtraEffect.SelectedIndex == 6) //Transform
+            {
+                lblSprite.Visible = true;
+                cmbTransform.Visible = true;
+                picSprite.Visible = true;
+
+                cmbTransform.SelectedIndex =
+                    cmbTransform.FindString(TextUtils.NullToNone(mEditorItem.Combat.TransformSprite));
+
+                if (cmbTransform.SelectedIndex > 0)
+                {
+                    var bmp = new Bitmap(picSprite.Width, picSprite.Height);
+                    var g = Graphics.FromImage(bmp);
+                    var src = Image.FromFile("resources/entities/" + cmbTransform.Text);
+                    g.DrawImage(
+                        src,
+                        new Rectangle(
+                            picSprite.Width / 2 - src.Width / (Options.Instance.Sprites.NormalFrames * 2), picSprite.Height / 2 - src.Height / (Options.Instance.Sprites.Directions * 2), src.Width / Options.Instance.Sprites.NormalFrames,
+                            src.Height / Options.Instance.Sprites.Directions
+                        ), new Rectangle(0, 0, src.Width / Options.Instance.Sprites.NormalFrames, src.Height / Options.Instance.Sprites.Directions), GraphicsUnit.Pixel
+                    );
+
+                    g.Dispose();
+                    src.Dispose();
+                    picSprite.BackgroundImage = bmp;
+                }
+                else
+                {
+                    picSprite.BackgroundImage = null;
+                }
+            }
+        }
+
+        private void frmSpell_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            Globals.CurrentEditor = -1;
+        }
+
+        private void scrlRange_Scroll(object sender, ScrollValueEventArgs e)
+        {
+            lblRange.Text = Strings.SpellEditor.dashrange.ToString(scrlRange.Value);
+            mEditorItem.Combat.CastRange = scrlRange.Value;
+        }
+
+        private void chkIgnoreMapBlocks_CheckedChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Dash.IgnoreMapBlocks = chkIgnoreMapBlocks.Checked;
+        }
+
+        private void chkIgnoreActiveResources_CheckedChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Dash.IgnoreActiveResources = chkIgnoreActiveResources.Checked;
+        }
+
+        private void chkIgnoreInactiveResources_CheckedChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Dash.IgnoreInactiveResources = chkIgnoreInactiveResources.Checked;
+        }
+
+        private void chkIgnoreZDimensionBlocks_CheckedChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Dash.IgnoreZDimensionAttributes = chkIgnoreZDimensionBlocks.Checked;
+        }
+
+        private void cmbTransform_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.TransformSprite = cmbTransform.Text;
             if (cmbTransform.SelectedIndex > 0)
             {
                 var bmp = new Bitmap(picSprite.Width, picSprite.Height);
@@ -582,557 +638,505 @@ public partial class FrmSpell : EditorForm
                 picSprite.BackgroundImage = null;
             }
         }
-    }
 
-    private void frmSpell_FormClosed(object sender, FormClosedEventArgs e)
-    {
-        Globals.CurrentEditor = -1;
-    }
-
-    private void scrlRange_Scroll(object sender, ScrollValueEventArgs e)
-    {
-        lblRange.Text = Strings.SpellEditor.dashrange.ToString(scrlRange.Value);
-        mEditorItem.Combat.CastRange = scrlRange.Value;
-    }
-
-    private void chkIgnoreMapBlocks_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Dash.IgnoreMapBlocks = chkIgnoreMapBlocks.Checked;
-    }
-
-    private void chkIgnoreActiveResources_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Dash.IgnoreActiveResources = chkIgnoreActiveResources.Checked;
-    }
-
-    private void chkIgnoreInactiveResources_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Dash.IgnoreInactiveResources = chkIgnoreInactiveResources.Checked;
-    }
-
-    private void chkIgnoreZDimensionBlocks_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Dash.IgnoreZDimensionAttributes = chkIgnoreZDimensionBlocks.Checked;
-    }
-
-    private void cmbTransform_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.TransformSprite = cmbTransform.Text;
-        if (cmbTransform.SelectedIndex > 0)
+        private void toolStripItemNew_Click(object sender, EventArgs e)
         {
-            var bmp = new Bitmap(picSprite.Width, picSprite.Height);
-            var g = Graphics.FromImage(bmp);
-            var src = Image.FromFile("resources/entities/" + cmbTransform.Text);
-            g.DrawImage(
-                src,
-                new Rectangle(
-                    picSprite.Width / 2 - src.Width / (Options.Instance.Sprites.NormalFrames * 2), picSprite.Height / 2 - src.Height / (Options.Instance.Sprites.Directions * 2), src.Width / Options.Instance.Sprites.NormalFrames,
-                    src.Height / Options.Instance.Sprites.Directions
-                ), new Rectangle(0, 0, src.Width / Options.Instance.Sprites.NormalFrames, src.Height / Options.Instance.Sprites.Directions), GraphicsUnit.Pixel
-            );
-
-            g.Dispose();
-            src.Dispose();
-            picSprite.BackgroundImage = bmp;
+            PacketSender.SendCreateObject(GameObjectType.Spell);
         }
-        else
-        {
-            picSprite.BackgroundImage = null;
-        }
-    }
 
-    private void toolStripItemNew_Click(object sender, EventArgs e)
-    {
-        PacketSender.SendCreateObject(GameObjectType.Spell);
-    }
-
-    private void toolStripItemDelete_Click(object sender, EventArgs e)
-    {
-        if (mEditorItem != null && lstGameObjects.Focused)
+        private void toolStripItemDelete_Click(object sender, EventArgs e)
         {
-            if (DarkMessageBox.ShowWarning(
-                    Strings.SpellEditor.deleteprompt, Strings.SpellEditor.deletetitle, DarkDialogButton.YesNo,
-                    Icon
-                ) ==
-                DialogResult.Yes)
+            if (mEditorItem != null && lstGameObjects.Focused)
             {
-                PacketSender.SendDeleteObject(mEditorItem);
+                if (DarkMessageBox.ShowWarning(
+                        Strings.SpellEditor.deleteprompt, Strings.SpellEditor.deletetitle, DarkDialogButton.YesNo,
+                        Icon
+                    ) ==
+                    DialogResult.Yes)
+                {
+                    PacketSender.SendDeleteObject(mEditorItem);
+                }
             }
         }
-    }
 
-    private void toolStripItemCopy_Click(object sender, EventArgs e)
-    {
-        if (mEditorItem != null && lstGameObjects.Focused)
+        private void toolStripItemCopy_Click(object sender, EventArgs e)
         {
-            mCopiedItem = mEditorItem.JsonData;
-            toolStripItemPaste.Enabled = true;
-        }
-    }
-
-    private void toolStripItemPaste_Click(object sender, EventArgs e)
-    {
-        if (mEditorItem != null && mCopiedItem != null && lstGameObjects.Focused)
-        {
-            mEditorItem.Load(mCopiedItem, true);
-            UpdateEditor();
-        }
-    }
-
-    private void toolStripItemUndo_Click(object sender, EventArgs e)
-    {
-        if (mChanged.Contains(mEditorItem) && mEditorItem != null)
-        {
-            if (DarkMessageBox.ShowWarning(
-                    Strings.SpellEditor.undoprompt, Strings.SpellEditor.undotitle, DarkDialogButton.YesNo,
-                    Icon
-                ) ==
-                DialogResult.Yes)
+            if (mEditorItem != null && lstGameObjects.Focused)
             {
-                mEditorItem.RestoreBackup();
+                mCopiedItem = mEditorItem.JsonData;
+                toolStripItemPaste.Enabled = true;
+            }
+        }
+
+        private void toolStripItemPaste_Click(object sender, EventArgs e)
+        {
+            if (mEditorItem != null && mCopiedItem != null && lstGameObjects.Focused)
+            {
+                mEditorItem.Load(mCopiedItem, true);
                 UpdateEditor();
             }
         }
-    }
 
-    private void UpdateToolStripItems()
-    {
-        toolStripItemCopy.Enabled = mEditorItem != null && lstGameObjects.Focused;
-        toolStripItemPaste.Enabled = mEditorItem != null && mCopiedItem != null && lstGameObjects.Focused;
-        toolStripItemDelete.Enabled = mEditorItem != null && lstGameObjects.Focused;
-        toolStripItemUndo.Enabled = mEditorItem != null && lstGameObjects.Focused;
-    }
-
-    private void form_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Control)
+        private void toolStripItemUndo_Click(object sender, EventArgs e)
         {
-            if (e.KeyCode == Keys.N)
+            if (mChanged.Contains(mEditorItem) && mEditorItem != null)
             {
-                toolStripItemNew_Click(null, null);
-            }
-        }
-    }
-
-    private void chkFriendly_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.Friendly = chkFriendly.Checked;
-    }
-
-    private void cmbDamageType_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.DamageType = cmbDamageType.SelectedIndex;
-    }
-
-    private void cmbScalingStat_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.ScalingStat = cmbScalingStat.SelectedIndex;
-    }
-
-    private void btnDynamicRequirements_Click(object sender, EventArgs e)
-    {
-        var frm = new FrmDynamicRequirements(mEditorItem.CastingRequirements, RequirementType.Spell);
-        frm.ShowDialog();
-    }
-
-    private void cmbCastSprite_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.CastSpriteOverride = TextUtils.SanitizeNone(cmbCastSprite?.Text);
-    }
-
-    private void cmbCastAnimation_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.CastAnimation = AnimationBase.Get(AnimationBase.IdFromList(cmbCastAnimation.SelectedIndex - 1));
-    }
-
-    private void cmbHitAnimation_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.HitAnimation = AnimationBase.Get(AnimationBase.IdFromList(cmbHitAnimation.SelectedIndex - 1));
-    }
-
-    private void cmbProjectile_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.ProjectileId = ProjectileBase.IdFromList(cmbProjectile.SelectedIndex);
-    }
-
-    private void cmbEvent_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.EventId = EventBase.IdFromList(cmbEvent.SelectedIndex - 1);
-    }
-
-    private void btnVisualMapSelector_Click(object sender, EventArgs e)
-    {
-        var frmWarpSelection = new FrmWarpSelection();
-        frmWarpSelection.SelectTile(
-            MapList.OrderedMaps[cmbWarpMap.SelectedIndex].MapId, (int)nudWarpX.Value, (int)nudWarpY.Value
-        );
-
-        frmWarpSelection.ShowDialog();
-        if (frmWarpSelection.GetResult())
-        {
-            for (var i = 0; i < MapList.OrderedMaps.Count; i++)
-            {
-                if (MapList.OrderedMaps[i].MapId == frmWarpSelection.GetMap())
+                if (DarkMessageBox.ShowWarning(
+                        Strings.SpellEditor.undoprompt, Strings.SpellEditor.undotitle, DarkDialogButton.YesNo,
+                        Icon
+                    ) ==
+                    DialogResult.Yes)
                 {
-                    cmbWarpMap.SelectedIndex = i;
-                    mEditorItem.Warp.MapId = MapList.OrderedMaps[i].MapId;
-
-                    break;
-                }
-            }
-
-            nudWarpX.Value = frmWarpSelection.GetX();
-            mEditorItem.Warp.X = frmWarpSelection.GetX();
-            nudWarpY.Value = frmWarpSelection.GetY();
-            mEditorItem.Warp.Y = frmWarpSelection.GetY();
-        }
-    }
-
-    private void cmbWarpMap_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        if (cmbWarpMap.SelectedIndex > -1 && mEditorItem != null)
-        {
-            mEditorItem.Warp.MapId = MapList.OrderedMaps[cmbWarpMap.SelectedIndex].MapId;
-        }
-    }
-
-    private void nudWarpX_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Warp.X = (byte)nudWarpX.Value;
-    }
-
-    private void nudWarpY_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Warp.Y = (byte)nudWarpY.Value;
-    }
-
-    private void cmbDirection_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Warp.Dir = (byte)cmbDirection.SelectedIndex;
-    }
-
-    private void nudCastDuration_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.CastDuration = (int)nudCastDuration.Value;
-    }
-
-    private void nudCooldownDuration_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.CooldownDuration = (int)nudCooldownDuration.Value;
-    }
-
-    private void nudHitRadius_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.HitRadius = (int)nudHitRadius.Value;
-    }
-
-    private void nudHPCost_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.VitalCost[(int)Vital.Health] = (int)nudHPCost.Value;
-    }
-
-    private void nudMpCost_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.VitalCost[(int)Vital.Mana] = (int)nudMpCost.Value;
-    }
-
-    private void nudHPDamage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.VitalDiff[(int)Vital.Health] = (int)nudHPDamage.Value;
-    }
-
-    private void nudMPDamage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.VitalDiff[(int)Vital.Mana] = (int)nudMPDamage.Value;
-    }
-
-    private void nudStr_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.StatDiff[(int)Stat.Attack] = (int)nudStr.Value;
-    }
-
-    private void nudMag_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.StatDiff[(int)Stat.AbilityPower] = (int)nudMag.Value;
-    }
-
-    private void nudDef_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.StatDiff[(int)Stat.Defense] = (int)nudDef.Value;
-    }
-
-    private void nudMR_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.StatDiff[(int)Stat.MagicResist] = (int)nudMR.Value;
-    }
-
-    private void nudSpd_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.StatDiff[(int)Stat.Speed] = (int)nudSpd.Value;
-    }
-    private void nudARP_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.StatDiff[(int)Stat.ArmorPenetration] = (int)nudARP.Value;
-    }
-    private void nudVit_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.StatDiff[(int)Stat.Vitality] = (int)nudVit.Value;
-    }
-    private void nudWis_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.StatDiff[(int)Stat.Wisdom] = (int)nudWis.Value;
-    }
-
-    private void nudStrPercentage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.PercentageStatDiff[(int)Stat.Attack] = (int)nudStrPercentage.Value;
-    }
-
-    private void nudMagPercentage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.PercentageStatDiff[(int)Stat.AbilityPower] = (int)nudMagPercentage.Value;
-    }
-
-    private void nudDefPercentage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.PercentageStatDiff[(int)Stat.Defense] = (int)nudDefPercentage.Value;
-    }
-
-    private void nudMRPercentage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.PercentageStatDiff[(int)Stat.MagicResist] = (int)nudMRPercentage.Value;
-    }
-
-    private void nudSpdPercentage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.PercentageStatDiff[(int)Stat.Speed] = (int)nudSpdPercentage.Value;
-    }
-    private void nudARPPercentage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.PercentageStatDiff[(int)Stat.ArmorPenetration] = (int)nudARPPercentage.Value;
-    }
-    private void nudVitPercentage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.PercentageStatDiff[(int)Stat.Vitality] = (int)nudVitPercentage.Value;
-    }
-    private void nudWisPercentage_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.PercentageStatDiff[(int)Stat.Wisdom] = (int)nudWisPercentage.Value;
-    }
-
-    private void nudBuffDuration_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.Duration = (int)nudBuffDuration.Value;
-    }
-
-    private void nudTick_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.HotDotInterval = (int)nudTick.Value;
-    }
-
-    private void nudCritChance_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.CritChance = (int)nudCritChance.Value;
-    }
-
-    private void nudScaling_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.Scaling = (int)nudScaling.Value;
-    }
-
-    private void nudCastRange_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.CastRange = (int)nudCastRange.Value;
-    }
-
-    private void nudCritMultiplier_ValueChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Combat.CritMultiplier = (double)nudCritMultiplier.Value;
-    }
-
-    private void nudOnHitDuration_ValueChanged(object sender, EventArgs e)
-    {
-        if (cmbTargetType.SelectedIndex == (int)SpellTargetType.OnHit)
-        {
-            mEditorItem.Combat.OnHitDuration = (int)nudDuration.Value;
-        }
-
-        if (cmbTargetType.SelectedIndex == (int)SpellTargetType.Trap)
-        {
-            mEditorItem.Combat.TrapDuration = (int)nudDuration.Value;
-        }
-    }
-
-    private void chkBound_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Bound = chkBound.Checked;
-    }
-
-    private void btnAddCooldownGroup_Click(object sender, EventArgs e)
-    {
-        var cdGroupName = "";
-        var result = DarkInputBox.ShowInformation(
-            Strings.SpellEditor.CooldownGroupPrompt, Strings.SpellEditor.CooldownGroupTitle, ref cdGroupName,
-            DarkDialogButton.OkCancel
-        );
-
-        if (result == DialogResult.OK && !string.IsNullOrEmpty(cdGroupName))
-        {
-            if (!cmbCooldownGroup.Items.Contains(cdGroupName))
-            {
-                mEditorItem.CooldownGroup = cdGroupName;
-                mKnownCooldownGroups.Add(cdGroupName);
-                InitEditor();
-                cmbCooldownGroup.Text = cdGroupName;
-            }
-        }
-    }
-
-    private void cmbCooldownGroup_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.CooldownGroup = cmbCooldownGroup.Text;
-    }
-
-    private void chkIgnoreGlobalCooldown_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.IgnoreGlobalCooldown = chkIgnoreGlobalCooldown.Checked;
-    }
-
-    private void chkIgnoreCdr_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.IgnoreCooldownReduction = chkIgnoreCdr.Checked;
-    }
-
-    private void txtCannotCast_TextChanged(object sender, EventArgs e)
-    {
-        mEditorItem.CannotCastMessage = txtCannotCast.Text;
-    }
-
-    #region "Item List - Folders, Searching, Sorting, Etc"
-
-    public void InitEditor()
-    {
-        //Collect folders
-        var mFolders = new List<string>();
-        foreach (var itm in SpellBase.Lookup)
-        {
-            if (!string.IsNullOrEmpty(((SpellBase)itm.Value).Folder) &&
-                !mFolders.Contains(((SpellBase)itm.Value).Folder))
-            {
-                mFolders.Add(((SpellBase)itm.Value).Folder);
-                if (!mKnownFolders.Contains(((SpellBase)itm.Value).Folder))
-                {
-                    mKnownFolders.Add(((SpellBase)itm.Value).Folder);
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(((SpellBase)itm.Value).CooldownGroup) &&
-                !mKnownCooldownGroups.Contains(((SpellBase)itm.Value).CooldownGroup))
-            {
-                mKnownCooldownGroups.Add(((SpellBase)itm.Value).CooldownGroup);
-            }
-        }
-
-        // Do we add item cooldown groups as well?
-        if (Options.Combat.LinkSpellAndItemCooldowns)
-        {
-            foreach (var itm in ItemBase.Lookup)
-            {
-                if (!string.IsNullOrWhiteSpace(((ItemBase)itm.Value).CooldownGroup) &&
-                !mKnownCooldownGroups.Contains(((ItemBase)itm.Value).CooldownGroup))
-                {
-                    mKnownCooldownGroups.Add(((ItemBase)itm.Value).CooldownGroup);
+                    mEditorItem.RestoreBackup();
+                    UpdateEditor();
                 }
             }
         }
 
-        mFolders.Sort();
-        mKnownFolders.Sort();
-        cmbFolder.Items.Clear();
-        cmbFolder.Items.Add("");
-        cmbFolder.Items.AddRange(mKnownFolders.ToArray());
-
-        mKnownCooldownGroups.Sort();
-        cmbCooldownGroup.Items.Clear();
-        cmbCooldownGroup.Items.Add(string.Empty);
-        cmbCooldownGroup.Items.AddRange(mKnownCooldownGroups.ToArray());
-
-        var items = SpellBase.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
-            new KeyValuePair<string, string>(((SpellBase)pair.Value)?.Name ?? Models.DatabaseObject<SpellBase>.Deleted, ((SpellBase)pair.Value)?.Folder ?? ""))).ToArray();
-        lstGameObjects.Repopulate(items, mFolders, btnAlphabetical.Checked, CustomSearch(), txtSearch.Text);
-    }
-
-    private void btnAddFolder_Click(object sender, EventArgs e)
-    {
-        var folderName = "";
-        var result = DarkInputBox.ShowInformation(
-            Strings.SpellEditor.folderprompt, Strings.SpellEditor.foldertitle, ref folderName,
-            DarkDialogButton.OkCancel
-        );
-
-        if (result == DialogResult.OK && !string.IsNullOrEmpty(folderName))
+        private void UpdateToolStripItems()
         {
-            if (!cmbFolder.Items.Contains(folderName))
+            toolStripItemCopy.Enabled = mEditorItem != null && lstGameObjects.Focused;
+            toolStripItemPaste.Enabled = mEditorItem != null && mCopiedItem != null && lstGameObjects.Focused;
+            toolStripItemDelete.Enabled = mEditorItem != null && lstGameObjects.Focused;
+            toolStripItemUndo.Enabled = mEditorItem != null && lstGameObjects.Focused;
+        }
+
+        private void form_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Control)
             {
-                mEditorItem.Folder = folderName;
-                lstGameObjects.ExpandFolder(folderName);
-                InitEditor();
-                cmbFolder.Text = folderName;
+                if (e.KeyCode == Keys.N)
+                {
+                    toolStripItemNew_Click(null, null);
+                }
             }
         }
-    }
 
-    private void cmbFolder_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.Folder = cmbFolder.Text;
-        InitEditor();
-    }
+        private void chkFriendly_CheckedChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.Friendly = chkFriendly.Checked;
+        }
 
-    private void btnAlphabetical_Click(object sender, EventArgs e)
-    {
-        btnAlphabetical.Checked = !btnAlphabetical.Checked;
-        InitEditor();
-    }
+        private void cmbDamageType_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.DamageType = cmbDamageType.SelectedIndex;
+        }
 
-    private void txtSearch_TextChanged(object sender, EventArgs e)
-    {
-        InitEditor();
-    }
+        private void cmbScalingStat_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.ScalingStat = cmbScalingStat.SelectedIndex;
+        }
 
-    private void txtSearch_Leave(object sender, EventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(txtSearch.Text))
+        private void btnDynamicRequirements_Click(object sender, EventArgs e)
+        {
+            var frm = new FrmDynamicRequirements(mEditorItem.CastingRequirements, RequirementType.Spell);
+            frm.ShowDialog();
+        }
+
+        private void cmbCastSprite_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.CastSpriteOverride = TextUtils.SanitizeNone(cmbCastSprite?.Text);
+        }
+
+        private void cmbCastAnimation_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.CastAnimation = AnimationBase.Get(AnimationBase.IdFromList(cmbCastAnimation.SelectedIndex - 1));
+        }
+
+        private void cmbHitAnimation_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.HitAnimation = AnimationBase.Get(AnimationBase.IdFromList(cmbHitAnimation.SelectedIndex - 1));
+        }
+
+        private void cmbProjectile_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.ProjectileId = ProjectileBase.IdFromList(cmbProjectile.SelectedIndex);
+        }
+
+        private void cmbEvent_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.EventId = EventBase.IdFromList(cmbEvent.SelectedIndex - 1);
+        }
+
+        private void btnVisualMapSelector_Click(object sender, EventArgs e)
+        {
+            var frmWarpSelection = new FrmWarpSelection();
+            frmWarpSelection.SelectTile(
+                MapList.OrderedMaps[cmbWarpMap.SelectedIndex].MapId, (int)nudWarpX.Value, (int)nudWarpY.Value
+            );
+
+            frmWarpSelection.ShowDialog();
+            if (frmWarpSelection.GetResult())
+            {
+                for (var i = 0; i < MapList.OrderedMaps.Count; i++)
+                {
+                    if (MapList.OrderedMaps[i].MapId == frmWarpSelection.GetMap())
+                    {
+                        cmbWarpMap.SelectedIndex = i;
+                        mEditorItem.Warp.MapId = MapList.OrderedMaps[i].MapId;
+
+                        break;
+                    }
+                }
+
+                nudWarpX.Value = frmWarpSelection.GetX();
+                mEditorItem.Warp.X = frmWarpSelection.GetX();
+                nudWarpY.Value = frmWarpSelection.GetY();
+                mEditorItem.Warp.Y = frmWarpSelection.GetY();
+            }
+        }
+
+        private void cmbWarpMap_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbWarpMap.SelectedIndex > -1 && mEditorItem != null)
+            {
+                mEditorItem.Warp.MapId = MapList.OrderedMaps[cmbWarpMap.SelectedIndex].MapId;
+            }
+        }
+
+        private void nudWarpX_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Warp.X = (byte)nudWarpX.Value;
+        }
+
+        private void nudWarpY_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Warp.Y = (byte)nudWarpY.Value;
+        }
+
+        private void cmbDirection_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Warp.Dir = (byte)cmbDirection.SelectedIndex;
+        }
+
+        private void nudCastDuration_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.CastDuration = (int)nudCastDuration.Value;
+        }
+
+        private void nudCooldownDuration_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.CooldownDuration = (int)nudCooldownDuration.Value;
+        }
+
+        private void nudHitRadius_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.HitRadius = (int)nudHitRadius.Value;
+        }
+
+        private void nudHPCost_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.VitalCost[(int)Vital.Health] = (int)nudHPCost.Value;
+        }
+
+        private void nudMpCost_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.VitalCost[(int)Vital.Mana] = (int)nudMpCost.Value;
+        }
+
+        private void nudHPDamage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.VitalDiff[(int)Vital.Health] = (int)nudHPDamage.Value;
+        }
+
+        private void nudMPDamage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.VitalDiff[(int)Vital.Mana] = (int)nudMPDamage.Value;
+        }
+
+        private void nudStr_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.StatDiff[(int)Stat.Attack] = (int)nudStr.Value;
+        }
+
+        private void nudMag_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.StatDiff[(int)Stat.AbilityPower] = (int)nudMag.Value;
+        }
+
+        private void nudDef_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.StatDiff[(int)Stat.Defense] = (int)nudDef.Value;
+        }
+
+        private void nudMR_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.StatDiff[(int)Stat.MagicResist] = (int)nudMR.Value;
+        }
+
+        private void nudSpd_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.StatDiff[(int)Stat.Speed] = (int)nudSpd.Value;
+        }
+
+        private void nudARP_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.StatDiff[(int)Stat.ArmorPenetration] = (int)nudARP.Value;
+        }
+
+        private void nudVit_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.StatDiff[(int)Stat.Vitality] = (int)nudVit.Value;
+        }
+
+        private void nudWis_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.StatDiff[(int)Stat.Wisdom] = (int)nudWis.Value;
+        }
+
+        private void nudStrPercentage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.PercentageStatDiff[(int)Stat.Attack] = (int)nudStrPercentage.Value;
+        }
+
+        private void nudMagPercentage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.PercentageStatDiff[(int)Stat.AbilityPower] = (int)nudMagPercentage.Value;
+        }
+
+        private void nudDefPercentage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.PercentageStatDiff[(int)Stat.Defense] = (int)nudDefPercentage.Value;
+        }
+
+        private void nudMRPercentage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.PercentageStatDiff[(int)Stat.MagicResist] = (int)nudMRPercentage.Value;
+        }
+
+        private void nudSpdPercentage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.PercentageStatDiff[(int)Stat.Speed] = (int)nudSpdPercentage.Value;
+        }
+
+        private void nudARPPercentage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.PercentageStatDiff[(int)Stat.ArmorPenetration] = (int)nudARPPercentage.Value;
+        }
+
+        private void nudVitPercentage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.PercentageStatDiff[(int)Stat.Vitality] = (int)nudVitPercentage.Value;
+        }
+
+        private void nudWisPercentage_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.PercentageStatDiff[(int)Stat.Wisdom] = (int)nudWisPercentage.Value;
+        }
+
+        private void nudBuffDuration_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.Duration = (int)nudBuffDuration.Value;
+        }
+
+        private void nudTick_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.HotDotInterval = (int)nudTick.Value;
+        }
+
+        private void nudCritChance_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.CritChance = (int)nudCritChance.Value;
+        }
+
+        private void nudScaling_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.Scaling = (int)nudScaling.Value;
+        }
+
+        private void nudCastRange_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.CastRange = (int)nudCastRange.Value;
+        }
+
+        private void nudCritMultiplier_ValueChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Combat.CritMultiplier = (double)nudCritMultiplier.Value;
+        }
+
+        private void nudOnHitDuration_ValueChanged(object sender, EventArgs e)
+        {
+            if (cmbTargetType.SelectedIndex == (int)SpellTargetType.OnHit)
+            {
+                mEditorItem.Combat.OnHitDuration = (int)nudDuration.Value;
+            }
+
+            if (cmbTargetType.SelectedIndex == (int)SpellTargetType.Trap)
+            {
+                mEditorItem.Combat.TrapDuration = (int)nudDuration.Value;
+            }
+        }
+
+        private void chkBound_CheckedChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Bound = chkBound.Checked;
+        }
+
+        private void btnAddCooldownGroup_Click(object sender, EventArgs e)
+        {
+            var cdGroupName = "";
+            var result = DarkInputBox.ShowInformation(
+                Strings.SpellEditor.CooldownGroupPrompt, Strings.SpellEditor.CooldownGroupTitle, ref cdGroupName,
+                DarkDialogButton.OkCancel
+            );
+
+            if (result == DialogResult.OK && !string.IsNullOrEmpty(cdGroupName))
+            {
+                if (!cmbCooldownGroup.Items.Contains(cdGroupName))
+                {
+                    mEditorItem.CooldownGroup = cdGroupName;
+                    mKnownCooldownGroups.Add(cdGroupName);
+                    InitEditor();
+                    cmbCooldownGroup.Text = cdGroupName;
+                }
+            }
+        }
+
+        private void cmbCooldownGroup_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.CooldownGroup = cmbCooldownGroup.Text;
+        }
+
+        private void chkIgnoreGlobalCooldown_CheckedChanged(object sender, EventArgs e)
+        {
+            mEditorItem.IgnoreGlobalCooldown = chkIgnoreGlobalCooldown.Checked;
+        }
+
+        private void chkIgnoreCdr_CheckedChanged(object sender, EventArgs e)
+        {
+            mEditorItem.IgnoreCooldownReduction = chkIgnoreCdr.Checked;
+        }
+
+        private void txtCannotCast_TextChanged(object sender, EventArgs e)
+        {
+            mEditorItem.CannotCastMessage = txtCannotCast.Text;
+        }
+
+        #region "Item List - Folders, Searching, Sorting, Etc"
+
+        public void InitEditor()
+        {
+            //Collect folders
+            var mFolders = new List<string>();
+            foreach (var itm in SpellBase.Lookup)
+            {
+                if (!string.IsNullOrEmpty(((SpellBase)itm.Value).Folder) &&
+                    !mFolders.Contains(((SpellBase)itm.Value).Folder))
+                {
+                    mFolders.Add(((SpellBase)itm.Value).Folder);
+                    if (!mKnownFolders.Contains(((SpellBase)itm.Value).Folder))
+                    {
+                        mKnownFolders.Add(((SpellBase)itm.Value).Folder);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(((SpellBase)itm.Value).CooldownGroup) &&
+                    !mKnownCooldownGroups.Contains(((SpellBase)itm.Value).CooldownGroup))
+                {
+                    mKnownCooldownGroups.Add(((SpellBase)itm.Value).CooldownGroup);
+                }
+            }
+
+            // Do we add item cooldown groups as well?
+            if (Options.Combat.LinkSpellAndItemCooldowns)
+            {
+                foreach (var itm in ItemBase.Lookup)
+                {
+                    if (!string.IsNullOrWhiteSpace(((ItemBase)itm.Value).CooldownGroup) &&
+                    !mKnownCooldownGroups.Contains(((ItemBase)itm.Value).CooldownGroup))
+                    {
+                        mKnownCooldownGroups.Add(((ItemBase)itm.Value).CooldownGroup);
+                    }
+                }
+            }
+
+            mFolders.Sort();
+            mKnownFolders.Sort();
+            cmbFolder.Items.Clear();
+            cmbFolder.Items.Add("");
+            cmbFolder.Items.AddRange(mKnownFolders.ToArray());
+
+            mKnownCooldownGroups.Sort();
+            cmbCooldownGroup.Items.Clear();
+            cmbCooldownGroup.Items.Add(string.Empty);
+            cmbCooldownGroup.Items.AddRange(mKnownCooldownGroups.ToArray());
+
+            var items = SpellBase.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
+                new KeyValuePair<string, string>(((SpellBase)pair.Value)?.Name ?? Models.DatabaseObject<SpellBase>.Deleted, ((SpellBase)pair.Value)?.Folder ?? ""))).ToArray();
+            lstGameObjects.Repopulate(items, mFolders, btnAlphabetical.Checked, CustomSearch(), txtSearch.Text);
+        }
+
+        private void btnAddFolder_Click(object sender, EventArgs e)
+        {
+            var folderName = "";
+            var result = DarkInputBox.ShowInformation(
+                Strings.SpellEditor.folderprompt, Strings.SpellEditor.foldertitle, ref folderName,
+                DarkDialogButton.OkCancel
+            );
+
+            if (result == DialogResult.OK && !string.IsNullOrEmpty(folderName))
+            {
+                if (!cmbFolder.Items.Contains(folderName))
+                {
+                    mEditorItem.Folder = folderName;
+                    lstGameObjects.ExpandFolder(folderName);
+                    InitEditor();
+                    cmbFolder.Text = folderName;
+                }
+            }
+        }
+
+        private void cmbFolder_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            mEditorItem.Folder = cmbFolder.Text;
+            InitEditor();
+        }
+
+        private void btnAlphabetical_Click(object sender, EventArgs e)
+        {
+            btnAlphabetical.Checked = !btnAlphabetical.Checked;
+            InitEditor();
+        }
+
+        private void txtSearch_TextChanged(object sender, EventArgs e)
+        {
+            InitEditor();
+        }
+
+        private void txtSearch_Leave(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtSearch.Text))
+            {
+                txtSearch.Text = Strings.SpellEditor.searchplaceholder;
+            }
+        }
+
+        private void txtSearch_Enter(object sender, EventArgs e)
+        {
+            txtSearch.SelectAll();
+            txtSearch.Focus();
+        }
+
+        private void btnClearSearch_Click(object sender, EventArgs e)
         {
             txtSearch.Text = Strings.SpellEditor.searchplaceholder;
         }
-    }
 
-    private void txtSearch_Enter(object sender, EventArgs e)
-    {
-        txtSearch.SelectAll();
-        txtSearch.Focus();
-    }
-
-    private void btnClearSearch_Click(object sender, EventArgs e)
-    {
-        txtSearch.Text = Strings.SpellEditor.searchplaceholder;
-    }
-
-    private bool CustomSearch()
-    {
-        return !string.IsNullOrWhiteSpace(txtSearch.Text) &&
-               txtSearch.Text != Strings.SpellEditor.searchplaceholder;
-    }
-
-    private void txtSearch_Click(object sender, EventArgs e)
-    {
-        if (txtSearch.Text == Strings.SpellEditor.searchplaceholder)
+        private bool CustomSearch()
         {
-            txtSearch.SelectAll();
+            return !string.IsNullOrWhiteSpace(txtSearch.Text) &&
+                   txtSearch.Text != Strings.SpellEditor.searchplaceholder;
         }
-    }
 
-    #endregion
+        private void txtSearch_Click(object sender, EventArgs e)
+        {
+            if (txtSearch.Text == Strings.SpellEditor.searchplaceholder)
+            {
+                txtSearch.SelectAll();
+            }
+        }
+
+        #endregion
 
     private void cmbTickAnimation_SelectedIndexChanged(object sender, EventArgs e)
     {

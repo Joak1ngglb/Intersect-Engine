@@ -855,13 +855,15 @@ namespace Intersect.Editor.Forms.Editors
             // 
             // nudHitRadius
             // 
-            lblHitRadius.AutoSize = true;
-            lblHitRadius.Location = new System.Drawing.Point(7, 118);
-            lblHitRadius.Margin = new Padding(4, 0, 4, 0);
-            lblHitRadius.Name = "lblHitRadius";
-            lblHitRadius.Size = new Size(64, 15);
-            lblHitRadius.TabIndex = 16;
-            lblHitRadius.Text = "Hit Radius:";
+            nudHitRadius.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudHitRadius.ForeColor = System.Drawing.Color.Gainsboro;
+            nudHitRadius.Location = new System.Drawing.Point(18, 136);
+            nudHitRadius.Margin = new Padding(4, 3, 4, 3);
+            nudHitRadius.Name = "nudHitRadius";
+            nudHitRadius.Size = new Size(233, 23);
+            nudHitRadius.TabIndex = 35;
+            nudHitRadius.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudHitRadius.ValueChanged += nudHitRadius_ValueChanged;
             // 
             // lblHitRadius
             // 
@@ -2235,7 +2237,7 @@ namespace Intersect.Editor.Forms.Editors
             toolStrip.Location = new System.Drawing.Point(0, 0);
             toolStrip.Name = "toolStrip";
             toolStrip.Padding = new Padding(6, 0, 1, 0);
-            toolStrip.Size = new Size(1416, 29);
+            toolStrip.Size = new Size(1370, 29);
             toolStrip.TabIndex = 51;
             toolStrip.Text = "toolStrip1";
             // 
@@ -2340,7 +2342,7 @@ namespace Intersect.Editor.Forms.Editors
             // btnCancel
             // 
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new System.Drawing.Point(1186, 692);
+            btnCancel.Location = new System.Drawing.Point(1186, 663);
             btnCancel.Margin = new Padding(4, 3, 4, 3);
             btnCancel.Name = "btnCancel";
             btnCancel.Padding = new Padding(6);
@@ -2351,7 +2353,7 @@ namespace Intersect.Editor.Forms.Editors
             // 
             // btnSave
             // 
-            btnSave.Location = new System.Drawing.Point(956, 692);
+            btnSave.Location = new System.Drawing.Point(956, 663);
             btnSave.Margin = new Padding(4, 3, 4, 3);
             btnSave.Name = "btnSave";
             btnSave.Padding = new Padding(6);
@@ -2426,7 +2428,7 @@ namespace Intersect.Editor.Forms.Editors
             AutoScaleMode = AutoScaleMode.Font;
             AutoSize = true;
             BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
-            ClientSize = new Size(1416, 735);
+            ClientSize = new Size(1370, 735);
             ControlBox = false;
             Controls.Add(toolStrip);
             Controls.Add(btnCancel);
@@ -2509,7 +2511,6 @@ namespace Intersect.Editor.Forms.Editors
             grpSpells.ResumeLayout(false);
             grpSpells.PerformLayout();
             ResumeLayout(false);
-
         }
 
         #endregion

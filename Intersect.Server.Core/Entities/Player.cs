@@ -1130,6 +1130,16 @@ public partial class Player : Entity
             }
         }
 
+        // Add ArmorPenetration only to Health (vital == (int)Vital.Health)
+        if (vital == (int)Vital.Health)
+        {
+            classVital += Stat[(int)Enums.Stat.Vitality].Value();
+        }
+        if (vital == (int)Vital.Mana)
+        {
+            classVital += Stat[(int)Enums.Stat.Wisdom].Value();
+        }
+
         var baseVital = classVital;
 
         // Loop through equipment and see if any items grant vital buffs
@@ -3150,7 +3160,7 @@ public partial class Player : Entity
             return false;
         }
 
-        mapInstance.SpawnItem(AsItemSource(),X, Y, itemInSlot, itemDescriptor.IsStackable ? amount : 1, Id);
+        mapInstance.SpawnItem(AsItemSource(), X, Y, itemInSlot, itemDescriptor.IsStackable ? amount : 1, Id);
 
         itemInSlot.Quantity = Math.Max(0, itemInSlot.Quantity - amount);
 
@@ -5935,13 +5945,21 @@ public partial class Player : Entity
     //Stats
     public void UpgradeStat(int statIndex)
     {
-        if (Stat[statIndex].BaseStat + StatPointAllocations[statIndex] < Options.MaxStatValue && StatPoints > 0)
+        if (statIndex == 5)
         {
-            StatPointAllocations[statIndex]++;
-            StatPoints--;
-            PacketSender.SendEntityStats(this);
-            PacketSender.SendPointsTo(this);
-            UnequipInvalidItems();
+            PacketSender.SendChatMsg(this, "Nie mozesz ulepszyc statystyki armorpenetration.", ChatMessageType.Error);
+        }
+        else
+        {
+            // Ulepszanie statystyki
+            if (Stat[statIndex].BaseStat + StatPointAllocations[statIndex] < Options.MaxStatValue && StatPoints > 0)
+            {
+                StatPointAllocations[statIndex]++;
+                StatPoints--;
+                PacketSender.SendEntityStats(this);
+                PacketSender.SendPointsTo(this);
+                UnequipInvalidItems();
+            }
         }
     }
 

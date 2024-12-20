@@ -576,6 +576,15 @@ public static partial class Strings
         public static LocalizedString Stat4 = @"{00}: {01}";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Stat5 = @"{00}: {01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Stat6 = @"{00}: {01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Stat7 = @"{00}: {01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Stats = @"Stats:";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -583,6 +592,60 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Title = @"Character Information";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Attacktip = @"Increases damage relative to strength.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString AbilitiPowtip = @"Increases the damage ratio of skills.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Speedtip = @"Increases movement speed.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Defensetip = @"Reduces physical damage taken.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString MagicRestip = @"Reduces magic damage taken.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Armorpentip = @"Increases dextery damage by the amount greater than 1.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Vitalitytip = @"Increases maximum HP by 1";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Wisdomtip = @"Increases maximum MP by 1";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Pointtip = @"Points available for stats.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString CDRtip = @"Skill cooldown reduction.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Tenacitytip = @"Reduces the duration of stuns, etc..";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Lifestealtip = @"Life Steal Calculator";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Manastealtip = @"Mana Steal Rate";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Lucktip = @"Higher chance of drops and lower chance of losing items.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString BonusExptip = @"Bonus to Exp Gained";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Attackspeedtip = @"Indicates the attack speed.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString RegenHptip = @"HP regeneration rate";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString RegenMptip = @"MP regeneration rate";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ButtonAbilitypowtip = @"Increases magic power by 1.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ButtonSpeedtip = @"Increases speed by 1.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ButtonArmorpentip = @"Increases dextery by 1.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ButtonVitalitytip = @"Increases HP by 1.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ButtonWisdomtip = @"Increases MP by 1.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ButtonDefensetip = @"Increases defense by 1.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ButtonAttacktip = @"Increases physical damage by 1.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ButtonMagicRestip = @"Increases endurance by 1.";
     }
 
     public partial struct CharacterCreation
@@ -748,6 +811,15 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Stat4 = @"Speed";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Stat5 = @"Armor Penetration";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Stat6 = @"Vitality";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Stat7 = @"Wisdom";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString WarningCharacterSelect = @"You are attempting to logout while in combat! Your character will remain in-game until combat has ended. Are you sure you want to logout now?";
@@ -1510,6 +1582,9 @@ public static partial class Strings
             {2, @"Defense:"},
             {3, @"Magic Resist:"},
             {4, @"Speed:"},
+            {5, @"Armor Penetration"},
+            {6, @"Vitality"},
+            {7, @"Wisdom"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -1520,6 +1595,9 @@ public static partial class Strings
             {2, @"Defense"},
             {3, @"Magic Resist"},
             {4, @"Speed"},
+            {5, @"Armor Penetration"},
+            {6, @"Vitality"},
+            {7, @"Wisdom"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -2341,6 +2419,9 @@ public static partial class Strings
             {2, @"Defense"},
             {3, @"Magic Resist"},
             {4, @"Speed"},
+            {5, @"Armor Penetration"},
+            {6, @"Vitality"},
+            {7, @"Wisdom"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -2351,6 +2432,9 @@ public static partial class Strings
             {2, @"Defense:"},
             {3, @"Magic Resist:"},
             {4, @"Speed:"},
+            {5, @"Armor Penetration"},
+            {6, @"Vitality"},
+            {7, @"Wisdom"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

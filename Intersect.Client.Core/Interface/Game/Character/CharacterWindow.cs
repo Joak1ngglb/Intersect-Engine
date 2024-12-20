@@ -31,6 +31,12 @@ public partial class CharacterWindow
 
     Button mAddSpeedBtn;
 
+    Button mAddArmorPenBtn;
+
+    Button mAddVitalityBtn;
+
+    Button mAddWisdomBtn;
+
     //Stats
     Label mAttackLabel;
 
@@ -58,6 +64,12 @@ public partial class CharacterWindow
     Label mPointsLabel;
 
     Label mSpeedLabel;
+
+    Label mArmorPenLabel;
+
+    Label mVitalityLabel;
+
+    Label mWisdomLabel;
 
     public ImagePanel[] PaperdollPanels;
 
@@ -139,25 +151,53 @@ public partial class CharacterWindow
         mAttackLabel = new Label(mCharacterWindow, "AttackLabel");
 
         mAddAttackBtn = new Button(mCharacterWindow, "IncreaseAttackButton");
+        mAddAttackBtn.SetToolTipText(Strings.Character.ButtonAttacktip);
         mAddAttackBtn.Clicked += _addAttackBtn_Clicked;
 
         mDefenseLabel = new Label(mCharacterWindow, "DefenseLabel");
+        mDefenseLabel.SetToolTipText(Strings.Character.Defensetip);
         mAddDefenseBtn = new Button(mCharacterWindow, "IncreaseDefenseButton");
+        mAddDefenseBtn.SetToolTipText(Strings.Character.ButtonDefensetip);
         mAddDefenseBtn.Clicked += _addDefenseBtn_Clicked;
 
         mSpeedLabel = new Label(mCharacterWindow, "SpeedLabel");
+        mSpeedLabel.SetToolTipText(Strings.Character.Speedtip);
         mAddSpeedBtn = new Button(mCharacterWindow, "IncreaseSpeedButton");
+        mAddSpeedBtn.SetToolTipText(Strings.Character.ButtonSpeedtip);
         mAddSpeedBtn.Clicked += _addSpeedBtn_Clicked;
 
         mAbilityPwrLabel = new Label(mCharacterWindow, "AbilityPowerLabel");
+        mAbilityPwrLabel.SetToolTipText(Strings.Character.AbilitiPowtip);
         mAddAbilityPwrBtn = new Button(mCharacterWindow, "IncreaseAbilityPowerButton");
+        mAddAbilityPwrBtn.SetToolTipText(Strings.Character.ButtonAbilitypowtip);
         mAddAbilityPwrBtn.Clicked += _addAbilityPwrBtn_Clicked;
 
         mMagicRstLabel = new Label(mCharacterWindow, "MagicResistLabel");
+        mMagicRstLabel.SetToolTipText(Strings.Character.MagicRestip);
         mAddMagicResistBtn = new Button(mCharacterWindow, "IncreaseMagicResistButton");
+        mAddMagicResistBtn.SetToolTipText(Strings.Character.ButtonMagicRestip);
         mAddMagicResistBtn.Clicked += _addMagicResistBtn_Clicked;
 
+        mArmorPenLabel = new Label(mCharacterWindow, "ArmorPenetrationLabel");
+        mArmorPenLabel.SetToolTipText(Strings.Character.Armorpentip);
+        mAddArmorPenBtn = new Button(mCharacterWindow, "IncreaseArmorPenetrationButton");
+        mAddArmorPenBtn.SetToolTipText(Strings.Character.ButtonArmorpentip);
+        mAddArmorPenBtn.Clicked += _addArmorPenBtn_Clicked;
+
+        mVitalityLabel = new Label(mCharacterWindow, "VitalityLabel");
+        mVitalityLabel.SetToolTipText(Strings.Character.Vitalitytip);
+        mAddVitalityBtn = new Button(mCharacterWindow, "IncreaseVitalityButton");
+        mAddVitalityBtn.SetToolTipText(Strings.Character.ButtonVitalitytip);
+        mAddVitalityBtn.Clicked += _addVitalityBtn_Clicked;
+
+        mWisdomLabel = new Label(mCharacterWindow, "WisdomLabel");
+        mWisdomLabel.SetToolTipText(Strings.Character.Wisdomtip);
+        mAddWisdomBtn = new Button(mCharacterWindow, "IncreaseWisdomButton");
+        mAddWisdomBtn.SetToolTipText(Strings.Character.ButtonWisdomtip);
+        mAddWisdomBtn.Clicked += _addWisdomBtn_Clicked;
+
         mPointsLabel = new Label(mCharacterWindow, "PointsLabel");
+        mPointsLabel.SetToolTipText(Strings.Character.Pointtip);
 
         for (var i = 0; i < Options.EquipmentSlots.Count; i++)
         {
@@ -170,14 +210,23 @@ public partial class CharacterWindow
         extraBuffsLabel.SetText(Strings.Character.ExtraBuffs);
 
         mHpRegen = new Label(mCharacterWindow, "HpRegen");
+        mHpRegen.SetToolTipText(Strings.Character.RegenHptip);
         mManaRegen = new Label(mCharacterWindow, "ManaRegen");
+        mManaRegen.SetToolTipText(Strings.Character.RegenMptip);
         mLifeSteal = new Label(mCharacterWindow, "Lifesteal");
+        mLifeSteal.SetToolTipText(Strings.Character.Lifestealtip);
         mAttackSpeed = new Label(mCharacterWindow, "AttackSpeed");
+        mAttackSpeed.SetToolTipText(Strings.Character.Attackspeedtip);
         mExtraExp = new Label(mCharacterWindow, "ExtraExp");
+        mExtraExp.SetToolTipText(Strings.Character.BonusExptip);
         mLuck = new Label(mCharacterWindow, "Luck");
+        mLuck.SetToolTipText(Strings.Character.Lucktip);
         mTenacity = new Label(mCharacterWindow, "Tenacity");
+        mTenacity.SetToolTipText(Strings.Character.Tenacitytip);
         mCooldownReduction = new Label(mCharacterWindow, "CooldownReduction");
+        mCooldownReduction.SetToolTipText(Strings.Character.CDRtip);
         mManaSteal = new Label(mCharacterWindow, "Manasteal");
+        mManaSteal.SetToolTipText(Strings.Character.Manastealtip);
 
         mCharacterWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
     }
@@ -185,27 +234,39 @@ public partial class CharacterWindow
     //Update Button Event Handlers
     void _addMagicResistBtn_Clicked(Base sender, ClickedEventArgs arguments)
     {
-        PacketSender.SendUpgradeStat((int) Stat.MagicResist);
+        PacketSender.SendUpgradeStat((int)Stat.MagicResist);
     }
 
     void _addAbilityPwrBtn_Clicked(Base sender, ClickedEventArgs arguments)
     {
-        PacketSender.SendUpgradeStat((int) Stat.AbilityPower);
+        PacketSender.SendUpgradeStat((int)Stat.AbilityPower);
     }
 
     void _addSpeedBtn_Clicked(Base sender, ClickedEventArgs arguments)
     {
-        PacketSender.SendUpgradeStat((int) Stat.Speed);
+        PacketSender.SendUpgradeStat((int)Stat.Speed);
     }
 
     void _addDefenseBtn_Clicked(Base sender, ClickedEventArgs arguments)
     {
-        PacketSender.SendUpgradeStat((int) Stat.Defense);
+        PacketSender.SendUpgradeStat((int)Stat.Defense);
     }
 
     void _addAttackBtn_Clicked(Base sender, ClickedEventArgs arguments)
     {
-        PacketSender.SendUpgradeStat((int) Stat.Attack);
+        PacketSender.SendUpgradeStat((int)Stat.Attack);
+    }
+    void _addArmorPenBtn_Clicked(Base sender, ClickedEventArgs arguments)
+    {
+        PacketSender.SendUpgradeStat((int)Stat.ArmorPenetration);
+    }
+    void _addVitalityBtn_Clicked(Base sender, ClickedEventArgs arguments)
+    {
+        PacketSender.SendUpgradeStat((int)Stat.Vitality);
+    }
+    void _addWisdomBtn_Clicked(Base sender, ClickedEventArgs arguments)
+    {
+        PacketSender.SendUpgradeStat((int)Stat.Wisdom);
     }
 
     //Methods
@@ -323,40 +384,55 @@ public partial class CharacterWindow
         }
 
         mAttackLabel.SetText(
-            Strings.Character.Stat0.ToString(Strings.Combat.Stat0, Globals.Me.Stat[(int) Stat.Attack])
+            Strings.Character.Stat0.ToString(Strings.Combat.Stat0, Globals.Me.Stat[(int)Stat.Attack])
         );
 
         mDefenseLabel.SetText(
-            Strings.Character.Stat2.ToString(Strings.Combat.Stat2, Globals.Me.Stat[(int) Stat.Defense])
+            Strings.Character.Stat2.ToString(Strings.Combat.Stat2, Globals.Me.Stat[(int)Stat.Defense])
         );
 
         mSpeedLabel.SetText(
-            Strings.Character.Stat4.ToString(Strings.Combat.Stat4, Globals.Me.Stat[(int) Stat.Speed])
+            Strings.Character.Stat4.ToString(Strings.Combat.Stat4, Globals.Me.Stat[(int)Stat.Speed])
         );
 
         mAbilityPwrLabel.SetText(
-            Strings.Character.Stat1.ToString(Strings.Combat.Stat1, Globals.Me.Stat[(int) Stat.AbilityPower])
+            Strings.Character.Stat1.ToString(Strings.Combat.Stat1, Globals.Me.Stat[(int)Stat.AbilityPower])
         );
 
         mMagicRstLabel.SetText(
-            Strings.Character.Stat3.ToString(Strings.Combat.Stat3, Globals.Me.Stat[(int) Stat.MagicResist])
+            Strings.Character.Stat3.ToString(Strings.Combat.Stat3, Globals.Me.Stat[(int)Stat.MagicResist])
+            );
+        mArmorPenLabel.SetText(
+            Strings.Character.Stat5.ToString(Strings.Combat.Stat5, Globals.Me.Stat[(int)Stat.ArmorPenetration])
         );
+        mVitalityLabel.SetText(
+            Strings.Character.Stat6.ToString(Strings.Combat.Stat6, Globals.Me.Stat[(int)Stat.Vitality])
+        );
+        mWisdomLabel.SetText(
+            Strings.Character.Stat7.ToString(Strings.Combat.Stat7, Globals.Me.Stat[(int)Stat.Wisdom])
+    );
 
         mPointsLabel.SetText(Strings.Character.Points.ToString(Globals.Me.StatPoints));
         mAddAbilityPwrBtn.IsHidden = Globals.Me.StatPoints == 0 ||
-                                     Globals.Me.Stat[(int) Stat.AbilityPower] == Options.MaxStatValue;
+                                     Globals.Me.Stat[(int)Stat.AbilityPower] == Options.MaxStatValue;
 
         mAddAttackBtn.IsHidden =
-            Globals.Me.StatPoints == 0 || Globals.Me.Stat[(int) Stat.Attack] == Options.MaxStatValue;
+            Globals.Me.StatPoints == 0 || Globals.Me.Stat[(int)Stat.Attack] == Options.MaxStatValue;
 
         mAddDefenseBtn.IsHidden = Globals.Me.StatPoints == 0 ||
-                                  Globals.Me.Stat[(int) Stat.Defense] == Options.MaxStatValue;
+                                  Globals.Me.Stat[(int)Stat.Defense] == Options.MaxStatValue;
 
         mAddMagicResistBtn.IsHidden = Globals.Me.StatPoints == 0 ||
-                                      Globals.Me.Stat[(int) Stat.MagicResist] == Options.MaxStatValue;
+                                      Globals.Me.Stat[(int)Stat.MagicResist] == Options.MaxStatValue;
 
         mAddSpeedBtn.IsHidden =
-            Globals.Me.StatPoints == 0 || Globals.Me.Stat[(int) Stat.Speed] == Options.MaxStatValue;
+             Globals.Me.StatPoints == 0 || Globals.Me.Stat[(int)Stat.Speed] == Options.MaxStatValue;
+        mAddArmorPenBtn.IsHidden = Globals.Me.StatPoints == 0 ||
+                         Globals.Me.Stat[(int)Stat.ArmorPenetration] == Options.MaxStatValue;
+        mAddVitalityBtn.IsHidden = Globals.Me.StatPoints == 0 ||
+             Globals.Me.Stat[(int)Stat.Vitality] == Options.MaxStatValue;
+        mAddWisdomBtn.IsHidden = Globals.Me.StatPoints == 0 ||
+             Globals.Me.Stat[(int)Stat.Wisdom] == Options.MaxStatValue;
 
         UpdateExtraBuffs();
 
@@ -448,7 +524,7 @@ public partial class CharacterWindow
         //Getting extra buffs
         if (item.Effects.Find(effect => effect.Type != ItemEffect.None && effect.Percentage > 0) != default)
         {
-            foreach(var effect in item.Effects)
+            foreach (var effect in item.Effects)
             {
                 if (effect.Percentage <= 0)
                 {

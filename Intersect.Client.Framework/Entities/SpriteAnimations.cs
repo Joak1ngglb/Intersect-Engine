@@ -8,5 +8,5 @@ public enum SpriteAnimations
     Shoot,
     Cast,
     Weapon,
-    Death
+    Dead
 }

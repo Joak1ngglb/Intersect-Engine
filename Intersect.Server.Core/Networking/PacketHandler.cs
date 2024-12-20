@@ -2914,6 +2914,18 @@ internal sealed partial class PacketHandler
         player.PictureClosed(packet.EventId);
     }
 
+    //RespawnPacket
+    public void HandlePacket(Client client, RespawnPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+        player?.Reset();
+        player?.Respawn();
+    }
+
     public void HandlePacket(Client client, FadeCompletePacket packet)
     {
         var player = client?.Entity;

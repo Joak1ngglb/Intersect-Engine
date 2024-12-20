@@ -317,6 +317,11 @@ public partial class Npc : Entity
             return false;
         }
 
+        if (entity.IsDead())
+        {
+            return false;
+        }
+
         if (entity is EventPageInstance)
         {
             return false;

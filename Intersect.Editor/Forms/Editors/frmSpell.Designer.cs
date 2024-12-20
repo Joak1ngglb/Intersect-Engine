@@ -537,7 +537,7 @@ namespace Intersect.Editor.Forms.Editors
             cmbType.FlatStyle = FlatStyle.Flat;
             cmbType.ForeColor = System.Drawing.Color.Gainsboro;
             cmbType.FormattingEnabled = true;
-            cmbType.Items.AddRange(new object[] { "Combat Spell", "Warp to Map", "Warp to Target", "Dash", "Event" });
+            cmbType.Items.AddRange(new object[] { "Combat Spell", "Warp to Map", "Warp to Target", "Dash", "Event", "Resurrection" });
             cmbType.Location = new System.Drawing.Point(70, 90);
             cmbType.Margin = new Padding(4, 3, 4, 3);
             cmbType.Name = "cmbType";

@@ -348,6 +348,11 @@ public partial class FrmSpell : EditorForm
             cmbTargetType.SelectedIndex = (int)mEditorItem.Combat.TargetType;
             UpdateTargetTypePanel();
 
+            if (cmbType.SelectedIndex == (int)SpellType.Resurrection)
+            {
+                grpTargetInfo.Show();
+            }
+
             nudHPDamage.Value = mEditorItem.Combat.VitalDiff[(int)Vital.Health];
             nudMPDamage.Value = mEditorItem.Combat.VitalDiff[(int)Vital.Mana];
 
@@ -418,6 +423,10 @@ public partial class FrmSpell : EditorForm
             cmbTargetType.SelectedIndex = (int)SpellTargetType.Single;
             cmbTargetType.Enabled = false;
             UpdateTargetTypePanel();
+        }
+        if (cmbType.SelectedIndex == (int)SpellType.Resurrection)
+        {
+            grpTargetInfo.Show();
         }
     }
 

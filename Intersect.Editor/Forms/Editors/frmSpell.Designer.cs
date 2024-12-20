@@ -503,7 +503,8 @@ namespace Intersect.Editor.Forms.Editors
             "Warp to Map",
             "Warp to Target",
             "Dash",
-            "Event"});
+            "Event",
+            "Resurrection"});
             this.cmbType.Location = new System.Drawing.Point(60, 78);
             this.cmbType.Name = "cmbType";
             this.cmbType.Size = new System.Drawing.Size(199, 21);

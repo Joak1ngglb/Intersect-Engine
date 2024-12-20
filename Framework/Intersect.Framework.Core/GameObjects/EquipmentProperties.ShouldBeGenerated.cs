@@ -38,4 +38,19 @@ public partial class EquipmentProperties
         get => StatRanges.TryGetValue(Stat.Speed, out var range) ? range : StatRange_Speed = new ItemRange();
         set => StatRanges[Stat.Speed] = value;
     }
+    public ItemRange StatRange_ArmorPenetration
+    {
+        get => StatRanges.TryGetValue(Stat.ArmorPenetration, out var range) ? range : StatRange_ArmorPenetration = new ItemRange();
+        set => StatRanges[Stat.ArmorPenetration] = value;
+    }
+    public ItemRange StatRange_Vitality
+    {
+        get => StatRanges.TryGetValue(Stat.Vitality, out var range) ? range : StatRange_Vitality = new ItemRange();
+        set => StatRanges[Stat.Vitality] = value;
+    }
+    public ItemRange StatRange_Wisdom
+    {
+        get => StatRanges.TryGetValue(Stat.Wisdom, out var range) ? range : StatRange_Wisdom = new ItemRange();
+        set => StatRanges[Stat.Wisdom] = value;
+    }
 }

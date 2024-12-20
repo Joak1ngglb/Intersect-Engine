@@ -865,6 +865,12 @@ public partial class Player : Entity, IPlayer
             return true;
         }
 
+        if (Globals.InputManager.KeyDown(Keys.Shift))
+        {
+            PacketSender.SendDepositItem(inventorySlotIndex, Inventory[inventorySlotIndex].Quantity);
+            return true;
+        }
+
         var maximumQuantity = movableQuantity < quantity ? movableQuantity : Item.FindSpaceForItem(
             itemDescriptor.Id,
             itemDescriptor.ItemType,
@@ -980,6 +986,12 @@ public partial class Player : Entity, IPlayer
         if (skipPrompt)
         {
             PacketSender.SendWithdrawItem(bankSlotIndex, movableQuantity, inventorySlotIndex);
+            return true;
+        }
+
+        if (Globals.InputManager.KeyDown(Keys.Shift))
+        {
+            PacketSender.SendWithdrawItem(bankSlotIndex, Globals.Bank[bankSlotIndex].Quantity);
             return true;
         }
 

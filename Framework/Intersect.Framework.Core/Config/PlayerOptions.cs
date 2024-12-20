@@ -1,4 +1,4 @@
-﻿namespace Intersect.Config;
+namespace Intersect.Config;
 
 /// <summary>
 /// Contains configurable options pertaining to the way Players are handled by the engine.
@@ -105,4 +105,6 @@ public partial class PlayerOptions
     /// Distance (in tiles) between players in which a trade offer can be sent and accepted.
     /// </summary>
     public int TradeRange { get; set; } = 6;
+
+    public int DeathSeconds { get; set; } = 10;
 }

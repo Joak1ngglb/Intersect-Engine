@@ -53,6 +53,7 @@ public partial class SpellDescriptionWindow : DescriptionWindowBase
         {
             case SpellType.CombatSpell:
             case SpellType.WarpTo:
+            case SpellType.Resurrection:
                 SetupCombatInfo();
                 break;
             case SpellType.Dash:

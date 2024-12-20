@@ -577,10 +577,32 @@ public partial class Entity : IEntity
             LatestMap = Maps.MapInstance.Get(MapId);
         }
 
+        // if (this is Corpse corpse) {
+        //     if (corpse.TickCount + Corpse.TIME_TO_RESPAWN < Timing.Global.Milliseconds || AnimatedTextures[SpriteAnimation] == null)
+        //     {
+        //         if (Globals.Entities?.ContainsKey(this.Id) ?? false)
+        //         {
+        //             Globals.Entities[this.Id]?.Dispose();
+        //         }
+        //     }
+        // }
+
         if (LatestMap == null || !LatestMap.InView())
         {
             Globals.EntitiesToDispose.Add(Id);
             return false;
+        }
+
+        if (this.IsDead())
+        {
+            SpriteAnimation = SpriteAnimations.Death;
+        }
+        else
+        {
+            if (SpriteAnimation == SpriteAnimations.Death)
+            {
+                SpriteAnimation = SpriteAnimations.Normal;
+            }
         }
 
         RenderList = DetermineRenderOrder(RenderList, LatestMap);
@@ -1176,7 +1198,7 @@ public partial class Entity : IEntity
             else if (equipSlot > -1)
             {
                 //Don't render the paperdolls if they have transformed.
-                if (sprite == Sprite && Equipment.Length == Options.EquipmentSlots.Count)
+                if (sprite == Sprite && Equipment.Length == Options.EquipmentSlots.Count && !IsDead())
                 {
                     if (Equipment[equipSlot] != Guid.Empty && this != Globals.Me ||
                         MyEquipment[equipSlot] < Options.MaxInvItems)
@@ -1541,6 +1563,11 @@ public partial class Entity : IEntity
         if ((this is Player && Options.Player.ShowLevelByName) || (Type == EntityType.GlobalEntity && Options.Npc.ShowLevelByName))
         {
             name = Strings.GameWindow.EntityNameAndLevel.ToString(Name, Level);
+        }
+
+        if (this.IsDead() && this is Player)
+        {
+            name = string.Format(Strings.EntityBox.dead, name);
         }
 
         var textSize = Graphics.Renderer.MeasureText(name, Graphics.EntityNameFont, 1);
@@ -1916,7 +1943,7 @@ public partial class Entity : IEntity
     private void UpdateSpriteAnimation()
     {
         //Exit if textures haven't been loaded yet
-        if (AnimatedTextures.Count == 0)
+        if (AnimatedTextures.Count == 0 || SpriteAnimation == SpriteAnimations.Death)
         {
             return;
         }
@@ -1995,6 +2022,7 @@ public partial class Entity : IEntity
             {
                 case SpriteAnimations.Cast:
                 case SpriteAnimations.Idle:
+                case SpriteAnimations.Death:
                 case SpriteAnimations.Normal:
                     break;
                 case SpriteAnimations.Attack:
@@ -2148,6 +2176,7 @@ public partial class Entity : IEntity
 
                 break;
 
+            case SpriteAnimations.Death: break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(spriteAnimation));
         }
@@ -2438,6 +2467,11 @@ public partial class Entity : IEntity
         {
             return -2;
         }
+    }
+
+    public bool IsDead()
+    {
+        return this.Vital[(int)Enums.Vital.Health] <= 0;
     }
 
     ~Entity()

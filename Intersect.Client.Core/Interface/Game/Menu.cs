@@ -71,6 +71,8 @@ public partial class Menu
 
     private readonly GuildWindow mGuildWindow;
 
+    private readonly DeathWindow mDeathWindow;
+
     private int mBackgroundHeight = 42;
 
     private int mBackgroundWidth = 42;
@@ -144,6 +146,7 @@ public partial class Menu
         mQuestsWindow = new QuestsWindow(gameCanvas);
         mMapItemWindow = new MapItemWindow(gameCanvas);
         mGuildWindow = new GuildWindow(gameCanvas);
+        mDeathWindow = new DeathWindow(gameCanvas);
     }
 
     //Methods
@@ -158,6 +161,7 @@ public partial class Menu
         mQuestsWindow.Update(updateQuestLog);
         mMapItemWindow.Update();
         mGuildWindow.Update();
+        mDeathWindow.Update();
     }
 
     public void UpdateFriendsList()
@@ -185,6 +189,14 @@ public partial class Menu
         mQuestsWindow.Hide();
         mSpellsWindow.Hide();
         mGuildWindow.Hide();
+    }
+    public void ShowDeathWindow()
+    {
+        mDeathWindow.Show();
+    }
+    public void HideDeathWindow()
+    {
+        mDeathWindow.Hide();
     }
 
     public void ToggleCharacterWindow()

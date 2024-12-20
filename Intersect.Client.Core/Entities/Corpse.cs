@@ -7,7 +7,7 @@ namespace Intersect.Client.Entities
 {
     public partial class Corpse : Entity
     {
-        public const long TIME_TO_RESPAWN = 10000; // TODO: refactor for get infinite time.
+        public const long TIME_TO_RESPAWN = 60000; // TODO: refactor for get infinite time.
         public long TickCount { get; set; }
         public Corpse(Guid id, EntityPacket packet) : base(id, packet, EntityType.Player)
         {
@@ -21,7 +21,7 @@ namespace Intersect.Client.Entities
             this.Sprite = entityBase.Sprite;
             this.Texture = entityBase.Texture;
             this.MapId = entityBase.MapId;
-            this.SpriteAnimation = SpriteAnimations.Death;
+            this.SpriteAnimation = SpriteAnimations.Dead;
             this.TickCount = Timing.Global.Milliseconds;
         }
     }

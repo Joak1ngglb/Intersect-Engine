@@ -1975,7 +1975,7 @@ public abstract partial class Entity : IEntity
         var damagingAttack = baseDamage > 0;
         var secondaryDamagingAttack = secondaryDamage > 0;
 
-        if (enemy == null)
+        if (enemy == null || enemy.IsDead())
         {
             return;
         }
@@ -2213,6 +2213,7 @@ public abstract partial class Entity : IEntity
         //Dead entity check
         if (enemy.GetVital(Vital.Health) <= 0)
         {
+            this.Target = null;
             if (enemy is Npc || enemy is Resource)
             {
                 lock (enemy.EntityLock)
@@ -2353,7 +2354,7 @@ public abstract partial class Entity : IEntity
         }
 
         // Check for target validity
-        var singleTargetSpell = (spell.SpellType == SpellType.CombatSpell && spell.Combat.TargetType == SpellTargetType.Single) || spell.SpellType == SpellType.WarpTo;
+        var singleTargetSpell = ((spell.SpellType == SpellType.CombatSpell || spell.SpellType == SpellType.Resurrection) && spell.Combat.TargetType == SpellTargetType.Single) || spell.SpellType == SpellType.WarpTo;
         if (target == null && singleTargetSpell)
         {
             reason = SpellCastFailureReason.InvalidTarget;
@@ -2568,6 +2569,21 @@ public abstract partial class Entity : IEntity
                         Convert.ToBoolean(spellBase.Dash.IgnoreInactiveResources),
                         Convert.ToBoolean(spellBase.Dash.IgnoreZDimensionAttributes)
                     );
+
+                    break;
+                case SpellType.Resurrection:
+
+                    if (CastTarget != null && CastTarget.IsDead())
+                    {
+                        if (CastTarget is Player targetPlayer)
+                        {
+                            PacketSender.SendAnimationToProximity(
+                                spellBase.HitAnimationId, 1, targetPlayer.Id, Target.MapId, 0, 0, Dir, CastTarget.MapInstanceId
+                            );
+                            targetPlayer.Reset();
+                            PacketSender.SendPlayerRespawn(targetPlayer);
+                        }
+                    }
 
                     break;
                 default:
@@ -2931,7 +2947,7 @@ public abstract partial class Entity : IEntity
     //Spawning/Dying
     public virtual void Die(bool dropItems = true, Entity killer = null)
     {
-        if (IsDead() || Items == null)
+        if (Dead || Items == null)
         {
             return;
         }
@@ -3072,7 +3088,7 @@ public abstract partial class Entity : IEntity
 
     public bool IsDead()
     {
-        return Dead;
+        return Dead || this.GetVital(Vital.Health) <= 0;
     }
 
     public virtual void Reset()

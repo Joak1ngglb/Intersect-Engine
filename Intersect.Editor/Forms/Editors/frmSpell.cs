@@ -419,6 +419,11 @@ public partial class FrmSpell : EditorForm
             cmbTargetType.Enabled = false;
             UpdateTargetTypePanel();
         }
+
+        if (cmbType.SelectedIndex == (int)SpellType.Resurrection)
+        {
+            grpTargetInfo.Show();
+        }
     }
 
     private void UpdateTargetTypePanel()

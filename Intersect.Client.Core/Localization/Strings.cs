@@ -951,6 +951,9 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Vital1Value = @"{00} / {01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString dead = @"{0} (Dead)";
     }
 
     public partial struct Errors
@@ -2331,6 +2334,7 @@ public static partial class Strings
             {2, @"Warp to Target"},
             {3, @"Dash"},
             {4, @"Special"},
+            {5, @"Resurrection"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -2511,6 +2515,12 @@ public static partial class Strings
     {
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString EntityNameAndLevel = @"{00} [Lv. {01}]";
+    }
+    public struct Death
+    {
+        public static LocalizedString DeathWindowTitle = "Dead";
+        public static LocalizedString DeathMsg = "You died!";
+        public static LocalizedString RespawnButton = "Respawn";
     }
 
 }

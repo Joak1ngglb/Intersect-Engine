@@ -5961,14 +5961,8 @@ public partial class Player : Entity
 
     //Stats
     public void UpgradeStat(int statIndex)
-    {
-        if (statIndex == 5)
+
         {
-            PacketSender.SendChatMsg(this, "Nie mozesz ulepszyc statystyki armorpenetration.", ChatMessageType.Error);
-        }
-        else
-        {
-            // Ulepszanie statystyki
             if (Stat[statIndex].BaseStat + StatPointAllocations[statIndex] < Options.MaxStatValue && StatPoints > 0)
             {
                 StatPointAllocations[statIndex]++;
@@ -5978,7 +5972,6 @@ public partial class Player : Entity
                 UnequipInvalidItems();
             }
         }
-    }
 
     //HotbarSlot
     public void HotbarChange(int index, int type, int slot)

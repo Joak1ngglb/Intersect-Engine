@@ -2464,7 +2464,7 @@ namespace Intersect.Editor.Forms.Editors
             lblARP.Name = "lblARP";
             lblARP.Size = new Size(108, 15);
             lblARP.TabIndex = 90;
-            lblARP.Text = "Armor Penetration:";
+            lblARP.Text = "Dextery:";
             // 
             // lblVit
             // 
@@ -2484,7 +2484,7 @@ namespace Intersect.Editor.Forms.Editors
             lblWis.Name = "lblWis";
             lblWis.Size = new Size(54, 15);
             lblWis.TabIndex = 92;
-            lblWis.Text = "Wisdom:";
+            lblWis.Text = "Intelligence:";
             // 
             // lblDef
             // 

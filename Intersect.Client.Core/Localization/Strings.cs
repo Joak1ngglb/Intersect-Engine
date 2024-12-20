@@ -813,13 +813,13 @@ public static partial class Strings
         public static LocalizedString Stat4 = @"Speed";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString Stat5 = @"Armor Penetration";
+        public static LocalizedString Stat5 = @"Dextery";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Stat6 = @"Vitality";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString Stat7 = @"Wisdom";
+        public static LocalizedString Stat7 = @"Intelligence";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString WarningCharacterSelect = @"You are attempting to logout while in combat! Your character will remain in-game until combat has ended. Are you sure you want to logout now?";
@@ -1585,9 +1585,9 @@ public static partial class Strings
             {2, @"Defense:"},
             {3, @"Magic Resist:"},
             {4, @"Speed:"},
-            {5, @"Armor Penetration"},
+            {5, @"Dextery"},
             {6, @"Vitality"},
-            {7, @"Wisdom"},
+            {7, @"Intelligence"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -1598,9 +1598,9 @@ public static partial class Strings
             {2, @"Defense"},
             {3, @"Magic Resist"},
             {4, @"Speed"},
-            {5, @"Armor Penetration"},
+            {5, @"Dextery"},
             {6, @"Vitality"},
-            {7, @"Wisdom"},
+            {7, @"Intelligence"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -2423,9 +2423,9 @@ public static partial class Strings
             {2, @"Defense"},
             {3, @"Magic Resist"},
             {4, @"Speed"},
-            {5, @"Armor Penetration"},
+            {5, @"Dextery"},
             {6, @"Vitality"},
-            {7, @"Wisdom"},
+            {7, @"Intelligence"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -2436,9 +2436,9 @@ public static partial class Strings
             {2, @"Defense:"},
             {3, @"Magic Resist:"},
             {4, @"Speed:"},
-            {5, @"Armor Penetration"},
+            {5, @"Dextery"},
             {6, @"Vitality"},
-            {7, @"Wisdom"},
+            {7, @"Intelligence"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

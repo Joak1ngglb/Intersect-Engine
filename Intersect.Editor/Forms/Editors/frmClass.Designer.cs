@@ -574,7 +574,7 @@ namespace Intersect.Editor.Forms.Editors
             lblARP.Name = "lblARP";
             lblARP.Size = new Size(108, 15);
             lblARP.TabIndex = 72;
-            lblARP.Text = "Armor Penetration:";
+            lblARP.Text = "Dextery:";
             // 
             // lblVit
             // 
@@ -594,7 +594,7 @@ namespace Intersect.Editor.Forms.Editors
             lblWis.Name = "lblWis";
             lblWis.Size = new Size(54, 15);
             lblWis.TabIndex = 74;
-            lblWis.Text = "Wisdom:";
+            lblWis.Text = "Intelligence:";
             // 
             // grpGeneral
             // 
@@ -2036,7 +2036,7 @@ namespace Intersect.Editor.Forms.Editors
             lblArmorPenIncrease.Name = "lblArmorPenIncrease";
             lblArmorPenIncrease.Size = new Size(108, 15);
             lblArmorPenIncrease.TabIndex = 78;
-            lblArmorPenIncrease.Text = "Armor Penetration:";
+            lblArmorPenIncrease.Text = "Dextery:";
             // 
             // lblVitalityIncrease
             // 
@@ -2056,7 +2056,7 @@ namespace Intersect.Editor.Forms.Editors
             lblWisdomIncrease.Name = "lblWisdomIncrease";
             lblWisdomIncrease.Size = new Size(54, 15);
             lblWisdomIncrease.TabIndex = 80;
-            lblWisdomIncrease.Text = "Wisdom:";
+            lblWisdomIncrease.Text = "Intelligence:";
             // 
             // lblMagicIncrease
             // 

@@ -190,11 +190,11 @@ public static partial class Globals
             case (int)Stat.Speed:
                 return "Speed";
             case (int)Stat.ArmorPenetration:
-                return "Armor Penetration";
+                return "Dextery";
             case (int)Stat.Vitality:
                 return "Vitality";
             case (int)Stat.Wisdom:
-                return "Wisdom";
+                return "Intelligence";
             default:
                 return "Invalid Stat";
         }

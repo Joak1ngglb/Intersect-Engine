@@ -1,4 +1,4 @@
-﻿using Intersect.Core;
+using Intersect.Core;
 using Intersect.Logging;
 using Intersect.Network;
 using Intersect.Server.Core.Services;
@@ -13,6 +13,7 @@ using Intersect.Server.General;
 using Intersect.Plugins.Interfaces;
 using Intersect.Rsa;
 using Intersect.Server.Database.PlayerData.Players;
+using System;
 
 
 namespace Intersect.Server.Core;
@@ -119,6 +120,15 @@ internal partial class ServerContext : ApplicationContext<ServerContext, ServerC
                 savingTasks.Add(Task.Run(() => user.SaveWithDebounce()));
             }
 
+            Task.WaitAll(savingTasks.ToArray());
+
+            Log.Info("Saving loaded nations....");
+            savingTasks.Clear();
+            //Should we send out nation updates?
+            foreach (var nation in Nation.Nations)
+            {
+                savingTasks.Add(Task.Run(() => nation.Value.Save()));
+            }
             Task.WaitAll(savingTasks.ToArray());
 
 

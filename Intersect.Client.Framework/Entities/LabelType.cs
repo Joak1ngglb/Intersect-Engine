@@ -1,4 +1,4 @@
-﻿namespace Intersect.Client.Framework.Entities;
+namespace Intersect.Client.Framework.Entities;
 
 public enum LabelType
 {
@@ -11,6 +11,8 @@ public enum LabelType
 
     ChatBubble,
 
-    Guild
+    Guild,
+
+    Nation
 
 }

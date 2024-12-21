@@ -17,6 +17,11 @@ public partial class LoggingOptions
     public bool GuildActivity { get; set; } = true;
 
     /// <summary>
+    /// Logs nation activity (creations, disbands, joins, leaves, kicks, promotions, transfers, etc
+    /// </summary>
+    public bool NationActivity { get; set; } = true;
+
+    /// <summary>
     /// Determines whether trades should be written into the logging database
     /// </summary>
     public bool Trade { get; set; } = true;

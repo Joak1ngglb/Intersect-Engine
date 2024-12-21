@@ -430,59 +430,6 @@ public class MonoRenderer : GameRenderer
 
     public override void DrawString(
         string text,
-        GameFont? gameFont,
-        float x,
-        float y,
-        float fontScale,
-        Color? fontColor,
-        bool worldPos = true,
-        GameRenderTexture? renderTexture = null,
-        Color? borderColor = null
-    )
-    {
-        var font = (SpriteFont)gameFont?.GetFont();
-        if (font == null)
-        {
-            return;
-        }
-
-        StartSpritebatch(mCurrentView, GameBlendModes.None, null, renderTexture, false, null);
-        foreach (var chr in text)
-        {
-            if (!font.Characters.Contains(chr))
-            {
-                text = text.Replace(chr, ' ');
-            }
-        }
-
-        if (borderColor != null && borderColor != Color.Transparent)
-        {
-            mSpriteBatch.DrawString(
-                font, text, new Vector2(x, y - 1), ConvertColor(borderColor), 0f, Vector2.Zero,
-                new Vector2(fontScale, fontScale), SpriteEffects.None, 0
-            );
-
-            mSpriteBatch.DrawString(
-                font, text, new Vector2(x - 1, y), ConvertColor(borderColor), 0f, Vector2.Zero,
-                new Vector2(fontScale, fontScale), SpriteEffects.None, 0
-            );
-
-            mSpriteBatch.DrawString(
-                font, text, new Vector2(x + 1, y), ConvertColor(borderColor), 0f, Vector2.Zero,
-                new Vector2(fontScale, fontScale), SpriteEffects.None, 0
-            );
-
-            mSpriteBatch.DrawString(
-                font, text, new Vector2(x, y + 1), ConvertColor(borderColor), 0f, Vector2.Zero,
-                new Vector2(fontScale, fontScale), SpriteEffects.None, 0
-            );
-        }
-
-        mSpriteBatch.DrawString(font, text, new Vector2(x, y), ConvertColor(fontColor));
-    }
-
-    public override void DrawString(
-        string text,
         GameFont gameFont,
         float x,
         float y,
@@ -1024,4 +971,8 @@ public class MonoRenderer : GameRenderer
         End();
     }
 
+    public override void DrawString(string text, GameFont? gameFont, float x, float y, float fontScale, Color? fontColor, bool worldPos = true, GameRenderTexture? renderTexture = null, Color? borderColor = null, Color green = null, bool v = false)
+    {
+        throw new NotImplementedException();
+    }
 }

@@ -136,4 +136,7 @@ public interface IGameRenderer
     /// </summary>
     /// <param name="screenshotDir">The directory (relative to the client directory) to store the screenshot in.</param>
     void RequestScreenshot(string screenshotDir = "screenshots");
+    void DrawString(string text, GameFont? gameFont, float x, float y, float fontScale, Color? fontColor, bool worldPos = true, GameRenderTexture? renderTexture = null, Color? borderColor = null);
+    void DrawString(string text, GameFont? gameFont, float x, float y, float fontScale, Color? fontColor, bool worldPos = true, GameRenderTexture? renderTexture = null, Color? borderColor = null);
+    void DrawString(string text, GameFont? gameFont, float x, float y, float fontScale, Color? fontColor, bool worldPos = true, GameRenderTexture? renderTexture = null, Color? borderColor = null);
 }

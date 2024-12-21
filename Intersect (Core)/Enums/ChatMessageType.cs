@@ -1,4 +1,4 @@
-﻿namespace Intersect.Enums;
+namespace Intersect.Enums;
 
 /// <summary>
 /// Defines all different types for chat messages so we can filter them on the client for display purposes.
@@ -18,6 +18,8 @@ public enum ChatMessageType
     Admin,
 
     Guild,
+
+    Nation,
 
     // Player Messages
     Experience = 20,

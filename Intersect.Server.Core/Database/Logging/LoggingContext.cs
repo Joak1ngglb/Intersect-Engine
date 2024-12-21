@@ -1,4 +1,4 @@
-﻿using Intersect.Server.Database.Logging.Entities;
+using Intersect.Server.Database.Logging.Entities;
 using Intersect.Server.Database.Logging.Seed;
 
 using Microsoft.Data.Sqlite;
@@ -25,6 +25,8 @@ public abstract partial class LoggingContext : IntersectDbContext<LoggingContext
     public DbSet<TradeHistory> TradeHistory { get; set; }
 
     public DbSet<GuildHistory> GuildHistory { get; set; }
+
+    public DbSet<NationHistory> NationHistory { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

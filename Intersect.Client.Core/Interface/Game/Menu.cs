@@ -6,6 +6,7 @@ using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Character;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Game.Inventory;
+using Intersect.Client.Interface.Game.Map;
 using Intersect.Client.Interface.Game.Spells;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
@@ -22,6 +23,8 @@ public partial class Menu
     private readonly Button mCharacterButton;
 
     private readonly CharacterWindow mCharacterWindow;
+
+    private readonly MinimapWindow mMinimapWindow;
 
     private readonly ImagePanel mFriendsBackground;
 
@@ -139,6 +142,7 @@ public partial class Menu
         mInventoryWindow = new InventoryWindow(gameCanvas);
         mSpellsWindow = new SpellsWindow(gameCanvas);
         mCharacterWindow = new CharacterWindow(gameCanvas);
+        mMinimapWindow = new MinimapWindow(gameCanvas);
         mQuestsWindow = new QuestsWindow(gameCanvas);
         mMapItemWindow = new MapItemWindow(gameCanvas);
         mGuildWindow = new GuildWindow(gameCanvas);
@@ -151,6 +155,7 @@ public partial class Menu
         mInventoryWindow.Update();
         mSpellsWindow.Update();
         mCharacterWindow.Update();
+        mMinimapWindow.Update();
         mPartyWindow.Update();
         mFriendsWindow.Update();
         mQuestsWindow.Update(updateQuestLog);
@@ -177,6 +182,7 @@ public partial class Menu
         }
 
         mCharacterWindow.Hide();
+        mMinimapWindow.Hide();
         mFriendsWindow.Hide();
         mInventoryWindow.Hide();
         mPartyWindow.Hide();
@@ -203,6 +209,23 @@ public partial class Menu
         {
             HideWindows();
             mCharacterWindow.Show();
+        }
+    }
+
+    public void ToggleMinimapWindow()
+    {
+        if (!Options.Instance.MinimapOpts.EnableMinimapWindow)
+        {
+            return;
+        }
+        if (mMinimapWindow.IsVisible())
+        {
+            mMinimapWindow.Hide();
+        }
+        else
+        {
+            HideWindows();
+            mMinimapWindow.Show();
         }
     }
 

@@ -59,6 +59,9 @@ public partial class Options
 
     public DatabaseOptions PlayerDatabase = new DatabaseOptions();
 
+    [JsonProperty("Minimap")]
+    public MinimapOptions MinimapOpts = new();
+
     [JsonProperty("Player")]
     public PlayerOptions PlayerOpts = new PlayerOptions();
 

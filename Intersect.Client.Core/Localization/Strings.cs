@@ -2603,7 +2603,9 @@ public static partial class Strings
     public struct Death
     {
         public static LocalizedString DeathWindowTitle = "Dead";
+
         public static LocalizedString DeathMsg = "You died!";
+
         public static LocalizedString RespawnButton = "Respawn";
     }
 

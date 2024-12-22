@@ -350,20 +350,14 @@ namespace Intersect.Editor.Forms.Editors
 
             if (cmbType.SelectedIndex == (int)SpellType.CombatSpell ||
                 cmbType.SelectedIndex == (int)SpellType.WarpTo ||
-                cmbType.SelectedIndex == (int)SpellType.Event)
+                cmbType.SelectedIndex == (int)SpellType.Event ||
+                cmbType.SelectedIndex == (int)SpellType.Resurrection)
+
             {
                 grpTargetInfo.Show();
                 grpCombat.Show();
                 cmbTargetType.SelectedIndex = (int)mEditorItem.Combat.TargetType;
                 UpdateTargetTypePanel();
-
-                if (cmbType.SelectedIndex == (int)SpellType.Resurrection)
-                {
-                    grpTargetInfo.Show();
-                    cmbTargetType.SelectedIndex = (int)SpellTargetType.Single;
-                    cmbTargetType.Enabled = false;
-                    UpdateTargetTypePanel();
-                }
 
                 nudHPDamage.Value = mEditorItem.Combat.VitalDiff[(int)Vital.Health];
                 nudMPDamage.Value = mEditorItem.Combat.VitalDiff[(int)Vital.Mana];
@@ -399,6 +393,12 @@ namespace Intersect.Editor.Forms.Editors
                 cmbExtraEffect.SelectedIndex = (int)mEditorItem.Combat.Effect;
                 cmbExtraEffect_SelectedIndexChanged(null, null);
             }
+
+            if (cmbType.SelectedIndex == (int)SpellType.Resurrection)
+            {
+                grpTargetInfo.Show();
+            }
+
             else if (cmbType.SelectedIndex == (int)SpellType.Warp)
             {
                 grpWarp.Show();
@@ -443,6 +443,8 @@ namespace Intersect.Editor.Forms.Editors
                 UpdateTargetTypePanel();
             }
         }
+
+
 
         private void UpdateTargetTypePanel()
         {

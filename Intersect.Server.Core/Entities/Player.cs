@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
+using Intersect.Collections.Slotting;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
@@ -141,7 +142,10 @@ public partial class Player : Entity
 
     //Bank
     [JsonIgnore]
-    public virtual List<BankSlot> Bank { get; set; } = new List<BankSlot>();
+    public virtual SlotList<BankSlot> Bank { get; set; } = new(
+        Options.Instance.PlayerOpts.InitialBankslots,
+        BankSlot.Create
+    );
 
     //Friends -- Not used outside of EF
     [JsonIgnore]
@@ -153,7 +157,10 @@ public partial class Player : Entity
 
     //HotBar
     [JsonIgnore]
-    public virtual List<HotbarSlot> Hotbar { get; set; } = new List<HotbarSlot>();
+    public virtual SlotList<HotbarSlot> Hotbar { get; set; } = new(
+        Options.Instance.PlayerOpts.HotbarSlotCount,
+        HotbarSlot.Create
+    );
 
     //Quests
     [JsonIgnore]
@@ -290,24 +297,14 @@ public partial class Player : Entity
         return OnlinePlayers.Values.FirstOrDefault(s => s.Name.ToLower().Trim() == charName.ToLower().Trim());
     }
 
-    public bool ValidateLists()
+    public bool ValidateLists(PlayerContext? playerContext = default)
     {
         var changes = false;
 
-        changes |= SlotHelper.ValidateSlots(Spells, Options.MaxPlayerSkills);
-        changes |= SlotHelper.ValidateSlots(Items, Options.MaxInvItems);
-        changes |= SlotHelper.ValidateSlots(Bank, Options.Instance.PlayerOpts.InitialBankslots);
-
-        if (Hotbar.Count < Options.Instance.PlayerOpts.HotbarSlotCount)
-        {
-            Hotbar.Sort((a, b) => a?.Slot - b?.Slot ?? 0);
-            for (var i = Hotbar.Count; i < Options.Instance.PlayerOpts.HotbarSlotCount; i++)
-            {
-                Hotbar.Add(new HotbarSlot(i));
-            }
-
-            changes = true;
-        }
+        changes |= SlotHelper.ValidateSlotList(Spells, Options.Instance.PlayerOpts.MaxSpells);
+        changes |= SlotHelper.ValidateSlotList(Items, Options.Instance.PlayerOpts.MaxInventory);
+        changes |= SlotHelper.ValidateSlotList(Bank, Options.Instance.PlayerOpts.InitialBankslots);
+        changes |= SlotHelper.ValidateSlotList(Hotbar, Options.Instance.PlayerOpts.HotbarSlotCount);
 
         return changes;
     }
@@ -930,7 +927,7 @@ public partial class Player : Entity
     /// </summary>
     public override void UpdateSpellCooldown(SpellBase spellBase, int spellSlot)
     {
-        if (spellSlot < 0 || spellSlot >= Options.MaxPlayerSkills)
+        if (spellSlot < 0 || spellSlot >= Options.Instance.PlayerOpts.MaxSpells)
         {
             return;
         }
@@ -2851,7 +2848,7 @@ public partial class Player : Entity
             return true;
         }
 
-        var bankInterface = new BankInterface(this, ((IEnumerable<Item>)Bank).ToList(), new object(), null, Options.Instance.Bank.MaxSlots);
+        var bankInterface = new BankInterface<BankSlot>(this, Bank);
         return bankOverflow && bankInterface.TryDepositItem(item, sendUpdate);
     }
 
@@ -4302,28 +4299,33 @@ public partial class Player : Entity
         FriendRequester != default;
 
     //Bank
-    public bool OpenBank(bool guild = false)
+    public bool OpenBank(bool openGuildBank = false)
     {
         if (IsBusy())
         {
             return false;
         }
 
-        if (guild && Guild == null)
+        if (openGuildBank)
         {
-            return false;
+            var guild = Guild;
+            if (guild == default)
+            {
+                return false;
+            }
+
+            BankInterface = new BankInterface<GuildBankSlot>(
+                this,
+                guild.Bank,
+                guild
+            );
+        }
+        else
+        {
+            BankInterface = new BankInterface<BankSlot>(this, Bank);
         }
 
-        var bankItems = ((IEnumerable<Item>)Bank).ToList();
-
-        if (guild)
-        {
-            bankItems = ((IEnumerable<Item>)Guild.Bank).ToList();
-        }
-
-        BankInterface = new BankInterface(this, bankItems, guild ? Guild.Lock : new object(), guild ? Guild : null, guild ? Guild.BankSlotsCount : Options.Instance.PlayerOpts.InitialBankslots);
-
-        GuildBank = guild;
+        GuildBank = openGuildBank;
         BankInterface.SendOpenBank();
 
         return true;
@@ -5289,7 +5291,7 @@ public partial class Player : Entity
             return false;
         }
 
-        for (var i = 0; i < Options.MaxPlayerSkills; i++)
+        for (var i = 0; i < Options.Instance.PlayerOpts.MaxSpells; i++)
         {
             if (Spells[i].SpellId == Guid.Empty)
             {
@@ -5311,7 +5313,7 @@ public partial class Player : Entity
 
     public bool KnowsSpell(Guid spellId)
     {
-        for (var i = 0; i < Options.MaxPlayerSkills; i++)
+        for (var i = 0; i < Options.Instance.PlayerOpts.MaxSpells; i++)
         {
             if (Spells[i].SpellId == spellId)
             {
@@ -5324,7 +5326,7 @@ public partial class Player : Entity
 
     public int FindSpell(Guid spellId)
     {
-        for (var i = 0; i < Options.MaxPlayerSkills; i++)
+        for (var i = 0; i < Options.Instance.PlayerOpts.MaxSpells; i++)
         {
             if (Spells[i].SpellId == spellId)
             {
@@ -7653,7 +7655,7 @@ public partial class Player : Entity
 
     [NotMapped] public bool InBank => BankInterface != null;
 
-    [NotMapped][JsonIgnore] public BankInterface BankInterface;
+    [NotMapped, JsonIgnore] public IBankInterface BankInterface;
 
     #endregion
 

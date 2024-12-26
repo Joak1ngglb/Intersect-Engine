@@ -130,7 +130,7 @@ public partial class Player : Entity, IPlayer
 
     string IPlayer.GuildName => Guild ?? string.Empty;
 
-    public string Nation { get; set; }
+    public string? Nation { get; set; }
 
     string IPlayer.NationName => Nation ?? string.Empty;
 
@@ -2606,59 +2606,58 @@ public partial class Player : Entity, IPlayer
             );
     }
 
-    public virtual void DrawNationName(Color textColor, Color borderColor = null, Color backgroundColor = null)
+    public virtual void DrawNationName(Color textColor, Color? borderColor = default, Color? backgroundColor = default)
     {
-        if (HideName || Nation == null || Nation.Trim().Length == 0 || !Options.Instance.Nation.ShowNationNameTagsOverMembers)
+        if (Graphics.Renderer == default || Globals.Me == default)
         {
             return;
         }
 
-        if (borderColor == null)
-        {
-            borderColor = Color.Transparent;
-        }
-
-        if (backgroundColor == null)
-        {
-            backgroundColor = Color.Transparent;
-        }
-
-        //Check for stealth amoungst status effects.
-        for (var n = 0; n < Status.Count; n++)
-        {
-            //If unit is stealthed, don't render unless the entity is the player.
-            if (Status[n].Type == SpellEffect.Stealth)
-            {
-                if (this != Globals.Me && !(this is Player player && Globals.Me.IsInMyParty(player)))
-                {
-                    return;
-                }
-            }
-        }
-
-        var map = MapInstance;
-        if (map == null)
+        var nationLabel = Nation?.Trim();
+        if (!ShouldDrawName || string.IsNullOrWhiteSpace(nationLabel) || !Options.Instance.Nation.ShowNationNameTagsOverMembers)
         {
             return;
         }
 
-        var textSize = Graphics.Renderer.MeasureText(Nation, Graphics.EntityNameFont, 1);
+        if (IsStealthed && !IsInMyParty(Globals.Me))
+        {
+            // Do not render if the party is stealthed and not in the local player's party
+            return;
+        }
+
+        if (MapInstance == default)
+        {
+            return;
+        }
+
+        var textSize = Graphics.Renderer.MeasureText(nationLabel, Graphics.EntityNameFont, 1);
 
         var x = (int)Math.Ceiling(Origin.X);
-        var y = GetLabelLocation(LabelType.Nation);
+        var y = GetLabelLocation(LabelType.Guild);
 
+        backgroundColor ??= Color.Transparent;
         if (backgroundColor != Color.Transparent)
         {
             Graphics.DrawGameTexture(
-                Graphics.Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1),
-                new FloatRect(x - textSize.X / 2f - 4, y, textSize.X + 8, textSize.Y), backgroundColor
+                Graphics.Renderer.GetWhiteTexture(),
+                new FloatRect(0, 0, 1, 1),
+                new FloatRect(x - textSize.X / 2f - 4, y, textSize.X + 8, textSize.Y),
+                backgroundColor
             );
         }
 
+        borderColor ??= Color.Transparent;
         Graphics.Renderer.DrawString(
-            Nation, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f), (int)y, 1,
-            Color.Cyan, true, null, Color.FromArgb(borderColor.ToArgb())
-           );
+            nationLabel,
+            Graphics.EntityNameFont,
+            x - (int)Math.Ceiling(textSize.X / 2f),
+            (int)y,
+            1,
+            Color.FromArgb(textColor.ToArgb()),
+            true,
+            default,
+            Color.FromArgb(borderColor.ToArgb())
+        );
     }
 
     protected override bool ShouldDrawHpBar

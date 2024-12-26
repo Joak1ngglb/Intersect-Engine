@@ -78,7 +78,7 @@ namespace Intersect.Server.Web.RestApi.Routes.V1
         [HttpPost("{nationId:guid}/name")]
         public object ChangeName(Guid nationId, [FromBody] NameChange change)
         {
-            if (!FieldChecking.IsValidNationName(change.Name, Strings.Regex.nationname))
+            if (!FieldChecking.IsValidNationName(change.Name, Strings.Regex.NationName))
             {
                 return BadRequest($@"Invalid nation name.");
             }

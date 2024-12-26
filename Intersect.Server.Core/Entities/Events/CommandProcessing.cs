@@ -1597,7 +1597,7 @@ public static partial class CommandProcessing
             var nname = player.GetVariable(playerVariable.Id)?.Value.String?.Trim();
 
             // Can we use this name according to our configuration?
-            if (nname != null && FieldChecking.IsValidNationName(nname, Strings.Regex.nationname))
+            if (nname != null && FieldChecking.IsValidNationName(nname, Strings.Regex.NationName))
             {
                 // Is the name already in use?
                 if (Nation.GetNation(nname) == null)
@@ -1610,7 +1610,7 @@ public static partial class CommandProcessing
                         if (nation != null)
                         {
                             // Send them a welcome message!
-                            PacketSender.SendChatMsg(player, Strings.Nations.Welcome.ToString(nname), ChatMessageType.Nation, CustomColors.Alerts.Success);
+                            PacketSender.SendChatMsg(player, Strings.Nations.NationWelcome.ToString(nname), ChatMessageType.Nation, CustomColors.Alerts.Success);
 
                             // Denote that we were successful.
                             success = true;
@@ -1632,7 +1632,7 @@ public static partial class CommandProcessing
                         if (player.Nation != null)
                         {
                             // Send them a welcome message!
-                            PacketSender.SendChatMsg(player, Strings.Nations.Welcome.ToString(nname), ChatMessageType.Nation, CustomColors.Alerts.Success);
+                            PacketSender.SendChatMsg(player, Strings.Nations.NationWelcome.ToString(nname), ChatMessageType.Nation, CustomColors.Alerts.Success);
 
                             // Denote that we were successful.
                             success = true;
@@ -1648,13 +1648,13 @@ public static partial class CommandProcessing
             else
             {
                 // Let our player know they need to adjust their name.
-                PacketSender.SendChatMsg(player, Strings.Nations.VariableInvalid, ChatMessageType.Nation, CustomColors.Alerts.Error);
+                PacketSender.SendChatMsg(player, Strings.Nations.NationVariableInvalid, ChatMessageType.Nation, CustomColors.Alerts.Error);
             }
         }
         else
         {
             // Notify the user that something went wrong, the user really shouldn't see this.. Assuming the creator set up his events properly.
-            PacketSender.SendChatMsg(player, Strings.Nations.VariableNotString, ChatMessageType.Nation, CustomColors.Alerts.Error);
+            PacketSender.SendChatMsg(player, Strings.Nations.NationVariableNotString, ChatMessageType.Nation, CustomColors.Alerts.Error);
         }
 
         List<EventCommand> newCommandList = null;
@@ -1871,7 +1871,7 @@ public static partial class CommandProcessing
             {
                 { Strings.Events.PlayerNameCommand, player.Name },
                 { Strings.Events.PlayerGuildCommand, player.Guild?.Name ?? "" },
-                { Strings.Events.playernationcommand, player.Nation?.Name ?? "" },
+                { Strings.Events.PlayerNationCommand, player.Nation?.Name ?? "" },
                 { Strings.Events.TimeHour, Time.Hour },
                 { Strings.Events.MilitaryHour, Time.MilitaryHour },
                 { Strings.Events.TimeMinute, Time.Minute },

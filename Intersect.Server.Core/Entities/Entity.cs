@@ -1556,6 +1556,16 @@ public abstract partial class Entity : IEntity
             {
                 return;
             }
+
+            if (player.IsInGuild && targetPlayer?.Guild?.Id == player.Guild.Id)
+            {
+                return;
+            }
+
+            if (player.IsInNation && targetPlayer?.Nation?.Id == player.Nation.Id)
+            {
+                return;
+            }
         }
 
         if (parentSpell == null)
@@ -1910,6 +1920,17 @@ public abstract partial class Entity : IEntity
             {
                 return;
             }
+
+            if (!Options.Instance.Guild.AllowGuildMemberPvp && player.IsInGuild && targetPlayer?.Guild?.Id == player.Guild.Id)
+            {
+                return;
+            }
+
+            if (!Options.Instance.Nation.AllowNationMemberPvp && player.IsInNation && targetPlayer?.Nation?.Id == player.Nation.Id)
+            {
+                return;
+            }
+
 
             //Check if either the attacker or the defender is in a "safe zone" (Only apply if combat is PVP)
             //Player interaction common events

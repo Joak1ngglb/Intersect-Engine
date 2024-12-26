@@ -229,9 +229,6 @@ public partial class Player : Entity
 
     [NotMapped] public Guid NationId => DbNation?.Id ?? default;
 
-    /// <summary>
-    /// This field is used for EF database fields only and should never be assigned to or used, instead the nation instance will be assigned to CachedNation above
-    /// </summary>
     [JsonIgnore] public Nation DbNation { get; set; }
 
     public DateTime NationJoinDate { get; set; }
@@ -5455,12 +5452,12 @@ public partial class Player : Entity
             return true;
         }
 
-        if (IsInGuild && otherPlayer?.Guild?.Id == Guild.Id)
+        if (!Options.Instance.Guild.AllowGuildMemberPvp && IsInGuild && otherPlayer?.Guild?.Id == Guild.Id)
         {
             return true;
         }
 
-        if (IsInNation && otherPlayer?.Nation?.Id == Nation.Id)
+        if (!Options.Instance.Nation.AllowNationMemberPvp && IsInNation && otherPlayer?.Nation?.Id == Nation.Id)
         {
             return true;
         }

@@ -1029,6 +1029,9 @@ namespace Intersect.Editor.Forms.Editors.Events
             createNationTreeNode.Tag = "57";
             guildsTreeNode.Name = "guilds";
             guildsTreeNode.Text = "Guilds";
+            createNationTreeNode.Name = "createorjoinnation";
+            createNationTreeNode.Tag = (int)EventCommandType.CreateOrJoinNation;
+            createNationTreeNode.Text = "Create or Join Nation";
             nationTreeNode.Name = "nations";
             nationTreeNode.Text = "Nations";
             lstCommands.Nodes.AddRange(new TreeNode[] { dialogueTreeNode, logicFlowTreeNode, playerControlTreeNode, movementTreeNode, specialEffectsTreeNode, questControlTreeNode, etcTreeNode, shopAndBankTreeNode, guildsTreeNode, nationTreeNode });

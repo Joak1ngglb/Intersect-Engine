@@ -837,7 +837,7 @@ internal sealed partial class PacketHandler
                     break;
 
                 case 4:
-                    cmd = Strings.Nations.nationcmd;
+                    cmd = Strings.Nations.NationCommand;
                     break;
 
                 case 5: //admin
@@ -957,7 +957,7 @@ internal sealed partial class PacketHandler
             ChatHistory.LogMessage(player, msg.Trim(), ChatMessageType.Guild, player.Guild.Id);
 
         }
-        else if (cmd == Strings.Nations.nationcmd)
+        else if (cmd == Strings.Nations.NationCommand)
         {
             if (player.Nation == null)
             {
@@ -970,9 +970,8 @@ internal sealed partial class PacketHandler
                 return;
             }
 
-            PacketSender.SendNationMsg(player, Strings.Nations.nationchat.ToString(player.Name, msg), CustomColors.Chat.NationChat);
+            PacketSender.SendNationMsg(player, Strings.Nations.NationChat.ToString(player.Name, msg), CustomColors.Chat.NationChat);
             ChatHistory.LogMessage(player, msg.Trim(), ChatMessageType.Nation, player.Nation.Id);
-
         }
         else if (cmd == Strings.Chat.AnnouncementCommand)
         {
@@ -2561,7 +2560,6 @@ internal sealed partial class PacketHandler
             character.LoadNation();
             if (character.Nation != null)
             {
-                PacketSender.SendError(client, Strings.Nations.deletenationmember, Strings.General.NoticeError);
                 return;
             }
 

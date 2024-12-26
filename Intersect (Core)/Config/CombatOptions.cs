@@ -1,4 +1,4 @@
-﻿namespace Intersect.Config;
+namespace Intersect.Config;
 
 public partial class CombatOptions
 {
@@ -68,6 +68,7 @@ public partial class CombatOptions
     /// If enabled, this allows entities to turn around while casting
     /// </summary>
     public bool EnableTurnAroundWhileCasting = false;
+
 
     /// <summary>
     /// If enabled, the target window will be shown to players whenever they target an entity

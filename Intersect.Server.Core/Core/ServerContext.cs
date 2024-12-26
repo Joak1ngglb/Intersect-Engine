@@ -145,6 +145,17 @@ internal partial class ServerContext : ApplicationContext<ServerContext, ServerC
 
             Task.WaitAll(savingTasks.ToArray());
 
+            Log.Info("Saving loaded nations....");
+
+            savingTasks.Clear();
+            //Should we send out nation updates?
+            foreach (var nation in Nation.Nations)
+            {
+                savingTasks.Add(Task.Run(() => nation.Value.Save()));
+            }
+
+            Task.WaitAll(savingTasks.ToArray());
+
             // TODO: This probably also needs to not be a global, but will require more work to clean up.
             Log.Info("Online users/players saved." + $" ({stopwatch.ElapsedMilliseconds}ms)");
 

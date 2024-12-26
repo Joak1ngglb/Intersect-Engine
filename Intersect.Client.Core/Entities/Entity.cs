@@ -996,6 +996,8 @@ public partial class Entity : IEntity
 
                     return Globals.Database.GuildMemberOverheadInfo && me.IsGuildMate(player);
 
+                    return Globals.Database.NationMemberOverheadInfo && me.IsNationMate(player);
+
                 default:
                     return IsHovered || Globals.Database.NpcOverheadInfo;
             }
@@ -1639,12 +1641,19 @@ public partial class Entity : IEntity
                         break;
                     }
 
-                    var guildSize = Graphics.Renderer.MeasureText(player.Guild, Graphics.EntityNameFont, 1);
-                    y -= 2 + guildSize.Y;
+                    if (player.Nation == null)
+                    {
+                        var guildSize = Graphics.Renderer.MeasureText(player.Guild, Graphics.EntityNameFont, 1);
+                        y -= 2 + guildSize.Y;
+                    }
+                    else
+                    {
+                        var guildSize = Graphics.Renderer.MeasureText(player.Guild, Graphics.EntityNameFont, 1);
+                        y -= 18 + guildSize.Y;
+                    }
                 }
 
                 break;
-
             case LabelType.Nation:
                 if (this is Player nationplayer)
                 {

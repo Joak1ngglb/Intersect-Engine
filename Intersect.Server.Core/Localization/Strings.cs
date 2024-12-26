@@ -583,7 +583,7 @@ public static partial class Strings
         public readonly LocalizedString PlayerGuildCommand = @"\pg";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString playernationcommand = @"\pnat";
+        public readonly LocalizedString PlayerNationCommand = @"\pnat";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString PlayerNameCommand = @"\pn";
@@ -754,34 +754,25 @@ public static partial class Strings
     public sealed partial class NationsNamespace : LocaleNamespace
     {
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString VariableNotString = @"The given nation name does not contain any text.";
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString VariableInvalid = @"Invalid nation name!";
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString VariableNoText = @"A nation name can not be empty!";
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString NationNameInUse = @"Your chosen nation name is already in use!";
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString AlreadyInNation = @"You are already in a nation!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString Welcome = @"Welcome to {00}!";
+        public readonly LocalizedString NationChat = @"[{00}] {01}: {02}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NationCommand = @"/nation";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString NotInNation = @"You are not in a nation.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString deletenationmember = @"You can not delete a character that is a nation {00}";
+        public readonly LocalizedString NationVariableInvalid = @"Invalid nation name!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString nationcmd = @"/nation";
+        public readonly LocalizedString NationVariableNotString = @"The given nation name does not contain any text.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString nationchat = @"{01}: {02}";
+        public readonly LocalizedString NationWelcome = @"Welcome to {00}!";
 
     }
 
@@ -1254,7 +1245,7 @@ public static partial class Strings
         public readonly LocalizedString GuildName = @"^[a-zA-Z0-9 ]{3,20}$";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString nationname = @"^[a-zA-Z0-9 ]{3,20}$";
+        public readonly LocalizedString NationName = @"^[a-zA-Z0-9 ]{3,20}$";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString Username = @"^[a-zA-Z0-9]{2,20}$";

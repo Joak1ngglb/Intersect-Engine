@@ -77,7 +77,7 @@ namespace Intersect.Server.Database.PlayerData.Players
         {
             name = name.Trim();
 
-            if (creator != null && FieldChecking.IsValidNationName(name, Strings.Regex.nationname))
+            if (creator != null && FieldChecking.IsValidNationName(name, Strings.Regex.NationName))
             {
                 using (var context = DbInterface.CreatePlayerContext(readOnly: false))
                 {
@@ -320,7 +320,7 @@ namespace Intersect.Server.Database.PlayerData.Players
         /// <param name="name"></param>
         public bool Rename(string name)
         {
-            if (NationExists(name) || !FieldChecking.IsValidNationName(name, Strings.Regex.nationname))
+            if (NationExists(name) || !FieldChecking.IsValidNationName(name, Strings.Regex.NationName))
             {
                 return false;
             }

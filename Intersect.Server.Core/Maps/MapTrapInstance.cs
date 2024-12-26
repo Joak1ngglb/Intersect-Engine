@@ -50,7 +50,7 @@ public partial class MapTrapInstance
                 if (entity is Player entityPlayer && Owner is Player ownerPlayer)
                 {
                     //Don't detonate on yourself and party members on non-friendly spells!
-                    if (Owner == entity || ownerPlayer.InParty(entityPlayer))
+                    if (Owner == entity || ownerPlayer.InParty(entityPlayer) || (!Options.Instance.Nation.AllowNationMemberPvp && ownerPlayer.Nation != null && ownerPlayer.Nation == entityPlayer.Nation) || (!Options.Instance.Guild.AllowGuildMemberPvp && ownerPlayer.Guild != null && ownerPlayer.Guild == entityPlayer.Guild))
                     {
                         if (!ParentSpell.Combat.Friendly)
                         {

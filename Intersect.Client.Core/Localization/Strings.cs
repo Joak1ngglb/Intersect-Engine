@@ -1988,10 +1988,10 @@ public static partial class Strings
         public static LocalizedString ShowGuildOverheadInformation = @"Show guild member overhead information";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString ShowNationOverheadHpBar = @"Show nation overhead HP bar";
+        public static LocalizedString ShowNationOverheadHpBar = @"Show nation member overhead HP bar";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString ShowNationOverheadInformation = @"Show nation overhead information";
+        public static LocalizedString ShowNationOverheadInformation = @"Show nation member overhead information";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString ShowHealthAsPercentage = @"Show health as percentage";

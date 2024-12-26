@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
 namespace Intersect.Utilities;
 
@@ -15,6 +15,8 @@ public static partial class FieldChecking
     public const string PATTERN_USERNAME = @"^[a-zA-Z0-9]{2,24}$";
 
     public const string PATTERN_GUILDNAME = @"^[a-zA-Z0-9 ]{3,20}$";
+
+    public const string PATTERN_NATIONNAME = @"^[a-zA-Z0-9 ]{3,20}$";
 
     public static bool IsWellformedEmailAddress(string email, string emailRegex)
     {
@@ -105,6 +107,29 @@ public static partial class FieldChecking
         catch (ArgumentException)
         {
             return Regex.IsMatch(guildName.Trim(), PATTERN_GUILDNAME);
+        }
+    }
+
+    public static bool IsValidNationName(string nationName, string nationNameRegex)
+    {
+        if (nationName == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var customPattern = nationNameRegex;
+            if (string.IsNullOrEmpty(customPattern))
+            {
+                customPattern = PATTERN_NATIONNAME;
+            }
+
+            return Regex.IsMatch(nationName.Trim(), customPattern);
+        }
+        catch (ArgumentException)
+        {
+            return Regex.IsMatch(nationName.Trim(), PATTERN_GUILDNAME);
         }
     }
 }

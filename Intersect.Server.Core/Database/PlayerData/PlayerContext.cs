@@ -1,3 +1,4 @@
+using System;
 using Intersect.Extensions;
 using Intersect.Server.Database.PlayerData.Api;
 using Intersect.Server.Database.PlayerData.Migrations;
@@ -46,6 +47,8 @@ public abstract partial class PlayerContext : IntersectDbContext<PlayerContext>,
     public DbSet<GuildBankSlot> Guild_Bank { get; set; }
 
     public DbSet<GuildVariable> Guild_Variables { get; set; }
+
+    public DbSet<Nation> Nations { get; set; }
 
     public DbSet<UserVariable> User_Variables { get; set; }
 

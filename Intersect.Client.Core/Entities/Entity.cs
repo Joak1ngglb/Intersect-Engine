@@ -989,6 +989,11 @@ public partial class Entity : IEntity
                         return true;
                     }
 
+                    if (Globals.Database.NationMemberOverheadInfo && me.IsNationMate(player))
+                    {
+                        return true;
+                    }
+
                     return Globals.Database.GuildMemberOverheadInfo && me.IsGuildMate(player);
 
                 default:
@@ -1638,6 +1643,29 @@ public partial class Entity : IEntity
                     y -= 2 + guildSize.Y;
                 }
 
+                break;
+
+            case LabelType.Nation:
+                if (this is Player nationplayer)
+                {
+                    // Do we have a header? If so, slightly change the position!
+                    if (string.IsNullOrWhiteSpace(HeaderLabel.Text))
+                    {
+                        y = GetLabelLocation(LabelType.Name);
+                    }
+                    else
+                    {
+                        y = GetLabelLocation(LabelType.Header);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(nationplayer.Nation))
+                    {
+                        break;
+                    }
+
+                    var nationSize = Graphics.Renderer.MeasureText(nationplayer.Nation, Graphics.EntityNameFont, 1);
+                    y -= 2 + nationSize.Y;
+                }
                 break;
         }
 

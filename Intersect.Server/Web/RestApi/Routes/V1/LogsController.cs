@@ -1,4 +1,4 @@
-﻿using Intersect.Enums;
+using Intersect.Enums;
 using Intersect.Server.Database;
 using Intersect.Server.Database.Logging.Entities;
 using Intersect.Server.Web.RestApi.Payloads;
@@ -23,6 +23,7 @@ namespace Intersect.Server.Web.RestApi.Routes.V1
             [FromQuery] Guid userId = default,
             [FromQuery] Guid playerId = default,
             [FromQuery] Guid guildId = default,
+            [FromQuery] Guid nationId = default,
             [FromQuery] string search = null,
             [FromQuery] SortDirection sortDirection = SortDirection.Ascending
         )
@@ -477,6 +478,57 @@ namespace Intersect.Server.Web.RestApi.Routes.V1
             }
         }
 
+        [HttpGet("nation/{nationId:guid}/activity")]
+        public DataPage<NationHistory> ListNationActivity(
+            Guid nationId,
+            [FromQuery] int page = 0,
+            [FromQuery] int pageSize = 0,
+            [FromQuery] int limit = PAGE_SIZE_MAX,
+            [FromQuery] SortDirection sortDirection = SortDirection.Ascending
+        )
+        {
+            page = Math.Max(page, 0);
+            pageSize = Math.Max(Math.Min(pageSize, 100), 5);
+            limit = Math.Max(Math.Min(limit, pageSize), 1);
+
+            using (var context = DbInterface.CreateLoggingContext())
+            {
+                var nationActivity = context.NationHistory.AsQueryable();
+
+                if (nationId != Guid.Empty)
+                {
+                    nationActivity = nationActivity.Where(m => m.NationId == nationId);
+                }
+
+                if (sortDirection == SortDirection.Ascending)
+                {
+                    nationActivity = nationActivity.OrderBy(m => m.TimeStamp);
+                }
+                else
+                {
+                    nationActivity = nationActivity.OrderByDescending(m => m.TimeStamp);
+                }
+
+                var values = nationActivity.Skip(page * pageSize).Take(pageSize).ToList();
+
+                PopulateNationActivityNames(values);
+
+                if (limit != pageSize)
+                {
+                    values = values.Take(limit).ToList();
+                }
+
+                return new DataPage<NationHistory>
+                {
+                    Total = nationActivity.Count(),
+                    Page = page,
+                    PageSize = pageSize,
+                    Count = values.Count,
+                    Values = values
+                };
+            }
+        }
+
         private void PopulateGuildActivityNames(List<GuildHistory> guildActivity)
         {
             var userIds = guildActivity.Where(m => m.UserId != Guid.Empty).GroupBy(m => m.UserId).Select(m => m.First().UserId).ToList();
@@ -506,6 +558,36 @@ namespace Intersect.Server.Web.RestApi.Routes.V1
                     if (players.ContainsKey(msg.InitiatorId))
                     {
                         msg.InitiatorName = players[msg.InitiatorId];
+                    }
+                }
+            }
+
+        }
+
+        private void PopulateNationActivityNames(List<NationHistory> nationActivity)
+        {
+            var userIds = nationActivity.Where(m => m.UserId != Guid.Empty).GroupBy(m => m.UserId).Select(m => m.First().UserId).ToList();
+            var playerIds = nationActivity.Where(m => m.PlayerId != Guid.Empty).GroupBy(m => m.PlayerId).Select(m => m.First().PlayerId).ToList();
+            var targetIds = nationActivity.Where(m => m.InitiatorId != Guid.Empty).GroupBy(m => m.InitiatorId).Select(m => m.First().InitiatorId).ToList();
+
+            var playerSet = new HashSet<Guid>(playerIds);
+            playerSet.UnionWith(targetIds);
+
+            using (var db = DbInterface.CreatePlayerContext(true))
+            {
+                var users = db.Users.Where(u => userIds.Contains(u.Id)).Select(u => new KeyValuePair<Guid, string>(u.Id, u.Name)).ToDictionary(p => p.Key, p => p.Value);
+                var players = db.Players.Where(p => playerSet.Contains(p.Id)).Select(p => new KeyValuePair<Guid, string>(p.Id, p.Name)).ToDictionary(p => p.Key, p => p.Value);
+
+                foreach (var msg in nationActivity)
+                {
+                    if (users.ContainsKey(msg.UserId))
+                    {
+                        msg.Username = users[msg.UserId];
+                    }
+
+                    if (players.ContainsKey(msg.PlayerId))
+                    {
+                        msg.PlayerName = players[msg.PlayerId];
                     }
                 }
             }

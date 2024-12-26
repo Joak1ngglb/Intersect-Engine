@@ -1001,6 +1001,50 @@ public partial class SetGuildBankSlotsCommand : EventCommand
     public Guid VariableId { get; set; }
 }
 
+public partial class CreateOrJoinNationCommand : EventCommand
+{
+    //For Json Deserialization
+    public CreateOrJoinNationCommand()
+    {
+    }
+
+    public CreateOrJoinNationCommand(Dictionary<Guid, List<EventCommand>> commandLists)
+    {
+        for (var i = 0; i < BranchIds.Length; i++)
+        {
+            BranchIds[i] = Guid.NewGuid();
+            commandLists.Add(BranchIds[i], new List<EventCommand>());
+        }
+    }
+
+    public override EventCommandType Type { get; } = EventCommandType.CreateOrJoinNation;
+
+    public Guid VariableId { get; set; }
+
+    //Branch[0] is the event commands to execute when quest is started successfully, Branch[1] is for when it's not.
+    public Guid[] BranchIds { get; set; } = new Guid[2];
+
+    public override string GetCopyData(
+        Dictionary<Guid, List<EventCommand>> commandLists,
+        Dictionary<Guid, List<EventCommand>> copyLists
+    )
+    {
+        foreach (var branch in BranchIds)
+        {
+            if (branch != Guid.Empty && commandLists.ContainsKey(branch))
+            {
+                copyLists.Add(branch, commandLists[branch]);
+                foreach (var cmd in commandLists[branch])
+                {
+                    cmd.GetCopyData(commandLists, copyLists);
+                }
+            }
+        }
+
+        return base.GetCopyData(commandLists, copyLists);
+    }
+}
+
 public partial class ResetStatPointAllocationsCommand : EventCommand
 {
     public override EventCommandType Type { get; } = EventCommandType.ResetStatPointAllocations;
@@ -1017,6 +1061,8 @@ public partial class CastSpellOn : EventCommand
     public bool PartyMembers { get; set; }
 
     public bool GuildMembers { get; set; }
+
+    public bool NationMembers { get; set; }
 }
 
 public partial class ScreenFadeCommand : EventCommand

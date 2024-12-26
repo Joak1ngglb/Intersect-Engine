@@ -232,6 +232,11 @@ public enum EventCommandType
 
     //End Guilds
 
+    //Nations
+    CreateOrJoinNation,
+
+    //End Nations
+
     //Reset Stats
     ResetStatPointAllocations,
 

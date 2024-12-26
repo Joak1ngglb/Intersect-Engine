@@ -648,6 +648,73 @@ public static partial class CommandPrinter
                         mCommandProperties.Add(clp);
 
                         break;
+
+                    case EventCommandType.CreateOrJoinNation:
+                        var nld = (CreateOrJoinNationCommand)commandList[i];
+                        lstEventCommands.Items.Add(
+                            indent +
+                            Strings.EventCommandList.linestart +
+                            GetCommandText((dynamic)commandList[i], map)
+                        );
+
+                        clp = new CommandListProperties
+                        {
+                            Editable = true,
+                            MyIndex = i,
+                            MyList = commandList,
+                            Cmd = commandList[i],
+                            Type = commandList[i].Type
+                        };
+
+                        mCommandProperties.Add(clp);
+
+                        //When the nation is created successfully:
+                        lstEventCommands.Items.Add(indent + "      : " + Strings.EventCommandList.nationcreatedorjoined);
+                        clp = new CommandListProperties
+                        {
+                            Editable = false,
+                            MyIndex = i,
+                            MyList = commandList,
+                            Type = commandList[i].Type,
+                            Cmd = commandList[i]
+                        };
+
+                        mCommandProperties.Add(clp);
+                        PrintCommandList(
+                            page, page.CommandLists[nld.BranchIds[0]], indent + "          ", lstEventCommands,
+                            mCommandProperties, map
+                        );
+
+                        //When the nation was not created for any reason:
+                        lstEventCommands.Items.Add(indent + "      : " + Strings.EventCommandList.nationfailed);
+                        clp = new CommandListProperties
+                        {
+                            Editable = false,
+                            MyIndex = i,
+                            MyList = commandList,
+                            Type = commandList[i].Type,
+                            Cmd = commandList[i]
+                        };
+
+                        mCommandProperties.Add(clp);
+                        PrintCommandList(
+                            page, page.CommandLists[nld.BranchIds[1]], indent + "          ", lstEventCommands,
+                            mCommandProperties, map
+                        );
+
+                        lstEventCommands.Items.Add(indent + "      : " + Strings.EventCommandList.endcreateorjoinnation);
+                        clp = new CommandListProperties
+                        {
+                            Editable = false,
+                            MyIndex = i,
+                            MyList = commandList,
+                            Type = commandList[i].Type,
+                            Cmd = commandList[i]
+                        };
+
+                        mCommandProperties.Add(clp);
+
+                        break;
                 }
             }
         }
@@ -1303,6 +1370,11 @@ public static partial class CommandPrinter
     private static string GetCommandText(SetGuildBankSlotsCommand command, MapInstance map)
     {
         return Strings.EventCommandList.setguildbankslots;
+    }
+
+    private static string GetCommandText(CreateOrJoinNationCommand command, MapInstance map)
+    {
+        return Strings.EventCommandList.createorjoinnation.ToString(PlayerVariableBase.GetName(command.VariableId));
     }
 
     private static string GetCommandText(ResetStatPointAllocationsCommand command, MapInstance map)

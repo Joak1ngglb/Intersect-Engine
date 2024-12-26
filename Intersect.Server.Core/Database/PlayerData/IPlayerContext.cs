@@ -1,4 +1,5 @@
-﻿using Intersect.Server.Database.PlayerData.Api;
+using System;
+using Intersect.Server.Database.PlayerData.Api;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Server.Entities;
 
@@ -37,6 +38,8 @@ public interface IPlayerContext : IDbContext
     DbSet<BagSlot> Bag_Items { get; set; }
 
     DbSet<Guild> Guilds { get; set; }
+
+    DbSet<Nation> Nations { get; set; }
 
     DbSet<GuildBankSlot> Guild_Bank { get; set; }
 }

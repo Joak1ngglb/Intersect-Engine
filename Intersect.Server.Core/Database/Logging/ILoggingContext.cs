@@ -1,4 +1,4 @@
-﻿using Intersect.Server.Database.Logging.Entities;
+using Intersect.Server.Database.Logging.Entities;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +15,8 @@ public interface ILoggingContext : IDbContext, IDisposable
     DbSet<TradeHistory> TradeHistory { get; }
     
     DbSet<GuildHistory> GuildHistory { get; }
+
+    DbSet<NationHistory> NationHistory { get; }
 
     void Seed();
 }

@@ -221,6 +221,22 @@ public partial class Player : Entity
     [NotMapped] public bool GuildBank;
 
     /// <summary>
+    /// References the in-memory copy of the nation for this player, reference this instead of the Nation property below.
+    /// </summary>
+    [NotMapped][JsonIgnore] public Nation Nation { get; set; }
+
+    [NotMapped][JsonIgnore] public bool IsInNation => Nation != null;
+
+    [NotMapped] public Guid NationId => DbNation?.Id ?? default;
+
+    /// <summary>
+    /// This field is used for EF database fields only and should never be assigned to or used, instead the nation instance will be assigned to CachedNation above
+    /// </summary>
+    [JsonIgnore] public Nation DbNation { get; set; }
+
+    public DateTime NationJoinDate { get; set; }
+
+    /// <summary>
     /// Used to tell events when to continue when dealing with fade in/out events and knowing when they're complete on the client's end
     /// </summary>
     [NotMapped, JsonIgnore]
@@ -345,6 +361,7 @@ public partial class Player : Entity
 
         LoadFriends();
         LoadGuild();
+        LoadNation();
 
         //Upon Sign In Remove Any Items/Spells that have been deleted
         foreach (var itm in Items)
@@ -376,6 +393,9 @@ public partial class Player : Entity
 
         //Send guild list update to all members when coming online
         Guild?.UpdateMemberList();
+
+        //Send nation list update to all members when coming online
+        Nation?.UpdateMemberList();
 
         // If we are configured to do so, send a notification of us logging in to all online friends.
         if (Options.Player.EnableFriendLoginNotifications)
@@ -523,6 +543,10 @@ public partial class Player : Entity
         Guild?.UpdateMemberList();
         Guild = null;
         GuildBank = false;
+
+        //Send nation update to all members when logging out
+        Nation?.UpdateMemberList();
+        Nation = null;
 
         //If our client has disconnected or logged out but we have kept the user logged in due to being in combat then we should try to logout the user now
         if (Client == null)
@@ -1007,6 +1031,7 @@ public partial class Player : Entity
 
         pkt.Guild = Guild?.Name;
         pkt.GuildRank = GuildRank;
+        pkt.Nation = Nation?.Name;
 
         return pkt;
     }
@@ -1692,7 +1717,7 @@ public partial class Player : Entity
         var friendly = spell?.Combat != null && spell.Combat.Friendly;
         if (entity is Player player)
         {
-            if (player.InParty(this) || this == player || (!Options.Instance.Guild.AllowGuildMemberPvp && friendly != (player.Guild != null && player.Guild == this.Guild)))
+            if (player.InParty(this) || this == player || (!Options.Instance.Guild.AllowGuildMemberPvp && friendly != (player.Guild != null && player.Guild == this.Guild)) || (!Options.Instance.Nation.AllowNationMemberPvp && friendly != (player.Nation != null && player.Nation == this.Nation)))
             {
                 return friendly;
             }
@@ -5431,6 +5456,11 @@ public partial class Player : Entity
         }
 
         if (IsInGuild && otherPlayer?.Guild?.Id == Guild.Id)
+        {
+            return true;
+        }
+
+        if (IsInNation && otherPlayer?.Nation?.Id == Nation.Id)
         {
             return true;
         }

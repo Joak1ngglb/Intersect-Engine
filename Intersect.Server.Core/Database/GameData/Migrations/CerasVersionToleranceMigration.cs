@@ -1,4 +1,4 @@
-﻿using Intersect.Compression;
+using Intersect.Compression;
 using Intersect.Enums;
 using Intersect.GameObjects.Maps;
 using Intersect.Network;
@@ -241,6 +241,8 @@ public partial class CerasVersionToleranceMigration
         public Guid ItemId { get; set; }
 
         public int Quantity { get; set; }
+
+        public int MinQuantity { get; set; } = 1;
 
     }
 

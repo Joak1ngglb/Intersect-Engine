@@ -6,10 +6,12 @@ using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.General;
 using Intersect.Client.Maps;
+using Intersect.Client.Utilities;
 using Intersect.Configuration;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.Utilities;
+using MathHelper = Intersect.Utilities.MathHelper;
 
 namespace Intersect.Client.Core;
 
@@ -26,6 +28,11 @@ public static partial class Graphics
     public static GameFont? ChatBubbleFont;
 
     private static FloatRect _currentView;
+
+    private static long _lastEntityPulseColorUpdate;
+
+    private static float _entityColorPulseRatio;
+    public static Color OriginalColor { get; set; } = new Color(255, 255, 255, 255);
 
     public static FloatRect CurrentView
     {
@@ -341,6 +348,16 @@ public static partial class Graphics
                     Globals.OnGameDraw(DrawStates.AfterEntity, entity, deltaTime);
 
                     EntitiesDrawn++;
+
+                    // Calculate pulsating color: adjusts denominator to change speed of pulsation.
+                    var currentTime = Timing.Global.Milliseconds;
+                    if ((currentTime - _lastEntityPulseColorUpdate) >= 50) // Update every 50ms.
+                    {
+                        _entityColorPulseRatio = (float)(Math.Sin(2 * Math.PI * (currentTime / 1000.0)) + 1) / 2;
+                        _lastEntityPulseColorUpdate = currentTime;
+                    }
+
+                    entity.Color = ColorHelper.ColorInterpolate(Color.Red, OriginalColor, _entityColorPulseRatio);
                 }
 
                 if (x == 0 && y > 0 && y % Options.MapHeight == 0)

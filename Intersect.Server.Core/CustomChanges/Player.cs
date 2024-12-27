@@ -3,47 +3,42 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Intersect.Server.Networking;
+using Intersect.Enums;
+
 namespace Intersect.Server.Entities
 {
     public partial class Player : Entity
     {
-        /// <summary>
-        /// Calcula los puntos de experiencia modificados en función de la diferencia de niveles entre el jugador y el enemigo.
-        /// </summary>
-        /// <param name="enemyLevel">El nivel del enemigo.</param>
-        /// <param name="baseExp">Los puntos de experiencia base ganados.</param>
-        /// <param name="playerLevel">El nivel del jugador (opcional, con un valor predeterminado de 0).</param>
-        /// <returns>Los puntos de experiencia modificados.</returns>
+        private Dictionary<string, DateTime> recentMessages = new Dictionary<string, DateTime>();
+        private static readonly TimeSpan messageCooldown = TimeSpan.FromSeconds(120); // Ajusta el intervalo de tiempo según sea necesario
+
         public long ExpModifiedByLevel(int enemyLevel, long baseExp, int playerLevel = 0)
         {
-            // Calcula la diferencia de niveles entre el jugador y el enemigo.
             int levelDiff = playerLevel == 0 ? Level - enemyLevel : playerLevel - enemyLevel;
-            // Inicializa el multiplicador de experiencia como 1.0 (sin modificación).
             float expMultiplier = 1.0f;
             int reductionPercentage = 0;
-            // Aplica modificadores basados en la diferencia de niveles.
+
             if (levelDiff >= 4 && levelDiff < 6)
             {
-                expMultiplier = 0.8f; // Reducción del 20%
+                expMultiplier = 0.8f;
                 reductionPercentage = 20;
             }
             else if (levelDiff >= 6 && levelDiff < 10)
             {
-                expMultiplier = 0.6f; // Reducción del 40%
+                expMultiplier = 0.6f;
                 reductionPercentage = 40;
             }
             else if (levelDiff >= 10)
             {
-                expMultiplier = 0.2f; // Reducción del 80%
+                expMultiplier = 0.2f;
                 reductionPercentage = 80;
             }
-            // Calcula la experiencia modificada.
+
             long modifiedExp = (long)(baseExp * expMultiplier);
 
-            // Mostrar un mensaje al jugador sobre la experiencia obtenida y la reducción aplicada.
             ShowExpGainMessage(baseExp, modifiedExp, reductionPercentage);
 
-            // Mostrar un mensaje si el jugador está matando enemigos de nivel mucho menor.
             if (levelDiff >= 4)
             {
                 ShowLowLevelKillMessage();
@@ -51,46 +46,46 @@ namespace Intersect.Server.Entities
 
             return modifiedExp;
         }
-        /// <summary>
-        /// Muestra un mensaje al jugador sobre la experiencia ganada y el porcentaje reducido.
-        /// </summary>
+
         private void ShowExpGainMessage(long baseExp, long modifiedExp, int reductionPercentage)
         {
-            string message = reductionPercentage > 0
-                ? $"Has ganado {modifiedExp} puntos de experiencia (reducción del {reductionPercentage}% por diferencia de nivel)."
-                : $"Has ganado {modifiedExp} puntos de experiencia.";
+            string message = $"You have won only {modifiedExp} experience points";
+            if (reductionPercentage > 0)
+            {
+                message += $" (reduction of {reductionPercentage}% by level difference).";
+            }
             SendMessageToPlayer(message, MessageType.Info);
         }
 
-        /// <summary>
-        /// Muestra un mensaje al jugador indicando que está matando enemigos de menor nivel.
-        /// </summary>
         private void ShowLowLevelKillMessage()
         {
-            string message = "¡Estás matando enemigos de menor nivel que el tuyo! Considera enfrentarte a desafíos más adecuados.";
-            SendMessageToPlayer(message, MessageType.Warning);
+            SendMessageToPlayer("You are killing monsters that are much weaker than you.", MessageType.Warning);
         }
 
-        /// <summary>
-        /// Envía un mensaje al jugador.
-        /// </summary>
-        /// <param name="message">El mensaje a enviar.</param>
-        /// <param name="type">El tipo de mensaje (por ejemplo, advertencia, información, etc.).</param>
         private void SendMessageToPlayer(string message, MessageType type)
         {
-            // Implementa aquí la lógica para enviar el mensaje al jugador.
-            // Esto puede depender del sistema de mensajería de tu juego.
-            Console.WriteLine($"[{type}] {message}");
+            if (recentMessages.ContainsKey(message))
+            {
+                // Si el mensaje ya ha sido enviado recientemente, verifica el tiempo transcurrido
+                if ((DateTime.Now - recentMessages[message]) < messageCooldown)
+                {
+                    // Si el tiempo transcurrido es menor que el cooldown, no enviar el mensaje
+                    return;
+                }
+            }
+
+            // Actualiza el diccionario con el tiempo actual
+            recentMessages[message] = DateTime.Now;
+
+            // Envía el mensaje al jugador
+            PacketSender.SendChatMsg(this, message, (ChatMessageType)type);
         }
     }
 
-    /// <summary>
-    /// Enumeración para los tipos de mensajes.
-    /// </summary>
     public enum MessageType
     {
-        Info,
         Warning,
-        Error
+        Error,
+        Info
     }
 }

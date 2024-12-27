@@ -1,8 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Intersect.Server.Networking;
 using Intersect.Enums;
 
@@ -11,7 +8,7 @@ namespace Intersect.Server.Entities
     public partial class Player : Entity
     {
         private Dictionary<string, DateTime> recentMessages = new Dictionary<string, DateTime>();
-        private static readonly TimeSpan messageCooldown = TimeSpan.FromSeconds(120); // Ajusta el intervalo de tiempo según sea necesario
+        private static readonly TimeSpan messageCooldown = TimeSpan.FromSeconds(120);
 
         public long ExpModifiedByLevel(int enemyLevel, long baseExp, int playerLevel = 0)
         {
@@ -36,13 +33,7 @@ namespace Intersect.Server.Entities
             }
 
             long modifiedExp = (long)(baseExp * expMultiplier);
-
             ShowExpGainMessage(baseExp, modifiedExp, reductionPercentage);
-
-            if (levelDiff >= 4)
-            {
-                ShowLowLevelKillMessage();
-            }
 
             return modifiedExp;
         }
@@ -57,27 +48,17 @@ namespace Intersect.Server.Entities
             SendMessageToPlayer(message, MessageType.Info);
         }
 
-        private void ShowLowLevelKillMessage()
-        {
-            SendMessageToPlayer("You are killing monsters that are much weaker than you.", MessageType.Warning);
-        }
-
         private void SendMessageToPlayer(string message, MessageType type)
         {
             if (recentMessages.ContainsKey(message))
             {
-                // Si el mensaje ya ha sido enviado recientemente, verifica el tiempo transcurrido
                 if ((DateTime.Now - recentMessages[message]) < messageCooldown)
                 {
-                    // Si el tiempo transcurrido es menor que el cooldown, no enviar el mensaje
                     return;
                 }
             }
 
-            // Actualiza el diccionario con el tiempo actual
             recentMessages[message] = DateTime.Now;
-
-            // Envía el mensaje al jugador
             PacketSender.SendChatMsg(this, message, (ChatMessageType)type);
         }
     }

@@ -242,8 +242,6 @@ public partial class CerasVersionToleranceMigration
 
         public int Quantity { get; set; }
 
-        public int MinQuantity { get; set; } = 1;
-
     }
 
     private partial class LegacyMapZDimensionAttribute : LegacyMapAttribute

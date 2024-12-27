@@ -178,7 +178,7 @@ public partial class Menu
         }
 
         mCharacterWindow.Hide();
-        mMinimapWindow.Hide();
+        //mMinimapWindow.Hide();
         mFriendsWindow.Hide();
         mInventoryWindow.Hide();
         mPartyWindow.Hide();
@@ -200,21 +200,25 @@ public partial class Menu
         }
     }
 
-    public void ToggleMinimapWindow()
+    public bool ToggleMinimapWindow()
     {
         if (!Options.Instance.MinimapOpts.EnableMinimapWindow)
         {
-            return;
+            return false;
         }
+
         if (mMinimapWindow.IsVisible())
         {
             mMinimapWindow.Hide();
         }
         else
         {
-            HideWindows();
+            // Removemos esta línea para que no cierre otras ventanas
+            // HideWindows();
             mMinimapWindow.Show();
         }
+
+        return mMinimapWindow.IsVisible();
     }
 
     public bool ToggleFriendsWindow()

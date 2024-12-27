@@ -31,12 +31,6 @@ public partial class CharacterWindow
 
     Button mAddSpeedBtn;
 
-    Button mAddArmorPenBtn;
-
-    Button mAddVitalityBtn;
-
-    Button mAddWisdomBtn;
-
     //Stats
     Label mAttackLabel;
 
@@ -64,12 +58,6 @@ public partial class CharacterWindow
     Label mPointsLabel;
 
     Label mSpeedLabel;
-
-    Label mArmorPenLabel;
-
-    Label mVitalityLabel;
-
-    Label mWisdomLabel;
 
     public ImagePanel[] PaperdollPanels;
 
@@ -169,18 +157,6 @@ public partial class CharacterWindow
         mAddMagicResistBtn = new Button(mCharacterWindow, "IncreaseMagicResistButton");
         mAddMagicResistBtn.Clicked += _addMagicResistBtn_Clicked;
 
-        mArmorPenLabel = new Label(mCharacterWindow, "ArmorPenetrationLabel");
-        mAddArmorPenBtn = new Button(mCharacterWindow, "IncreaseArmorPenetrationButton");
-        mAddArmorPenBtn.Clicked += _addArmorPenBtn_Clicked;
-
-        mVitalityLabel = new Label(mCharacterWindow, "VitalityLabel");
-        mAddVitalityBtn = new Button(mCharacterWindow, "IncreaseVitalityButton");
-        mAddVitalityBtn.Clicked += _addVitalityBtn_Clicked;
-
-        mWisdomLabel = new Label(mCharacterWindow, "WisdomLabel");
-        mAddWisdomBtn = new Button(mCharacterWindow, "IncreaseWisdomButton");
-        mAddWisdomBtn.Clicked += _addWisdomBtn_Clicked;
-
         mPointsLabel = new Label(mCharacterWindow, "PointsLabel");
 
         for (var i = 0; i < Options.EquipmentSlots.Count; i++)
@@ -229,19 +205,7 @@ public partial class CharacterWindow
 
     void _addAttackBtn_Clicked(Base sender, ClickedEventArgs arguments)
     {
-        PacketSender.SendUpgradeStat((int)Stat.Attack);
-    }
-    void _addArmorPenBtn_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        PacketSender.SendUpgradeStat((int)Stat.ArmorPenetration);
-    }
-    void _addVitalityBtn_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        PacketSender.SendUpgradeStat((int)Stat.ArmorPenetration);
-    }
-    void _addWisdomBtn_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        PacketSender.SendUpgradeStat((int)Stat.ArmorPenetration);
+        PacketSender.SendUpgradeStat((int) Stat.Attack);
     }
 
     //Methods
@@ -375,23 +339,12 @@ public partial class CharacterWindow
         );
 
         mMagicRstLabel.SetText(
-                Strings.Character.Stat3.ToString(Strings.Combat.Stat3, Globals.Me.Stat[(int)Stat.MagicResist])
+            Strings.Character.Stat3.ToString(Strings.Combat.Stat3, Globals.Me.Stat[(int) Stat.MagicResist])
         );
-
-        mArmorPenLabel.SetText(
-            Strings.Character.Stat5.ToString(Strings.Combat.Stat5, Globals.Me.Stat[(int)Stat.ArmorPenetration])
-        );
-
-        mVitalityLabel.SetText(
-            Strings.Character.Stat6.ToString(Strings.Combat.Stat6, Globals.Me.Stat[(int)Stat.Vitality])
-        );
-        mWisdomLabel.SetText(
-            Strings.Character.Stat7.ToString(Strings.Combat.Stat7, Globals.Me.Stat[(int)Stat.Wisdom])
-    );
 
         mPointsLabel.SetText(Strings.Character.Points.ToString(Globals.Me.StatPoints));
         mAddAbilityPwrBtn.IsHidden = Globals.Me.StatPoints == 0 ||
-                                     Globals.Me.Stat[(int)Stat.AbilityPower] == Options.MaxStatValue;
+                                     Globals.Me.Stat[(int) Stat.AbilityPower] == Options.MaxStatValue;
 
         mAddAttackBtn.IsHidden =
             Globals.Me.StatPoints == 0 || Globals.Me.Stat[(int) Stat.Attack] == Options.MaxStatValue;
@@ -403,16 +356,7 @@ public partial class CharacterWindow
                                       Globals.Me.Stat[(int) Stat.MagicResist] == Options.MaxStatValue;
 
         mAddSpeedBtn.IsHidden =
-                Globals.Me.StatPoints == 0 || Globals.Me.Stat[(int)Stat.Speed] == Options.MaxStatValue;
-
-        mAddArmorPenBtn.IsHidden = Globals.Me.StatPoints == 0 ||
-                         Globals.Me.Stat[(int)Stat.ArmorPenetration] == Options.MaxStatValue;
-
-        mAddVitalityBtn.IsHidden = Globals.Me.StatPoints == 0 ||
-             Globals.Me.Stat[(int)Stat.Vitality] == Options.MaxStatValue;
-
-        mAddWisdomBtn.IsHidden = Globals.Me.StatPoints == 0 ||
-             Globals.Me.Stat[(int)Stat.Wisdom] == Options.MaxStatValue;
+            Globals.Me.StatPoints == 0 || Globals.Me.Stat[(int) Stat.Speed] == Options.MaxStatValue;
 
         UpdateExtraBuffs();
 

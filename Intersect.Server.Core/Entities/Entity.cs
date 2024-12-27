@@ -360,7 +360,10 @@ public abstract partial class Entity : IEntity
                 //Regen Timers and regen in combat validation
                 if ((timeMs > CombatTimer || Options.Instance.CombatOpts.RegenVitalsInCombat) && timeMs > RegenTimer)
                 {
-                    ProcessRegen();
+                    if (!this.IsDead())
+                    {
+                        ProcessRegen();
+                    }
                     RegenTimer = timeMs + Options.RegenTime;
                 }
 

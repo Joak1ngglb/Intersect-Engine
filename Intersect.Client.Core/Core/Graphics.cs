@@ -104,6 +104,10 @@ public static partial class Graphics
 
     public static GameFont? UIFont;
 
+    public static float CurrentShake = 0.0f;
+
+    private static float mShakeDecrement = 0.12f;
+
     public static float BaseWorldScale => Options.Instance?.MapOpts?.TileScale ?? 1;
 
     //Init Functions
@@ -595,6 +599,13 @@ public static partial class Graphics
             new Color((int)Fade.Alpha, 0, 0, 0), null, GameBlendModes.None
         );
 
+        // Draw the current Flash over top that
+        DrawGameTexture(
+            Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1), CurrentView,
+            new Color((int)Flash.GetFlash(), Flash.GetColor().R, Flash.GetColor().G,
+            Flash.GetColor().B), null, GameBlendModes.None
+        );
+
         // Draw our mousecursor at the very end, but not when taking screenshots.
         if (!takingScreenshot && !string.IsNullOrWhiteSpace(ClientConfiguration.Instance.MouseCursor))
         {
@@ -934,8 +945,25 @@ public static partial class Graphics
             var sh = Renderer.GetScreenHeight();
             var sx = 0;
             var sy = 0;
+            CurrentShake = 0.0f;
             CurrentView = new FloatRect(sx, sy, sw / scale, sh / scale);
             return;
+        }
+
+        CurrentShake = Utilities.MathHelper.Clamp(CurrentShake - mShakeDecrement, 0.0f, 100.0f);
+        var yShake = CurrentShake;
+        var xShake = CurrentShake;
+        if (CurrentShake > 0.0f)
+        {
+            // Randomize which directions we're shaking in
+            if (Randomization.Next(0, 2) == 1)
+            {
+                yShake *= -1;
+            }
+            if (Randomization.Next(0, 2) == 1)
+            {
+                xShake *= -1;
+            }
         }
 
         var mapWidth = Options.MapWidth * Options.TileWidth;
@@ -982,8 +1010,8 @@ public static partial class Graphics
         var h = y1 - y;
         var restrictView = new FloatRect(x, y, w, h );
         var newView = new FloatRect(
-            (int)Math.Ceiling(en.Center.X - Renderer.ScreenWidth / scale / 2f),
-            (int)Math.Ceiling(en.Center.Y - Renderer.ScreenHeight / scale / 2f),
+            (int)Math.Ceiling(en.Center.X - Renderer.ScreenWidth / scale / 2f) + (int)xShake,
+            (int)Math.Ceiling(en.Center.Y - Renderer.ScreenHeight / scale / 2f) + (int)yShake,
             Renderer.ScreenWidth / scale,
             Renderer.ScreenHeight / scale
         );

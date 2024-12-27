@@ -1,4 +1,4 @@
-﻿namespace Intersect.Config;
+namespace Intersect.Config;
 
 public partial class CombatOptions
 {
@@ -11,6 +11,19 @@ public partial class CombatOptions
     public int MaxDashSpeed = 200;
 
     public int MinAttackRate = 500; //2 attacks per second
+
+    public bool CombatFlashes = true; // Whether or not to flash screen on critical hits
+    public float CriticalHitFlashIntensity = 80f;
+    public float HitFlashDuration = 600f; // ms
+    public string CriticalHitReceivedSound = null;
+    public string CriticalHitDealtSound = null;
+    public float DamageTakenFlashIntensity = 35f;
+    public float DamageTakenShakeAmount = 2.5f;
+    public float ResourceDestroyedShakeAmount = 2.5f;
+    public float DamageGivenShakeAmount = 4.0f;
+    public float MaxDamageShakeDistance = 6.0f;
+    public string GenericDamageGivenSound = "al_give_damage.wav";
+    public string GenericDamageReceivedSound = "al_take_damage.wav";
 
     //Combat
     public int RegenTime = 3000; //3 seconds

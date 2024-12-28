@@ -19,6 +19,9 @@ namespace Intersect.Client.General;
 public static partial class Globals
 {
 
+    /// Indica si el otro jugador ha aceptado el intercambio
+    public static bool TradeAccepted { get; set; } = false;
+
     //Only need 1 table, and that is the one we see at a given moment in time.
     public static CraftingTableBase ActiveCraftingTable;
 

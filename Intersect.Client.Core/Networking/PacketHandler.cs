@@ -295,6 +295,15 @@ internal sealed partial class PacketHandler
         MapInstance.OnMapLoaded?.Invoke(mapInstance);
     }
 
+    public void HandlePacket(IPacketSender packetSender, TradeAcceptedPacket packet)
+    {
+        if (Globals.Me == null)
+        {
+            return;
+        }
+        Globals.TradeAccepted = true;
+    }
+
     //MapPacket
     public void HandlePacket(IPacketSender packetSender, MapPacket packet)
     {

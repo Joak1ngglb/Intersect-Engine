@@ -2378,8 +2378,16 @@ public static partial class PacketSender
             }
         }
     }
+        public static void SendTradeAcceptPacketTo(Player player)
+        {
+            if (player == null)
+            {
+                return;
+            }
+            player?.SendPacket(new TradeAcceptedPacket());
+        }
 
-    public static void SendDataToAll(IPacket packet, TransmissionMode mode = TransmissionMode.All)
+        public static void SendDataToAll(IPacket packet, TransmissionMode mode = TransmissionMode.All)
     {
         lock (Globals.ClientLock)
         {

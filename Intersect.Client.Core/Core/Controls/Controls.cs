@@ -92,6 +92,13 @@ public partial class Controls
         CreateControlMap(Control.OpenDebugger, new ControlValue(Keys.None, Keys.F2), ControlValue.Default);
         CreateControlMap(Control.OpenAdminPanel, new ControlValue(Keys.None, Keys.Insert), ControlValue.Default);
         CreateControlMap(Control.ToggleGui, new ControlValue(Keys.None, Keys.F11), ControlValue.Default);
+        CreateControlMap(Control.TargetParty1, new ControlValue(Keys.None, Keys.NumPad1), ControlValue.Default);
+        CreateControlMap(Control.TargetParty2, new ControlValue(Keys.None, Keys.NumPad2), ControlValue.Default);
+        CreateControlMap(Control.TargetParty3, new ControlValue(Keys.None, Keys.NumPad3), ControlValue.Default);
+        CreateControlMap(Control.TargetParty4, new ControlValue(Keys.None, Keys.NumPad4), ControlValue.Default);
+        CreateControlMap(Control.TargetParty5, new ControlValue(Keys.None, Keys.NumPad5), ControlValue.Default);
+        CreateControlMap(Control.TargetParty6, new ControlValue(Keys.None, Keys.NumPad6), ControlValue.Default);
+        CreateControlMap(Control.TargetParty7, new ControlValue(Keys.None, Keys.NumPad7), ControlValue.Default);
         CreateControlMap(Control.TurnAround, new ControlValue(Keys.None, Keys.Control), ControlValue.Default);
         CreateControlMap(Control.ToggleZoomIn, ControlValue.Default, ControlValue.Default);
         CreateControlMap(Control.ToggleZoomOut, ControlValue.Default, ControlValue.Default);

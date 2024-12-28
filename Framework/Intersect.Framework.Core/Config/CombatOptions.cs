@@ -10,6 +10,8 @@ public partial class CombatOptions
 
     public int MaxDashSpeed = 200;
 
+    public int PartyTargetDistance = 20;
+
     public int MinAttackRate = 500; //2 attacks per second
 
     public bool CombatFlashes = true; // Whether or not to flash screen on critical hits

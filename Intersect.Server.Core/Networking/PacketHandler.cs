@@ -2263,6 +2263,9 @@ internal sealed partial class PacketHandler
             player.Trading.Counterparty = null;
         }
         else
+            {
+                PacketSender.SendTradeAcceptPacketTo(player.Trading.Counterparty);
+            }
         {
             PacketSender.SendChatMsg(
                 player.Trading.Counterparty, Strings.Trading.OfferAccepted.ToString(player.Name), ChatMessageType.Trading, CustomColors.Alerts.Accepted

@@ -1,4 +1,4 @@
-﻿using Intersect.Client.Core;
+using Intersect.Client.Core;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
@@ -28,6 +28,8 @@ public partial class TradingWindow
     //Name tags
     private Label mYourOffer;
 
+    private Label mOtherPlayerAccepted;
+
     public List<TradeSegment> TradeSegment = new List<TradeSegment>();
 
     // Context menu
@@ -53,6 +55,11 @@ public partial class TradingWindow
         mTheirOffer = new Label(mTradeWindow, "TheirOfferLabel")
         {
             Text = Strings.Trading.TheirOffer
+        };
+
+        mOtherPlayerAccepted = new Label(mTradeWindow, "OtherPlayerAcceptedLabel")
+        {
+            Text = Strings.Trading.OtherPlayer
         };
 
         mTrade = new Button(mTradeWindow, "TradeButton");
@@ -118,6 +125,7 @@ public partial class TradingWindow
     public void Close()
     {
         mContextMenu?.Close();
+        Globals.TradeAccepted = false;
         mTradeWindow.Close();
     }
 
@@ -152,7 +160,14 @@ public partial class TradingWindow
                         continue;
                     }
 
-                    g += item.Price * Globals.Trade[n, i].Quantity;
+                    if (item.ItemType == Enums.ItemType.Currency && item.Name.ToLower().Contains("gold"))
+                    {
+                        g += Globals.Trade[n, i].Quantity;
+                    }
+                    else
+                    {
+                        g += item.Price * Globals.Trade[n, i].Quantity;
+                    }
                     TradeSegment[n].Items[i].Pnl.IsHidden = false;
                     if (item.IsStackable)
                     {
@@ -177,6 +192,7 @@ public partial class TradingWindow
             TradeSegment[n].GoldValue.Text = Strings.Trading.Value.ToString(g);
             g = 0;
         }
+        mOtherPlayerAccepted.IsHidden = !Globals.TradeAccepted;
     }
 
     public FloatRect RenderBounds()

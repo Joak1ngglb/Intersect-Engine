@@ -2535,6 +2535,9 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString YourOffer = @"Your Offer:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString OtherPlayer = @"The other player has accepted the trade.";
     }
 
     public partial struct Minimap

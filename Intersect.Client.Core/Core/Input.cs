@@ -337,11 +337,38 @@ public static partial class Input
 
                                 case Control.OpenGuild:
                                     _ = (Interface.Interface.GameUi?.GameMenu.ToggleGuildWindow());
-
                                     break;
-                                    
-                                    case Control.OpenMinimap:
-                                        Interface.Interface.GameUi?.GameMenu.ToggleMinimapWindow();
+
+                                case Control.TargetParty1:
+                                    Globals.Me?.TargetPartyMember(0);
+                                    break;
+
+                                case Control.TargetParty2:
+                                    Globals.Me?.TargetPartyMember(1);
+                                    break;
+
+                                case Control.TargetParty3:
+                                    Globals.Me?.TargetPartyMember(2);
+                                    break;
+
+                                case Control.TargetParty4:
+                                    Globals.Me?.TargetPartyMember(3);
+                                    break;
+
+                                case Control.TargetParty5:
+                                    Globals.Me?.TargetPartyMember(4);
+                                    break;
+
+                                case Control.TargetParty6:
+                                    Globals.Me?.TargetPartyMember(5);
+                                    break;
+
+                                case Control.TargetParty7:
+                                    Globals.Me?.TargetPartyMember(6);
+                                    break;
+
+                                case Control.OpenMinimap:
+                                    Interface.Interface.GameUi?.GameMenu.ToggleMinimapWindow();
 
                                     break;
                             }

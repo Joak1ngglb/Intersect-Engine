@@ -225,6 +225,9 @@ public partial class Entity : IEntity
 
     public byte Z { get; set; }
 
+    public Point LongRangeSpellTarget;
+    public Point PlayerView;
+
     public Entity(Guid id, EntityPacket? packet, EntityType entityType)
     {
         Id = id;

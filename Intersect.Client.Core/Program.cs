@@ -9,6 +9,8 @@ using Intersect.Configuration;
 using Intersect.Extensions;
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
+using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace Intersect.Client.Core;
 
@@ -17,6 +19,12 @@ namespace Intersect.Client.Core;
 /// </summary>
 static class Program
 {
+    // Inicio de Sistema de dos instancias del cliente
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+
+    private static Mutex[] mutexes;
+    // Fin de Sistema de dos instancias del cliente
     public static string OpenALLink { get; set; }= string.Empty;
 
     public static string OpenGLLink { get; set; }= string.Empty;
@@ -27,6 +35,30 @@ static class Program
     [STAThread]
     internal static void Main(string[] args)
     {
+        // Inicio de Sistema de dos instancias del cliente
+        mutexes = new Mutex[2];
+        var canRun = false;
+
+        for (int i = 0; i < 2; i++)
+        {
+            bool createdNew;
+            mutexes[i] = new Mutex(true, $"Global\\YourGameName_Instance_{i}", out createdNew);
+
+            if (createdNew)
+            {
+                canRun = true;
+                break;
+            }
+        }
+
+        if (!canRun)
+        {
+            MessageBox(IntPtr.Zero, "Only two instances of the game are allowed per PC.", "Instance limit", 0x40 | 0x0);
+            return;
+        }
+
+        // Aquí va el código original del juego
+
         var waitForDebugger = args.Contains("--debugger");
 
         while (waitForDebugger && !Debugger.IsAttached)

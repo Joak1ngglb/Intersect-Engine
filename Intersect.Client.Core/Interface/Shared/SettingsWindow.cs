@@ -51,12 +51,14 @@ public partial class SettingsWindow : ImagePanel
     private readonly ScrollControl _informationSettings;
     private readonly LabeledCheckBox _friendOverheadInfoCheckbox;
     private readonly LabeledCheckBox _guildMemberOverheadInfoCheckbox;
+    private readonly LabeledCheckBox _NationMemberOverheadInfoCheckbox;
     private readonly LabeledCheckBox _myOverheadInfoCheckbox;
     private readonly LabeledCheckBox _npcOverheadInfoCheckbox;
     private readonly LabeledCheckBox _partyMemberOverheadInfoCheckbox;
     private readonly LabeledCheckBox _playerOverheadInfoCheckbox;
     private readonly LabeledCheckBox _friendOverheadHpBarCheckbox;
     private readonly LabeledCheckBox _guildMemberOverheadHpBarCheckbox;
+    private readonly LabeledCheckBox _NationMemberOverheadHpBarCheckbox;
     private readonly LabeledCheckBox _myOverheadHpBarCheckbox;
     private readonly LabeledCheckBox _mpcOverheadHpBarCheckbox;
     private readonly LabeledCheckBox _partyMemberOverheadHpBarCheckbox;
@@ -204,6 +206,12 @@ public partial class SettingsWindow : ImagePanel
             Text = Strings.Settings.ShowGuildOverheadInformation
         };
 
+        // Game Settings - Information: Nation Members.
+        _NationMemberOverheadInfoCheckbox = new LabeledCheckBox(_informationSettings, "NationMemberOverheadInfoCheckbox")
+        {
+            Text = Strings.Settings.ShowNationOverheadInformation
+        };
+
         // Game Settings - Information: Myself.
         _myOverheadInfoCheckbox = new LabeledCheckBox(_informationSettings, "MyOverheadInfoCheckbox")
         {
@@ -238,6 +246,12 @@ public partial class SettingsWindow : ImagePanel
         _guildMemberOverheadHpBarCheckbox = new LabeledCheckBox(_informationSettings, "GuildMemberOverheadHpBarCheckbox")
         {
             Text = Strings.Settings.ShowGuildOverheadHpBar
+        };
+
+        // Game Settings - Information: nation members overhead hp bar.
+        _NationMemberOverheadHpBarCheckbox = new LabeledCheckBox(_informationSettings, "NationMemberOverheadHpBarCheckbox")
+        {
+            Text = Strings.Settings.ShowNationOverheadHpBar
         };
 
         // Game Settings - Information: my overhead hp bar.
@@ -740,12 +754,14 @@ public partial class SettingsWindow : ImagePanel
         _simplifiedEscapeMenu.IsChecked = Globals.Database.SimplifiedEscapeMenu;
         _friendOverheadInfoCheckbox.IsChecked = Globals.Database.FriendOverheadInfo;
         _guildMemberOverheadInfoCheckbox.IsChecked = Globals.Database.GuildMemberOverheadInfo;
+        _NationMemberOverheadInfoCheckbox.IsChecked = Globals.Database.NationMemberOverheadInfo;
         _myOverheadInfoCheckbox.IsChecked = Globals.Database.MyOverheadInfo;
         _npcOverheadInfoCheckbox.IsChecked = Globals.Database.NpcOverheadInfo;
         _partyMemberOverheadInfoCheckbox.IsChecked = Globals.Database.PartyMemberOverheadInfo;
         _playerOverheadInfoCheckbox.IsChecked = Globals.Database.PlayerOverheadInfo;
         _friendOverheadHpBarCheckbox.IsChecked = Globals.Database.FriendOverheadHpBar;
         _guildMemberOverheadHpBarCheckbox.IsChecked = Globals.Database.GuildMemberOverheadHpBar;
+        _NationMemberOverheadHpBarCheckbox.IsChecked = Globals.Database.NationMemberOverheadHpBar;
         _myOverheadHpBarCheckbox.IsChecked = Globals.Database.MyOverheadHpBar;
         _mpcOverheadHpBarCheckbox.IsChecked = Globals.Database.NpcOverheadHpBar;
         _partyMemberOverheadHpBarCheckbox.IsChecked = Globals.Database.PartyMemberOverheadHpBar;
@@ -921,12 +937,14 @@ public partial class SettingsWindow : ImagePanel
         Globals.Database.SimplifiedEscapeMenu = _simplifiedEscapeMenu.IsChecked;
         Globals.Database.FriendOverheadInfo = _friendOverheadInfoCheckbox.IsChecked;
         Globals.Database.GuildMemberOverheadInfo = _guildMemberOverheadInfoCheckbox.IsChecked;
+        Globals.Database.NationMemberOverheadInfo = _NationMemberOverheadInfoCheckbox.IsChecked;
         Globals.Database.MyOverheadInfo = _myOverheadInfoCheckbox.IsChecked;
         Globals.Database.NpcOverheadInfo = _npcOverheadInfoCheckbox.IsChecked;
         Globals.Database.PartyMemberOverheadInfo = _partyMemberOverheadInfoCheckbox.IsChecked;
         Globals.Database.PlayerOverheadInfo = _playerOverheadInfoCheckbox.IsChecked;
         Globals.Database.FriendOverheadHpBar = _friendOverheadHpBarCheckbox.IsChecked;
         Globals.Database.GuildMemberOverheadHpBar = _guildMemberOverheadHpBarCheckbox.IsChecked;
+        Globals.Database.NationMemberOverheadHpBar = _NationMemberOverheadHpBarCheckbox.IsChecked;
         Globals.Database.MyOverheadHpBar = _myOverheadHpBarCheckbox.IsChecked;
         Globals.Database.NpcOverheadHpBar = _mpcOverheadHpBarCheckbox.IsChecked;
         Globals.Database.PartyMemberOverheadHpBar = _partyMemberOverheadHpBarCheckbox.IsChecked;

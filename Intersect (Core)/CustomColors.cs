@@ -81,6 +81,7 @@ public static partial class CustomColors
             {"Normal", new LabelColor(new Color(255, 255, 255, 255), Color.Black, new Color(180, 0, 0, 0))},
             {"Party", new LabelColor(new Color(255, 70, 192, 219), Color.Black, new Color(180, 0, 0, 0))},
             {"Guild", new LabelColor(new Color(255, 5, 179, 26), Color.Black, new Color(180, 0, 0, 0))},
+            {"Nation", new LabelColor(new Color(255, 77, 76, 135), Color.Black, new Color(180, 0, 0, 0))},
             {"Hostile", new LabelColor(new Color(255, 255, 81, 0), Color.Black, new Color(180, 0, 0, 0))},
             {"Moderator", new LabelColor(new Color(255, 0, 255, 255), Color.Black, new Color(180, 0, 0, 0))},
             {"Admin", new LabelColor(new Color(255, 255, 255, 0), Color.Black, new Color(180, 0, 0, 0))},
@@ -124,6 +125,8 @@ public static partial class CustomColors
         public Color ProximityMsg = new Color(255, 220, 220, 220);
 
         public Color GuildChat = new Color(255, 255, 165, 0);
+
+        public Color NationChat = new Color(255, 77, 76, 135);
 
     }
 

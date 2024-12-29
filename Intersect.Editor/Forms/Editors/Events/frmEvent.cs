@@ -743,6 +743,10 @@ public partial class FrmEvent : Form
                 tmpCommand = new SetGuildBankSlotsCommand();
 
                 break;
+            case EventCommandType.CreateOrJoinNation:
+                tmpCommand = new CreateOrJoinNationCommand(CurrentPage.CommandLists);
+
+                break;
             case EventCommandType.ResetStatPointAllocations:
                 tmpCommand = new ResetStatPointAllocationsCommand();
 
@@ -1390,6 +1394,10 @@ public partial class FrmEvent : Form
                 break;
             case EventCommandType.SetGuildBankSlots:
                 cmdWindow = new EventCommandSetGuildBankSlots((SetGuildBankSlotsCommand)command, CurrentPage, this);
+
+                break;
+            case EventCommandType.CreateOrJoinNation:
+                cmdWindow = new EventCommandCreateOrJoinNation((CreateOrJoinNationCommand)command, CurrentPage, this);
 
                 break;
             case EventCommandType.ResetStatPointAllocations:

@@ -1,4 +1,4 @@
-﻿namespace Intersect.Enums;
+namespace Intersect.Enums;
 
 /// <summary>
 /// Defines the chat tabs available within the engine, and is used to determine which one is currently in view.
@@ -12,6 +12,8 @@ public enum ChatboxTab
     Party,
 
     Guild,
+
+    Nation,
 
     Global,
 

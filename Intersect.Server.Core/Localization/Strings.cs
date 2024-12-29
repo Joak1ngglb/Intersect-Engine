@@ -583,6 +583,9 @@ public static partial class Strings
         public readonly LocalizedString PlayerGuildCommand = @"\pg";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString playernationcommand = @"\pnat";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString PlayerNameCommand = @"\pn";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -746,6 +749,33 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString DeleteGuildLeader = @"You cannot delete a character that is a guild {00}. Please disband the guild or transfer ownership before trying again.";
+    }
+
+    public sealed partial class NationsNamespace : LocaleNamespace
+    {
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString AlreadyInNation = @"You are already in a nation!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NationChat = @"[{00}] {01}: {02}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NationCommand = @"/nation";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NotInNation = @"You are not in a nation.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NationVariableInvalid = @"Invalid nation name!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NationVariableNotString = @"The given nation name does not contain any text.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NationWelcome = @"Welcome to {00}!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString DeleteNationMember = @"You can not delete a character that is a nation {00}";
     }
 
     public sealed partial class IntroNamespace : LocaleNamespace
@@ -1217,6 +1247,9 @@ public static partial class Strings
         public readonly LocalizedString GuildName = @"^[a-zA-Z0-9 ]{3,20}$";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NationName = @"^[a-zA-Z0-9 ]{3,20}$";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString Username = @"^[a-zA-Z0-9]{2,20}$";
     }
 
@@ -1435,6 +1468,8 @@ public static partial class Strings
 
         public readonly GuildsNamespace Guilds = new GuildsNamespace();
 
+        public readonly NationsNamespace Nations = new NationsNamespace();
+
     }
 
     // ReSharper restore MemberHidesStaticFromOuterClass
@@ -1476,6 +1511,8 @@ public static partial class Strings
     public static GeneralNamespace General => Root.General;
 
     public static GuildsNamespace Guilds => Root.Guilds;
+
+    public static NationsNamespace Nations => Root.Nations;
 
     public static IntroNamespace Intro => Root.Intro;
 

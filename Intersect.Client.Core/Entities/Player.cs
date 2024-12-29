@@ -14,6 +14,7 @@ using Intersect.Client.Localization;
 using Intersect.Client.Maps;
 using Intersect.Client.Networking;
 using Intersect.Config.Guilds;
+using Intersect.Config.Nations;
 using Intersect.Configuration;
 using Intersect.Enums;
 using Intersect.Extensions;
@@ -129,6 +130,9 @@ public partial class Player : Entity, IPlayer
 
     string IPlayer.GuildName => Guild ?? string.Empty;
 
+    public string Nation { get; set; }
+    string IPlayer.NationName => Nation ?? string.Empty;
+
     /// <summary>
     /// Index of our rank where 0 is the leader
     /// </summary>
@@ -138,6 +142,8 @@ public partial class Player : Entity, IPlayer
     /// Returns whether or not we are in a guild by checking to see if we are assigned a guild name
     /// </summary>
     public bool IsInGuild => !string.IsNullOrWhiteSpace(Guild);
+
+    public bool IsInNation => !string.IsNullOrWhiteSpace(Nation);
 
     /// <summary>
     /// Obtains our rank and permissions from the game config
@@ -150,6 +156,8 @@ public partial class Player : Entity, IPlayer
     /// Contains a record of all members of this player's guild.
     /// </summary>
     public GuildMember[] GuildMembers = [];
+
+    public NationMember[] NationMembers = [];
 
     public Player(Guid id, PlayerEntityPacket packet) : base(id, packet, EntityType.Player)
     {
@@ -213,6 +221,14 @@ public partial class Player : Entity, IPlayer
                 string.Equals(player.Name, guildMate.Name, StringComparison.CurrentCultureIgnoreCase));
     }
 
+    public bool IsNationMate(IPlayer player)
+    {
+        return NationMembers.Any(
+            nationMate =>
+                player != null &&
+                string.Equals(player.Name, nationMate.Name, StringComparison.CurrentCultureIgnoreCase));
+    }
+
     bool IPlayer.IsInParty => IsInParty();
 
     public bool IsInParty()
@@ -225,6 +241,8 @@ public partial class Player : Entity, IPlayer
     public bool IsInMyParty(Guid id) => Party.Any(member => member.Id == id);
 
     public bool IsInMyGuild(IPlayer player) => IsInGuild && player != null && player.GuildName == Guild;
+
+    public bool IsInMyNation(IPlayer player) => IsInNation && player != null && player.NationName == Nation;
 
     public bool IsBusy => !(Globals.EventHolds.Count == 0 &&
                  !Globals.MoveRouteActive &&
@@ -332,6 +350,7 @@ public partial class Player : Entity, IPlayer
         CombatTimer = playerPacket.CombatTimeRemaining + Timing.Global.Milliseconds;
         Guild = playerPacket.Guild;
         Rank = playerPacket.GuildRank;
+        Nation = playerPacket.Nation;
 
         if (playerPacket.Equipment != null)
         {
@@ -2511,6 +2530,14 @@ public partial class Player : Entity, IPlayer
                 backgroundColor = guildColors.Background;
             }
 
+            // Nation Mates
+            else if (Globals.Me.IsInNation && Nation == Globals.Me.Nation && CustomColors.Names.Players.TryGetValue(nameof(Nation), out var nationColors))
+            {
+                textColor = nationColors.Name;
+                borderColor = nationColors.Outline;
+                backgroundColor = nationColors.Background;
+            }
+
             // Enemies in PvP
             if (Globals.Me.IsAllyOf(this) && Globals.Me.MapInstance?.ZoneType != MapZone.Safe && CustomColors.Names.Players.TryGetValue("Hostile", out var hostileColors))
             {
@@ -2530,7 +2557,7 @@ public partial class Player : Entity, IPlayer
             return true;
         }
 
-        return IsInMyParty(en) || IsInMyGuild(en) || en.MapInstance?.ZoneType == MapZone.Safe;
+        return IsInMyParty(en) || IsInMyGuild(en) || IsInMyNation(en) || en.MapInstance?.ZoneType == MapZone.Safe;
     }
 
     private void DrawNameAndLabels(Color textColor, Color? borderColor, Color? backgroundColor)
@@ -2539,6 +2566,7 @@ public partial class Player : Entity, IPlayer
         DrawLabels(HeaderLabel.Text, 0, HeaderLabel.Color, textColor, borderColor, backgroundColor);
         DrawLabels(FooterLabel.Text, 1, FooterLabel.Color, textColor, borderColor, backgroundColor);
         DrawGuildName(textColor, borderColor, backgroundColor);
+        DrawNationName(textColor, borderColor, backgroundColor);
     }
 
     public virtual void DrawGuildName(Color textColor, Color? borderColor = default, Color? backgroundColor = default)
@@ -2595,6 +2623,60 @@ public partial class Player : Entity, IPlayer
         );
     }
 
+    public virtual void DrawNationName(Color textColor, Color? borderColor = default, Color? backgroundColor = default)
+    {
+        if (Graphics.Renderer == default || Globals.Me == default)
+        {
+            return;
+        }
+
+        var nationLabel = Nation?.Trim();
+        if (!ShouldDrawName || string.IsNullOrWhiteSpace(nationLabel) || Options.Instance.Nation.ShowNationNameTagsOverMembers)
+        {
+            return;
+        }
+
+        if (IsStealthed && !IsInMyParty(Globals.Me))
+        {
+            // Do not render if the party is stealthed and not in the local player's party
+            return;
+        }
+
+        if (MapInstance == default)
+        {
+            return;
+        }
+
+        var textSize = Graphics.Renderer.MeasureText(nationLabel, Graphics.EntityNameFont, 1);
+
+        var x = (int)Math.Ceiling(Origin.X);
+        var y = GetLabelLocation(LabelType.Guild);
+
+        backgroundColor ??= Color.Transparent;
+        if (backgroundColor != Color.Transparent)
+        {
+            Graphics.DrawGameTexture(
+                Graphics.Renderer.GetWhiteTexture(),
+                new FloatRect(0, 0, 1, 1),
+                new FloatRect(x - textSize.X / 2f - 4, y, textSize.X + 8, textSize.Y),
+                backgroundColor
+            );
+        }
+
+        borderColor ??= Color.Transparent;
+        Graphics.Renderer.DrawString(
+            nationLabel,
+            Graphics.EntityNameFont,
+            x - (int)Math.Ceiling(textSize.X / 2f),
+            (int)y,
+            1,
+            Color.FromArgb(textColor.ToArgb()),
+            true,
+            default,
+            Color.FromArgb(borderColor.ToArgb())
+        );
+    }
+
     protected override bool ShouldDrawHpBar
     {
         get
@@ -2632,6 +2714,11 @@ public partial class Player : Entity, IPlayer
             }
 
             if (Globals.Database.FriendOverheadHpBar && me.IsFriend(this))
+            {
+                return true;
+            }
+
+            if (Globals.Database.NationMemberOverheadHpBar && me.IsNationMate(this))
             {
                 return true;
             }

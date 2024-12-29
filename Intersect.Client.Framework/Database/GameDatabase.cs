@@ -37,6 +37,10 @@ public abstract partial class GameDatabase
 
     public bool GuildMemberOverheadHpBar { get; set; }
 
+    public bool NationMemberOverheadInfo { get; set; }
+
+    public bool NationMemberOverheadHpBar { get; set; }
+
     public bool MyOverheadInfo { get; set; }
 
     public bool MyOverheadHpBar { get; set; }
@@ -121,6 +125,8 @@ public abstract partial class GameDatabase
         FriendOverheadHpBar = LoadPreference(nameof(FriendOverheadHpBar), false);
         GuildMemberOverheadInfo = LoadPreference(nameof(GuildMemberOverheadInfo), true);
         GuildMemberOverheadHpBar = LoadPreference(nameof(GuildMemberOverheadHpBar), false);
+        NationMemberOverheadInfo = LoadPreference(nameof(NationMemberOverheadInfo), true);
+        NationMemberOverheadHpBar = LoadPreference(nameof(NationMemberOverheadHpBar), false);
         MyOverheadInfo = LoadPreference(nameof(MyOverheadInfo), true);
         MyOverheadHpBar = LoadPreference(nameof(MyOverheadHpBar), false);
         NpcOverheadInfo = LoadPreference(nameof(NpcOverheadInfo), true);
@@ -158,6 +164,8 @@ public abstract partial class GameDatabase
         SavePreference(nameof(FriendOverheadHpBar), FriendOverheadHpBar);
         SavePreference(nameof(GuildMemberOverheadInfo), GuildMemberOverheadInfo);
         SavePreference(nameof(GuildMemberOverheadHpBar), GuildMemberOverheadHpBar);
+        SavePreference(nameof(NationMemberOverheadInfo), NationMemberOverheadInfo);
+        SavePreference(nameof(NationMemberOverheadHpBar), NationMemberOverheadHpBar);
         SavePreference(nameof(MyOverheadInfo), MyOverheadInfo);
         SavePreference(nameof(MyOverheadHpBar), MyOverheadHpBar);
         SavePreference(nameof(NpcOverheadInfo), NpcOverheadInfo);

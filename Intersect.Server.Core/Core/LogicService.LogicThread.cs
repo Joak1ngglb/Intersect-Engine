@@ -12,6 +12,7 @@ using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Utilities;
 using Intersect.Server.Database.PlayerData.Api;
 using Intersect.Server.Core.MapInstancing;
+using System;
 
 namespace Intersect.Server.Core;
 
@@ -269,6 +270,15 @@ internal sealed partial class LogicService
                             if (guild.Value.LastUpdateTime + Options.Instance.Guild.GuildUpdateInterval < Timing.Global.Milliseconds)
                             {
                                 LogicPool.QueueWorkItem(guild.Value.Update);
+                            }
+                        }
+
+                        //Should we send out nation updates?
+                        foreach (var nation in Nation.Nations)
+                        {
+                            if (nation.Value.LastUpdateTime + Options.Instance.Nation.NationUpdateInterval < Timing.Global.Milliseconds)
+                            {
+                                LogicPool.QueueWorkItem(nation.Value.Update);
                             }
                         }
 

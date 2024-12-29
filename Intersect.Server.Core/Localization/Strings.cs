@@ -773,9 +773,6 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString NationWelcome = @"Welcome to {00}!";
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString DeleteNationMember = @"You can not delete a character that is a nation {00}";
     }
 
     public sealed partial class IntroNamespace : LocaleNamespace

@@ -2558,13 +2558,6 @@ internal sealed partial class PacketHandler
                 return;
             }
 
-            character.LoadNation();
-            if (character.Nation != null)
-            {
-                PacketSender.SendError(client, Strings.Nations.DeleteNationMember, Strings.General.NoticeError);
-                return;
-            }
-
             foreach (var chr in client.Characters.ToArray())
             {
                 if (chr.Id == packet.CharacterId)

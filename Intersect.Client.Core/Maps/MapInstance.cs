@@ -609,47 +609,47 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 switch (mapAttribute.Type)
                 {
                     case MapAttributeType.Animation:
-                    {
-                        var anim = AnimationBase.Get(((MapAnimationAttribute)mapAttribute).AnimationId);
-                        if (anim == null)
                         {
-                            continue;
+                            var anim = AnimationBase.Get(((MapAnimationAttribute)mapAttribute).AnimationId);
+                            if (anim == null)
+                            {
+                                continue;
+                            }
+
+                            if (!mAttributeAnimInstances.ContainsKey(mapAttribute))
+                            {
+                                var animInstance = new Animation(anim, true);
+                                animInstance.SetPosition(
+                                    X + x * _tileWidth + _tileHalfWidth,
+                                    Y + y * _tileHeight + _tileHalfHeight, x, y, Id, 0
+                                );
+
+                                mAttributeAnimInstances.Add(mapAttribute, animInstance);
+                            }
+
+                            mAttributeAnimInstances[mapAttribute].Update();
+                            break;
                         }
-
-                        if (!mAttributeAnimInstances.ContainsKey(mapAttribute))
-                        {
-                            var animInstance = new Animation(anim, true);
-                            animInstance.SetPosition(
-                                X + x * _tileWidth + _tileHalfWidth,
-                                Y + y * _tileHeight + _tileHalfHeight, x, y, Id, 0
-                            );
-
-                            mAttributeAnimInstances.Add(mapAttribute, animInstance);
-                        }
-
-                        mAttributeAnimInstances[mapAttribute].Update();
-                        break;
-                    }
                     case MapAttributeType.Critter:
-                    {
-                        var critterAttribute = ((MapCritterAttribute)mapAttribute);
-                        var sprite = critterAttribute.Sprite;
-                        var anim = AnimationBase.Get(critterAttribute.AnimationId);
-                        if (anim == null && TextUtils.IsNone(sprite))
                         {
-                            continue;
-                        }
+                            var critterAttribute = ((MapCritterAttribute)mapAttribute);
+                            var sprite = critterAttribute.Sprite;
+                            var anim = AnimationBase.Get(critterAttribute.AnimationId);
+                            if (anim == null && TextUtils.IsNone(sprite))
+                            {
+                                continue;
+                            }
 
-                        if (!mAttributeCritterInstances.ContainsKey(mapAttribute))
-                        {
-                            var critter = new Critter(this, (byte)x, (byte)y, critterAttribute);
-                            LocalCritters.Add(critter.Id, critter);
-                            mAttributeCritterInstances.Add(mapAttribute, critter);
-                        }
+                            if (!mAttributeCritterInstances.ContainsKey(mapAttribute))
+                            {
+                                var critter = new Critter(this, (byte)x, (byte)y, critterAttribute);
+                                LocalCritters.Add(critter.Id, critter);
+                                mAttributeCritterInstances.Add(mapAttribute, critter);
+                            }
 
-                        mAttributeCritterInstances[mapAttribute].Update();
-                        break;
-                    }
+                            mAttributeCritterInstances[mapAttribute].Update();
+                            break;
+                        }
                 }
             }
         }
@@ -748,38 +748,38 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             // _vboCompute = Task.Run(
             //     () =>
             //     {
-                    var startVbo = DateTime.UtcNow;
-                    Dictionary<string, GameTileBuffer[][]> buffers = [];
-                    foreach (var layer in Options.Instance.MapOpts.Layers.All)
+            var startVbo = DateTime.UtcNow;
+            Dictionary<string, GameTileBuffer[][]> buffers = [];
+            foreach (var layer in Options.Instance.MapOpts.Layers.All)
+            {
+                var layerBuffers = DrawMapLayer(layer, X, Y);
+                if (layerBuffers == default)
+                {
+                    continue;
+                }
+
+                buffers[layer] = layerBuffers;
+                for (var animationFrameIndex = 0; animationFrameIndex < MapAnimationFrames; animationFrameIndex++)
+                {
+                    var layerBuffersForFrame = layerBuffers[animationFrameIndex];
+                    foreach (var tileBuffer in layerBuffersForFrame)
                     {
-                        var layerBuffers = DrawMapLayer(layer, X, Y);
-                        if (layerBuffers == default)
-                        {
-                            continue;
-                        }
-
-                        buffers[layer] = layerBuffers;
-                        for (var animationFrameIndex = 0; animationFrameIndex < MapAnimationFrames; animationFrameIndex++)
-                        {
-                            var layerBuffersForFrame = layerBuffers[animationFrameIndex];
-                            foreach (var tileBuffer in layerBuffersForFrame)
-                            {
-                                tileBuffer.SetData();
-                            }
-                        }
+                        tileBuffer.SetData();
                     }
+                }
+            }
 
-                    var endVbo = DateTime.UtcNow;
-                    var elapsedVbo = endVbo - startVbo;
-                    Log.Info($"Built VBO for map instance {Id} in {elapsedVbo.TotalMilliseconds}ms");
+            var endVbo = DateTime.UtcNow;
+            var elapsedVbo = endVbo - startVbo;
+            Log.Info($"Built VBO for map instance {Id} in {elapsedVbo.TotalMilliseconds}ms");
 
-                    // lock (mTileBuffers)
-                    // {
-                        foreach (var (layer, layerBuffers) in buffers)
-                        {
-                            _tileBuffersPerLayer[layer] = layerBuffers;
-                        }
-                    // }
+            // lock (mTileBuffers)
+            // {
+            foreach (var (layer, layerBuffers) in buffers)
+            {
+                _tileBuffersPerLayer[layer] = layerBuffers;
+            }
+            // }
 
             //         _vboCompute = default;
             //     }

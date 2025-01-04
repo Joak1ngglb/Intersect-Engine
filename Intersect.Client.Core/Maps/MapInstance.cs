@@ -1525,7 +1525,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             // Render the message
             var textWidth = Graphics.Renderer.MeasureText(actionMessage.Msg, Graphics.ActionMsgFont, scale).X;
             Graphics.Renderer.DrawString(
-                actionMessage.Msg,
+                actionMessage.Text,
                 Graphics.ActionMsgFont,
                 x - (float)(textWidth / 2f), // Center the text
                 y,

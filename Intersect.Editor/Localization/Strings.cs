@@ -494,12 +494,12 @@ public static partial class Strings
             return;
         }
 
-        for (var rarityCode = 0; rarityCode < Intersect.Options.Instance.Items.RarityTiers.Count; rarityCode++)
+        var keyedRarityTiers = Intersect.Options.Instance.Items.RarityTiers.Select((rarityName, rarity) => (rarity, rarityName));
+        foreach (var (rarity, rarityName) in keyedRarityTiers)
         {
-            var rarityName = Intersect.Options.Instance.Items.RarityTiers[rarityCode];
             if (!ItemEditor.rarity.ContainsKey(rarityName))
             {
-                ItemEditor.rarity[rarityName] = $"{rarityCode}:{rarityName}";
+                ItemEditor.rarity[rarityName] = $"{rarity}:{rarityName}";
             }
         }
     }
@@ -825,7 +825,7 @@ public static partial class Strings
         public static LocalizedString sound = @"Sound:";
 
         public static LocalizedString soundcomplete = @"Complete Sound Playback After Anim Dies";
-        
+
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString LoopSoundDuringPreview = @"Loop sound during preview";
 
@@ -848,18 +848,18 @@ public static partial class Strings
     {
         public static Dictionary<int, LocalizedString> AttributeTypes = new Dictionary<int, LocalizedString>
         {
-            {(int) MapAttribute.Animation, @"Map Animation" },
-            {(int) MapAttribute.Blocked, @"Blocked" },
-            {(int) MapAttribute.Critter, @"Critter" },
-            {(int) MapAttribute.GrappleStone, @"Grapple Stone" },
-            {(int) MapAttribute.Item, @"Item Spawn" },
-            {(int) MapAttribute.NpcAvoid, @"Npc Avoid" },
-            {(int) MapAttribute.Resource, @"Resource Spawn" },
-            {(int) MapAttribute.Slide, @"Slide" },
-            {(int) MapAttribute.Sound, @"Map Sound" },
-            {(int) MapAttribute.Walkable, @"Walkable" },
-            {(int) MapAttribute.Warp, @"Warp" },
-            {(int) MapAttribute.ZDimension, @"Z-Dimension" },
+            {(int) MapAttributeType.Animation, @"Map Animation" },
+            {(int) MapAttributeType.Blocked, @"Blocked" },
+            {(int) MapAttributeType.Critter, @"Critter" },
+            {(int) MapAttributeType.GrappleStone, @"Grapple Stone" },
+            {(int) MapAttributeType.Item, @"Item Spawn" },
+            {(int) MapAttributeType.NpcAvoid, @"Npc Avoid" },
+            {(int) MapAttributeType.Resource, @"Resource Spawn" },
+            {(int) MapAttributeType.Slide, @"Slide" },
+            {(int) MapAttributeType.Sound, @"Map Sound" },
+            {(int) MapAttributeType.Walkable, @"Walkable" },
+            {(int) MapAttributeType.Warp, @"Warp" },
+            {(int) MapAttributeType.ZDimension, @"Z-Dimension" },
         };
 
         public static string FormatSpawnLevel(int level)
@@ -1761,7 +1761,7 @@ Tick timer saved in server config.json.";
         public static LocalizedString okay = @"Ok";
 
         public static LocalizedString RemoveBound = @"Remove Bound Spell ?";
-        
+
         public static LocalizedString spell = @"Spell: ";
 
         public static LocalizedString title = @"Change Player Spells";
@@ -4678,7 +4678,7 @@ Tick timer saved in server config.json.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString TextureSize = @"Max Texture Pack Size (Resolution):";
-        
+
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString CursorSprites = @"Enable cursor sprites for map tools.";
     }

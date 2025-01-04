@@ -16,10 +16,8 @@ namespace Intersect.Client.MonoGame.File_Management;
 public partial class MonoContentManager : GameContentManager
 {
 
-    public MonoContentManager()
+    public MonoContentManager(ILogger logger) : base(logger)
     {
-        Init(this);
-
         var rootPath = Path.GetFullPath(ClientConfiguration.ResourcesDirectory);
 
         if (!Directory.Exists(rootPath))
@@ -288,7 +286,7 @@ public partial class MonoContentManager : GameContentManager
                 }
             }
         }
-        
+
     }
 
     public override void LoadMusic()

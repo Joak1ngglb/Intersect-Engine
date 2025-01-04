@@ -36,7 +36,7 @@ public static partial class Graphics
             Renderer?.SetView(_currentView);
         }
     }
-    
+
     public static FloatRect WorldViewport => new(CurrentView.Position, CurrentView.Size / (Globals.Database?.WorldZoom ?? 1));
 
     public static GameShader? DefaultShader;
@@ -123,12 +123,14 @@ public static partial class Graphics
     {
         var size = 8;
 
-        if (font.IndexOf(',') > -1)
+        if (font.IndexOf(',') < 0)
         {
-            var parts = font.Split(',');
-            font = parts[0];
-            _ = int.TryParse(parts[1], out size);
+            return sContentManager.GetFont(font, size);
         }
+
+        var parts = font.Split(',');
+        font = parts[0];
+        _ = int.TryParse(parts[1], out size);
 
         return sContentManager.GetFont(font, size);
     }
@@ -147,14 +149,16 @@ public static partial class Graphics
 
     public static void DrawIntro()
     {
-        var imageTex = sContentManager.GetTexture(
-            Framework.Content.TextureType.Image, ClientConfiguration.Instance.IntroImages[Globals.IntroIndex]
-        );
-
-        if (imageTex != null)
+        if (!sContentManager.TryGetTexture(
+                TextureType.Image,
+                ClientConfiguration.Instance.IntroImages[Globals.IntroIndex],
+                out var texture
+            ))
         {
-            DrawFullScreenTextureFitMinimum(imageTex);
+            return;
         }
+
+        DrawFullScreenTextureFitMinimum(texture);
     }
 
     private static void DrawMenu()
@@ -285,33 +289,34 @@ public static partial class Graphics
         var gridY = currentMap.GridY;
 
         //Draw Panoramas First...
-        for (var x = gridX - 1; x <= gridX + 1; x++)
+        var mapGridWidth = Globals.MapGridWidth;
+        var mapGridHeight = Globals.MapGridHeight;
+
+        for (var x = Math.Max(gridX - 1, 0); x <= Math.Min(gridX + 1, mapGridWidth - 1); x++)
         {
-            for (var y = gridY - 1; y <= gridY + 1; y++)
+            for (var y = Math.Max(gridY - 1, 0); y <= Math.Min(gridY + 1, mapGridHeight - 1); y++)
             {
-                if (x >= 0 &&
-                    x < Globals.MapGridWidth &&
-                    y >= 0 &&
-                    y < Globals.MapGridHeight &&
-                    Globals.MapGrid[x, y] != Guid.Empty)
+                var mapId = Globals.MapGrid[x, y];
+                if (mapId == Guid.Empty)
                 {
-                    DrawMapPanorama(Globals.MapGrid[x, y]);
+                    continue;
                 }
+
+                DrawMapPanorama(Globals.MapGrid[x, y]);
             }
         }
 
-        for (var x = gridX - 1; x <= gridX + 1; x++)
+        for (var x = Math.Max(gridX - 1, 0); x <= Math.Min(gridX + 1, mapGridWidth - 1); x++)
         {
-            for (var y = gridY - 1; y <= gridY + 1; y++)
+            for (var y = Math.Max(gridY - 1, 0); y <= Math.Min(gridY + 1, mapGridHeight - 1); y++)
             {
-                if (x >= 0 &&
-                    x < Globals.MapGridWidth &&
-                    y >= 0 &&
-                    y < Globals.MapGridHeight &&
-                    Globals.MapGrid[x, y] != Guid.Empty)
+                var mapId = Globals.MapGrid[x, y];
+                if (mapId == Guid.Empty)
                 {
-                    DrawMap(Globals.MapGrid[x, y], 0);
+                    continue;
                 }
+
+                DrawMap(mapId, 0);
             }
         }
 
@@ -326,7 +331,8 @@ public static partial class Graphics
         // Handle our plugin drawing.
         Globals.OnGameDraw(DrawStates.BelowPlayer, deltaTime);
 
-        for (var y = 0; y < Options.MapHeight * 5; y++)
+        var mapHeight = Options.MapHeight;
+        for (var y = 0; y < mapHeight * 5; y++)
         {
             for (var x = 0; x < 3; x++)
             {
@@ -343,15 +349,15 @@ public static partial class Graphics
                     EntitiesDrawn++;
                 }
 
-                if (x == 0 && y > 0 && y % Options.MapHeight == 0)
+                if (x == 0 && y > 0 && y % mapHeight == 0)
                 {
                     for (var x1 = gridX - 1; x1 <= gridX + 1; x1++)
                     {
-                        var y1 = gridY - 2 + (int)Math.Floor(y / (float)Options.MapHeight);
+                        var y1 = gridY - 2 + (int)Math.Floor(y / (float)mapHeight);
                         if (x1 >= 0 &&
-                            x1 < Globals.MapGridWidth &&
+                            x1 < mapGridWidth &&
                             y1 >= 0 &&
-                            y1 < Globals.MapGridHeight &&
+                            y1 < mapGridHeight &&
                             Globals.MapGrid[x1, y1] != Guid.Empty)
                         {
                             var map = MapInstance.Get(Globals.MapGrid[x1, y1]);
@@ -368,22 +374,21 @@ public static partial class Graphics
             animInstance.Draw(true, true);
         }
 
-        for (var x = gridX - 1; x <= gridX + 1; x++)
+        for (var x = Math.Max(gridX - 1, 0); x <= Math.Min(gridX + 1, mapGridWidth - 1); x++)
         {
-            for (var y = gridY - 1; y <= gridY + 1; y++)
+            for (var y = Math.Max(gridY - 1, 0); y <= Math.Min(gridY + 1, mapGridHeight - 1); y++)
             {
-                if (x >= 0 &&
-                    x < Globals.MapGridWidth &&
-                    y >= 0 &&
-                    y < Globals.MapGridHeight &&
-                    Globals.MapGrid[x, y] != Guid.Empty)
+                var mapId = Globals.MapGrid[x, y];
+                if (mapId == Guid.Empty)
                 {
-                    DrawMap(Globals.MapGrid[x, y], 1);
+                    continue;
                 }
+
+                DrawMap(Globals.MapGrid[x, y], 1);
             }
         }
 
-        for (var y = 0; y < Options.MapHeight * 5; y++)
+        for (var y = 0; y < mapHeight * 5; y++)
         {
             for (var x = 3; x < 6; x++)
             {
@@ -405,18 +410,17 @@ public static partial class Graphics
         // Handle our plugin drawing.
         Globals.OnGameDraw(DrawStates.AbovePlayer, deltaTime);
 
-        for (var x = gridX - 1; x <= gridX + 1; x++)
+        for (var x = Math.Max(gridX - 1, 0); x <= Math.Min(gridX + 1, mapGridWidth - 1); x++)
         {
-            for (var y = gridY - 1; y <= gridY + 1; y++)
+            for (var y = Math.Max(gridY - 1, 0); y <= Math.Min(gridY + 1, mapGridHeight - 1); y++)
             {
-                if (x >= 0 &&
-                    x < Globals.MapGridWidth &&
-                    y >= 0 &&
-                    y < Globals.MapGridHeight &&
-                    Globals.MapGrid[x, y] != Guid.Empty)
+                var mapId = Globals.MapGrid[x, y];
+                if (mapId == Guid.Empty)
                 {
-                    DrawMap(Globals.MapGrid[x, y], 2);
+                    continue;
                 }
+
+                DrawMap(mapId, 2);
             }
         }
         // Handle our plugin drawing.
@@ -427,25 +431,25 @@ public static partial class Graphics
             animInstance.Draw(true);
         }
 
-        for (var x = gridX - 1; x <= gridX + 1; x++)
+        for (var x = Math.Max(gridX - 1, 0); x <= Math.Min(gridX + 1, mapGridWidth - 1); x++)
         {
-            for (var y = gridY - 1; y <= gridY + 1; y++)
+            for (var y = Math.Max(gridY - 1, 0); y <= Math.Min(gridY + 1, mapGridHeight - 1); y++)
             {
-                if (x >= 0 &&
-                    x < Globals.MapGridWidth &&
-                    y >= 0 &&
-                    y < Globals.MapGridHeight &&
-                    Globals.MapGrid[x, y] != Guid.Empty)
+                var mapId = Globals.MapGrid[x, y];
+                if (mapId == Guid.Empty)
                 {
-                    var map = MapInstance.Get(Globals.MapGrid[x, y]);
-                    if (map != null)
-                    {
-                        map.DrawWeather();
-                        map.DrawFog();
-                        map.DrawOverlayGraphic();
-                        map.DrawItemNames();
-                    }
+                    continue;
                 }
+
+                if (!MapInstance.TryGet(mapId, out var map))
+                {
+                    continue;
+                }
+
+                map.DrawWeather();
+                map.DrawFog();
+                map.DrawOverlayGraphic();
+                map.DrawItemNames();
             }
         }
 
@@ -458,7 +462,7 @@ public static partial class Graphics
         GenerateLightMap();
         DrawDarkness();
 
-        for (var y = 0; y < Options.MapHeight * 5; y++)
+        for (var y = 0; y < mapHeight * 5; y++)
         {
             for (var x = 0; x < 3; x++)
             {
@@ -476,7 +480,7 @@ public static partial class Graphics
             }
         }
 
-        for (var y = 0; y < Options.MapHeight * 5; y++)
+        for (var y = 0; y < mapHeight * 5; y++)
         {
             for (var x = 3; x < 6; x++)
             {
@@ -495,21 +499,22 @@ public static partial class Graphics
         }
 
         //Draw action msg's
-        for (var x = gridX - 1; x <= gridX + 1; x++)
+        for (var x = Math.Max(gridX - 1, 0); x <= Math.Min(gridX + 1, mapGridWidth - 1); x++)
         {
-            for (var y = gridY - 1; y <= gridY + 1; y++)
+            for (var y = Math.Max(gridY - 1, 0); y <= Math.Min(gridY + 1, mapGridHeight - 1); y++)
             {
-                if (x < 0 ||
-                    x >= Globals.MapGridWidth ||
-                    y < 0 ||
-                    y >= Globals.MapGridHeight ||
-                    Globals.MapGrid[x, y] == Guid.Empty)
+                var mapId = Globals.MapGrid[x, y];
+                if (mapId == Guid.Empty)
                 {
                     continue;
                 }
 
-                var map = MapInstance.Get(Globals.MapGrid[x, y]);
-                map?.DrawActionMsgs();
+                if (!MapInstance.TryGet(mapId, out var map))
+                {
+                    continue;
+                }
+
+                map.DrawActionMsgs();
             }
         }
 
@@ -607,22 +612,22 @@ public static partial class Graphics
         }
     }
 
-    private static void DrawMap(Guid mapId, int layer = 0)
+    private static void DrawMap(Guid mapId, int layer)
     {
-        var map = MapInstance.Get(mapId);
-        if (map == null)
+        if (!MapInstance.TryGet(mapId, out var map))
         {
             return;
         }
 
         if (!new FloatRect(
-            map.GetX(), map.GetY(), Options.TileWidth * Options.MapWidth, Options.TileHeight * Options.MapHeight
+            map.X, map.Y, Options.TileWidth * Options.MapWidth, Options.TileHeight * Options.MapHeight
         ).IntersectsWith(WorldViewport))
         {
             return;
         }
 
         map.Draw(layer);
+
         if (layer == 0)
         {
             MapsDrawn++;
@@ -631,18 +636,24 @@ public static partial class Graphics
 
     private static void DrawMapPanorama(Guid mapId)
     {
-        var map = MapInstance.Get(mapId);
-        if (map != null)
+        if (!MapInstance.TryGet(mapId, out var map))
         {
-            if (!new FloatRect(
-                map.GetX(), map.GetY(), Options.TileWidth * Options.MapWidth, Options.TileHeight * Options.MapHeight
-            ).IntersectsWith(WorldViewport))
-            {
-                return;
-            }
-
-            map.DrawPanorama();
+            return;
         }
+
+        var mapBounds = new FloatRect(
+            map.X,
+            map.Y,
+            Options.TileWidth * Options.MapWidth,
+            Options.TileHeight * Options.MapHeight
+        );
+
+        if (!mapBounds.IntersectsWith(WorldViewport))
+        {
+            return;
+        }
+
+        map.DrawPanorama();
     }
 
     public static void DrawOverlay()
@@ -652,8 +663,7 @@ public static partial class Graphics
             return;
         }
 
-        var map = MapInstance.Get(Globals.Me?.MapId ?? Guid.Empty);
-        if (map != null)
+        if (MapInstance.TryGet(Globals.Me?.MapId ?? default, out var map))
         {
             float ecTime = Timing.Global.MillisecondsUtc - sOverlayUpdate;
 
@@ -768,7 +778,7 @@ public static partial class Graphics
     {
         return gameTexture == null
             ? new FloatRect()
-            : new FloatRect(0, 0, gameTexture.GetWidth(), gameTexture.GetHeight());
+            : new FloatRect(0, 0, gameTexture.Width, gameTexture.Height);
     }
 
     public static void DrawFullScreenTexture(GameTexture tex, float alpha = 1f)
@@ -778,10 +788,10 @@ public static partial class Graphics
             return;
         }
 
-        var bgx = Renderer.GetScreenWidth() / 2 - tex.GetWidth() / 2;
-        var bgy = Renderer.GetScreenHeight() / 2 - tex.GetHeight() / 2;
-        var bgw = tex.GetWidth();
-        var bgh = tex.GetHeight();
+        var bgx = Renderer.GetScreenWidth() / 2 - tex.Width / 2;
+        var bgy = Renderer.GetScreenHeight() / 2 - tex.Height / 2;
+        var bgw = tex.Width;
+        var bgh = tex.Height;
         int diff;
 
         if (bgw < Renderer.GetScreenWidth())
@@ -812,10 +822,10 @@ public static partial class Graphics
             return;
         }
 
-        var bgx = Renderer.GetScreenWidth() / 2 - tex.GetWidth() / 2;
-        var bgy = Renderer.GetScreenHeight() / 2 - tex.GetHeight() / 2;
-        var bgw = tex.GetWidth();
-        var bgh = tex.GetHeight();
+        var bgx = Renderer.GetScreenWidth() / 2 - tex.Width / 2;
+        var bgy = Renderer.GetScreenHeight() / 2 - tex.Height / 2;
+        var bgw = tex.Width;
+        var bgh = tex.Height;
 
         DrawGameTexture(
             tex, GetSourceRect(tex),
@@ -846,9 +856,9 @@ public static partial class Graphics
             return;
         }
 
-        var scale = Renderer.GetScreenWidth() / (float)tex.GetWidth();
-        var scaledHeight = tex.GetHeight() * scale;
-        var offsetY = (Renderer.GetScreenHeight() - tex.GetHeight()) / 2f;
+        var scale = Renderer.GetScreenWidth() / (float)tex.Width;
+        var scaledHeight = tex.Height * scale;
+        var offsetY = (Renderer.GetScreenHeight() - tex.Height) / 2f;
         DrawGameTexture(
             tex, GetSourceRect(tex),
             new FloatRect(
@@ -864,8 +874,8 @@ public static partial class Graphics
             return;
         }
 
-        var scale = Renderer.GetScreenHeight() / (float)tex.GetHeight();
-        var scaledWidth = tex.GetWidth() * scale;
+        var scale = Renderer.GetScreenHeight() / (float)tex.Height;
+        var scaledWidth = tex.Width * scale;
         var offsetX = (Renderer.GetScreenWidth() - scaledWidth) / 2f;
         DrawGameTexture(
             tex, GetSourceRect(tex),
@@ -963,10 +973,10 @@ public static partial class Graphics
             y1 -= mapHeight;
         }
 
-        x = map.GetX() - x;
-        y = map.GetY() - y;
-        x1 = map.GetX() + x1;
-        y1 = map.GetY() + y1;
+        x = map.X - x;
+        y = map.Y - y;
+        x1 = map.X + x1;
+        y1 = map.Y + y1;
 
         var w = x1 - x;
         var h = y1 - y;
@@ -1027,14 +1037,28 @@ public static partial class Graphics
 
     private static void GenerateLightMap()
     {
-        // If we're not allowed to draw lighting, exit out.
-        if (!Globals.Database.EnableLighting || Renderer == default || Globals.Me == default)
+        if (Renderer == default)
         {
             return;
         }
 
-        var map = MapInstance.Get(Globals.Me.MapId);
-        if (map == null || sDarknessTexture == null)
+        if (sDarknessTexture == default)
+        {
+            return;
+        }
+
+        var mapId = Globals.Me?.MapId ?? default;
+        if (mapId == default)
+        {
+            return;
+        }
+
+        if (!Globals.Database.EnableLighting)
+        {
+            return;
+        }
+
+        if (!MapInstance.TryGet(mapId, out var map))
         {
             return;
         }
@@ -1159,8 +1183,7 @@ public static partial class Graphics
         }
 
         //Draw Light Around Player
-        var map = MapInstance.Get(Globals.Me.MapId);
-        if (map != null)
+        if (MapInstance.TryGet(Globals.Me.MapId, out var map))
         {
             float ecTime = Timing.Global.MillisecondsUtc - sLightUpdate;
             var valChange = 255 * ecTime / 2000f;
@@ -1396,8 +1419,8 @@ public static partial class Graphics
         bool drawImmediate = false
     )
     {
-        var destRectangle = new FloatRect(x, y, tex.GetWidth(), tex.GetHeight());
-        var srcRectangle = new FloatRect(0, 0, tex.GetWidth(), tex.GetHeight());
+        var destRectangle = new FloatRect(x, y, tex.Width, tex.Height);
+        var srcRectangle = new FloatRect(0, 0, tex.Width, tex.Height);
 
         DrawGameTexture(
             tex, srcRectangle, destRectangle, Color.White, renderTarget, blendMode, shader, rotationDegrees,
@@ -1430,8 +1453,8 @@ public static partial class Graphics
         bool drawImmediate = false
     )
     {
-        var destRectangle = new FloatRect(x, y, tex.GetWidth(), tex.GetHeight());
-        var srcRectangle = new FloatRect(0, 0, tex.GetWidth(), tex.GetHeight());
+        var destRectangle = new FloatRect(x, y, tex.Width, tex.Height);
+        var srcRectangle = new FloatRect(0, 0, tex.Width, tex.Height);
         DrawGameTexture(
             tex, srcRectangle, destRectangle, renderColor, renderTarget, blendMode, shader, rotationDegrees,
             drawImmediate

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
-using System.Text;
+using Intersect.Logging;
 
 namespace Intersect.Server.Web.Configuration;
 
@@ -28,8 +28,26 @@ public class TokenGenerationOptions
     [Required]
     public string Secret
     {
-        get => Convert.ToHexString(SecretData ??= RandomNumberGenerator.GetBytes(32));
-        set => SecretData = string.IsNullOrWhiteSpace(value) ? default : Convert.FromHexString(value);
+        get => Convert.ToHexString(SecretData ??= RandomNumberGenerator.GetBytes(64));
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                SecretData = default;
+                return;
+            }
+
+            try
+            {
+                value = value.Trim();
+                SecretData = Convert.FromHexString(value.Trim());
+            }
+            catch (Exception exception)
+            {
+                Log.Error(exception, $"Failed to parse secret (should be hex), value was {value.Length} characters long");
+                SecretData = default;
+            }
+        }
     }
 
     [Newtonsoft.Json.JsonIgnore]

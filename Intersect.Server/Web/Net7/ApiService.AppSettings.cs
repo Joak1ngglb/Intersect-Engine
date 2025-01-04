@@ -87,7 +87,7 @@ internal partial class ApiService
                 TokenGenerationOptions.DefaultRefreshTokenLifetime;
         }
 
-        if (apiConfiguration.TokenGenerationOptions.Secret.Length < 256)
+        if (apiConfiguration.TokenGenerationOptions.Secret.Length < 128)
         {
             apiConfiguration.TokenGenerationOptions.Secret = default;
             if (apiConfiguration.TokenGenerationOptions.Secret == default)

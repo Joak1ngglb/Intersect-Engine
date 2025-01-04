@@ -45,7 +45,28 @@ namespace Intersect.Server.Entities
             {
                 message += $" (reduction of {reductionPercentage}% by level difference).";
             }
-            SendMessageToPlayer(message, MessageType.Info);
+
+            SendMessageToParty(message, MessageType.Info);
+        }
+
+        private void SendMessageToParty(string message, MessageType type)
+        {
+            // Check if the player is in a party
+            if (Party != null)
+            {
+                foreach (var member in Party)
+                {
+                    if (member != null)
+                    {
+                        member.SendMessageToPlayer(message, type);
+                    }
+                }
+            }
+            else
+            {
+                // If not in a party, just send the message to the player
+                SendMessageToPlayer(message, type);
+            }
         }
 
         private void SendMessageToPlayer(string message, MessageType type)
@@ -61,6 +82,7 @@ namespace Intersect.Server.Entities
             recentMessages[message] = DateTime.Now;
             PacketSender.SendChatMsg(this, message, (ChatMessageType)type);
         }
+
     }
 
     public enum MessageType

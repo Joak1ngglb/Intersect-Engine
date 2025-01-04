@@ -1,4 +1,4 @@
-﻿namespace Intersect.Client.Framework.Maps;
+namespace Intersect.Client.Framework.Maps;
 
 public interface IActionMessage
 {

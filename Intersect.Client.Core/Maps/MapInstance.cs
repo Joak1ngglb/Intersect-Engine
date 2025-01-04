@@ -1523,7 +1523,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             var scale = 1 - progress * 0.5f; // Scale from 1.0 to 0.5 (adjustable)
 
             // Render the message
-            var textWidth = Graphics.Renderer.MeasureText(actionMessage.Msg, Graphics.ActionMsgFont, scale).X;
+            var textWidth = Graphics.Renderer.MeasureText(actionMessage.Text, Graphics.ActionMsgFont, scale).X;
             Graphics.Renderer.DrawString(
                 actionMessage.Text,
                 Graphics.ActionMsgFont,

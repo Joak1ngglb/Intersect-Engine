@@ -220,6 +220,7 @@ public static partial class CustomColors
         public Color CriticalHitReceivedColor = new Color(255, 130, 46, 36);
         public Color CriticalHitDealtColor = new Color(255, 255, 255, 255);
 
+        public Color JobLevelUp = Color.Cyan;
     }
 
     public sealed partial class ItemsNamespace

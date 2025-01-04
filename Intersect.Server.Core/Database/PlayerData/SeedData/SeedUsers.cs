@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-
+using Intersect.Config;
 using Intersect.Enums;
 using Intersect.Server.Database.PlayerData.Security;
 using Intersect.Server.Entities;
@@ -107,10 +107,11 @@ public partial class SeedUsers : SeedData<User>
                     Level = 1,
                     Exp = 0,
                     StatPoints = 0,
-
                     Sprite = "1.png",
                     Face = null
                 };
+
+                player.InitializeJobs();
 
                 for (var i = 0; i < Options.EquipmentSlots.Count; i++)
                 {
@@ -124,7 +125,25 @@ public partial class SeedUsers : SeedData<User>
                 {
                     player.Stat[i].BaseStat = 0;
                 }
+                // **Inicialización de trabajos**
 
+                user.Players?.Add(player);
+                player.ValidateLists();
+
+                for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+                {
+                    player.Equipment[i] = -1;
+                }
+
+                player.SetVital(Vital.Health, 10);
+                player.SetVital(Vital.Mana, 10);
+
+                for (var i = 0; i < Enum.GetValues<Stat>().Length; i++)
+                {
+                    player.Stat[i].BaseStat = 0;
+                }
+                // **Inicialización de trabajos**
+               
                 user.Players?.Add(player);
                 player.ValidateLists();
             }

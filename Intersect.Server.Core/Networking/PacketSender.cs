@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Intersect.Config;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
@@ -409,6 +410,7 @@ public static partial class PacketSender
             SendQuestsProgress(player);
             SendItemCooldowns(player);
             SendSpellCooldowns(player);
+            SendJobSync(player);
         }
 
         switch (entity)
@@ -2400,5 +2402,40 @@ public static partial class PacketSender
             }
         }
     }
+
+
+    public static void SendJobSync(Player player)
+    {
+        if (player == null || player.Jobs == null || player.Jobs.Count == 0)
+        {
+            PacketSender.SendChatMsg(player, "Error: No hay trabajos inicializados para este jugador.", ChatMessageType.Notice);
+            return;
+        }
+
+        var jobData = new Dictionary<JobType, JobData>();
+        // Inicializar trabajos si no están presentes
+        player.InitializeJobs();
+        foreach (var job in player.Jobs)
+        {
+            var jobType = job.Key;
+            var jobDetails = job.Value;
+
+            // Crear un JobData con los datos actuales del trabajo
+            jobData[jobType] = new JobData
+            {
+                Level = jobDetails.JobLevel,
+                Experience = jobDetails.JobExp,
+                ExperienceToNextLevel = jobDetails.GetExperienceToNextLevel(jobDetails.JobLevel)
+            };
+        }
+
+        // Crear y enviar el paquete
+        var packet = new JobSyncPacket(jobData);
+        player.SendPacket(packet, TransmissionMode.Any);
+
+        // Depuración en el servidor
+        PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
+    }
+
 
 }

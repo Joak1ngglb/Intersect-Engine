@@ -64,7 +64,8 @@ public partial class Options
 
     [JsonProperty("Player")]
     public PlayerOptions PlayerOpts = new PlayerOptions();
-
+    [JsonProperty("Jobs")]
+    public JobOptions JobOpts = new JobOptions(); // Integración de JobOptions
     [JsonProperty("Party")]
     public PartyOptions PartyOpts = new PartyOptions();
 
@@ -119,7 +120,6 @@ public partial class Options
     public static int MaxStatValue => Instance.PlayerOpts.MaxStat;
 
     public static int MaxLevel => Instance.PlayerOpts.MaxLevel;
-
     public static int MaxInvItems => Instance.PlayerOpts.MaxInventory;
 
     public static int MaxCharacters => Instance.PlayerOpts.MaxCharacters;
@@ -214,7 +214,12 @@ public partial class Options
     }
 
     public static PlayerOptions Player => Instance.PlayerOpts;
+    public static JobOptions Jobs => Instance.JobOpts; // Propiedad estática para acceder fácilmente a JobOptions
 
+    public static int MaxJobLevel => Instance.JobOpts.MaxJobLevel; // Propiedad estática para el nivel máximo de los trabajos
+    public static Dictionary<JobType, long> JobBaseExp => Instance.JobOpts.JobBaseExp;
+
+    public static double GainBaseExponent => Instance.JobOpts.ExpGrowthRate;
     public static EquipmentOptions Equipment => Instance.EquipmentOpts;
 
     public static CombatOptions Combat => Instance.CombatOpts;

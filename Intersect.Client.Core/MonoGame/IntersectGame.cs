@@ -12,6 +12,7 @@ using Intersect.Client.MonoGame.Input;
 using Intersect.Client.MonoGame.Network;
 using Intersect.Configuration;
 using Intersect.Updater;
+using DiscordRPC;
 
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -156,9 +157,14 @@ internal partial class IntersectGame : Game
     ///     related content.  Calling base.Initialize will enumerate through any components
     ///     and initialize them as well.
     /// </summary>
-    protected override void Initialize()
+    protected override async void Initialize()
     {
         base.Initialize();
+
+        {
+            string applicationId = "1325506723141910588"; // Reemplácelo con su propia ID de aplicación desde el Portal para desarrolladores de Discord
+            DiscordPresenceManager.Initialize(applicationId);
+        }
 
         if (mUpdater != null)
         {
@@ -214,6 +220,11 @@ internal partial class IntersectGame : Game
     /// <param name="gameTime">Provides a snapshot of timing values.</param>
     protected override void Update(GameTime gameTime)
     {
+        base.Update(gameTime);
+        {
+            // Ejemplo de invocación de la actualización de Discord Rich Presence
+            DiscordPresenceManager.UpdatePresence("In Game");
+        }
         if (mUpdater != null)
         {
             if (mUpdater.CheckUpdaterContentLoaded())
@@ -536,9 +547,13 @@ internal partial class IntersectGame : Game
         }
     }
 
-    protected override void Dispose(bool disposing)
+    protected override async void Dispose(bool disposing)
     {
         base.Dispose(disposing);
+
+        {
+            DiscordPresenceManager.Dispose();
+        }
 
         if (!disposing)
         {
@@ -549,6 +564,7 @@ internal partial class IntersectGame : Game
         {
             Context.Dispose();
         }
+
     }
 
     /// <summary>

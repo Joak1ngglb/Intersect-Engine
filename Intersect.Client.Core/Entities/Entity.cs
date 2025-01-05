@@ -1550,7 +1550,7 @@ public partial class Entity : IEntity
 
         if (borderColor == null)
         {
-            borderColor = Color.Transparent;
+            borderColor = Color.Black;
         }
 
         if (backgroundColor == null)
@@ -1574,13 +1574,14 @@ public partial class Entity : IEntity
         var x = (int)Math.Ceiling(Origin.X);
         var y = GetLabelLocation(LabelType.Name);
 
-        if (backgroundColor != Color.Transparent)
-        {
-            Graphics.DrawGameTexture(
-                Graphics.Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1),
-                new FloatRect(x - textSize.X / 2f - 4, y, textSize.X + 8, textSize.Y), backgroundColor
-            );
-        }
+        // Eliminar el dibujo del fondo en el nick
+        // if (backgroundColor != Color.Transparent)
+        // {
+        //     Graphics.DrawGameTexture(
+        //         Graphics.Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1),
+        //         new FloatRect(x - textSize.X / 2f - 4, y, textSize.X + 8, textSize.Y), backgroundColor
+        //     );
+        // }
 
         Graphics.Renderer.DrawString(
             name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f), (int)y, 1,

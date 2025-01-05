@@ -39,4 +39,6 @@ public enum ConditionTypes
     MapZoneTypeIs,
 
     CheckEquipment,
+
+    SpellActive,
 }

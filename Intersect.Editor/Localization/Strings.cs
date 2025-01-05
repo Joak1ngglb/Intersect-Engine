@@ -307,6 +307,12 @@ public static partial class Strings
         );
     }
 
+    public static string GetEventConditionalDesc(SpellIsActive condition)
+    {
+        return
+            EventConditionDesc.SpellIsActive.ToString(SpellBase.GetName(condition.SpellId));
+    }
+
     public static string GetEventConditionalDesc(MapIsCondition condition)
     {
         var map = GameObjects.Maps.MapList.MapList.List.FindMap(condition.MapId);
@@ -2446,6 +2452,7 @@ Tick timer saved in server config.json.";
             {19, @"In Guild With At Least Rank..." },
             {20, @"Map Zone Type is..." },
             {21, @"Check Equipped Slot..." },
+            {22, @"Spell X is active on player..." },
         };
 
         public static LocalizedString endrange = @"End Range:";
@@ -2701,6 +2708,9 @@ Tick timer saved in server config.json.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString MapZoneTypeIs = @"Map Zone Type is {00}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString SpellIsActive = @"Spell {00} is active on player";
 
         public static Dictionary<int, LocalizedString> selfswitches = new Dictionary<int, LocalizedString>
         {

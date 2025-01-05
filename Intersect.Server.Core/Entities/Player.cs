@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Intersect.Collections.Slotting;
+using Intersect.Config;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
@@ -4175,6 +4176,23 @@ public partial class Player : Entity
                         this, Strings.Crafting.Crafted.ToString(craftItem.Name), ChatMessageType.Crafting,
                         CustomColors.Alerts.Success
                     );
+                    if (craftDescriptor.ExperienceAmount > 0)
+                    {
+                        if (craftDescriptor.Jobs != JobType.None)
+                        {
+                            // Agregar experiencia al trabajo
+                            GiveJobExperience(craftDescriptor.Jobs, craftDescriptor.ExperienceAmount);
+
+                            // Enviar mensaje al jugador
+                            var message = Strings.CraftingNamespace.GetJobExperienceMessage(craftDescriptor.Jobs, craftDescriptor.ExperienceAmount);
+                            PacketSender.SendChatMsg(this, message, ChatMessageType.Experience, CustomColors.Chat.PlayerMsg);
+                        }
+                        else
+                        {
+                            // Enviar mensaje de error si el tipo de trabajo no es válido
+                            PacketSender.SendChatMsg(this, string.Format(Strings.Crafting.UnknownJobType, craftDescriptor.Jobs), ChatMessageType.Error, Color.Orange);
+                        }
+                    }
 
                     if (craftDescriptor.Event != default)
                     {

@@ -1,3 +1,4 @@
+using Intersect.Config;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
@@ -5,6 +6,7 @@ using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Server.Framework.Entities;
 using Intersect.Server.Framework.Items;
+using Intersect.Server.Localization;
 using Intersect.Server.Maps;
 using Intersect.Server.Networking;
 using Intersect.Utilities;
@@ -17,7 +19,8 @@ public partial class Resource : Entity
 
     // Resource Number
     public ResourceBase Base;
-
+    public JobType Jobs  { get; set; } // Agrega esta propiedad para el tipo de trabajo (job)
+    public int ExperienceAmount { get; set; } // Agrega esta propiedad para la cantidad de experiencia (xp)
     //Respawn
     public long RespawnTime = 0;
 
@@ -36,6 +39,9 @@ public partial class Resource : Entity
         RestoreVital(Vital.Health);
         Passable = resource.WalkableBefore;
         HideName = true;
+        Jobs= JobType.JobCount; // Establece el tipo de trabajo predeterminado
+        ExperienceAmount = 0; // Establece la cantidad de experiencia predeterminada
+
     }
 
     public void Destroy(bool dropItems = false, Entity killer = null)
@@ -51,6 +57,51 @@ public partial class Resource : Entity
 
     public override void Die(bool dropItems = true, Entity killer = null)
     {
+        if (killer is Player player)
+        {
+            if (ExperienceAmount > 0)
+            {
+                if (Base.Jobs != JobType.None)
+                {
+                    // Validar que el jugador tenga datos para el trabajo específico
+                    if (player.Jobs.ContainsKey(Base.Jobs))
+                    {
+                        // Otorgar experiencia al trabajo específico
+                        player.GiveJobExperience(Base.Jobs, ExperienceAmount);
+
+                        // Enviar mensaje de experiencia ganada
+                        PacketSender.SendChatMsg(
+                      player,
+                      string.Format(Strings.CraftingNamespace.GetJobExperienceMessage(Base.Jobs, ExperienceAmount)),
+                      ChatMessageType.Experience,
+                      CustomColors.Chat.PlayerMsg
+                  );
+                    }
+                    else
+                    {
+                        // Trabajo desconocido en el jugador
+                        PacketSender.SendChatMsg(
+                            player,
+                            string.Format(Strings.Crafting.UnknownJobType, Base.Jobs),
+                            ChatMessageType.Error,
+                            Color.Orange
+                        );
+                    }
+                }
+                else
+                {
+                    // Si no hay un trabajo asignado
+                    PacketSender.SendChatMsg(
+                        player,
+                        "No Jobs Assigned",
+                        ChatMessageType.Error,
+                        Color.Orange
+                    );
+                }
+            }
+        }
+
+
         lock (EntityLock)
         {
             base.Die(false, killer);
@@ -87,7 +138,8 @@ public partial class Resource : Entity
         RestoreVital(Vital.Health);
         Passable = Base.WalkableBefore;
         Items.Clear();
-
+        Jobs = Base.Jobs; // Asigna el tipo de trabajo desde la configuración base
+        ExperienceAmount = Base.ExperienceAmount; // Asigna la cantidad de experiencia desde la configuración base
         //Give Resource Drops
         var itemSlot = 0;
         foreach (var drop in Base.Drops)

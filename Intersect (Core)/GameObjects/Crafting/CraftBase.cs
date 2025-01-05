@@ -5,6 +5,7 @@ using Intersect.GameObjects.Events;
 
 using Newtonsoft.Json;
 using Intersect.GameObjects.Conditions;
+using Intersect.Config;
 
 namespace Intersect.GameObjects.Crafting;
 
@@ -62,7 +63,10 @@ public partial class CraftBase : DatabaseObject<CraftBase>, IFolderable
         get => EventBase.Get(EventId);
         set => EventId = value?.Id ?? Guid.Empty;
     }
-
+    // Propiedad para almacenar el tipo de trabajo
+    public JobType Jobs { get; set; }
+    // Propiedad para almacenar la cantidad de experiencia que otorga
+    public int ExperienceAmount { get; set; }
     [NotMapped]
     public ConditionLists CraftingRequirements = new ConditionLists();
 

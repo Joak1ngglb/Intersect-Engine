@@ -70,12 +70,17 @@ namespace Intersect.Editor.Forms.Editors
             lblPic = new Label();
             tmrRender = new System.Windows.Forms.Timer(components);
             pnlContainer = new Panel();
-            grpRequirements = new DarkGroupBox();
-            lblCannotHarvest = new Label();
-            txtCannotHarvest = new DarkTextBox();
             grpCommonEvent = new DarkGroupBox();
             cmbEvent = new DarkComboBox();
             lblEvent = new Label();
+            GrpExp = new DarkGroupBox();
+            cmbJobType = new DarkComboBox();
+            label2 = new Label();
+            NudExpAmount = new DarkNumericUpDown();
+            label1 = new Label();
+            grpRequirements = new DarkGroupBox();
+            lblCannotHarvest = new Label();
+            txtCannotHarvest = new DarkTextBox();
             grpRegen = new DarkGroupBox();
             nudHpRegen = new DarkNumericUpDown();
             lblHpRegen = new Label();
@@ -116,8 +121,10 @@ namespace Intersect.Editor.Forms.Editors
             initalGraphicContainer.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picInitialResource).BeginInit();
             pnlContainer.SuspendLayout();
-            grpRequirements.SuspendLayout();
             grpCommonEvent.SuspendLayout();
+            GrpExp.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)NudExpAmount).BeginInit();
+            grpRequirements.SuspendLayout();
             grpRegen.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)nudHpRegen).BeginInit();
             grpDrops.SuspendLayout();
@@ -630,8 +637,9 @@ namespace Intersect.Editor.Forms.Editors
             // pnlContainer
             // 
             pnlContainer.AutoScroll = true;
-            pnlContainer.Controls.Add(grpRequirements);
             pnlContainer.Controls.Add(grpCommonEvent);
+            pnlContainer.Controls.Add(GrpExp);
+            pnlContainer.Controls.Add(grpRequirements);
             pnlContainer.Controls.Add(grpRegen);
             pnlContainer.Controls.Add(grpDrops);
             pnlContainer.Controls.Add(grpGeneral);
@@ -643,45 +651,6 @@ namespace Intersect.Editor.Forms.Editors
             pnlContainer.TabIndex = 18;
             pnlContainer.Visible = false;
             // 
-            // grpRequirements
-            // 
-            grpRequirements.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
-            grpRequirements.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
-            grpRequirements.Controls.Add(lblCannotHarvest);
-            grpRequirements.Controls.Add(btnRequirements);
-            grpRequirements.Controls.Add(txtCannotHarvest);
-            grpRequirements.ForeColor = System.Drawing.Color.Gainsboro;
-            grpRequirements.Location = new System.Drawing.Point(539, 218);
-            grpRequirements.Margin = new Padding(2);
-            grpRequirements.Name = "grpRequirements";
-            grpRequirements.Padding = new Padding(2);
-            grpRequirements.Size = new Size(285, 106);
-            grpRequirements.TabIndex = 33;
-            grpRequirements.TabStop = false;
-            grpRequirements.Text = "Requirements";
-            // 
-            // lblCannotHarvest
-            // 
-            lblCannotHarvest.AutoSize = true;
-            lblCannotHarvest.Location = new System.Drawing.Point(6, 54);
-            lblCannotHarvest.Margin = new Padding(4, 0, 4, 0);
-            lblCannotHarvest.Name = "lblCannotHarvest";
-            lblCannotHarvest.Size = new Size(141, 15);
-            lblCannotHarvest.TabIndex = 54;
-            lblCannotHarvest.Text = "Cannot Harvest Message:";
-            // 
-            // txtCannotHarvest
-            // 
-            txtCannotHarvest.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
-            txtCannotHarvest.BorderStyle = BorderStyle.FixedSingle;
-            txtCannotHarvest.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            txtCannotHarvest.Location = new System.Drawing.Point(9, 73);
-            txtCannotHarvest.Margin = new Padding(4, 3, 4, 3);
-            txtCannotHarvest.Name = "txtCannotHarvest";
-            txtCannotHarvest.Size = new Size(262, 23);
-            txtCannotHarvest.TabIndex = 53;
-            txtCannotHarvest.TextChanged += txtCannotHarvest_TextChanged;
-            // 
             // grpCommonEvent
             // 
             grpCommonEvent.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
@@ -689,7 +658,7 @@ namespace Intersect.Editor.Forms.Editors
             grpCommonEvent.Controls.Add(cmbEvent);
             grpCommonEvent.Controls.Add(lblEvent);
             grpCommonEvent.ForeColor = System.Drawing.Color.Gainsboro;
-            grpCommonEvent.Location = new System.Drawing.Point(539, 134);
+            grpCommonEvent.Location = new System.Drawing.Point(539, 136);
             grpCommonEvent.Margin = new Padding(2);
             grpCommonEvent.Name = "grpCommonEvent";
             grpCommonEvent.Padding = new Padding(2);
@@ -730,6 +699,118 @@ namespace Intersect.Editor.Forms.Editors
             lblEvent.TabIndex = 18;
             lblEvent.Text = "Event:";
             // 
+            // GrpExp
+            // 
+            GrpExp.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+            GrpExp.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            GrpExp.Controls.Add(cmbJobType);
+            GrpExp.Controls.Add(label2);
+            GrpExp.Controls.Add(NudExpAmount);
+            GrpExp.Controls.Add(label1);
+            GrpExp.ForeColor = System.Drawing.Color.Gainsboro;
+            GrpExp.Location = new System.Drawing.Point(539, 71);
+            GrpExp.Margin = new Padding(2);
+            GrpExp.Name = "GrpExp";
+            GrpExp.Padding = new Padding(2);
+            GrpExp.Size = new Size(285, 68);
+            GrpExp.TabIndex = 34;
+            GrpExp.TabStop = false;
+            GrpExp.Text = "Exp";
+            // 
+            // cmbJobType
+            // 
+            cmbJobType.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            cmbJobType.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            cmbJobType.BorderStyle = ButtonBorderStyle.Solid;
+            cmbJobType.ButtonColor = System.Drawing.Color.FromArgb(43, 43, 43);
+            cmbJobType.DrawDropdownHoverOutline = false;
+            cmbJobType.DrawFocusRectangle = false;
+            cmbJobType.DrawMode = DrawMode.OwnerDrawFixed;
+            cmbJobType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbJobType.FlatStyle = FlatStyle.Flat;
+            cmbJobType.ForeColor = System.Drawing.Color.Gainsboro;
+            cmbJobType.FormattingEnabled = true;
+            cmbJobType.Location = new System.Drawing.Point(9, 37);
+            cmbJobType.Margin = new Padding(4, 3, 4, 3);
+            cmbJobType.Name = "cmbJobType";
+            cmbJobType.Size = new Size(116, 24);
+            cmbJobType.TabIndex = 32;
+            cmbJobType.Text = null;
+            cmbJobType.TextPadding = new Padding(2);
+            cmbJobType.SelectedIndexChanged += cmbJobType_SelectedIndexChanged;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new System.Drawing.Point(156, 19);
+            label2.Margin = new Padding(4, 0, 4, 0);
+            label2.Name = "label2";
+            label2.Size = new Size(77, 15);
+            label2.TabIndex = 31;
+            label2.Text = "EXP Amount:";
+            // 
+            // NudExpAmount
+            // 
+            NudExpAmount.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            NudExpAmount.ForeColor = System.Drawing.Color.Gainsboro;
+            NudExpAmount.Location = new System.Drawing.Point(157, 37);
+            NudExpAmount.Margin = new Padding(4, 3, 4, 3);
+            NudExpAmount.Maximum = new decimal(new int[] { 9999999, 0, 0, 0 });
+            NudExpAmount.Name = "NudExpAmount";
+            NudExpAmount.Size = new Size(114, 23);
+            NudExpAmount.TabIndex = 30;
+            NudExpAmount.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            NudExpAmount.ValueChanged += NudExpAmount_ValueChanged;
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new System.Drawing.Point(5, 19);
+            label1.Margin = new Padding(2, 0, 2, 0);
+            label1.Name = "label1";
+            label1.Size = new Size(25, 15);
+            label1.TabIndex = 26;
+            label1.Text = "Job";
+            // 
+            // grpRequirements
+            // 
+            grpRequirements.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+            grpRequirements.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            grpRequirements.Controls.Add(lblCannotHarvest);
+            grpRequirements.Controls.Add(btnRequirements);
+            grpRequirements.Controls.Add(txtCannotHarvest);
+            grpRequirements.ForeColor = System.Drawing.Color.Gainsboro;
+            grpRequirements.Location = new System.Drawing.Point(539, 218);
+            grpRequirements.Margin = new Padding(2);
+            grpRequirements.Name = "grpRequirements";
+            grpRequirements.Padding = new Padding(2);
+            grpRequirements.Size = new Size(285, 106);
+            grpRequirements.TabIndex = 33;
+            grpRequirements.TabStop = false;
+            grpRequirements.Text = "Requirements";
+            // 
+            // lblCannotHarvest
+            // 
+            lblCannotHarvest.AutoSize = true;
+            lblCannotHarvest.Location = new System.Drawing.Point(6, 54);
+            lblCannotHarvest.Margin = new Padding(4, 0, 4, 0);
+            lblCannotHarvest.Name = "lblCannotHarvest";
+            lblCannotHarvest.Size = new Size(141, 15);
+            lblCannotHarvest.TabIndex = 54;
+            lblCannotHarvest.Text = "Cannot Harvest Message:";
+            // 
+            // txtCannotHarvest
+            // 
+            txtCannotHarvest.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            txtCannotHarvest.BorderStyle = BorderStyle.FixedSingle;
+            txtCannotHarvest.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
+            txtCannotHarvest.Location = new System.Drawing.Point(9, 73);
+            txtCannotHarvest.Margin = new Padding(4, 3, 4, 3);
+            txtCannotHarvest.Name = "txtCannotHarvest";
+            txtCannotHarvest.Size = new Size(262, 23);
+            txtCannotHarvest.TabIndex = 53;
+            txtCannotHarvest.TextChanged += txtCannotHarvest_TextChanged;
+            // 
             // grpRegen
             // 
             grpRegen.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
@@ -742,7 +823,7 @@ namespace Intersect.Editor.Forms.Editors
             grpRegen.Margin = new Padding(2);
             grpRegen.Name = "grpRegen";
             grpRegen.Padding = new Padding(2);
-            grpRegen.Size = new Size(285, 127);
+            grpRegen.Size = new Size(285, 68);
             grpRegen.TabIndex = 32;
             grpRegen.TabStop = false;
             grpRegen.Text = "Regen";
@@ -774,7 +855,7 @@ namespace Intersect.Editor.Forms.Editors
             lblRegenHint.Location = new System.Drawing.Point(119, 32);
             lblRegenHint.Margin = new Padding(4, 0, 4, 0);
             lblRegenHint.Name = "lblRegenHint";
-            lblRegenHint.Size = new Size(160, 83);
+            lblRegenHint.Size = new Size(160, 27);
             lblRegenHint.TabIndex = 0;
             lblRegenHint.Text = "% of HP to restore per tick.\r\n\r\nTick timer saved in server config.json.";
             // 
@@ -1113,10 +1194,13 @@ namespace Intersect.Editor.Forms.Editors
             initalGraphicContainer.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)picInitialResource).EndInit();
             pnlContainer.ResumeLayout(false);
-            grpRequirements.ResumeLayout(false);
-            grpRequirements.PerformLayout();
             grpCommonEvent.ResumeLayout(false);
             grpCommonEvent.PerformLayout();
+            GrpExp.ResumeLayout(false);
+            GrpExp.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)NudExpAmount).EndInit();
+            grpRequirements.ResumeLayout(false);
+            grpRequirements.PerformLayout();
             grpRegen.ResumeLayout(false);
             grpRegen.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)nudHpRegen).EndInit();
@@ -1205,5 +1289,10 @@ namespace Intersect.Editor.Forms.Editors
         private DarkTextBox txtCannotHarvest;
         private DarkNumericUpDown nudDropMinAmount;
         private Label lblDropMinAmount;
+        private DarkGroupBox GrpExp;
+        private DarkNumericUpDown NudExpAmount;
+        private Label label1;
+        private DarkComboBox cmbJobType;
+        private Label label2;
     }
 }

@@ -1,5 +1,5 @@
 using DarkUI.Forms;
-
+using Intersect.Config;
 using Intersect.Editor.Content;
 using Intersect.Editor.Core;
 using Intersect.Editor.General;
@@ -110,6 +110,11 @@ public partial class FrmResource : EditorForm
         cmbDropItem.Items.Clear();
         cmbDropItem.Items.Add(Strings.General.None);
         cmbDropItem.Items.AddRange(ItemBase.Names);
+        cmbJobType.Items.Clear();
+        for (var x = 0; x < (int)JobType.JobCount; x++)
+        {
+            cmbJobType.Items.Add(Globals.GetJobName(x));
+        }
         InitLocalization();
         UpdateEditor();
     }
@@ -253,7 +258,8 @@ public partial class FrmResource : EditorForm
             chkInitialBelowEntities.Checked = mEditorItem.Initial.RenderBelowEntities;
             chkExhaustedBelowEntities.Checked = mEditorItem.Exhausted.RenderBelowEntities;
             txtCannotHarvest.Text = mEditorItem.CannotHarvestMessage;
-
+            cmbJobType.SelectedIndex = (int)mEditorItem.Jobs;
+            NudExpAmount.Value = mEditorItem.ExperienceAmount;
             //Regen
             nudHpRegen.Value = mEditorItem.VitalRegen;
             PopulateInitialGraphicList();
@@ -991,5 +997,15 @@ public partial class FrmResource : EditorForm
     private void lblDropAmount_Click(object sender, EventArgs e)
     {
 
+    }
+
+    private void cmbJobType_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Jobs = (JobType)cmbJobType.SelectedIndex;
+    }
+
+    private void NudExpAmount_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.ExperienceAmount = (int)NudExpAmount.Value;
     }
 }

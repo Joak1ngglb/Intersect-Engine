@@ -1008,4 +1008,9 @@ public partial class FrmResource : EditorForm
     {
         mEditorItem.ExperienceAmount = (int)NudExpAmount.Value;
     }
+
+    private void nudLevel_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Level = (int)nudLevel.Value;
+    }
 }

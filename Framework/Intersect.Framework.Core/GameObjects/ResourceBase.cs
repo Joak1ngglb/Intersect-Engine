@@ -120,4 +120,5 @@ public partial class ResourceBase : DatabaseObject<ResourceBase>, IFolderable
 
     /// <inheritdoc />
     public string Folder { get; set; } = string.Empty;
+    public int Level { get; set; }
 }

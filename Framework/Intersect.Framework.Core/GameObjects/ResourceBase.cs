@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
-
+using Intersect.Config;
 using Intersect.GameObjects.Conditions;
 using Intersect.GameObjects.Events;
 using Intersect.Models;
@@ -69,7 +69,10 @@ public partial class ResourceBase : DatabaseObject<ResourceBase>, IFolderable
         get => AnimationBase.Get(AnimationId);
         set => AnimationId = value?.Id ?? Guid.Empty;
     }
-
+    // Propiedad para almacenar el tipo de trabajo
+    public JobType Jobs  { get; set; }
+    // Propiedad para almacenar la cantidad de experiencia que otorga
+    public int ExperienceAmount { get; set; }
     // Drops
     [Column("Drops")]
     [JsonIgnore]

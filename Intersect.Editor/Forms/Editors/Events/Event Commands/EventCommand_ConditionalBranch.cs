@@ -1,3 +1,4 @@
+using Intersect.Config;
 using Intersect.Editor.Localization;
 using Intersect.Enums;
 using Intersect.GameObjects;
@@ -74,7 +75,19 @@ public partial class EventCommandConditionalBranch : UserControl
         {
             cmbConditionType.Items.Add(itm.Value);
         }
+        grpJobLevel.Text = Strings.EventConditional.levelorstat;
+        // JobLevel
+        cmbJobLevel.Items.Clear();
 
+        for (var i = 0; i < (int)JobType.JobCount; i++)
+        {
+            cmbJobLevel.Items.Add(General.Globals.GetJobName(i));
+        }
+        cmbJobComparator.Items.Clear();
+        for (var i = 0; i < Strings.EventConditional.comparators.Count; i++)
+        {
+            cmbJobComparator.Items.Add(Strings.EventConditional.comparators[i]);
+        }
         chkNegated.Text = Strings.EventConditional.negated;
         chkHasElse.Text = Strings.EventConditional.HasElse;
 
@@ -405,6 +418,12 @@ public partial class EventCommandConditionalBranch : UserControl
                 }
 
                 break;
+            case ConditionTypes.JobLevel:
+                Condition = new JobLevelCondition();
+                cmbJobLevel.SelectedIndex = 0;
+                cmbJobComparator.SelectedIndex = 0;
+                nudJobValue.Value = 0;
+                break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
@@ -430,6 +449,7 @@ public partial class EventCommandConditionalBranch : UserControl
         grpMapZoneType.Hide();
         grpNpc.Hide();
         grpCheckEquippedSlot.Hide();
+        grpJobLevel.Hide();
         switch (type)
         {
             case ConditionTypes.VariableIs:
@@ -571,6 +591,11 @@ public partial class EventCommandConditionalBranch : UserControl
                 }
 
                 break;
+
+            case ConditionTypes.JobLevel:
+                grpJobLevel.Show();
+                break;
+
             default:
                 throw new ArgumentOutOfRangeException();
         }
@@ -1283,7 +1308,13 @@ public partial class EventCommandConditionalBranch : UserControl
         cmbLevelStat.SelectedIndex = condition.ComparingLevel ? 0 : (int)condition.Stat + 1;
         chkStatIgnoreBuffs.Checked = condition.IgnoreBuffs;
     }
+    private void SetupFormValues(JobLevelCondition condition)
+    {
+        cmbJobComparator.SelectedIndex = (int)condition.ComparatorJob;
+        nudJobValue.Value = condition.Value;
+        cmbJobLevel.SelectedIndex = condition.ComparingLevel;
 
+    }
     private void SetupFormValues(SelfSwitchCondition condition)
     {
         cmbSelfSwitch.SelectedIndex = condition.SwitchIndex;
@@ -1440,7 +1471,13 @@ public partial class EventCommandConditionalBranch : UserControl
             condition.Comparison = new VariableComparison();
         }
     }
+    private void SaveFormValues(JobLevelCondition condition)
+    {
+        condition.ComparatorJob = (VariableComparator)cmbJobComparator.SelectedIndex;
+        condition.Value = (int)nudJobValue.Value;
+        condition.ComparingLevel = cmbJobLevel.SelectedIndex;
 
+    }
     private void SaveFormValues(HasItemCondition condition)
     {
         condition.ItemId = ItemBase.IdFromList(cmbItem.SelectedIndex);

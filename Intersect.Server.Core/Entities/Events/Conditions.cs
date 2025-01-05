@@ -1,3 +1,4 @@
+using Intersect.Config;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Conditions;
@@ -705,6 +706,35 @@ public static partial class Conditions
         }
 
         return false;
+    }
+    public static bool MeetsCondition(
+    JobLevelCondition condition,
+    Player player,
+    Event eventInstance,
+    QuestBase questBase
+)
+    {
+        // Verificar si el jugador tiene el trabajo en cuestión
+        if (!player.Jobs.TryGetValue((JobType)condition.ComparingLevel, out var job))
+        {
+            Console.WriteLine($"Error: Job {(JobType)condition.ComparingLevel} not found for player {player.Name}.");
+            return false;
+        }
+
+        // Obtener el nivel del trabajo
+        var jobLevel = job.JobLevel;
+
+        // Evaluar el nivel del trabajo con el comparador
+        return condition.ComparatorJob switch
+        {
+            VariableComparator.Equal => jobLevel == condition.Value,
+            VariableComparator.GreaterOrEqual => jobLevel >= condition.Value,
+            VariableComparator.LesserOrEqual => jobLevel <= condition.Value,
+            VariableComparator.Greater => jobLevel > condition.Value,
+            VariableComparator.Less => jobLevel < condition.Value,
+            VariableComparator.NotEqual => jobLevel != condition.Value,
+            _ => false
+        };
     }
 
 }

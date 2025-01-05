@@ -41,6 +41,7 @@ public enum ConditionTypes
     MapZoneTypeIs,
 
     CheckEquipment,
+    JobLevel,
 }
 
 public partial class Condition
@@ -303,4 +304,11 @@ public partial class CheckEquippedSlot : Condition
     public override ConditionTypes Type { get; } = ConditionTypes.CheckEquipment;
 
     public string Name { get; set; }
+}
+public partial class JobLevelCondition : Condition
+{
+    public override ConditionTypes Type { get; } = ConditionTypes.JobLevel;
+    public int ComparingLevel { get; set; }
+    public VariableComparator ComparatorJob { get; set; } = VariableComparator.Equal;
+    public int Value { get; set; }
 }

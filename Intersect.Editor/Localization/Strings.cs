@@ -134,6 +134,41 @@ public static partial class Strings
     {
         return EventConditionDesc.knowsspell.ToString(SpellBase.GetName(condition.SpellId));
     }
+    public static string GetEventConditionalDesc(JobLevelCondition condition)
+    {
+        // Diccionario para mapear los comparadores a descripciones
+        var comparatorDescriptions = new Dictionary<VariableComparator, LocalizedString>
+    {
+        { VariableComparator.Equal, EventConditionDesc.equal },
+        { VariableComparator.GreaterOrEqual, EventConditionDesc.greaterequal },
+        { VariableComparator.LesserOrEqual, EventConditionDesc.lessthanequal },
+        { VariableComparator.Greater, EventConditionDesc.greater },
+        { VariableComparator.Less, EventConditionDesc.lessthan },
+        { VariableComparator.NotEqual, EventConditionDesc.notequal }
+    };
+
+        // Obtener la descripción del comparador
+        if (!comparatorDescriptions.TryGetValue(condition.ComparatorJob, out var comparatorDesc))
+        {
+            Console.WriteLine($"Error: Comparator {condition.ComparatorJob} is not recognized.");
+            return string.Empty;
+        }
+
+        var pLvl = comparatorDesc.ToString(condition.Value);
+
+        // Obtener el nombre específico del trabajo
+        var jobType = (JobType)condition.ComparingLevel;
+        var jobName = Strings.Job.GetJobName(jobType); // Supone que tienes un método que obtiene el nombre del trabajo
+
+        if (string.IsNullOrEmpty(jobName))
+        {
+            Console.WriteLine($"Error: Job {jobType} is not recognized.");
+            return string.Empty;
+        }
+
+        // Combinar las descripciones
+        return EventConditionDesc.levelorstat.ToString(jobName, pLvl);
+    }
 
     public static string GetEventConditionalDesc(LevelOrStatCondition condition)
     {
@@ -736,6 +771,26 @@ public static partial class Strings
     }
 
     public static Localizer Localizer { get; } = new Localizer();
+    public partial struct Job {
+        public static string GetJobName(JobType jobType)
+        {
+            return jobType switch
+            {
+                JobType.Farming => "Farming",
+                JobType.Mining => "Mining",
+                JobType.Fishing => "Fishing",
+                JobType.Lumberjack => "Woodcutting",
+                JobType.Hunter => "Hunting",
+                JobType.Alchemy => "Alchemy",
+                JobType.Smithing => "Blacksmithing",
+                JobType.Cooking => "Cooking",
+                JobType.Crafting => "Crafting",
+                _ => "Unknown Job"
+            };
+        }
+    }
+
+
 
     public partial struct About
     {
@@ -2469,6 +2524,7 @@ Tick timer saved in server config.json.";
             {19, @"In Guild With At Least Rank..." },
             {20, @"Map Zone Type is..." },
             {21, @"Check Equipped Slot..." },
+            {22,@"Job Level Is..." },
         };
 
         public static LocalizedString endrange = @"End Range:";
@@ -2747,6 +2803,7 @@ Tick timer saved in server config.json.";
 
         public static LocalizedString UserVariable = @"{00}: {01} {02}";
 
+        public static LocalizedString jobLevel = @"Job Level";
     }
 
     public partial struct EventCreateGuild

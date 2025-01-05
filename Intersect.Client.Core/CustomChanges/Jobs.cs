@@ -70,7 +70,7 @@ public partial class Player
             JobExpToNextLevel[jobType] = jobDetails.ExperienceToNextLevel;
 
             // Depuración en el cliente
-            PacketSender.SendChatMsg($"Trabajo {jobType} actualizado: Nivel {jobDetails.Level}, Exp {jobDetails.Experience}/{jobDetails.ExperienceToNextLevel}", 5);
+          //  PacketSender.SendChatMsg($"Trabajo {jobType} actualizado: Nivel {jobDetails.Level}, Exp {jobDetails.Experience}/{jobDetails.ExperienceToNextLevel}", 5);
         }
     }
 

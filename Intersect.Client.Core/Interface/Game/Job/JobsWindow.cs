@@ -187,7 +187,7 @@ namespace Intersect.Client.Interface.Game.Job
             }
             else
             {
-                PacketSender.SendChatMsg("Error: No se pudo crear el Label para el template.", 5);
+                //PacketSender.SendChatMsg("Error: No se pudo crear el Label para el template.", 5);
             }
             // Recipe panel
             mRecipePanel = new ScrollControl(InfoPanel, "RecipePanel");
@@ -227,21 +227,21 @@ namespace Intersect.Client.Interface.Game.Job
             // Validar que Globals.Me no sea null
             if (Globals.Me == null)
             {
-                PacketSender.SendChatMsg("Error: El jugador no está inicializado.", 5);
+                //PacketSender.SendChatMsg("Error: El jugador no está inicializado.", 5);
                 return;
             }
 
             // Validar que el trabajo es válido
             if (jobType == JobType.None || jobType == JobType.JobCount)
             {
-                PacketSender.SendChatMsg($"Advertencia: Trabajo '{jobType}' no es válido para actualizar.", 5);
+              //  PacketSender.SendChatMsg($"Advertencia: Trabajo '{jobType}' no es válido para actualizar.", 5);
                 return;
             }
 
             // Validar que los diccionarios de trabajos estén inicializados
             if (Globals.Me.JobLevel == null || Globals.Me.JobExp == null || Globals.Me.JobExpToNextLevel == null)
             {
-                PacketSender.SendChatMsg("Error: Los datos de trabajos no están inicializados.", 5);
+                //PacketSender.SendChatMsg("Error: Los datos de trabajos no están inicializados.", 5);
                 return;
             }
 
@@ -253,7 +253,7 @@ namespace Intersect.Client.Interface.Game.Job
             // Validar que los datos son razonables
             if (level <= 0 || exp < 0 || expToNextLevel <= 0)
             {
-                PacketSender.SendChatMsg($"Error: Datos inválidos para el trabajo '{jobType}'. Nivel: {level}, Exp: {exp}, Exp para siguiente nivel: {expToNextLevel}.", 5);
+               // PacketSender.SendChatMsg($"Error: Datos inválidos para el trabajo '{jobType}'. Nivel: {level}, Exp: {exp}, Exp para siguiente nivel: {expToNextLevel}.", 5);
                 return;
             }
 
@@ -261,7 +261,7 @@ namespace Intersect.Client.Interface.Game.Job
             // Validar que los componentes de la interfaz están inicializados
             if (JobNameLabel == null || JobLevelLabel == null || ExpLabel == null || ExpBar == null || ExpBackground == null || JobDescriptionLabel == null)
             {
-                PacketSender.SendChatMsg("Error: Los componentes de la interfaz no están inicializados.", 5);
+                //PacketSender.SendChatMsg("Error: Los componentes de la interfaz no están inicializados.", 5);
                 return;
             }
 
@@ -276,7 +276,7 @@ namespace Intersect.Client.Interface.Game.Job
             JobDescriptionLabel.AddText(Strings.Job.GetJobDescription(jobType), mJobtDescTemplateLabel);
             LoadRecipes(jobType);
             // Mensaje de depuración
-            PacketSender.SendChatMsg($"Trabajo {jobType}: Nivel {level}, Exp {exp}/{expToNextLevel}", 1);
+            //PacketSender.SendChatMsg($"Trabajo {jobType}: Nivel {level}, Exp {exp}/{expToNextLevel}", 1);
         }
         
         private void LoadRecipes(JobType jobType)

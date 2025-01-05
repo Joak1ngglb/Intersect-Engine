@@ -1,4 +1,5 @@
 using DarkUI.Forms;
+using Intersect.Config;
 using Intersect.Editor.Core;
 using Intersect.Editor.General;
 using Intersect.Editor.Localization;
@@ -128,7 +129,8 @@ public partial class FrmCrafts : EditorForm
         {
             pnlContainer.Hide();
         }
-
+        cmbJobType.SelectedIndex = (int)mEditorItem.Jobs;
+        NudExpAmount.Value = mEditorItem.ExperienceAmount;
         UpdateToolStripItems();
     }
 
@@ -145,7 +147,7 @@ public partial class FrmCrafts : EditorForm
 
         if (lstIngredients.SelectedIndex > -1)
         {
-            mEditorItem.Ingredients[lstIngredients.SelectedIndex].Quantity = (int) nudQuantity.Value;
+            mEditorItem.Ingredients[lstIngredients.SelectedIndex].Quantity = (int)nudQuantity.Value;
             updatingIngedients = true;
             if (cmbIngredient.SelectedIndex > 0)
             {
@@ -169,17 +171,17 @@ public partial class FrmCrafts : EditorForm
 
     private void nudSpeed_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.Time = (int) nudSpeed.Value;
+        mEditorItem.Time = (int)nudSpeed.Value;
     }
 
     private void nudFailureChance_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.FailureChance = (int) nudFailureChance.Value;
+        mEditorItem.FailureChance = (int)nudFailureChance.Value;
     }
 
     private void nudItemLossChance_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.ItemLossChance = (int) nudItemLossChance.Value;
+        mEditorItem.ItemLossChance = (int)nudItemLossChance.Value;
     }
 
     private void btnAdd_Click(object sender, EventArgs e)
@@ -419,6 +421,11 @@ public partial class FrmCrafts : EditorForm
 
     private void frmCrafting_Load(object sender, EventArgs e)
     {
+        cmbJobType.Items.Clear();
+        for (var x = 0; x < (int)JobType.JobCount; x++)
+        {
+            cmbJobType.Items.Add(Globals.GetJobName(x));
+        }
         InitLocalization();
     }
 
@@ -463,7 +470,7 @@ public partial class FrmCrafts : EditorForm
     {
         // This should never be below 1. We shouldn't accept giving 0 items!
         nudCraftQuantity.Value = Math.Max(1, nudCraftQuantity.Value);
-        mEditorItem.Quantity = (int) nudCraftQuantity.Value;
+        mEditorItem.Quantity = (int)nudCraftQuantity.Value;
     }
 
     private void cmbEvent_SelectedIndexChanged(object sender, EventArgs e)
@@ -485,13 +492,13 @@ public partial class FrmCrafts : EditorForm
         var mFolders = new List<string>();
         foreach (var itm in CraftBase.Lookup)
         {
-            if (!string.IsNullOrEmpty(((CraftBase) itm.Value).Folder) &&
-                !mFolders.Contains(((CraftBase) itm.Value).Folder))
+            if (!string.IsNullOrEmpty(((CraftBase)itm.Value).Folder) &&
+                !mFolders.Contains(((CraftBase)itm.Value).Folder))
             {
-                mFolders.Add(((CraftBase) itm.Value).Folder);
-                if (!mKnownFolders.Contains(((CraftBase) itm.Value).Folder))
+                mFolders.Add(((CraftBase)itm.Value).Folder);
+                if (!mKnownFolders.Contains(((CraftBase)itm.Value).Folder))
                 {
-                    mKnownFolders.Add(((CraftBase) itm.Value).Folder);
+                    mKnownFolders.Add(((CraftBase)itm.Value).Folder);
                 }
             }
         }
@@ -578,4 +585,14 @@ public partial class FrmCrafts : EditorForm
     }
 
     #endregion
+
+    private void cmbJobType_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Jobs = (JobType)cmbJobType.SelectedIndex;
+    }
+
+    private void NudExpAmount_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.ExperienceAmount = (int)NudExpAmount.Value;
+    }
 }

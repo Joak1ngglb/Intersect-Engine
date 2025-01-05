@@ -482,6 +482,37 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString RequirementsNotMet = @"You do not meet the requirements to craft this item!";
+        
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString JobExperience = @"You have received {00} experience points in {01}.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString UnknownJobType = @"The job type {00} is not recognized.";
+
+        public static string GetJobExperienceMessage(JobType jobType, long experienceAmount)
+        {
+            var jobName = jobType switch
+            {
+                JobType.Farming => "Farming",
+                JobType.Mining => "Mining",
+                JobType.Fishing => "Fishing",
+                JobType.Lumberjack => "Woodcutting",
+                JobType.Hunter => "Hunting",
+                JobType.Alchemy => "Alchemy",
+                JobType.Smithing => "Blacksmithing",
+                JobType.Cooking => "Cooking",
+                JobType.Crafting => "Crafting",
+                _ => null
+            };
+
+            if (jobName != null)
+            {
+                return string.Format(Strings.Crafting.JobExperience, experienceAmount, jobName);
+            }
+
+            return string.Format(Strings.Crafting.UnknownJobType, jobType);
+        }
+
     }
 
     public sealed partial class DatabaseNamespace : LocaleNamespace

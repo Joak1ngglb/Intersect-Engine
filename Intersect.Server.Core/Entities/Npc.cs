@@ -483,6 +483,7 @@ public partial class Npc : Entity
             case SpellEffect.Shield:
             case SpellEffect.OnHit:
             case SpellEffect.Taunt:
+            case SpellEffect.Vampirism:
             case null:
                 return false;
 
@@ -510,6 +511,7 @@ public partial class Npc : Entity
             case SpellEffect.Shield:
             case SpellEffect.OnHit:
             case SpellEffect.Taunt:
+            case SpellEffect.Vampirism:
             case null:
                 return false;
 

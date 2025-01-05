@@ -263,3 +263,9 @@ public partial class CheckEquippedSlot : Condition
 
     public string Name { get; set; }
 }
+
+public class SpellIsActive : Condition
+{
+    public override ConditionTypes Type { get; } = ConditionTypes.SpellActive;
+    public Guid SpellId { get; set; }
+}

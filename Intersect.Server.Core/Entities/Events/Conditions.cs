@@ -706,5 +706,15 @@ public static partial class Conditions
 
         return false;
     }
+    public static bool MeetsCondition(
+    SpellIsActive condition,
+    Player player,
+    Event eventInstance,
+    QuestBase questBase
+    )
+    {
+        return
+            player?.Statuses?.Any(status => status.Key.Id == condition.SpellId) ?? false;
+    }
 
 }

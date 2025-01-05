@@ -405,6 +405,10 @@ public partial class EventCommandConditionalBranch : UserControl
                 }
 
                 break;
+            case ConditionTypes.SpellActive:
+                Condition = new SpellIsActive();
+
+                break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
@@ -569,6 +573,12 @@ public partial class EventCommandConditionalBranch : UserControl
                 {
                     cmbCheckEquippedSlot.Items.Add(slot);
                 }
+
+                break;
+            case ConditionTypes.SpellActive:
+                grpSpell.Show();
+                cmbSpell.Items.Clear();
+                cmbSpell.Items.AddRange(SpellBase.Names);
 
                 break;
             default:
@@ -1395,6 +1405,11 @@ public partial class EventCommandConditionalBranch : UserControl
         cmbCheckEquippedSlot.SelectedIndex = Options.EquipmentSlots.IndexOf(condition.Name);
     }
 
+    private void SetupFormValues(SpellIsActive condition)
+    {
+        cmbSpell.SelectedIndex = SpellBase.ListIndex(condition.SpellId);
+    }
+
 
     #endregion
 
@@ -1591,6 +1606,11 @@ public partial class EventCommandConditionalBranch : UserControl
     private void SaveFormValues(CheckEquippedSlot condition)
     {
         condition.Name = Options.EquipmentSlots[cmbCheckEquippedSlot.SelectedIndex];
+    }
+
+    private void SaveFormValues(SpellIsActive condition)
+    {
+        condition.SpellId = SpellBase.IdFromList(cmbSpell.SelectedIndex);
     }
     #endregion
 

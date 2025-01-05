@@ -2216,10 +2216,19 @@ public abstract partial class Entity : IEntity
 
         var thisPlayer = this as Player;
 
+        var hasvampirism = CachedStatuses.Any(status => status.Type == SpellEffect.Vampirism);
         //Check for lifesteal/manasteal
         if (this is Player && !(enemy is Resource))
         {
             var lifestealRate = thisPlayer.GetEquipmentBonusEffect(ItemEffect.Lifesteal) / 100f;
+            if (lifestealRate < 0)
+            {
+                lifestealRate = 0; // Si lifestealRate es negativo, se establece en cero
+            }
+            if (hasvampirism)
+            {
+                lifestealRate += 0.10f; // Si lifestealRate es negativo, se establece en cero
+            }
             var idealHealthRecovered = lifestealRate * baseDamage;
             var actualHealthRecovered = Math.Min(enemyVitals[(int)Vital.Health], idealHealthRecovered);
 
@@ -2234,32 +2243,40 @@ public abstract partial class Entity : IEntity
                 );
             }
 
-            var manastealRate = (thisPlayer.GetEquipmentBonusEffect(ItemEffect.Manasteal) / 100f);
-            var idealManaRecovered = manastealRate * baseDamage;
-            var actualManaRecovered = Math.Min(enemyVitals[(int)Vital.Mana], idealManaRecovered);
+            var manastealRate = thisPlayer.GetEquipmentBonusEffect(ItemEffect.Manasteal) / 100f;
+            if (lifestealRate < 0)
+            {
+                manastealRate = 0; // Si lifestealRate es negativo, se establece en cero
+            }
 
+            if (hasvampirism)
+            {
+                manastealRate += 0.10f; // Si lifestealRate es negativo, se establece en cero
+            }
+
+            var idealManaRecovered = manastealRate * baseDamage;
+            var actualManaRecovered = Math.Min(enemy.GetVital(Vital.Mana), idealManaRecovered);
             if (actualManaRecovered > 0)
             {
-                // Don't send any +0 msg's.
-                AddVital(Vital.Mana, (int)actualManaRecovered);
+                // Recupera maná para el jugador atacante y resta el maná del oponente.
+                thisPlayer.AddVital(Vital.Mana, (int)actualManaRecovered);
                 enemy.SubVital(Vital.Mana, (int)actualManaRecovered);
                 PacketSender.SendActionMsg(
-                    this,
+                    thisPlayer,
                     Strings.Combat.AddSymbol + (int)actualManaRecovered,
                     CustomColors.Combat.AddMana
                 );
             }
-
             var remainingManaRecovery = idealManaRecovered - actualManaRecovered;
             if (remainingManaRecovery > 0)
             {
-                // If the mana recovered is less than it should be, deal the remainder as bonus damage
+                // Si el maná recuperado es menor de lo esperado, inflige el resto como daño adicional.
                 enemy.SubVital(Vital.Health, (int)remainingManaRecovery);
                 PacketSender.SendActionMsg(
                     enemy,
-                    Strings.Combat.RemoveSymbol + remainingManaRecovery,
+                    Strings.Combat.RemoveSymbol + (int)remainingManaRecovery,
                     CustomColors.Combat.TrueDamage
-                );
+                        );
             }
         }
 

@@ -213,6 +213,8 @@ public static partial class CustomColors
 
         public Color TrueDamage = new Color(255, 255, 255, 255);
 
+        public Color Vampirism = new Color(255, 255, 255, 255);
+
         public Color GenericDamageGiveEntityFlashColor = new Color(255, 130, 46, 36);
         public Color GenericHealingReceivedEntityFlashColor = new Color(255, 201, 226, 158);
         public Color DamageTakenFlashColor = new Color(255, 222, 124, 112);

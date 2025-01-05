@@ -1310,7 +1310,7 @@ public partial class MapInstance : IMapInstance
         for (var i = 0; i < spawns.Count; i++)
         {
             var spawn = spawns[i];
-            if (!NpcSpawnInstances.TryGetValue(spawn, out var spawnInstance) || spawnInstance?.Entity?.Base == default || (!spawnInstance.Entity.Dead))
+            if (!NpcSpawnInstances.TryGetValue(spawn, out var spawnInstance) || spawnInstance?.Entity?.Base == default || (!spawnInstance.Entity.Dead || spawnInstance.Entity.GetVital(Vital.Health) > 0))
             {
                 continue;
             }

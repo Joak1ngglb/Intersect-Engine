@@ -7,12 +7,16 @@ using Intersect.Client.General;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
+using Intersect.Client.Framework.Graphics;
+using System.Diagnostics;
 
 namespace Intersect.Client.Entities;
 
 public partial class Resource : Entity, IResource
 {
-    private bool _waitingForTilesets;
+    private const byte BEHIND_ALPHA = 120;
+    private const byte NORMAL_ALPHA = 255;
+    private bool _playerBehind;
 
     public ResourceBase? BaseResource { get; set; }
 
@@ -26,9 +30,9 @@ public partial class Resource : Entity, IResource
 
     FloatRect mSrcRectangle = FloatRect.Empty;
 
-    public Resource(Guid id, ResourceEntityPacket packet) : base(id, packet, EntityType.Resource)
+    public Resource(Guid id, EntityPacket packet) : base(id, packet, EntityType.Resource)
     {
-        mRenderPriority = 0;
+        mRenderPriority = 1;
     }
 
     public override string Sprite
@@ -48,10 +52,6 @@ public partial class Resource : Entity, IResource
                 if (GameContentManager.Current.TilesetsLoaded)
                 {
                     Texture = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Tileset, mMySprite);
-                }
-                else
-                {
-                    _waitingForTilesets = true;
                 }
             }
             else
@@ -111,19 +111,15 @@ public partial class Resource : Entity, IResource
         if (mDisposed)
         {
             LatestMap = null;
-
             return false;
         }
-        else
-        {
-            var map = Maps.MapInstance.Get(MapId);
-            LatestMap = map;
-            if (map == null || !map.InView())
-            {
-                Globals.EntitiesToDispose.Add(Id);
 
-                return false;
-            }
+        var map = Maps.MapInstance.Get(MapId);
+        LatestMap = map;
+        if (map == null || !map.InView())
+        {
+            Globals.EntitiesToDispose.Add(Id);
+            return false;
         }
 
         if (!mHasRenderBounds)
@@ -137,89 +133,27 @@ public partial class Resource : Entity, IResource
             {
                 _ = RenderList.Remove(this);
             }
-
             return true;
         }
 
         var result = base.Update();
-        if (!result)
+        if (!result && RenderList != null)
         {
-            if (RenderList != null)
-            {
-                _ = RenderList.Remove(this);
-            }
+            _ = RenderList.Remove(this);
         }
 
         return result;
     }
 
-    /// <inheritdoc />
     public override bool CanBeAttacked => !IsDead;
 
-    public override HashSet<Entity>? DetermineRenderOrder(HashSet<Entity>? renderList, IMapInstance? map)
+    public override HashSet<Entity> DetermineRenderOrder(HashSet<Entity> renderList, IMapInstance map)
     {
-        if (BaseResource == default ||
-            (IsDead && !BaseResource.Exhausted.RenderBelowEntities) ||
-            (!IsDead && !BaseResource.Initial.RenderBelowEntities)
-        )
-        {
-            return base.DetermineRenderOrder(renderList, map);
-        }
-
-        //Otherwise we are alive or dead and we want to render below players/npcs
+        base.DetermineRenderOrder(renderList, map);
+        
         if (renderList != null)
         {
-            _ = renderList.Remove(this);
-        }
-
-        if (map == null || Globals.Me == null || Globals.Me.MapInstance == null || Globals.MapGrid == default)
-        {
-            return null;
-        }
-
-        var gridX = Globals.Me.MapInstance.GridX;
-        var gridY = Globals.Me.MapInstance.GridY;
-        for (var x = gridX - 1; x <= gridX + 1; x++)
-        {
-            for (var y = gridY - 1; y <= gridY + 1; y++)
-            {
-                if (x >= 0 &&
-                    x < Globals.MapGridWidth &&
-                    y >= 0 &&
-                    y < Globals.MapGridHeight &&
-                    Globals.MapGrid[x, y] != Guid.Empty)
-                {
-                    if (Globals.MapGrid[x, y] == MapId)
-                    {
-                        var priority = mRenderPriority;
-                        if (Z != 0)
-                        {
-                            priority += 3;
-                        }
-
-                        HashSet<Entity> renderSet;
-
-                        if (y == gridY - 1)
-                        {
-                            renderSet = Graphics.RenderingEntities[priority, Y];
-                        }
-                        else if (y == gridY)
-                        {
-                            renderSet = Graphics.RenderingEntities[priority, Options.MapHeight + Y];
-                        }
-                        else
-                        {
-                            renderSet = Graphics.RenderingEntities[priority, Options.MapHeight * 2 + Y];
-                        }
-
-                        _ = renderSet.Add(this);
-                        renderList = renderSet;
-
-                        return renderList;
-
-                    }
-                }
-            }
+            renderList.Add(this);
         }
 
         return renderList;
@@ -231,16 +165,6 @@ public partial class Resource : Entity, IResource
         if (map == null || BaseResource == default)
         {
             return;
-        }
-
-        if (_waitingForTilesets && !GameContentManager.Current.TilesetsLoaded)
-        {
-            return;
-        }
-
-        if (_waitingForTilesets && GameContentManager.Current.TilesetsLoaded)
-        {
-            _waitingForTilesets = false;
         }
 
         if (Texture != null)
@@ -269,8 +193,8 @@ public partial class Resource : Entity, IResource
 
             mDestRectangle.Width = mSrcRectangle.Width;
             mDestRectangle.Height = mSrcRectangle.Height;
-            mDestRectangle.Y = (int) (map.Y + Y * Options.TileHeight + OffsetY);
-            mDestRectangle.X = (int) (map.X + X * Options.TileWidth + OffsetX);
+            mDestRectangle.Y = (int)(map.Y + Y * Options.TileHeight + OffsetY);
+            mDestRectangle.X = (int)(map.X + X * Options.TileWidth + OffsetX);
             if (mSrcRectangle.Height > Options.TileHeight)
             {
                 mDestRectangle.Y -= mSrcRectangle.Height - Options.TileHeight;
@@ -285,17 +209,46 @@ public partial class Resource : Entity, IResource
         }
     }
 
-    //Rendering Resources
     public override void Draw()
     {
-        if (MapInstance == null)
+        if (MapInstance == null || Texture == null)
         {
             return;
         }
 
-        if (Texture != null)
+        if (!mHasRenderBounds)
         {
-            Graphics.DrawGameTexture(Texture, mSrcRectangle, mDestRectangle, Intersect.Color.White);
+            CalculateRenderBounds();
         }
+
+        try
+        {
+            _playerBehind = IsPlayerBehindResource();
+            
+            var alpha = _playerBehind ? BEHIND_ALPHA : NORMAL_ALPHA;
+            var renderColor = new Color(alpha, 255, 255, 255);
+
+            Graphics.DrawGameTexture(
+                Texture,
+                mSrcRectangle,
+                mDestRectangle,
+                renderColor
+            );
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error al dibujar recurso: {ex.Message}");
+        }
+    }
+
+    private bool IsPlayerBehindResource()
+    {
+        var player = Globals.Me;
+        if (player == null || player.MapId != MapId)
+        {
+            return false;
+        }
+
+        return IsNear(player, 1) && player.IsBehind(this);
     }
 }

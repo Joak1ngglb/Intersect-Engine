@@ -2857,4 +2857,20 @@ public partial class Player : Entity, IPlayer
             _ => false,
         };
     }
+
+    public override bool IsInFrontOf(Entity other)
+    {
+        // Los jugadores tienen prioridad especial en ciertos casos
+        if (other is Resource resource)
+        {
+            // Si el recurso está muerto, el jugador siempre está al frente
+            if (resource.IsDead())
+            {
+                return true;
+            }
+        }
+
+        // En otros casos, usar la lógica normal de Entity
+        return base.IsInFrontOf(other);
+    }
 }

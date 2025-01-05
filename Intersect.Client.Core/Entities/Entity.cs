@@ -2477,4 +2477,61 @@ public partial class Entity : IEntity
     {
         Dispose();
     }
+
+    public virtual bool IsInFrontOf(Entity other)
+    {
+        if (MapId != other.MapId)
+        {
+            return false;
+        }
+
+        // Calcular las posiciones finales considerando offsets
+        var myFinalY = Y + (OffsetY / Options.TileHeight);
+        var otherFinalY = other.Y + (other.OffsetY / Options.TileHeight);
+        var myFinalX = X + (OffsetX / Options.TileWidth);
+        var otherFinalX = other.X + (other.OffsetX / Options.TileWidth);
+
+        // Si están en diferentes niveles Z, el que está más arriba está al frente
+        if (Z != other.Z)
+        {
+            return Z > other.Z;
+        }
+
+        // Calcular si están en rango cercano (1 tile de distancia)
+        var xDiff = Math.Abs(myFinalX - otherFinalX);
+        var yDiff = Math.Abs(myFinalY - otherFinalY);
+        var isNearby = xDiff <= 1 && yDiff <= 1;
+
+        // Solo considerar la superposición si están cerca
+        if (isNearby)
+        {
+            return myFinalY > otherFinalY;
+        }
+
+        return false;
+    }
+
+    public virtual bool IsBehind(Entity other)
+    {
+        return other.IsInFrontOf(this);
+    }
+
+    // Nuevo método para verificar si una entidad está cerca de otra
+    public virtual bool IsNear(Entity other, int tileRange = 1)
+    {
+        if (MapId != other.MapId)
+        {
+            return false;
+        }
+
+        var myFinalX = X + (OffsetX / Options.TileWidth);
+        var myFinalY = Y + (OffsetY / Options.TileHeight);
+        var otherFinalX = other.X + (other.OffsetX / Options.TileWidth);
+        var otherFinalY = other.Y + (other.OffsetY / Options.TileHeight);
+
+        var xDiff = Math.Abs(myFinalX - otherFinalX);
+        var yDiff = Math.Abs(myFinalY - otherFinalY);
+
+        return xDiff <= tileRange && yDiff <= tileRange;
+    }
 }

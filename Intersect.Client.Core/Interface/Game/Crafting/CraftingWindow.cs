@@ -241,7 +241,20 @@ public partial class CraftingWindow
             mItems[i].Container.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
 
             mItems[i].LoadItem();
+            // Colorear el contenedor según la cantidad de ingredientes disponibles
+            if (onHand == 0)
+            {
 
+                mItems[mItems.Count - 1].Container.RenderColor = Color.FromArgb(255, 255, 0, 0); // Rojo
+            }
+            else if (onHand < craft.Ingredients[i].Quantity)
+            {
+                mItems[mItems.Count - 1].Container.RenderColor = Color.FromArgb(255, 255, 255, 0); // Amarillo
+            }
+            else
+            {
+                mItems[mItems.Count - 1].Container.RenderColor = Color.FromArgb(255, 0, 255, 0); // Verde
+            }
             var xPadding = mItems[i].Container.Margin.Left + mItems[i].Container.Margin.Right;
             var yPadding = mItems[i].Container.Margin.Top + mItems[i].Container.Margin.Bottom;
 

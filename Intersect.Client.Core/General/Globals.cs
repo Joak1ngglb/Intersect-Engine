@@ -222,7 +222,7 @@ public static partial class Globals
         set => _waitingOnServer = value;
     }
     //Only need 1 table, and that is the one we see at a given moment in time.
-    public static Guid FixedCraftingTableId = new Guid("c938bfa1-a94d-4d2d-b67b-a837bb72ff18");
+    public static Guid FixedCraftingTableId = new Guid("5e821b3a-c4fb-4d05-a4ce-f7c14b51ed76");
 
     public static Entity GetEntity(Guid id, EntityType type)
     {

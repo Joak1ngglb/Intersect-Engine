@@ -3,6 +3,10 @@ using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.DescriptionWindows;
+using Intersect.Client.Interface.Game.Job;
+using Intersect.Client.Interface.Game.Spells;
+using Intersect.Client.Networking;
+using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
 
@@ -25,6 +29,7 @@ public partial class RecipeItem
     private CraftingWindow mCraftingWindow;
 
     private Draggable mDragIcon;
+    private JobsWindow mJobsWindow;
 
     //Slot info
     CraftIngredient mIngredient;
@@ -47,6 +52,14 @@ public partial class RecipeItem
     public void Setup(string name)
     {
         Pnl = new ImagePanel(Container, name);
+        if (Pnl == null)
+        {
+            PacketSender.SendChatMsg($"Error: Pnl not created for {name}",5);
+        }
+        else
+        {
+            PacketSender.SendChatMsg($"Pnl created for {name}", 5);
+        }
         Pnl.HoverEnter += pnl_HoverEnter;
         Pnl.HoverLeave += pnl_HoverLeave;
     }
@@ -62,23 +75,21 @@ public partial class RecipeItem
             {
                 Pnl.Texture = itemTex;
                 Pnl.RenderColor = item.Color;
+                PacketSender.SendChatMsg($"Texture loaded for item: {item.Name}, Icon: {item.Icon}", 5);
             }
             else
             {
-                if (Pnl.Texture != null)
-                {
-                    Pnl.Texture = null;
-                }
+                PacketSender.SendChatMsg($"Texture missing for item: {item.Name}, Icon: {item.Icon}", 5);
+                Pnl.Texture = null;
             }
         }
         else
         {
-            if (Pnl.Texture != null)
-            {
-                Pnl.Texture = null;
-            }
+            PacketSender.SendChatMsg($"Item not found with ID: {mIngredient.ItemId}",5);
+            Pnl.Texture = null;
         }
     }
+
 
     void pnl_HoverLeave(Base sender, EventArgs arguments)
     {

@@ -188,6 +188,31 @@ namespace Intersect.Client.Interface.Game.Job
             {
                 PacketSender.SendChatMsg("Error: No se pudo crear el Label para el template.", 5);
             }
+            // Recipe panel
+            mRecipePanel = new ScrollControl(InfoPanel, "RecipePanel");
+            mRecipePanel.SetPosition(10, 220); // Ajusta según sea necesario
+            mRecipePanel.SetSize(260, 180); // Ajusta según sea necesario
+            mRecipePanel.GetVerticalScrollBar();
+            mRecipePanel.EnableScroll(false, true); // Habilita barras de desplazamiento
+
+            // Crear un contenedor para la receta
+            recipeContainer = new ImagePanel(mRecipePanel, "RecipeContainer");
+            recipeContainer.SetSize(265, 80); // Ajusta el tamaño del contenedor según sea necesario
+            recipeContainer.Margin = new Margin(0, 0, 0, 10); // Añade un margen inferior para espacio entre recetas
+            mNameLabel = new Label(recipeContainer, "RecipeName", false);
+            mNameLabel.SetPosition(45, 10);
+            mNameLabel.SetTextColor(Color.White, Label.ControlState.Normal);
+
+            mXpLabel = new Label(recipeContainer, "RecipeExp", false);
+            mXpLabel.SetPosition(200, 10);
+            mXpLabel.SetTextColor(Color.White, Label.ControlState.Normal);
+            // Llenar el panel de recetas
+            
+           recipeContainer.AddChild(mNameLabel);
+            recipeContainer.AddChild(mXpLabel);
+            InfoPanel.AddChild(mRecipePanel);
+            mRecipePanel.AddChild(recipeContainer);
+            LoadRecipes(jobType);
         }
 
         private void JobButtonClicked(Base sender, ClickedEventArgs arguments, JobType jobType)
@@ -248,9 +273,191 @@ namespace Intersect.Client.Interface.Game.Job
 
             JobDescriptionLabel.ClearText();
             JobDescriptionLabel.AddText(Strings.Job.GetJobDescription(jobType), mJobtDescTemplateLabel);
-
+            LoadRecipes(jobType);
             // Mensaje de depuración
             PacketSender.SendChatMsg($"Trabajo {jobType}: Nivel {level}, Exp {exp}/{expToNextLevel}", 1);
+        }
+        
+        private void LoadRecipes(JobType jobType)
+        {
+            // Limpiar el panel de recetas antes de cargar nuevas recetas
+            if (mRecipePanel != null)
+            {
+                InfoPanel.RemoveChild(mRecipePanel, true);
+            }
+            // Clear the old item description box
+            if (mCombinedItem != null && mCombinedItem.DescWindow != null)
+            {
+                mCombinedItem.DescWindow.Dispose();
+            }
+            mRecipePanel = new ScrollControl(InfoPanel, "RecipePanel");
+            mRecipePanel.SetPosition(10, 220); // Ajusta según sea necesario
+            mRecipePanel.SetSize(200, 180); // Ajusta según sea necesario
+            mRecipePanel.EnableScroll(false, true); // Habilita barras de desplazamiento
+
+           // var fixedCraftingTable = CraftingTableBase.GetCraftsByJob(jobType).ToList();
+            // Obtener la tabla de crafteo fija
+            var fixedCraftingTable = CraftingTableBase.Get(Globals.FixedCraftingTableId);
+            if (fixedCraftingTable == null)
+            {
+                return;
+            }
+
+            var recipes = fixedCraftingTable.Crafts;
+
+            int yOffset = 0; // Para mantener la posición vertical de cada contenedor de recetas
+
+            foreach (var recipeId in recipes)
+            {
+                var recipe = CraftBase.Get(recipeId);
+                if (recipe == null || recipe.Jobs != jobType)
+                {
+                    continue;
+                }
+
+                var recipeName = recipe.Name; // Nombre de la receta
+                var recipexp = recipe.ExperienceAmount;
+                var itemIcon = ItemBase.Get(recipe.ItemId)?.Icon; // Ícono del item a craftear
+                recipeContainer = new ImagePanel(mRecipePanel, "RecipeContainer");
+                recipeContainer.SetSize(265, 80); // Ajusta el tamaño del contenedor según sea necesario
+
+                var xPadding = recipeContainer.Margin.Left + recipeContainer.Margin.Right;
+                var yPadding = recipeContainer.Margin.Top + recipeContainer.Margin.Bottom;
+
+                var availableWidth = mRecipePanel.Width - mRecipePanel.GetVerticalScrollBar().Width;
+                var itemWidth = recipeContainer.Width + xPadding;
+
+                if (itemWidth > 0)
+                {
+                    var sizeFactor = availableWidth / itemWidth;
+
+                    if (sizeFactor > 0)
+                    {
+                        recipeContainer.SetPosition(
+                            yOffset % sizeFactor * (recipeContainer.Width + xPadding) + xPadding,
+                            yOffset / sizeFactor * (recipeContainer.Height + yPadding) + yPadding
+                        );
+                    }
+                    else
+                    {
+                        recipeContainer.SetPosition(0, yOffset);
+                    }
+                }
+                else
+                {
+                    recipeContainer.SetPosition(0, yOffset);
+                }
+                mNameLabel = new Label(recipeContainer, "RecipeName", false);
+                mNameLabel.Text = recipeName;
+                mNameLabel.SetPosition(45, 10);
+                mNameLabel.SetTextColor(Color.White, Label.ControlState.Normal);
+
+                mXpLabel = new Label(recipeContainer, "RecipeExp", false);
+                mXpLabel.SetText(Strings.Crafting.Exp.ToString(recipexp));
+                mXpLabel.SetPosition(200, 10);
+                mXpLabel.SetTextColor(Color.White, Label.ControlState.Normal);
+
+                // Configurar el panel del ítem a craftear
+                mCombinedItem = new RecipeItem(this, new CraftIngredient(recipe.ItemId, 1))
+                {
+                    Container = new ImagePanel(recipeContainer, "RecipeItem")
+                };
+                mCombinedItem.Setup("ItemIcon");
+
+                mCombinedItem.Container.SetSize(32, 32); // Establece el tamaño del ícono del ítem
+                mCombinedItem.Container.SetPosition(5, 5);
+                recipeContainer.AddChild(mCombinedItem.Container);
+                mCombinedItem.Container.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+                mCombinedItem.LoadItem();
+
+                ingredientsPanel = new ScrollControl(recipeContainer, "IngredientsPanel");
+                ingredientsPanel.SetPosition(0, 40); // Ajusta la posición según sea necesario
+                ingredientsPanel.SetSize(260, 50);
+                //ingredientsPanel.EnableScroll(true, false);
+                // ingredientsPanel.GetHorizontalScrollBar();
+
+                // Añadir los ingredientes
+                var itemdict = new Dictionary<Guid, int>();
+                foreach (var item in Globals.Me.Inventory)
+                {
+                    if (item != null)
+                    {
+                        if (itemdict.ContainsKey(item.ItemId))
+                        {
+                            itemdict[item.ItemId] += item.Quantity;
+                        }
+                        else
+                        {
+                            itemdict.Add(item.ItemId, item.Quantity);
+                        }
+                    }
+                }
+
+                int xOffset = 0;
+
+                var craftableQuantity = -1;
+
+                for (var i = 0; i < recipe.Ingredients.Count; i++)
+                {
+                    mItems.Add(new RecipeItem(this, recipe.Ingredients[i]));
+                    mItems[mItems.Count - 1].Container = new ImagePanel(ingredientsPanel, "IngredientContainer");
+                    mItems[mItems.Count - 1].Setup("IngredientItemIcon");
+                    ingredientsPanel.AddChild(mItems[mItems.Count - 1].Container);
+                    recipeContainer.AddChild(ingredientsPanel);
+                    var lblTemp = new Label(mItems[mItems.Count - 1].Container, "IngredientItemValue");
+
+                    var onHand = 0;
+                    if (itemdict.ContainsKey(recipe.Ingredients[i].ItemId))
+                    {
+                        onHand = itemdict[recipe.Ingredients[i].ItemId];
+                    }
+                    lblTemp.Text = onHand + "/" + recipe.Ingredients[i].Quantity;
+
+                    var possibleToCraft = (int)Math.Floor(onHand / (double)recipe.Ingredients[i].Quantity);
+
+                    if (craftableQuantity == -1 || possibleToCraft < craftableQuantity)
+                    {
+                        craftableQuantity = possibleToCraft;
+                    }
+
+                    mValues.Add(lblTemp);
+
+                    mItems[mItems.Count - 1].Container.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+
+                    mItems[mItems.Count - 1].LoadItem();
+
+                    mItems[mItems.Count - 1].Container.SetSize(32, 32);
+                    mItems[mItems.Count - 1].Container.SetPosition(xOffset, 0);
+                    // Colorear el contenedor según la cantidad de ingredientes disponibles
+                    if (onHand == 0)
+                    {
+
+                        mItems[mItems.Count - 1].Container.RenderColor = Color.FromArgb(255, 255, 0, 0); // Rojo
+                    }
+                    else if (onHand < recipe.Ingredients[i].Quantity)
+                    {
+                        mItems[mItems.Count - 1].Container.RenderColor = Color.FromArgb(255, 255, 255, 0); // Amarillo
+                    }
+                    else
+                    {
+                        mItems[mItems.Count - 1].Container.RenderColor = Color.FromArgb(255, 0, 255, 0); // Verde
+                    }
+                    xOffset += 32 + 5; // Espacio entre ingredientes
+
+                }
+
+                // Añadir el contenedor de la receta al panel principal
+                mRecipePanel.AddChild(recipeContainer);
+
+                // Incrementar el yOffset para la siguiente receta
+                yOffset += recipeContainer.Height + 10; // Ajusta el espaciado entre contenedores de recetas
+            }
+
+            // Ajustar manualmente el tamaño del mInnerPanel
+            mRecipePanel.SetInnerSize(mRecipePanel.Width, yOffset);
+
+            // Actualizar las barras de desplazamiento después de añadir todos los elementos
+            mRecipePanel.UpdateScrollBars();
         }
 
         public void Show()

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using Intersect.Config;
 using Intersect.Enums;
 using Intersect.GameObjects;
@@ -23,7 +24,10 @@ public partial class Resource : Entity
     public int ExperienceAmount { get; set; } // Agrega esta propiedad para la cantidad de experiencia (xp)
     //Respawn
     public long RespawnTime = 0;
-
+    public int Level { get; set; }
+  
+    [NotMapped]
+    public int BonusDrop { get; set; }
     public Resource(ResourceBase resource) : base()
     {
         Base = resource;
@@ -41,7 +45,7 @@ public partial class Resource : Entity
         HideName = true;
         Jobs= JobType.JobCount; // Establece el tipo de trabajo predeterminado
         ExperienceAmount = 0; // Establece la cantidad de experiencia predeterminada
-
+        Level = resource.Level;
     }
 
     public void Destroy(bool dropItems = false, Entity killer = null)
@@ -61,21 +65,24 @@ public partial class Resource : Entity
         {
             if (ExperienceAmount > 0)
             {
+                // Verificar si el recurso tiene un trabajo asociado
                 if (Base.Jobs != JobType.None)
                 {
-                    // Validar que el jugador tenga datos para el trabajo específico
-                    if (player.Jobs.ContainsKey(Base.Jobs))
+                    // Verificar si el jugador tiene inicializado el trabajo
+                    if (player.Jobs.TryGetValue(Base.Jobs, out var playerJob))
                     {
-                        // Otorgar experiencia al trabajo específico
+                        // Otorgar experiencia al trabajo
                         player.GiveJobExperience(Base.Jobs, ExperienceAmount);
-
+                        CalculateBonusDrop(playerJob.JobLevel, Level);
                         // Enviar mensaje de experiencia ganada
                         PacketSender.SendChatMsg(
-                      player,
-                      string.Format(Strings.CraftingNamespace.GetJobExperienceMessage(Base.Jobs, ExperienceAmount)),
-                      ChatMessageType.Experience,
-                      CustomColors.Chat.PlayerMsg
-                  );
+                            player,
+                            string.Format(
+                                Strings.CraftingNamespace.GetJobExperienceMessage(Base.Jobs, ExperienceAmount)
+                            ),
+                            ChatMessageType.Experience,
+                            CustomColors.Chat.PlayerMsg
+                        );
                     }
                     else
                     {
@@ -90,7 +97,7 @@ public partial class Resource : Entity
                 }
                 else
                 {
-                    // Si no hay un trabajo asignado
+                    // Si no hay un trabajo asignado al recurso
                     PacketSender.SendChatMsg(
                         player,
                         "No Jobs Assigned",
@@ -147,7 +154,7 @@ public partial class Resource : Entity
             if (Randomization.Next(1, 10001) <= drop.Chance * 100 && ItemBase.Get(drop.ItemId) != null)
             {
                 var slot = new InventorySlot(itemSlot);
-                slot.Set(new Item(drop.ItemId, Randomization.Next(drop.MinQuantity, drop.Quantity + 1)));
+                slot.Set(new Item(drop.ItemId, Randomization.Next(drop.MinQuantity, drop.Quantity + 1+ BonusDrop)));
                 Items.Add(slot);
                 itemSlot++;
             }
@@ -291,4 +298,23 @@ public partial class Resource : Entity
     {
         return EntityType.Resource;
     }
+    public void CalculateBonusDrop(int resourceLevel, int jobLevel)
+    {
+        // Validar que ambos niveles sean positivos
+        if (jobLevel < 0 || resourceLevel < 0)
+        {
+            Console.WriteLine("Error: jobLevel y resourceLevel deben ser valores positivos.");
+            return;
+        }
+
+        // Calcular la diferencia entre el nivel del trabajo y el nivel del recurso
+        int levelDifference = jobLevel - resourceLevel;
+
+        // Determinar el bonus de drop basado en la diferencia
+        BonusDrop = Math.Max(0, levelDifference / 10);
+
+        // Registrar el resultado para depuración
+        Console.WriteLine($"Nivel del trabajo: {jobLevel}, Nivel del recurso: {resourceLevel}, BonusDrop calculado: {BonusDrop}");
+    }
+
 }

@@ -110,6 +110,8 @@ namespace Intersect.Editor.Forms.Editors
             toolStripItemPaste = new ToolStripButton();
             toolStripSeparator3 = new ToolStripSeparator();
             toolStripItemUndo = new ToolStripButton();
+            nudLevel = new DarkNumericUpDown();
+            label3 = new Label();
             grpResources.SuspendLayout();
             grpGeneral.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)nudMaxHp).BeginInit();
@@ -132,6 +134,7 @@ namespace Intersect.Editor.Forms.Editors
             ((System.ComponentModel.ISupportInitialize)nudDropAmount).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudDropChance).BeginInit();
             toolStrip.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)nudLevel).BeginInit();
             SuspendLayout();
             // 
             // grpResources
@@ -198,6 +201,8 @@ namespace Intersect.Editor.Forms.Editors
             // 
             grpGeneral.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
             grpGeneral.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            grpGeneral.Controls.Add(nudLevel);
+            grpGeneral.Controls.Add(label3);
             grpGeneral.Controls.Add(btnAddFolder);
             grpGeneral.Controls.Add(lblFolder);
             grpGeneral.Controls.Add(cmbFolder);
@@ -298,7 +303,7 @@ namespace Intersect.Editor.Forms.Editors
             // 
             nudSpawnDuration.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
             nudSpawnDuration.ForeColor = System.Drawing.Color.Gainsboro;
-            nudSpawnDuration.Location = new System.Drawing.Point(144, 174);
+            nudSpawnDuration.Location = new System.Drawing.Point(144, 206);
             nudSpawnDuration.Margin = new Padding(4, 3, 4, 3);
             nudSpawnDuration.Maximum = new decimal(new int[] { int.MaxValue, 0, 0, 0 });
             nudSpawnDuration.Name = "nudSpawnDuration";
@@ -320,7 +325,7 @@ namespace Intersect.Editor.Forms.Editors
             cmbAnimation.FlatStyle = FlatStyle.Flat;
             cmbAnimation.ForeColor = System.Drawing.Color.Gainsboro;
             cmbAnimation.FormattingEnabled = true;
-            cmbAnimation.Location = new System.Drawing.Point(88, 207);
+            cmbAnimation.Location = new System.Drawing.Point(88, 239);
             cmbAnimation.Margin = new Padding(4, 3, 4, 3);
             cmbAnimation.Name = "cmbAnimation";
             cmbAnimation.Size = new Size(157, 24);
@@ -332,7 +337,7 @@ namespace Intersect.Editor.Forms.Editors
             // lblAnimation
             // 
             lblAnimation.AutoSize = true;
-            lblAnimation.Location = new System.Drawing.Point(7, 210);
+            lblAnimation.Location = new System.Drawing.Point(7, 242);
             lblAnimation.Margin = new Padding(4, 0, 4, 0);
             lblAnimation.Name = "lblAnimation";
             lblAnimation.Size = new Size(66, 15);
@@ -352,7 +357,7 @@ namespace Intersect.Editor.Forms.Editors
             // lblSpawnDuration
             // 
             lblSpawnDuration.AutoSize = true;
-            lblSpawnDuration.Location = new System.Drawing.Point(7, 179);
+            lblSpawnDuration.Location = new System.Drawing.Point(7, 211);
             lblSpawnDuration.Margin = new Padding(4, 0, 4, 0);
             lblSpawnDuration.Name = "lblSpawnDuration";
             lblSpawnDuration.Size = new Size(94, 15);
@@ -361,7 +366,7 @@ namespace Intersect.Editor.Forms.Editors
             // 
             // chkWalkableAfter
             // 
-            chkWalkableAfter.Location = new System.Drawing.Point(7, 264);
+            chkWalkableAfter.Location = new System.Drawing.Point(7, 296);
             chkWalkableAfter.Margin = new Padding(4, 3, 4, 3);
             chkWalkableAfter.Name = "chkWalkableAfter";
             chkWalkableAfter.Size = new Size(246, 20);
@@ -371,7 +376,7 @@ namespace Intersect.Editor.Forms.Editors
             // 
             // chkWalkableBefore
             // 
-            chkWalkableBefore.Location = new System.Drawing.Point(7, 238);
+            chkWalkableBefore.Location = new System.Drawing.Point(7, 270);
             chkWalkableBefore.Margin = new Padding(4, 3, 4, 3);
             chkWalkableBefore.Name = "chkWalkableBefore";
             chkWalkableBefore.Size = new Size(246, 20);
@@ -1158,6 +1163,29 @@ namespace Intersect.Editor.Forms.Editors
             toolStripItemUndo.Text = "Undo";
             toolStripItemUndo.Click += toolStripItemUndo_Click;
             // 
+            // nudLevel
+            // 
+            nudLevel.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudLevel.ForeColor = System.Drawing.Color.Gainsboro;
+            nudLevel.Location = new System.Drawing.Point(88, 174);
+            nudLevel.Margin = new Padding(4, 3, 4, 3);
+            nudLevel.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            nudLevel.Name = "nudLevel";
+            nudLevel.Size = new Size(158, 23);
+            nudLevel.TabIndex = 54;
+            nudLevel.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudLevel.ValueChanged += nudLevel_ValueChanged;
+            // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Location = new System.Drawing.Point(7, 177);
+            label3.Margin = new Padding(4, 0, 4, 0);
+            label3.Name = "label3";
+            label3.Size = new Size(37, 15);
+            label3.TabIndex = 53;
+            label3.Text = "Level:";
+            // 
             // FrmResource
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -1211,6 +1239,7 @@ namespace Intersect.Editor.Forms.Editors
             ((System.ComponentModel.ISupportInitialize)nudDropChance).EndInit();
             toolStrip.ResumeLayout(false);
             toolStrip.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)nudLevel).EndInit();
             ResumeLayout(false);
         }
 
@@ -1294,5 +1323,7 @@ namespace Intersect.Editor.Forms.Editors
         private Label label1;
         private DarkComboBox cmbJobType;
         private Label label2;
+        private DarkNumericUpDown nudLevel;
+        private Label label3;
     }
 }

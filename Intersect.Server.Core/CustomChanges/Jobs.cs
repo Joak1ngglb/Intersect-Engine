@@ -18,7 +18,7 @@ namespace Intersect.Server.Entities
             {
                 if (string.IsNullOrWhiteSpace(value))
                 {
-                    PacketSender.SendChatMsg(this, "Advertencia: No se encontraron datos de trabajos. Inicializando por defecto.", ChatMessageType.Experience);
+                   // PacketSender.SendChatMsg(this, "Advertencia: No se encontraron datos de trabajos. Inicializando por defecto.", ChatMessageType.Experience);
                     InitializeJobs();
                 }
                 else
@@ -43,7 +43,7 @@ namespace Intersect.Server.Entities
                 if (!Jobs.ContainsKey(jobType))
                 {
                     Jobs[jobType] = new PlayerJob(jobType);
-                    PacketSender.SendChatMsg(this, $"Trabajo inicializado: {jobType}", ChatMessageType.Notice);
+                  //  PacketSender.SendChatMsg(this, $"Trabajo inicializado: {jobType}", ChatMessageType.Notice);
                 }
             }
         }
@@ -56,7 +56,7 @@ namespace Intersect.Server.Entities
             }
             else
             {
-                PacketSender.SendChatMsg(this, $"Error: El trabajo '{jobType}' no está inicializado.", ChatMessageType.Error);
+                //PacketSender.SendChatMsg(this, $"Error: El trabajo '{jobType}' no está inicializado.", ChatMessageType.Error);
             }
         }
 
@@ -130,7 +130,7 @@ namespace Intersect.Server.Entities
 
             var levelUpMessage = Strings.Player.GetJobLevelUpMessage(JobType);
             PacketSender.SendChatMsg(player, string.Format(levelUpMessage, JobLevel), ChatMessageType.Experience);
-            PacketSender.SendActionMsg(player, $"¡Subiste de nivel en {JobType}!", CustomColors.Combat.JobLevelUp);
+            PacketSender.SendActionMsg(player, $"¡{JobType} Level UP!", CustomColors.Combat.JobLevelUp);
         }
     }
 }

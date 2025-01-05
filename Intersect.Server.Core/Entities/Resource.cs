@@ -313,8 +313,6 @@ public partial class Resource : Entity
         // Determinar el bonus de drop basado en la diferencia
         BonusDrop = Math.Max(0, levelDifference / 10);
 
-        // Registrar el resultado para depuración
-        Console.WriteLine($"Nivel del trabajo: {jobLevel}, Nivel del recurso: {resourceLevel}, BonusDrop calculado: {BonusDrop}");
     }
 
 }

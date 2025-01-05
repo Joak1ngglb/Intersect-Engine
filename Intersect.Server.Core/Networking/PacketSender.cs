@@ -2434,7 +2434,7 @@ public static partial class PacketSender
         player.SendPacket(packet, TransmissionMode.Any);
 
         // Depuración en el servidor
-        PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
+      //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
     }
 
 

@@ -4,6 +4,7 @@ using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.DescriptionWindows;
+using Intersect.Client.Networking;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
 
@@ -21,7 +22,7 @@ namespace Intersect.Client.Interface.Game.Job
         private bool mCanDrag;
 
         // References
-        private JobsWindow mSkillsWindow;
+        private JobsWindow mJobsWindow;
 
         private Draggable mDragIcon;
 
@@ -40,15 +41,21 @@ namespace Intersect.Client.Interface.Game.Job
 
         public RecipeItem(JobsWindow skillsWindow, CraftIngredient ingredient)
         {
-            mSkillsWindow = skillsWindow;
+            mJobsWindow = skillsWindow;
             mIngredient = ingredient;
         }
-
-       
 
         public void Setup(string name)
         {
             Pnl = new ImagePanel(Container, name);
+            if (Pnl == null)
+            {
+                PacketSender.SendChatMsg($"Error: Pnl not created for {name}", 5);
+            }
+            else
+            {
+                PacketSender.SendChatMsg($"Pnl created for {name}", 5);
+            }
             Pnl.HoverEnter += pnl_HoverEnter;
             Pnl.HoverLeave += pnl_HoverLeave;
         }
@@ -64,23 +71,21 @@ namespace Intersect.Client.Interface.Game.Job
                 {
                     Pnl.Texture = itemTex;
                     Pnl.RenderColor = item.Color;
+                    PacketSender.SendChatMsg($"Texture loaded for item: {item.Name}, Icon: {item.Icon}", 5);
                 }
                 else
                 {
-                    if (Pnl.Texture != null)
-                    {
-                        Pnl.Texture = null;
-                    }
+                    PacketSender.SendChatMsg($"Texture missing for item: {item.Name}, Icon: {item.Icon}", 5);
+                    Pnl.Texture = null;
                 }
             }
             else
             {
-                if (Pnl.Texture != null)
-                {
-                    Pnl.Texture = null;
-                }
+                PacketSender.SendChatMsg($"Item not found with ID: {mIngredient.ItemId}", 5);
+                Pnl.Texture = null;
             }
         }
+
 
         void pnl_HoverLeave(Base sender, EventArgs arguments)
         {
@@ -119,7 +124,7 @@ namespace Intersect.Client.Interface.Game.Job
             if (mIngredient != null && ItemBase.TryGet(mIngredient.ItemId, out var itemDescriptor))
             {
                 DescWindow = new ItemDescriptionWindow(
-                    itemDescriptor, mIngredient.Quantity, mSkillsWindow.X, mSkillsWindow.Y, null
+                    itemDescriptor, mIngredient.Quantity, mJobsWindow.X, mJobsWindow.Y, null
                 );
             }
         }

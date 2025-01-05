@@ -1007,6 +1007,9 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Recipes = @"Recipes:";
+
+
+        public static LocalizedString Exp = @"EXP: {00}";
     }
 
     public partial struct Credits

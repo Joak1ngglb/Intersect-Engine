@@ -2437,6 +2437,56 @@ public static partial class PacketSender
         // Depuración en el servidor
       //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
     }
+    public static void SendOpenMailBox(Player player)
+    {
+        // Crear lista de correos para enviar al cliente
+        List<MailBoxUpdatePacket> mails = new List<MailBoxUpdatePacket>();
+        foreach (MailBox mail in player.MailBoxs)
+        {
+            // Crear lista de adjuntos
+            List<MailAttachmentPacket> attachments = new List<MailAttachmentPacket>();
+            foreach (var attachment in mail.Attachments)
+            {
+                attachments.Add(new MailAttachmentPacket
+                {
+                    ItemId = attachment.ItemId,
+                    Quantity = attachment.Quantity,
+                    Properties = attachment.Properties
+                });
+            }
 
+            // Crear paquete del correo
+            MailBoxUpdatePacket m = new MailBoxUpdatePacket(
+                mail.Id,
+                mail.Title,
+                mail.Message,
+                mail.Sender.Name,
+                attachments
+            );
+            mails.Add(m);
+        }
 
+        // Enviar lista de correos al cliente
+        player.SendPacket(new MailBoxsUpdatePacket(mails.ToArray()));
+
+        // Enviar paquete de apertura de la bandeja de entrada
+        player.SendPacket(new MailBoxPacket(true, false));
+    }
+
+    public static void SendCloseMailBox(Player player)
+    {
+        // Enviar paquete para cerrar la bandeja de entrada
+        player.SendPacket(new MailBoxPacket(false, false));
+    }
+
+    public static void SendOpenSendMail(Player player)
+    {
+        // Enviar inventario del jugador al cliente
+        SendInventory(player);
+
+        // Enviar paquete para abrir la ventana de envío de correos
+        player.SendPacket(new MailBoxPacket(true, true));
+    }
+
+   
 }

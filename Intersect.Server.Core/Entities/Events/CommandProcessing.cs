@@ -13,6 +13,7 @@ using Intersect.Server.Localization;
 using Intersect.Server.Maps;
 using Intersect.Server.Networking;
 using Intersect.Utilities;
+using static Intersect.GameObjects.Events.Commands.GiveJobExperienceCommand;
 
 namespace Intersect.Server.Entities.Events;
 
@@ -2289,5 +2290,24 @@ public static partial class CommandProcessing
             }
         }
     }
-
+    private static void ProcessCommand(
+       OpenMailBoxCommand command,
+       Player player,
+       Event instance,
+       CommandInstance stackInfo,
+       Stack<CommandInstance> callStack
+   )
+    {
+        player.OpenMailBox();
+    }
+    private static void ProcessCommand(
+        SendMailBoxCommand command,
+        Player player,
+        Event instance,
+        CommandInstance stackInfo,
+        Stack<CommandInstance> callStack
+    )
+    {
+        player.SendMail();
+    }
 }

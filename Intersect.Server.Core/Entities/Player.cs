@@ -502,7 +502,7 @@ public partial class Player : Entity
         BankInterface?.Dispose();
         BankInterface = default;
         InShop = default;
-
+        InMailBox = false;
         // Clear cooldowns that have expired
         RemoveStaleItemCooldowns();
         RemoveStaleSpellCooldowns();
@@ -7686,7 +7686,7 @@ public partial class Player : Entity
     [JsonIgnore, NotMapped] public bool IsInBag => InBag != null;
 
     [JsonIgnore, NotMapped] public ShopBase InShop;
-
+    [NotMapped] public bool InMailBox;
     [NotMapped] public bool InBank => BankInterface != null;
 
     [NotMapped, JsonIgnore] public IBankInterface BankInterface;

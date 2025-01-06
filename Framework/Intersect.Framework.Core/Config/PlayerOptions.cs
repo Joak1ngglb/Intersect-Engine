@@ -107,4 +107,5 @@ public partial class PlayerOptions
     public int TradeRange { get; set; } = 6;
 
     public int DeathSeconds { get; set; } = 10;
+    public int MaxMail { get; set; } = 255;
 }

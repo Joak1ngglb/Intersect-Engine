@@ -1494,7 +1494,7 @@ public static partial class Strings
         public readonly UpnpNamespace Upnp = new UpnpNamespace();
 
         public readonly GuildsNamespace Guilds = new GuildsNamespace();
-
+        public readonly MailNamespace Mails = new MailNamespace();
     }
 
     // ReSharper restore MemberHidesStaticFromOuterClass
@@ -1570,6 +1570,27 @@ public static partial class Strings
 
     public static UpnpNamespace Upnp => Root.Upnp;
 
+    public static MailNamespace Mails => Root.Mails;
     #endregion
+    public sealed class MailNamespace : LocaleNamespace
+    {
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString inventoryfull = @"Not enough space in your inventory";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString receiveitem = @"You received an item!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString playernotfound = @"Player not found!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString newmail = @"You have received a new mail!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString mailnotfound = @"Mail not found!";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString invaliditem = @"The selected item is invalid or cannot be attached to the mail.";
+
+    }
 
 }

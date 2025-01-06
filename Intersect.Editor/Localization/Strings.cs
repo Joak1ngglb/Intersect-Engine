@@ -1,6 +1,7 @@
 using System.Reflection;
-
+using Intersect.Config;
 using Intersect.Enums;
+using Intersect.Framework.Core.Config;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.Localization;
@@ -2265,6 +2266,27 @@ Tick timer saved in server config.json.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString resetstatpointallocations = @"Reset Player Stat Point Allocations";
+
+        public static readonly Dictionary<JobType, LocalizedString> JobExperienceMessages = new Dictionary<JobType, LocalizedString>
+    {
+        { JobType.Farming, @"Give Player {00} Farming Experience" },
+        { JobType.Mining, @"Give Player {00} Mining Experience" },
+        { JobType.Lumberjack, @"Give Player {00} Wood Experience" },
+        { JobType.Fishing, @"Give Player {00} Fishing Experience" },
+        { JobType.Hunter, @"Give Player {00} Hunting Experience" },
+        { JobType.Alchemy, @"Give Player {00} Alchemy Experience" },
+        { JobType.Cooking, @"Give Player {00} Cooking Experience" },
+        { JobType.Smithing, @"Give Player {00} Blacksmith Experience" }
+    };
+
+        // Método para obtener el mensaje de experiencia según el JobType
+        public static LocalizedString GetJobExperienceMessage(JobType jobType)
+        {
+            return JobExperienceMessages.TryGetValue(jobType, out var message)
+                ? message
+                : @"Invalid Job Experience"; // Retorno por defecto si el JobType no existe
+        }
+
     }
 
     public partial struct EventChangePlayerColor
@@ -2289,7 +2311,8 @@ Tick timer saved in server config.json.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Alpha = @"Alpha:";
-
+        // Diccionario para mapear JobType con cadenas localizadas
+       
     }
 
     public partial struct EventCommands
@@ -2365,6 +2388,7 @@ Tick timer saved in server config.json.";
             {"resetstatallocations", @"Reset Stat Point Allocations"},
             {"castspellon", @"Cast Spell On"},
             {"fade", @"Screen Fade"},
+            {"givejobexperience", @"Give Job Experience"},
         };
 
     }

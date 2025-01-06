@@ -1,5 +1,6 @@
 using System.Text;
 using Intersect.Config;
+using Intersect.Framework.Core.Config;
 using Intersect.Localization;
 using Intersect.Logging;
 using Intersect.Server.Core;
@@ -345,7 +346,7 @@ public static partial class Strings
         public readonly LocalizedString TryForgetBoundSpell = @"You cannot forget this spell.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString InvalidTarget = @"Invalid target for this spell.";
+        public readonly LocalizedString InvalidTarget = @"Invalid target for this spell.";      
     }
 
     public sealed partial class CommandOutputNamespace : LocaleNamespace
@@ -1114,6 +1115,26 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString WarpedToYou = @"{00} warped to you.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly Dictionary<JobType, LocalizedString> JobLevelUpMessages = new Dictionary<JobType, LocalizedString>
+{
+    { JobType.Farming, @"Your Farming Job is now level {00}!" },
+    { JobType.Cooking, @"Your Cooking Job is now level {00}!" },
+    { JobType.Hunter, @"Your Hunting Job is now level {00}!" },
+    { JobType.Smithing, @"Your Blacksmith Job is now level {00}!" },
+    { JobType.Alchemy, @"Your Alchemy Job is now level {00}!" },
+    { JobType.Lumberjack, @"Your Wood Job is now level {00}!" },
+    { JobType.Fishing, @"Your Fishing Job is now level {00}!" },
+    { JobType.Mining, @"Your Mining Job is now level {00}!" }
+};
+        public LocalizedString GetJobLevelUpMessage(JobType jobType)
+        {
+            return JobLevelUpMessages.TryGetValue(jobType, out var message)
+                ? message
+                : @"Invalid Job Level Up!"; // Retorno por defecto si el JobType no existe
+        }
+
     }
 
     public sealed partial class PortcheckingNamespace : LocaleNamespace

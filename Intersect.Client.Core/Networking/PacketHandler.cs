@@ -25,6 +25,8 @@ using Intersect.Framework;
 using Intersect.Models;
 using Intersect.Client.Interface.Shared;
 using Intersect.Network.Packets.Client;
+using Intersect.Config;
+using Intersect.Framework.Core.Config;
 
 namespace Intersect.Client.Networking;
 
@@ -2309,5 +2311,38 @@ internal sealed partial class PacketHandler
                 break;
         }
     }
+
+    public void HandlePacket(IPacketSender packetSender, JobSyncPacket packet)
+    {
+        if (Globals.Me == null)
+        {
+            PacketSender.SendChatMsg("Error: El jugador no está inicializado.", 5);
+            return;
+        }
+
+        if (packet.Jobs == null || packet.Jobs.Count == 0)
+        {
+            PacketSender.SendChatMsg("Error: El paquete de trabajos está vacío o no contiene datos.", 5);
+            return;
+        }
+
+        // Actualizar los datos del jugador
+        Globals.Me.UpdateJobsFromPacket(packet.Jobs);
+
+        foreach (var job in packet.Jobs)
+        {
+            if (job.Key == JobType.None || job.Key == JobType.JobCount)
+            {
+                PacketSender.SendChatMsg($"Advertencia: Trabajo inválido '{job.Key}' ignorado.", 5);
+                continue;
+            }
+
+            var jobData = job.Value;
+            PacketSender.SendChatMsg($"[DEBUG] Trabajo {job.Key}: Nivel {jobData.Level}, Exp {jobData.Experience}/{jobData.ExperienceToNextLevel}", 5);
+        }
+    }
+  
+
+
 
 }

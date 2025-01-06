@@ -1,9 +1,11 @@
+using Intersect.Config;
 using Intersect.Editor.Forms;
 using Intersect.Editor.Forms.DockingElements;
 using Intersect.Editor.Forms.Editors;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Maps;
 using Intersect.Enums;
+using Intersect.Framework.Core.Config;
 using Intersect.GameObjects;
 
 namespace Intersect.Editor.General;
@@ -199,5 +201,31 @@ public static partial class Globals
                 return "Invalid Stat";
         }
     }
+    private static readonly Dictionary<JobType, string> JobNames = new Dictionary<JobType, string>
+    {
+        { JobType.None, "None" },
+        { JobType.Farming, "Farming" },
+        { JobType.Mining, "Mining" },
+        { JobType.Fishing, "Fishing" },
+        { JobType.Lumberjack, "Lumberjack" },
+        { JobType.Hunter, "Hunting" },
+        { JobType.Alchemy, "Alchemy" },
+        { JobType.Smithing, "Blacksmith" },
+        { JobType.Cooking, "Cooking" },
+        { JobType.Crafting, "Crafting" }
+    };
+
+    public static string GetJobName(JobType jobType)
+    {
+        return JobNames.TryGetValue(jobType, out var jobName) ? jobName : "Invalid Job";
+    }
+
+    public static string GetJobName(int statnum)
+    {
+        var jobType = (JobType)statnum;
+        return GetJobName(jobType);
+    }
 
 }
+
+   

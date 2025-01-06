@@ -8,6 +8,7 @@ using Intersect.Client.Interface.Game.Crafting;
 using Intersect.Client.Interface.Game.EntityPanel;
 using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
+using Intersect.Client.Interface.Game.Job;
 using Intersect.Client.Interface.Game.Shop;
 using Intersect.Client.Interface.Game.Trades;
 using Intersect.Client.Networking;
@@ -48,6 +49,8 @@ public partial class GameInterface : MutableInterface
     private ShopWindow mShopWindow;
 
     private MapItemWindow mMapItemWindow;
+
+    private JobsWindow mJobsWindow;
 
     private bool mShouldCloseBag;
 
@@ -126,6 +129,8 @@ public partial class GameInterface : MutableInterface
         mQuestOfferWindow = new QuestOfferWindow(GameCanvas);
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
+       // mJobsWindow = new JobsWindow(GameCanvas);
+
     }
 
     //Chatbox
@@ -145,7 +150,7 @@ public partial class GameInterface : MutableInterface
     {
         mShouldUpdateGuildList = true;
     }
-
+   
     public void HideGuildWindow()
     {
         mShouldHideGuildWindow = true;
@@ -314,6 +319,7 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow.Update();
         AnnouncementWindow?.Update();
         mPictureWindow?.Update();
+     mJobsWindow?.Update();
 
         if (Globals.QuestOffers.Count > 0)
         {

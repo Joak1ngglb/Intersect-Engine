@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using Intersect.Collections.Slotting;
 using Intersect.Config;
 using Intersect.Enums;
+using Intersect.Framework.Core.Config;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
 using Intersect.GameObjects.Events;

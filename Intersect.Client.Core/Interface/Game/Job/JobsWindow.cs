@@ -122,99 +122,100 @@ namespace Intersect.Client.Interface.Game.Job
         }
         private void InitializeInfoPanel(JobType jobType)
         {
-            // Icono del trabajo
-            JobIcon = new ImagePanel(InfoPanel, "JobIcon");
-            JobIcon.SetPosition(10, 10);
-            JobIcon.SetSize(50, 50);
+                     
+                JobIcon = new ImagePanel(InfoPanel, "JobIcon");
+                JobIcon.SetPosition(10, 10);
+                JobIcon.SetSize(50, 50);
 
-            // Nombre del trabajo
-            JobNameLabel = new Label(InfoPanel, "JobNameLabel");
-            JobNameLabel.SetPosition(70, 10);
-            JobNameLabel.SetText(Strings.Job.GetJobName(jobType));
+                // Nombre del trabajo
+                JobNameLabel = new Label(InfoPanel, "JobNameLabel");
+                JobNameLabel.SetPosition(70, 10);
+                JobNameLabel.SetText(Strings.Job.GetJobName(jobType));
 
-            // Nivel del trabajo
-            JobLevelLabel = new Label(InfoPanel, "JobLevelLabel");
-            JobLevelLabel.SetPosition(200, 10);
-            JobLevelLabel.SetText(string.Format(Strings.Job.Level, Globals.Me.JobLevel)); // Ejemplo con nivel inicial
-   
-            // Título de experiencia
-            ExpTitle = new Label(InfoPanel, "ExpTitle");
-            ExpTitle.SetText(Strings.Job.Exp); // Referencia localizada
-            ExpTitle.SetPosition(10, 200);
-            ExpTitle.RenderColor = Color.FromArgb(255, 255, 255, 255);
+                // Nivel del trabajo
+                JobLevelLabel = new Label(InfoPanel, "JobLevelLabel");
+                JobLevelLabel.SetPosition(200, 10);
+                JobLevelLabel.SetText(string.Format(Strings.Job.Level, Globals.Me.JobLevel)); // Ejemplo con nivel inicial
 
-            // Fondo de la barra de experiencia
-            ExpBackground = new ImagePanel(InfoPanel, "ExpBackground");
-         
-            ExpBackground.RenderColor = Color.FromArgb(255, 100, 100, 100);
+                // Título de experiencia
+                ExpTitle = new Label(InfoPanel, "ExpTitle");
+                ExpTitle.SetText(Strings.Job.Exp); // Referencia localizada
+                ExpTitle.SetPosition(10, 200);
+                ExpTitle.RenderColor = Color.FromArgb(255, 255, 255, 255);
 
-            // Barra de experiencia
-            ExpBar = new ImagePanel(InfoPanel, "ExpBar");
-           
-            ExpBar.RenderColor = Color.FromArgb(255, 50, 150, 50);
+                // Fondo de la barra de experiencia
+                ExpBackground = new ImagePanel(InfoPanel, "ExpBackground");
 
-            // Etiqueta de experiencia
-            ExpLabel = new Label(InfoPanel, "ExpLabel");
-    
-            ExpLabel.SetText(string.Format(Strings.Job.ExpValue, Globals.Me.JobExp, Globals.Me.JobExpToNextLevel)); // Ejemplo inicial
-            ExpLabel.RenderColor = Color.FromArgb(255, 255, 255, 255);
-            mJobtDescTemplateLabel = new Label(InfoPanel, "JobDescriptionTemplate");
-            // Descripción del trabajo
-            JobDescriptionLabel = new RichLabel(InfoPanel, "Jobdesc");
-         
-            JobDescriptionLabel.ClearText();
-            JobIcon.SetSize(40, 40); // Ícono del trabajo más pequeño
-            JobIcon.SetPosition(10, 10);
+                ExpBackground.RenderColor = Color.FromArgb(255, 100, 100, 100);
 
-            JobNameLabel.SetPosition(60, 10); // Nombre del trabajo
-           
+                // Barra de experiencia
+                ExpBar = new ImagePanel(InfoPanel, "ExpBar");
 
-            JobLevelLabel.SetPosition(300, 10); // Nivel del trabajo alineado
-          
-            ExpBar.SetSize(380, 20); // Barra de experiencia más angosta
-            ExpBar.SetPosition(10, 60);
+                ExpBar.RenderColor = Color.FromArgb(255, 50, 150, 50);
 
-            ExpLabel.SetPosition(10, 90); // Etiqueta de experiencia
-  
+                // Etiqueta de experiencia
+                ExpLabel = new Label(InfoPanel, "ExpLabel");
 
-            JobDescriptionLabel.SetPosition(10, 120); // Descripción del trabajo
-            JobDescriptionLabel.SetSize(380, 100); // Tamaño compacto
-     
-          
-            if (mJobtDescTemplateLabel != null)
-            {
-                JobDescriptionLabel.AddText(Strings.Job.GetJobDescription(JobType.None), mJobtDescTemplateLabel);
+                ExpLabel.SetText(string.Format(Strings.Job.ExpValue, Globals.Me.JobExp, Globals.Me.JobExpToNextLevel)); // Ejemplo inicial
+                ExpLabel.RenderColor = Color.FromArgb(255, 255, 255, 255);
+                mJobtDescTemplateLabel = new Label(InfoPanel, "JobDescriptionTemplate");
+                // Descripción del trabajo
+                JobDescriptionLabel = new RichLabel(InfoPanel, "Jobdesc");
+
+                JobDescriptionLabel.ClearText();
+                JobIcon.SetSize(40, 40); // Ícono del trabajo más pequeño
+                JobIcon.SetPosition(10, 10);
+
+                JobNameLabel.SetPosition(60, 10); // Nombre del trabajo
+
+
+                JobLevelLabel.SetPosition(300, 10); // Nivel del trabajo alineado
+
+                ExpBar.SetSize(380, 20); // Barra de experiencia más angosta
+                ExpBar.SetPosition(10, 60);
+
+                ExpLabel.SetPosition(10, 90); // Etiqueta de experiencia
+
+
+                JobDescriptionLabel.SetPosition(10, 120); // Descripción del trabajo
+                JobDescriptionLabel.SetSize(380, 100); // Tamaño compacto
+
+
+                if (mJobtDescTemplateLabel != null)
+                {
+                    JobDescriptionLabel.AddText(Strings.Job.GetJobDescription(JobType.None), mJobtDescTemplateLabel);
+                }
+                else
+                {
+                    //PacketSender.SendChatMsg("Error: No se pudo crear el Label para el template.", 5);
+                }
+                // Recipe panel
+                mRecipePanel = new ScrollControl(InfoPanel, "RecipePanel");
+                mRecipePanel.SetPosition(10, 220); // Ajusta según sea necesario
+                mRecipePanel.SetSize(260, 180); // Ajusta según sea necesario
+                mRecipePanel.GetVerticalScrollBar();
+                mRecipePanel.EnableScroll(false, true); // Habilita barras de desplazamiento
+
+                // Crear un contenedor para la receta
+                recipeContainer = new ImagePanel(mRecipePanel, "RecipeContainer");
+                recipeContainer.SetSize(265, 80); // Ajusta el tamaño del contenedor según sea necesario
+                recipeContainer.Margin = new Margin(0, 0, 0, 10); // Añade un margen inferior para espacio entre recetas
+                mNameLabel = new Label(recipeContainer, "RecipeName", false);
+                mNameLabel.SetPosition(45, 10);
+                mNameLabel.SetTextColor(Color.White, Label.ControlState.Normal);
+
+                mXpLabel = new Label(recipeContainer, "RecipeExp", false);
+                mXpLabel.SetPosition(200, 10);
+                mXpLabel.SetTextColor(Color.White, Label.ControlState.Normal);
+                // Llenar el panel de recetas
+
+                recipeContainer.AddChild(mNameLabel);
+                recipeContainer.AddChild(mXpLabel);
+                InfoPanel.AddChild(mRecipePanel);
+                mRecipePanel.AddChild(recipeContainer);
+                LoadRecipes(jobType);
             }
-            else
-            {
-                //PacketSender.SendChatMsg("Error: No se pudo crear el Label para el template.", 5);
-            }
-            // Recipe panel
-            mRecipePanel = new ScrollControl(InfoPanel, "RecipePanel");
-            mRecipePanel.SetPosition(10, 220); // Ajusta según sea necesario
-            mRecipePanel.SetSize(260, 180); // Ajusta según sea necesario
-            mRecipePanel.GetVerticalScrollBar();
-            mRecipePanel.EnableScroll(false, true); // Habilita barras de desplazamiento
-
-            // Crear un contenedor para la receta
-            recipeContainer = new ImagePanel(mRecipePanel, "RecipeContainer");
-            recipeContainer.SetSize(265, 80); // Ajusta el tamaño del contenedor según sea necesario
-            recipeContainer.Margin = new Margin(0, 0, 0, 10); // Añade un margen inferior para espacio entre recetas
-            mNameLabel = new Label(recipeContainer, "RecipeName", false);
-            mNameLabel.SetPosition(45, 10);
-            mNameLabel.SetTextColor(Color.White, Label.ControlState.Normal);
-
-            mXpLabel = new Label(recipeContainer, "RecipeExp", false);
-            mXpLabel.SetPosition(200, 10);
-            mXpLabel.SetTextColor(Color.White, Label.ControlState.Normal);
-            // Llenar el panel de recetas
-            
-           recipeContainer.AddChild(mNameLabel);
-            recipeContainer.AddChild(mXpLabel);
-            InfoPanel.AddChild(mRecipePanel);
-            mRecipePanel.AddChild(recipeContainer);
-            LoadRecipes(jobType);
-        }
+        
 
         private void JobButtonClicked(Base sender, ClickedEventArgs arguments, JobType jobType)
         {
@@ -224,17 +225,11 @@ namespace Intersect.Client.Interface.Game.Job
         }
         private void UpdateJobInfo(JobType jobType)
         {
-            // Validar que Globals.Me no sea null
-            if (Globals.Me == null)
-            {
-                //PacketSender.SendChatMsg("Error: El jugador no está inicializado.", 5);
-                return;
-            }
-
+          
             // Validar que el trabajo es válido
             if (jobType == JobType.None || jobType == JobType.JobCount)
             {
-              //  PacketSender.SendChatMsg($"Advertencia: Trabajo '{jobType}' no es válido para actualizar.", 5);
+                //  PacketSender.SendChatMsg($"Advertencia: Trabajo '{jobType}' no es válido para actualizar.", 5);
                 return;
             }
 
@@ -244,41 +239,49 @@ namespace Intersect.Client.Interface.Game.Job
                 //PacketSender.SendChatMsg("Error: Los datos de trabajos no están inicializados.", 5);
                 return;
             }
-
-            // Obtener valores de los diccionarios con valores predeterminados
-            var level = Globals.Me.JobLevel.ContainsKey(jobType) ? Globals.Me.JobLevel[jobType] : 1;
-            var exp = Globals.Me.JobExp.ContainsKey(jobType) ? Globals.Me.JobExp[jobType] : 0;
-            var expToNextLevel = Globals.Me.JobExpToNextLevel.ContainsKey(jobType) ? Globals.Me.JobExpToNextLevel[jobType] : 100;
-
-            // Validar que los datos son razonables
-            if (level <= 0 || exp < 0 || expToNextLevel <= 0)
+            if (jobType == JobType.None || jobType == JobType.JobCount)
             {
-               // PacketSender.SendChatMsg($"Error: Datos inválidos para el trabajo '{jobType}'. Nivel: {level}, Exp: {exp}, Exp para siguiente nivel: {expToNextLevel}.", 5);
-                return;
+                InfoPanel.Show();
             }
-
-
-            // Validar que los componentes de la interfaz están inicializados
-            if (JobNameLabel == null || JobLevelLabel == null || ExpLabel == null || ExpBar == null || ExpBackground == null || JobDescriptionLabel == null)
+            else
             {
-                //PacketSender.SendChatMsg("Error: Los componentes de la interfaz no están inicializados.", 5);
-                return;
+                InfoPanel.Show();
+                // Obtener valores de los diccionarios con valores predeterminados
+                var level = Globals.Me.JobLevel.ContainsKey(jobType) ? Globals.Me.JobLevel[jobType] : 1;
+                var exp = Globals.Me.JobExp.ContainsKey(jobType) ? Globals.Me.JobExp[jobType] : 0;
+                var expToNextLevel = Globals.Me.JobExpToNextLevel.ContainsKey(jobType) ? Globals.Me.JobExpToNextLevel[jobType] : 100;
+
+                // Validar que los datos son razonables
+                if (level <= 0 || exp < 0 || expToNextLevel <= 0)
+                {
+                    // PacketSender.SendChatMsg($"Error: Datos inválidos para el trabajo '{jobType}'. Nivel: {level}, Exp: {exp}, Exp para siguiente nivel: {expToNextLevel}.", 5);
+                    return;
+                }
+
+
+                // Validar que los componentes de la interfaz están inicializados
+                if (JobNameLabel == null || JobLevelLabel == null || ExpLabel == null || ExpBar == null || ExpBackground == null || JobDescriptionLabel == null)
+                {
+                    //PacketSender.SendChatMsg("Error: Los componentes de la interfaz no están inicializados.", 5);
+                    return;
+                }
+
+                // Actualizar la interfaz con los datos disponibles
+                JobNameLabel.SetText(Strings.Job.GetJobName(jobType));
+                JobLevelLabel.SetText(string.Format(Strings.Job.Level, level));
+                ExpLabel.SetText(string.Format(Strings.Job.ExpValue, exp, expToNextLevel));
+                ExpBar.Width = (int)(ExpBackground.Width * (exp / (float)expToNextLevel));
+                ExpBar.SetTextureRect(0, 0, ExpBar.Width, ExpBar.Height);
+
+                JobDescriptionLabel.ClearText();
+                JobDescriptionLabel.AddText(Strings.Job.GetJobDescription(jobType), mJobtDescTemplateLabel);
+                LoadRecipes(jobType);
+                // Mensaje de depuración
+                //PacketSender.SendChatMsg($"Trabajo {jobType}: Nivel {level}, Exp {exp}/{expToNextLevel}", 1);
+               
             }
-
-            // Actualizar la interfaz con los datos disponibles
-            JobNameLabel.SetText(Strings.Job.GetJobName(jobType));
-            JobLevelLabel.SetText(string.Format(Strings.Job.Level, level));
-            ExpLabel.SetText(string.Format(Strings.Job.ExpValue, exp, expToNextLevel));
-            ExpBar.Width = (int)(ExpBackground.Width * (exp / (float)expToNextLevel));
-            ExpBar.SetTextureRect(0, 0, ExpBar.Width, ExpBar.Height);
-
-            JobDescriptionLabel.ClearText();
-            JobDescriptionLabel.AddText(Strings.Job.GetJobDescription(jobType), mJobtDescTemplateLabel);
-            LoadRecipes(jobType);
-            // Mensaje de depuración
-            //PacketSender.SendChatMsg($"Trabajo {jobType}: Nivel {level}, Exp {exp}/{expToNextLevel}", 1);
         }
-        
+
         private void LoadRecipes(JobType jobType)
         {
             // Limpiar el panel de recetas antes de cargar nuevas recetas
@@ -463,7 +466,10 @@ namespace Intersect.Client.Interface.Game.Job
 
         public void Show()
         {
-            InfoPanel?.Show();
+            if (SelectedJob == JobType.None || SelectedJob == JobType.JobCount)
+            {
+                InfoPanel.Hide();
+            }
             ExpBackground?.Show();
             ExpBar?.Show();
             ExpLabel?.Show();
@@ -471,9 +477,9 @@ namespace Intersect.Client.Interface.Game.Job
             JobLevelLabel?.Show();
             JobNameLabel?.Show();
             JobDescriptionLabel?.Show();
-            UpdateJobInfo(JobType.None);
-           
-            mJobsWindow.IsHidden = false;
+            
+            SelectedJob = JobType.None;
+            mJobsWindow.IsHidden = false;            
         }
 
         public void Hide()

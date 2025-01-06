@@ -6,6 +6,7 @@ using Intersect.GameObjects.Events;
 using Newtonsoft.Json;
 using Intersect.GameObjects.Conditions;
 using Intersect.Config;
+using Intersect.Framework.Core.Config;
 
 namespace Intersect.GameObjects.Crafting;
 

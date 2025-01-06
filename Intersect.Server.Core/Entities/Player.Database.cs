@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using Intersect.Logging;
 using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData;
@@ -62,7 +62,6 @@ public partial class Player
 
         return new Tuple<Client, Player>(client, client?.Entity ?? Player.Find(playerId));
     }
-
     public static Player Find(Guid playerId)
     {
         if (playerId == Guid.Empty)
@@ -73,6 +72,7 @@ public partial class Player
         var player = Player.FindOnline(playerId);
         if (player != null)
         {
+            player.InitializeJobs(); // Inicializar trabajos si el jugador está en línea
             return player;
         }
 
@@ -81,6 +81,12 @@ public partial class Player
             using var context = DbInterface.CreatePlayerContext();
             player = QueryPlayerById(context, playerId);
             _ = Validate(player);
+
+            if (player != null)
+            {
+                player.InitializeJobs(); // Inicializar trabajos después de cargar desde la base de datos
+            }
+
             return player;
         }
         catch (Exception ex)
@@ -166,6 +172,8 @@ public partial class Player
         entityEntry.Collection(p => p.Quests).Load();
         entityEntry.Collection(p => p.Spells).Load();
         entityEntry.Collection(p => p.Variables).Load();
+        // Inicializar trabajos si es necesario
+        InitializeJobs();
         return Validate(this, playerContext);
     }
 
@@ -173,8 +181,15 @@ public partial class Player
     {
         var player = Find(playerId);
         _ = Validate(player);
+
+        if (player != null)
+        {
+            player.InitializeJobs(); // Inicializar trabajos después de cargar
+        }
+
         return player;
     }
+
 
     public static Player Load(string playerName)
     {
@@ -182,6 +197,7 @@ public partial class Player
         _ = Validate(player);
         return player;
     }
+   
 
     public static bool Validate(Player? player, PlayerContext? playerContext = default)
     {

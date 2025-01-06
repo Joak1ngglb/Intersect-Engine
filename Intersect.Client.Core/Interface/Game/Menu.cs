@@ -6,6 +6,7 @@ using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Character;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Game.Inventory;
+using Intersect.Client.Interface.Game.Job;
 using Intersect.Client.Interface.Game.Spells;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
@@ -69,6 +70,9 @@ public partial class Menu
     private readonly GuildWindow mGuildWindow;
 
     private readonly DeathWindow mDeathWindow;
+    private readonly JobsWindow mJobsWindow;
+    private readonly ImagePanel mJobsBackground;
+    private readonly Button mJobsButton;
 
     private int mBackgroundHeight = 42;
 
@@ -131,6 +135,11 @@ public partial class Menu
         mMenuButton.SetToolTipText(Strings.GameMenu.Menu);
         mMenuButton.Clicked += MenuButtonClicked;
 
+        mJobsBackground = new ImagePanel(mMenuContainer, "JobsContainer");
+        mJobsButton = new Button(mJobsBackground, "JobsButton");
+        mJobsButton.SetToolTipText(Strings.GameMenu.Jobs);
+        mJobsButton.Clicked += JobsButton_Clicked;
+
         mMenuContainer.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
 
         //Assign Window References
@@ -143,6 +152,8 @@ public partial class Menu
         mMapItemWindow = new MapItemWindow(gameCanvas);
         mGuildWindow = new GuildWindow(gameCanvas);
         mDeathWindow = new DeathWindow(gameCanvas);
+        mJobsWindow = new JobsWindow(gameCanvas);
+
     }
 
     //Methods
@@ -157,6 +168,7 @@ public partial class Menu
         mMapItemWindow.Update();
         mGuildWindow.Update();
         mDeathWindow.Update();
+        mJobsWindow.Update();
     }
 
     public void UpdateFriendsList()
@@ -183,6 +195,7 @@ public partial class Menu
         mQuestsWindow.Hide();
         mSpellsWindow.Hide();
         mGuildWindow.Hide();
+        mJobsWindow.Hide();
     }
     public void ShowDeathWindow()
     {
@@ -192,7 +205,18 @@ public partial class Menu
     {
         mDeathWindow.Hide();
     }
-
+     public void ToggleJobsWindow()
+    {
+        if (mJobsWindow.IsVisible())
+        {
+            mJobsWindow.Hide();
+        }
+        else
+        {
+            HideWindows();
+            mJobsWindow.Show();
+        }
+    }
     public void ToggleCharacterWindow()
     {
         if (mCharacterWindow.IsVisible())
@@ -327,6 +351,7 @@ public partial class Menu
         mPartyWindow.Hide();
 
         mGuildWindow.Hide();
+        mJobsWindow.Hide();
     }
 
     public bool HasWindowsOpen()
@@ -367,7 +392,10 @@ public partial class Menu
         {
             windowsOpen = true;
         }
-
+        if (mJobsWindow.IsVisible())
+        {
+            windowsOpen = true;
+        }
         return windowsOpen;
     }
 
@@ -396,6 +424,10 @@ public partial class Menu
         ToggleFriendsWindow();
     }
 
+    private void JobsButton_Clicked(Base sender, ClickedEventArgs arguments)
+    {
+        ToggleJobsWindow();
+    }
     private void GuildBtn_Clicked(Base sender, ClickedEventArgs arguments)
     {
         if (!string.IsNullOrEmpty(Globals.Me.Guild))

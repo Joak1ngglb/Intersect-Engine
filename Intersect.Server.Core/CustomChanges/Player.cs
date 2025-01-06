@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using Intersect.Server.Networking;
 using Intersect.Enums;
+using Intersect.Server.Localization;
+using Intersect.Config;
 
 namespace Intersect.Server.Entities
 {
@@ -90,5 +92,6 @@ namespace Intersect.Server.Entities
         Warning,
         Error,
         Info
-    }
+    }      
+
 }

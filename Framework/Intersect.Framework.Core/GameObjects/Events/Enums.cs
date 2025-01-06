@@ -238,6 +238,7 @@ public enum EventCommandType
     CastSpellOn,
 
     Fade,
+    GiveJobExperience=200,
 }
 
 public enum FadeType

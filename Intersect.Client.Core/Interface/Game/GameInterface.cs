@@ -8,7 +8,6 @@ using Intersect.Client.Interface.Game.Crafting;
 using Intersect.Client.Interface.Game.EntityPanel;
 using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
-using Intersect.Client.Interface.Game.Job;
 using Intersect.Client.Interface.Game.Shop;
 using Intersect.Client.Interface.Game.Trades;
 using Intersect.Client.Networking;
@@ -50,8 +49,6 @@ public partial class GameInterface : MutableInterface
 
     private MapItemWindow mMapItemWindow;
 
-    private JobsWindow mJobsWindow;
-
     private bool mShouldCloseBag;
 
     private bool mShouldCloseBank;
@@ -91,6 +88,7 @@ public partial class GameInterface : MutableInterface
     public EntityBox PlayerBox;
 
     public PlayerStatusWindow PlayerStatusWindow;
+    private bool mShouldHideJobWindow;
 
     public GameInterface(Canvas canvas) : base(canvas)
     {
@@ -319,7 +317,6 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow.Update();
         AnnouncementWindow?.Update();
         mPictureWindow?.Update();
-     mJobsWindow?.Update();
 
         if (Globals.QuestOffers.Count > 0)
         {
@@ -472,7 +469,11 @@ public partial class GameInterface : MutableInterface
             GameMenu.HideGuildWindow();
             mShouldHideGuildWindow = false;
         }
-
+        if (mShouldHideJobWindow)
+        {
+            GameMenu.hideJobsWindow();
+            mShouldHideJobWindow = false;
+        }
         mShouldCloseTrading = false;
 
         if (FocusChat)
@@ -571,7 +572,7 @@ public partial class GameInterface : MutableInterface
             GameMenu.CloseAllWindows();
             closedWindows = true;
         }
-
+     
         return closedWindows;
     }
 

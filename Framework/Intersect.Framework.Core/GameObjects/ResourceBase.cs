@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Intersect.Config;
+using Intersect.Framework.Core.Config;
 using Intersect.GameObjects.Conditions;
 using Intersect.GameObjects.Events;
 using Intersect.Models;

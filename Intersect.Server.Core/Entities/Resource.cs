@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Intersect.Config;
 using Intersect.Enums;
+using Intersect.Framework.Core.Config;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Database;

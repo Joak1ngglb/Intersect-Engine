@@ -215,7 +215,7 @@ public partial class Menu
         {
             HideWindows();
             mJobsWindow.Show();
-        }
+        }       
     }
     public void ToggleCharacterWindow()
     {
@@ -268,7 +268,10 @@ public partial class Menu
     {
         mGuildWindow.Hide();
     }
-
+    public void hideJobsWindow()
+    {
+        mJobsWindow.Hide();
+    }
     public void ToggleInventoryWindow()
     {
         if (mInventoryWindow.IsVisible())

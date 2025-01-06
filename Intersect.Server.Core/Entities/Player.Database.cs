@@ -215,7 +215,7 @@ public partial class Player
         // player.Items = player.Items.OrderBy(inventorySlot => inventorySlot?.Slot).ToList();
         // player.Hotbar = player.Hotbar.OrderBy(hotbarSlot => hotbarSlot?.Slot).ToList();
         // player.Spells = player.Spells.OrderBy(spellSlot => spellSlot?.Slot).ToList();
-
+        MailBox.GetMails(DbInterface.CreatePlayerContext(), player);
         return true;
     }
 
@@ -437,7 +437,9 @@ public partial class Player
                 .Include(p => p.Variables)
                 .Include(p => p.Items)
                 .Include(p => p.Spells)
-                .AsSplitQuery()
+                .Include(p => p.MailBoxs)
+                    .ThenInclude(p => p.Sender)
+            .AsSplitQuery()
         ) ??
         throw new InvalidOperationException();
 
@@ -454,6 +456,8 @@ public partial class Player
                 .Include(p => p.Variables)
                 .Include(p => p.Items)
                 .Include(p => p.Spells)
+             .Include(p => p.MailBoxs)
+                    .ThenInclude(p => p.Sender)
                 .AsSplitQuery()
         ) ??
         throw new InvalidOperationException();
@@ -467,6 +471,8 @@ public partial class Player
                 .Include(p => p.Variables)
                 .Include(p => p.Items)
                 .Include(p => p.Spells)
+               .Include(p => p.MailBoxs)
+                    .ThenInclude(p => p.Sender)
                 .AsSplitQuery()
                 .FirstOrDefault()
         ) ??
@@ -482,6 +488,8 @@ public partial class Player
                 .Include(p => p.Variables)
                 .Include(p => p.Items)
                 .Include(p => p.Spells)
+            .Include(p => p.MailBoxs)
+                    .ThenInclude(p => p.Sender)
                 .AsSplitQuery()
                 .FirstOrDefault()
         ) ??

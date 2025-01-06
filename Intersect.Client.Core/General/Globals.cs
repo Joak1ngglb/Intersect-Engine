@@ -37,7 +37,8 @@ public static partial class Globals
     public static int BankSlots;
 
     public static bool ConnectionLost;
-
+    // Mail
+    public static List<Mail> Mails = new List<Mail>();
     /// <summary>
     /// This is used to prevent the client from showing unnecessary disconnect messages
     /// </summary>

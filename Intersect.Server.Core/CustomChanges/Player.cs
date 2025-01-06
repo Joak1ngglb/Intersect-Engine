@@ -4,6 +4,8 @@ using Intersect.Server.Networking;
 using Intersect.Enums;
 using Intersect.Server.Localization;
 using Intersect.Config;
+using System.Text.Json.Serialization;
+using Intersect.Server.Database.PlayerData.Players;
 
 namespace Intersect.Server.Entities
 {
@@ -85,6 +87,27 @@ namespace Intersect.Server.Entities
             PacketSender.SendChatMsg(this, message, (ChatMessageType)type);
         }
 
+        [JsonIgnore]
+        public virtual List<MailBox> MailBoxs { get; set; } = new List<MailBox>();
+
+        public void OpenMailBox()
+        {
+            InMailBox = true;
+            PacketSender.SendOpenMailBox(this);
+        }
+        public void CloseMailBox()
+        {
+            if (InMailBox)
+            {
+                InMailBox = false;
+                PacketSender.SendCloseMailBox(this);
+            }
+        }
+        public void SendMail()
+        {
+            InMailBox = true;
+            PacketSender.SendOpenSendMail(this);
+        }
     }
 
     public enum MessageType

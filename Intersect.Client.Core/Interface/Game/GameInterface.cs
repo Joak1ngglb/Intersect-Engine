@@ -8,6 +8,7 @@ using Intersect.Client.Interface.Game.Crafting;
 using Intersect.Client.Interface.Game.EntityPanel;
 using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
+using Intersect.Client.Interface.Game.Mail;
 using Intersect.Client.Interface.Game.Shop;
 using Intersect.Client.Interface.Game.Trades;
 using Intersect.Client.Networking;
@@ -48,7 +49,8 @@ public partial class GameInterface : MutableInterface
     private ShopWindow mShopWindow;
 
     private MapItemWindow mMapItemWindow;
-
+    private SendMailBoxWindow mSendMailBoxWindow;
+    private MailBoxWindow mMailBoxWindow;
     private bool mShouldCloseBag;
 
     private bool mShouldCloseBank;
@@ -141,6 +143,40 @@ public partial class GameInterface : MutableInterface
     public void NotifyUpdateFriendsList()
     {
         mShouldUpdateFriendsList = true;
+    }
+    // Mail Box
+    public void OpenSendMailBox()
+    {
+        if (mSendMailBoxWindow == null)
+        {
+            mSendMailBoxWindow = new SendMailBoxWindow(GameCanvas);
+        }
+
+        mSendMailBoxWindow.Show();
+        mSendMailBoxWindow.UpdateItemList();
+    }
+
+    public void OpenMailBox()
+    {
+        if (mMailBoxWindow == null)
+        {
+            mMailBoxWindow = new MailBoxWindow(GameCanvas);
+        }
+
+        mMailBoxWindow.Show();
+        mMailBoxWindow.UpdateMail();
+    }
+
+    public void CloseSendMailBox()
+    {
+        // Ocultar la ventana de envío de correos
+        mSendMailBoxWindow?.Close();
+    }
+
+    public void CloseMailBox()
+    {
+        // Ocultar la ventana de bandeja de entrada
+        mMailBoxWindow?.Hide();
     }
 
     //Guild Window
@@ -317,7 +353,16 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow.Update();
         AnnouncementWindow?.Update();
         mPictureWindow?.Update();
-
+        if (mSendMailBoxWindow != null && !mSendMailBoxWindow.IsVisible())
+        {
+            mSendMailBoxWindow?.Close();
+            mSendMailBoxWindow = null;
+        }
+        if (mMailBoxWindow != null && !mMailBoxWindow.IsVisible())
+        {
+            mMailBoxWindow?.Close();
+            mMailBoxWindow = null;
+        }
         if (Globals.QuestOffers.Count > 0)
         {
             var quest = QuestBase.Get(Globals.QuestOffers[0]);

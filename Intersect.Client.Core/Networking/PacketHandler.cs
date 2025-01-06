@@ -2352,7 +2352,64 @@ internal sealed partial class PacketHandler
             //PacketSender.SendChatMsg($"[DEBUG] Trabajo {job.Key}: Nivel {jobData.Level}, Exp {jobData.Experience}/{jobData.ExperienceToNextLevel}", 5);
         }
     }
-  
+
+    // Mail
+    // Mail
+    public void HandlePacket(IPacketSender packetSender, MailBoxsUpdatePacket packet)
+    {
+        // Limpiar la lista de correos existente
+        Globals.Mails.Clear();
+
+        // Iterar sobre los correos del paquete recibido
+        foreach (MailBoxUpdatePacket mail in packet.Mails)
+        {
+            // Crear lista de adjuntos
+            var attachments = new List<MailAttachment>();
+
+            if (mail.Attachments != null)
+            {
+                foreach (var attachment in mail.Attachments)
+                {
+                    attachments.Add(new MailAttachment
+                    {
+                        ItemId = attachment.ItemId,
+                        Quantity = attachment.Quantity,
+                        Properties = attachment.Properties
+                    });
+                }
+            }
+
+            // Agregar el correo a la lista global
+            Globals.Mails.Add(new Mail(
+                mail.MailID,
+                mail.Name,
+                mail.Message,
+                mail.SenderName,
+                attachments
+            ));
+        }
+    }
+
+
+    public void HandlePacket(IPacketSender packetSender, MailBoxPacket packet)
+    {
+        if (!packet.Close)
+        {
+            Interface.Interface.GameUi.CloseSendMailBox();
+            Interface.Interface.GameUi.CloseMailBox();
+        }
+        else
+        {
+            if (packet.Send)
+            {
+                Interface.Interface.GameUi.OpenSendMailBox();
+            }
+            else
+            {
+                Interface.Interface.GameUi.OpenMailBox();
+            }
+        }
+    }
 
 
 

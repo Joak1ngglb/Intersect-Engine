@@ -2266,7 +2266,7 @@ Tick timer saved in server config.json.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString resetstatpointallocations = @"Reset Player Stat Point Allocations";
-
+     
         public static readonly Dictionary<JobType, LocalizedString> JobExperienceMessages = new Dictionary<JobType, LocalizedString>
     {
         { JobType.Farming, "Give Player {00} Farming Experience" },
@@ -2290,7 +2290,10 @@ Tick timer saved in server config.json.";
                 ? message
                 : "Invalid Job Experience"; // Retorno por defecto si el JobType no existe
         }
-
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString sendmail = @"Send Mail";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString openmailbox = @"Open Mail Box";
     }
     public partial struct EventChangePlayerColor
     {
@@ -2392,6 +2395,10 @@ Tick timer saved in server config.json.";
             {"castspellon", @"Cast Spell On"},
             {"fade", @"Screen Fade"},
             {"givejobexperience", @"Give Job Experience"},
+               {"mailbox", @"Mail Box" },
+                {"sendmail", @"Send Mail"},
+                {"openmailbox", @"Open Mail Box"},
+
         };
 
     }

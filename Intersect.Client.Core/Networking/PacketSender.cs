@@ -8,6 +8,7 @@ using Intersect.Framework;
 using Intersect.GameObjects.Maps;
 using Intersect.Models;
 using Intersect.Network.Packets.Client;
+
 using AdminAction = Intersect.Admin.Actions.AdminAction;
 
 namespace Intersect.Client.Networking;
@@ -520,5 +521,34 @@ public static partial class PacketSender
     {
         Network.SendPacket(new TargetPacket(targetId));
     }
+    public static void SendMail(string to, string title, string message, List<Intersect.Network.Packets.Server.MailAttachmentPacket> attachments)
+    {
+        // Validación básica
+        if (string.IsNullOrWhiteSpace(to) || string.IsNullOrWhiteSpace(title) || attachments == null)
+        {
+            return;
+        }
 
+        // Enviar el paquete con los adjuntos
+        Network.SendPacket(new MailBoxSendPacket(to, title, message, attachments));
+    }
+
+    public static void SendCloseMail()
+    {
+        // Enviar paquete para cerrar el buzón
+        Network.SendPacket(new MailBoxClosePacket());
+    }
+
+    public static void SendTakeMail(Guid mailID)
+    {
+        // Validación básica
+        if (mailID == Guid.Empty)
+        {
+            return;
+        }
+
+        // Enviar paquete para tomar un correo
+        Network.SendPacket(new TakeMailPacket(mailID));
+    
+}
 }

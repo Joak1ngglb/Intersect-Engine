@@ -15,6 +15,7 @@ using Intersect.GameObjects.Maps;
 using Intersect.Utilities;
 
 using Newtonsoft.Json;
+using static Intersect.GameObjects.Events.Commands.GiveJobExperienceCommand;
 using Graphics = System.Drawing.Graphics;
 
 namespace Intersect.Editor.Forms.Editors.Events;
@@ -755,10 +756,17 @@ public partial class FrmEvent : Form
                 tmpCommand = new ScreenFadeCommand();
 
                 break;
-                break;
+          
             case EventCommandType.GiveJobExperience:
                 tmpCommand = new GiveJobExperienceCommand();
 
+                break;
+            case EventCommandType.SendMail:
+                tmpCommand = new SendMailBoxCommand();
+
+                break;
+            case EventCommandType.OpenMailBox:
+                tmpCommand = new OpenMailBoxCommand();
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -1427,6 +1435,10 @@ public partial class FrmEvent : Form
                 break;
             case EventCommandType.GiveJobExperience:
                 cmdWindow = new EventCommandGiveJobExperience((GiveJobExperienceCommand)command, this);
+                break;
+            case EventCommandType.SendMail:
+                break;
+            case EventCommandType.OpenMailBox:
                 break;
             default:
                 throw new ArgumentOutOfRangeException();

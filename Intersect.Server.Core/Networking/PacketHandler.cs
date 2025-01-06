@@ -475,6 +475,95 @@ internal sealed partial class PacketHandler
 
         return true;
     }
+    public void HandlePacket(Client client, MailBoxClosePacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+        player.CloseMailBox();
+    }
+    public void HandlePacket(Client client, MailBoxSendPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var recipient = Player.Find(packet.To);
+        if (recipient == null)
+        {
+            PacketSender.SendChatMsg(player, $"{Strings.Mails.playernotfound} ({packet.To})", ChatMessageType.Error, CustomColors.Alerts.Info);
+            player.CloseMailBox();
+            return;
+        }
+
+        var attachments = new List<MailAttachment>();
+        foreach (var attachment in packet.Attachments)
+        {
+            if (player.TryTakeItem(attachment.ItemId, attachment.Quantity))
+            {
+                attachments.Add(new MailAttachment
+                {
+                    ItemId = attachment.ItemId,
+                    Quantity = attachment.Quantity,
+                    Properties = attachment.Properties
+                });
+            }
+            else
+            {
+                PacketSender.SendChatMsg(player, Strings.Mails.invaliditem, ChatMessageType.Error, CustomColors.Alerts.Info);
+                return;
+            }
+        }
+
+
+        var mail = new MailBox(player, recipient, packet.Title, packet.Message, attachments);
+        recipient.MailBoxs.Add(mail);
+
+        PacketSender.SendChatMsg(recipient, Strings.Mails.newmail, ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+        player.CloseMailBox();
+    }
+    public void HandlePacket(Client client, TakeMailPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var mail = player.MailBoxs.FirstOrDefault(m => m.Id == packet.MailID);
+        if (mail == null)
+        {
+            PacketSender.SendChatMsg(player, Strings.Mails.mailnotfound, ChatMessageType.Error, CustomColors.Alerts.Declined);
+            return;
+        }
+
+        foreach (var attachment in mail.Attachments)
+        {
+            var item = new Item(attachment.ItemId, attachment.Quantity)
+            {
+                Properties = attachment.Properties
+            };
+
+            if (!player.TryGiveItem(item, -1))
+            {
+                PacketSender.SendChatMsg(player, Strings.Mails.inventoryfull, ChatMessageType.Error, CustomColors.Alerts.Declined);
+                return;
+            }
+
+            PacketSender.SendChatMsg(player, $"{Strings.Mails.receiveitem} {ItemBase.Get(attachment.ItemId)?.Name}!", ChatMessageType.Bank, CustomColors.Chat.PartyChat);
+        }
+
+        // Actualizar inventario después de recibir ítems
+        PacketSender.SendInventory(player);
+
+        player.MailBoxs.Remove(mail);
+        PacketSender.SendOpenMailBox(player);
+    }
+
 
     #region "Client Packets"
 

@@ -9,6 +9,7 @@ using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Events.Commands;
 using Intersect.GameObjects.Maps.MapList;
 using Intersect.Logging;
+using static Intersect.GameObjects.Events.Commands.GiveJobExperienceCommand;
 using VariableMod = Intersect.GameObjects.Events.VariableMod;
 
 namespace Intersect.Editor.Forms.Editors.Events;
@@ -1734,6 +1735,13 @@ public static partial class CommandPrinter
     }
 
 
-
+    private static string GetCommandText(OpenMailBoxCommand command, MapInstance map)
+    {
+        return Strings.EventCommandList.openmailbox;
+    }
+    private static string GetCommandText(SendMailBoxCommand command, MapInstance map)
+    {
+        return Strings.EventCommandList.sendmail;
+    }
 
 }

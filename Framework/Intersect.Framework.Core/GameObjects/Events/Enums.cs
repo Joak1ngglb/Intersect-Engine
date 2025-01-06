@@ -239,6 +239,8 @@ public enum EventCommandType
 
     Fade,
     GiveJobExperience=200,
+    SendMail = 201,
+    OpenMailBox = 202,
 }
 
 public enum FadeType

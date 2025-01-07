@@ -2354,7 +2354,6 @@ internal sealed partial class PacketHandler
     }
 
     // Mail
-    // Mail
     public void HandlePacket(IPacketSender packetSender, MailBoxsUpdatePacket packet)
     {
         // Limpiar la lista de correos existente

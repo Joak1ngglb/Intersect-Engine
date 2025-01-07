@@ -1520,12 +1520,45 @@ public partial class Entity : IEntity
         );
     }
 
+    private Color? cachedNameColor = null;
+    private int lastPlayerLevel = -1;
     public virtual void DrawName(Color? textColor, Color? borderColor = null, Color? backgroundColor = null)
     {
         // Are we really supposed to draw this name?
         if (!ShouldDrawName || Graphics.Renderer == default)
         {
             return;
+        }
+
+        // Obtener el nivel del jugador
+        var player = Globals.Me;
+        if (player == null)
+        {
+            return;
+        }
+
+        // Solo recalcular si el nivel del jugador o del NPC ha cambiado
+        if (cachedNameColor == null || lastPlayerLevel != player.Level)
+        {
+            int nivelDiferencia = Level - player.Level;
+            lastPlayerLevel = player.Level;
+
+            if (nivelDiferencia >= 10)
+            {
+                cachedNameColor = Color.Black; // NPC tiene 10 niveles más que el jugador
+            }
+            else if (nivelDiferencia >= 5)
+            {
+                cachedNameColor = Color.Red; // NPC tiene 5 niveles más que el jugador
+            }
+            else if (nivelDiferencia >= -2)
+            {
+                cachedNameColor = Color.White; // NPC tiene hasta 2 niveles más que el jugador
+            }
+            else if (nivelDiferencia <= -5)
+            {
+                cachedNameColor = Color.Green; // Jugador tiene 5 niveles más que el NPC
+            }
         }
 
         //Check for npc colors
@@ -1582,6 +1615,16 @@ public partial class Entity : IEntity
         //         new FloatRect(x - textSize.X / 2f - 4, y, textSize.X + 8, textSize.Y), backgroundColor
         //     );
         // }
+
+        // Dibujar borde blanco si el nombre es negro
+        if (cachedNameColor == Color.Black)
+        {
+        var outlineColor = Color.White; // Cambiar el nombre de la variable para evitar conflicto
+        Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f) - 1, (int)y - 1, 1, outlineColor);
+        Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f) + 1, (int)y - 1, 1, outlineColor);
+        Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f) - 1, (int)y + 1, 1, outlineColor);
+        Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f) + 1, (int)y + 1, 1, outlineColor);
+        }
 
         Graphics.Renderer.DrawString(
             name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f), (int)y, 1,

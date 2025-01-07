@@ -247,6 +247,17 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString attachments = @"Attachments";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString noAttachments = @"No attachments added to the mail.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString invalidInput = @"Invalid input. Please fill in all required fields.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString slotOccupied = @"This slot is already occupied.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString noFreeSlots = @"No free slots available to add the item.";
     }
 
     public partial struct Job

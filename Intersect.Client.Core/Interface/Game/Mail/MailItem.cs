@@ -1,153 +1,107 @@
-using Intersect.Client.Core;
-using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
-using Intersect.Client.Framework.Gwen.Input;
-using Intersect.Client.General;
+using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Interface.Game.DescriptionWindows;
 using Intersect.GameObjects;
-using Intersect.Utilities;
-using System;
-
+using Intersect.Client.General;
+using Intersect.Client.Interface.Game.Mail;
+using Intersect.Client.Items;
 namespace Intersect.Client.Interface.Game.Mail
 {
     public class MailItem
     {
-        private SendMailBoxWindow mMailWindow;
-        private ItemDescriptionWindow mDescWindow;
+        public ImagePanel SlotPanel;
+        private ItemDescriptionWindow DescWindow;
 
-        public ImagePanel Container;
-        public ImagePanel Pnl;
+        public Item CurrentSlot; // Ranura actual asociada al ítem
+        private int SlotIndex; // Índice del slot en la ventana de correos
+        private MailBoxWindow mMailWindow;
+        private SendMailBoxWindow mSendMailWindow;
+        private MailBoxWindow mailBoxWindow;
+        private int i;
+        private ScrollControl mAttachmentContainer;
 
-        // Propiedades adicionales tomadas de InventoryItem
-        public Label EquipLabel; // Indica si el ítem está equipado
-        public ImagePanel EquipPanel; // Panel que muestra el estado de equipado
-        private Label mCooldownLabel; // Etiqueta para mostrar el cooldown del ítem
-        private string mTexLoaded = ""; // Textura actual cargada
-        private bool mIconCd; // Indica si el ítem está en cooldown
+        public bool IsEmpty => CurrentSlot == null;
 
-        private int mMySlot;
-
-        public MailItem(SendMailBoxWindow mailWindow, int index, ImagePanel container)
+        public MailItem(SendMailBoxWindow mailWindow, int index, ScrollControl parent)
         {
-            mMailWindow = mailWindow;
-            mMySlot = index;
-            Container = container;
-            Pnl = new ImagePanel(Container, "MailItemIcon");
+            mSendMailWindow = mailWindow;
+            SlotIndex = index;
 
-            // Eventos para manejar interacción
-            Pnl.HoverEnter += OnHoverEnter;
-            Pnl.HoverLeave += OnHoverLeave;
-            Pnl.RightClicked += OnRemove;
-            Pnl.DoubleClicked += OnRemove;
+            SlotPanel = new ImagePanel(parent, $"MailSlot{index}");
+            SlotPanel.SetBounds(20 + (index * 60), 180, 32, 32);
 
-            // Inicialización de propiedades adicionales
-            EquipPanel = new ImagePanel(Pnl, "MailItemEquippedIcon");
-            EquipPanel.Texture = Graphics.Renderer.GetWhiteTexture();
-            EquipLabel = new Label(Pnl, "MailItemEquippedLabel")
-            {
-                IsHidden = true,
-                Text = "",
-                TextColor = new Color(0, 255, 255, 255)
-            };
-            mCooldownLabel = new Label(Pnl, "MailItemCooldownLabel")
-            {
-                IsHidden = true,
-                TextColor = new Color(0, 255, 255, 255)
-            };
+            SlotPanel.HoverEnter += Pnl_HoverEnter;
+            SlotPanel.HoverLeave += Pnl_HoverLeave;
+            SlotPanel.RightClicked += Pnl_RightClicked;
         }
 
-        private void OnHoverEnter(Base sender, EventArgs arguments)
+        public MailItem(MailBoxWindow parent, int index, ScrollControl container)
+        {   
+            mMailWindow = parent;
+            SlotIndex = index;
+            SlotPanel = new ImagePanel(container, $"AttachmentSlot{index}");
+            SlotPanel.SetBounds(20 + (index * 60), 180, 32, 32);
+            SlotPanel.HoverEnter += Pnl_HoverEnter;
+            SlotPanel.HoverLeave += Pnl_HoverLeave;
+            SlotPanel.RightClicked += Pnl_RightClicked;
+        }
+
+        public void SetItem(Item slot)
         {
-            if (InputHandler.MouseFocus != null)
+            CurrentSlot = slot;
+
+            if (slot != null)
             {
-                return;
+                var itemBase = ItemBase.Get(slot.ItemId);
+                if (itemBase != null)
+                {
+                    var texture = Globals.ContentManager.GetTexture(Intersect.Client.Framework.Content.TextureType.Item, itemBase.Icon);
+                    SlotPanel.Texture = texture ?? null;
+                }
             }
+            
 
-            DisposeDescriptionWindow();
-
-            if (mMySlot >= 0 && Globals.Me.Inventory[mMySlot]?.Base != null)
+            else
             {
-                mDescWindow = new ItemDescriptionWindow(
-                    Globals.Me.Inventory[mMySlot].Base,
-                    Globals.Me.Inventory[mMySlot].Quantity,
-                    mMailWindow.X,
-                    mMailWindow.Y,
-                    Globals.Me.Inventory[mMySlot].ItemProperties
+                ClearItem();
+            }
+        }
+
+        public void ClearItem()
+        {
+            CurrentSlot = null;
+            SlotPanel.Texture = null;
+        }
+
+        private void Pnl_HoverEnter(Base sender, EventArgs arguments)
+        {
+            if (CurrentSlot != null && ItemBase.Get(CurrentSlot.ItemId) != null)
+            {
+                DescWindow = new ItemDescriptionWindow(
+                    ItemBase.Get(CurrentSlot.ItemId),
+                    CurrentSlot.Quantity,
+                    SlotPanel.X,
+                    SlotPanel.Y,
+                    CurrentSlot.ItemProperties
                 );
             }
         }
 
-        private void OnHoverLeave(Base sender, EventArgs arguments)
+        private void Pnl_HoverLeave(Base sender, EventArgs arguments)
         {
-            DisposeDescriptionWindow();
-        }
-
-        private void OnRemove(Base sender, ClickedEventArgs arguments)
-        {
-            SetSlot(-1);
-            DisposeDescriptionWindow();
-        }
-
-        public int GetSlot()
-        {
-            return mMySlot;
-        }
-
-        public void SetSlot(int index)
-        {
-            mMySlot = index;
-
-            if (mMySlot >= 0)
+            if (DescWindow != null)
             {
-                var item = ItemBase.Get((Guid)(Globals.Me.Inventory[mMySlot]?.ItemId));
-                if (item != null)
-                {
-                    var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);
-                    Pnl.Texture = itemTex ?? null;
-
-                    // Manejo de cooldown
-                    mIconCd = Globals.Me.IsItemOnCooldown(mMySlot);
-                    if (mIconCd)
-                    {
-                        var itemCooldownRemaining = Globals.Me.GetItemRemainingCooldown(mMySlot);
-                        mCooldownLabel.IsHidden = false;
-                        mCooldownLabel.Text = TimeSpan.FromMilliseconds(itemCooldownRemaining).WithSuffix("0.0");
-                    }
-                    else
-                    {
-                        mCooldownLabel.IsHidden = true;
-                    }
-
-                    mTexLoaded = item.Icon;
-                }
-                else
-                {
-                    ClearTexture();
-                }
-            }
-            else
-            {
-                ClearTexture();
+                DescWindow.Dispose();
+                DescWindow = null;
             }
         }
 
-        private void ClearTexture()
+        private void Pnl_RightClicked(Base sender, ClickedEventArgs arguments)
         {
-            if (Pnl.Texture != null)
+            if (mSendMailWindow != null && CurrentSlot != null)
             {
-                Pnl.Texture = null;
-            }
-
-            mCooldownLabel.IsHidden = true;
-            mTexLoaded = "";
-        }
-
-        private void DisposeDescriptionWindow()
-        {
-            if (mDescWindow != null)
-            {
-                mDescWindow.Dispose();
-                mDescWindow = null;
+                mSendMailWindow.RestoreItemsToInventory();
+                ClearItem();
             }
         }
     }

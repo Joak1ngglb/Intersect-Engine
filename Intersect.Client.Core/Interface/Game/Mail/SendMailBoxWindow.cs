@@ -12,6 +12,7 @@ using Intersect.Client.Networking;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
+using Newtonsoft.Json.Linq;
 
 namespace Intersect.Client.Interface.Game.Mail
 {
@@ -34,9 +35,9 @@ namespace Intersect.Client.Interface.Game.Mail
         private Button mAddItemButton;
         private Button mSendButton;
         private Button mCloseButton;
-
+        private ScrollControl mAttachmentContainer;
         private List<MailAttachmentPacket> mAttachments;
-
+        private List<MailItem> mAttachmentSlots;
         public int X { get; internal set; }
         public int Y { get; internal set; }
 
@@ -106,12 +107,86 @@ namespace Intersect.Client.Interface.Game.Mail
 
             // Attachments List
             mAttachments = new List<MailAttachmentPacket>();
-
+            InitializeAttachmentSlots();
             mSendMailBoxWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
             mSendMailBoxWindow.SetBounds(300, 200, 420, 320);
             mSendMailBoxWindow.DisableResizing();
         }
 
+        private void InitializeAttachmentSlots()
+        {
+            mAttachmentSlots = new List<MailItem>();
+
+            mAttachmentContainer = new ScrollControl(mSendMailBoxWindow, "AttachmentContainer");
+            mAttachmentContainer.SetBounds(20, 180, 380, 100); // Ajustar según el diseño
+            mAttachmentContainer.EnableScroll(false, true);
+
+            for (int i = 0; i < 5; i++) // Ejemplo: 5 slots
+            {
+                var mailSlot = new MailItem(this, i, mAttachmentContainer);
+                mAttachmentSlots.Add(mailSlot);
+               
+                var xPadding = 5;
+                var yPadding = 5;
+
+                mailSlot.SlotPanel.SetPosition(
+                    i % (mAttachmentContainer.Width / (mailSlot.SlotPanel.Width + xPadding)) * (mailSlot.SlotPanel.Width + xPadding) + xPadding,
+                    i / (mAttachmentContainer.Width / (mailSlot.SlotPanel.Width + xPadding)) * (mailSlot.SlotPanel.Height + yPadding) + yPadding
+                );
+            }
+        }
+        public void UpdateAttachmentSlots()
+        {
+            for (int i = 0; i < mAttachmentSlots.Count; i++)
+            {
+                if (i < mAttachments.Count)
+                {
+                    var attachment = mAttachments[i];
+                    var item = new Item
+                    {
+                        ItemId = attachment.ItemId,
+                        Quantity = attachment.Quantity,
+                        ItemProperties = attachment.Properties
+                    };
+
+                    mAttachmentSlots[i].SetItem(item);
+                }
+                else
+                {
+                    mAttachmentSlots[i].ClearItem();
+                }
+            }
+        }
+
+        public void OnDropItem(Item item, int slotIndex)
+        {
+            var targetSlot = mAttachmentSlots[slotIndex];
+
+            if (targetSlot.IsEmpty)
+            {
+                targetSlot.SetItem(item);
+                for (int i = 0; i < Globals.Me.Inventory.Length; i++)
+                {
+                    var inventorySlot = Globals.Me.Inventory[i];
+                    if (inventorySlot?.ItemId == item.ItemId)
+                    {
+                        var toRemove = Math.Min(item.Quantity, inventorySlot.Quantity);
+                        inventorySlot.Quantity -= toRemove;
+
+                        if (inventorySlot.Quantity <= 0)
+                        {
+                            Globals.Me.Inventory[i] = null;
+                        }
+
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                PacketSender.SendChatMsg(Strings.MailBox.slotOccupied,4);
+            }
+        }
 
         private void AddItemButton_Clicked(Base sender, ClickedEventArgs arguments)
         {
@@ -123,22 +198,78 @@ namespace Intersect.Client.Interface.Game.Mail
             if (item == null || item.ItemId == Guid.Empty) return;
 
             int quantity = (int)mQuantityTextBoxNumeric.Value;
-            if (quantity <= 0 || quantity > item.Quantity) return;
 
-            mAttachments.Add(new MailAttachmentPacket
+            // Manejar ítems no apilables
+            if (!item.Base.IsStackable && quantity > 1)
             {
-                ItemId = item.ItemId,
-                Quantity = quantity,
-                Properties = item.ItemProperties
-            });
+                PacketSender.SendChatMsg("Cannot send multiple non-stackable items in one slot.", 4);
+                return;
+            }
 
-            // Optional: Update UI to show added item
+            // Verificar si hay slots disponibles
+            foreach (var slot in mAttachmentSlots)
+            {
+                if (slot.IsEmpty)
+                {
+                    // Crear una instancia parcial del ítem para adjuntar
+                    var partialItem = new Item
+                    {
+                        ItemId = item.ItemId,
+                        Quantity = quantity,
+                        ItemProperties = item.ItemProperties
+                    };
+
+                    slot.SetItem(partialItem);
+
+                    mAttachments.Add(new MailAttachmentPacket
+                    {
+                        ItemId = item.ItemId,
+                        Quantity = quantity,
+                        Properties = item.ItemProperties
+                    });
+
+                    // Reducir la cantidad en el inventario
+                    item.Quantity -= quantity;
+                    if (item.Quantity <= 0)
+                    {
+                        Globals.Me.Inventory[invSlot] = null;
+                    }
+
+                    return;
+                }
+            }
+
+            // Si no hay slots disponibles
+            PacketSender.SendChatMsg("No free slots available to add the item.", 4);
         }
+
 
         void SendButton_Clicked(Base sender, ClickedEventArgs arguments)
         {
-            if (string.IsNullOrWhiteSpace(mToTextbox.Text) || string.IsNullOrWhiteSpace(mTitleTextbox.Text)) return;
+            if (string.IsNullOrWhiteSpace(mToTextbox.Text) || string.IsNullOrWhiteSpace(mTitleTextbox.Text))
+            {
+                PacketSender.SendChatMsg(Strings.MailBox.invalidInput.ToString(), 4);
+                return;
+            }
 
+            if (mAttachments.Count == 0)
+            {
+                PacketSender.SendChatMsg(Strings.MailBox.noAttachments.ToString(), 4);
+                return;
+            }
+
+            // Validar ítems no apilables
+            foreach (var attachment in mAttachments)
+            {
+                var itemBase = ItemBase.Get(attachment.ItemId);
+                if (!itemBase.IsStackable && attachment.Quantity > 1)
+                {
+                    PacketSender.SendChatMsg("Cannot send multiple non-stackable items in one attachment.", 4);
+                    return;
+                }
+            }
+
+            // Enviar correo
             PacketSender.SendMail(mToTextbox.Text, mTitleTextbox.Text, mMsgTextbox.Text, mAttachments);
             Close();
         }
@@ -162,68 +293,73 @@ namespace Intersect.Client.Interface.Game.Mail
                 }
             }
         }
-        private void RestoreItemsToInventory()
+        public void RestoreItemsToInventory()
         {
-            foreach (var attachment in mAttachments)
+            foreach (var slot in mAttachmentSlots)
             {
-                var itemId = attachment.ItemId;
-                var quantity = attachment.Quantity;
-                var properties = attachment.Properties;
-
-                bool added = false;
-
-                // Iterar sobre el inventario e intentar agregar el ítem
-                for (int i = 0; i < Globals.Me.Inventory.Length; i++)
+                if (!slot.IsEmpty)
                 {
-                    var slot = Globals.Me.Inventory[i];
-
-                    if (slot.ItemId == Guid.Empty)
+                    var item = slot.CurrentSlot;
+                    if (item == null || item.ItemId == Guid.Empty)
                     {
-                        // Agregar el ítem en una ranura vacía
-                        Globals.Me.Inventory[i] = new Item
-                        {
-                            ItemId = itemId,
-                            Quantity = quantity,
-                            ItemProperties = properties
-                        };
-                        added = true;
-                        break;
+                        continue;
                     }
 
-                    // Verificar si el ítem puede apilarse
-                    var itemBase = ItemBase.Get(itemId);
-                    if (slot.ItemId == itemId && slot.Quantity < itemBase.MaxInventoryStack)
+                    bool added = false;
+                    for (int i = 0; i < Globals.Me.Inventory.Length; i++)
                     {
-                        var maxStack = itemBase.MaxInventoryStack;
-                        var spaceLeft = maxStack - slot.Quantity;
+                        var inventorySlot = Globals.Me.Inventory[i];
 
-                        var toAdd = Math.Min(spaceLeft, quantity);
-                        Globals.Me.Inventory[i].Quantity += toAdd;
-                        quantity -= toAdd;
-
-                        if (quantity <= 0)
+                        if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
                         {
+                            Globals.Me.Inventory[i] = new Item
+                            {
+                                ItemId = item.ItemId,
+                                Quantity = item.Quantity,
+                                ItemProperties = item.ItemProperties
+                            };
                             added = true;
                             break;
                         }
-                    }
-                }
 
-                // Si no se pudo agregar el ítem, enviar un mensaje de error
-                if (!added)
-                {
-                    PacketSender.SendChatMsg(Strings.Inventory.InventoryFull, 4);
+                        if (inventorySlot.ItemId == item.ItemId && inventorySlot.Base.IsStackable)
+                        {
+                            var maxStack = inventorySlot.Base.MaxInventoryStack;
+                            var spaceLeft = maxStack - inventorySlot.Quantity;
+
+                            var toAdd = Math.Min(spaceLeft, item.Quantity);
+                            inventorySlot.Quantity += toAdd;
+                            item.Quantity -= toAdd;
+
+                            if (item.Quantity <= 0)
+                            {
+                                added = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!added)
+                    {
+                        PacketSender.SendChatMsg("Inventory full. Could not restore item.", 4);
+                    }
+
+                    slot.ClearItem();
                 }
             }
-
-            mAttachments.Clear(); // Limpia los adjuntos después de procesarlos
         }
+
 
         public void Close()
         {
-            RestoreItemsToInventory(); // Devolver los ítems al cerrar
+            if (mAttachmentSlots != null)
+            {
+                RestoreItemsToInventory();
+            }
+
             mSendMailBoxWindow.Close();
         }
+
 
         public bool IsVisible()
         {

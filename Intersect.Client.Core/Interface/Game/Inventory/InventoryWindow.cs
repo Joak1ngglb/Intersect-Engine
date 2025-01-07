@@ -205,12 +205,24 @@ public partial class InventoryWindow
         {
             return;
         }
-
+        if (Items.Count != Options.MaxInvItems || mValues.Count != Options.MaxInvItems)
+        {
+            InitItemContainer(); // Re-sincronizar listas
+        }
         mInventoryWindow.IsClosable = Globals.CanCloseInventory;
 
         for (var i = 0; i < Options.MaxInvItems; i++)
         {
-            var item = ItemBase.Get(Globals.Me.Inventory[i].ItemId);
+            var inventorySlot = Globals.Me.Inventory[i];
+            if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
+            {
+                // Si el slot es nulo o no tiene un ítem, oculta el panel
+                Items[i].Pnl.IsHidden = true;
+                mValues[i].IsHidden = true;
+                continue;
+            }
+
+            var item = ItemBase.Get(inventorySlot.ItemId);
             if (item != null)
             {
                 Items[i].Pnl.IsHidden = false;
@@ -228,8 +240,8 @@ public partial class InventoryWindow
 
                 if (item.IsStackable)
                 {
-                    mValues[i].IsHidden = Globals.Me.Inventory[i].Quantity <= 1;
-                    mValues[i].Text = Strings.FormatQuantityAbbreviated(Globals.Me.Inventory[i].Quantity);
+                    mValues[i].IsHidden = inventorySlot.Quantity <= 1;
+                    mValues[i].Text = Strings.FormatQuantityAbbreviated(inventorySlot.Quantity);
                 }
                 else
                 {
@@ -250,6 +262,7 @@ public partial class InventoryWindow
                 mValues[i].IsHidden = true;
             }
         }
+
     }
 
     private void InitItemContainer()
@@ -272,19 +285,14 @@ public partial class InventoryWindow
 
             var xPadding = Items[i].Container.Margin.Left + Items[i].Container.Margin.Right;
             var yPadding = Items[i].Container.Margin.Top + Items[i].Container.Margin.Bottom;
-            Items[i]
-                .Container.SetPosition(
-                    i %
-                    (mItemContainer.Width / (Items[i].Container.Width + xPadding)) *
-                    (Items[i].Container.Width + xPadding) +
-                    xPadding,
-                    i /
-                    (mItemContainer.Width / (Items[i].Container.Width + xPadding)) *
-                    (Items[i].Container.Height + yPadding) +
-                    yPadding
-                );
+
+            Items[i].Container.SetPosition(
+                i % (mItemContainer.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Width + xPadding) + xPadding,
+                i / (mItemContainer.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Height + yPadding) + yPadding
+            );
         }
     }
+
 
     public void Show()
     {

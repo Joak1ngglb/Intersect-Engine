@@ -219,7 +219,7 @@ public partial class TableRow : Base, IColorableText
             mColumns.Add(new Label(this)
             {
                 Font = Font,
-                MouseInputEnabled = true,
+                MouseInputEnabled = false,
                 Padding = Padding.Three,
                 TextColor = TextColor,
                 TextColorOverride = TextColorOverride,
@@ -348,8 +348,7 @@ public partial class TableRow : Base, IColorableText
     /// </summary>
     /// <param name="column">Column number.</param>
     /// <param name="text">Text to set.</param>
-    /// <param name="enableMouseInput">Determines whether mouse input should be enabled for the cell.</param>
-    public void SetCellText(int column, string text, bool enableMouseInput = false)
+    public void SetCellText(int column, string text)
     {
         if (null == mColumns[column])
         {
@@ -357,7 +356,6 @@ public partial class TableRow : Base, IColorableText
         }
 
         mColumns[column].Text = text;
-        mColumns[column].MouseInputEnabled = enableMouseInput;
     }
 
     /// <summary>

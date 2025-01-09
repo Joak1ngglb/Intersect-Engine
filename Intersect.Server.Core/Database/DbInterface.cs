@@ -2186,7 +2186,7 @@ public static partial class DbInterface
     //https://stackoverflow.com/questions/3404421/password-masking-console-application
     public static string GetPassword()
     {
-        var pwd = "";
+        var pwd = string.Empty;
         while (true)
         {
             var i = Console.ReadKey(true);

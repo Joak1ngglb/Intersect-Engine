@@ -242,10 +242,10 @@ public ScrollControl mRewardItemsContainer;
     // ---- helpers de lista -----------------
     private void AddQuestToDict(Dictionary<string, List<Tuple<QuestBase, int, Color>>> dict, QuestBase quest)
     {
-        string category = "";
-        bool add = false;
-        Color color = Color.White;
-        int orderVal = -1;
+        var category = string.Empty;
+        var add = false;
+        var color = Color.White;
+        var orderVal = -1;
 
         if (Globals.Me.QuestProgress.ContainsKey(quest.Id))
         {

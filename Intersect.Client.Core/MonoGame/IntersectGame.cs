@@ -98,7 +98,7 @@ internal partial class IntersectGame : Game
 
         ClientConfiguration.LoadAndSave(ClientConfiguration.DefaultPath);
 
-        Content.RootDirectory = "";
+        Content.RootDirectory = string.Empty;
         IsMouseVisible = true;
         Globals.ContentManager = new MonoContentManager(Log.Default);
         Globals.Database = new JsonDatabase(Log.Default);
@@ -428,11 +428,11 @@ internal partial class IntersectGame : Game
             );
         }
 
-        var status = "";
+        var status = string.Empty;
         var progressPercent = 0f;
-        var progress = "";
-        var filesRemaining = "";
-        var sizeRemaining = "";
+        var progress = string.Empty;
+        var filesRemaining = string.Empty;
+        var sizeRemaining = string.Empty;
 
         switch (mUpdater.Status)
         {

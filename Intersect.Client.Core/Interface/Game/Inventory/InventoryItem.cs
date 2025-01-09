@@ -60,7 +60,7 @@ public partial class InventoryItem
     private int mMouseY = -1;
     public int DisplaySlot { get; set; } // Slot real dinámico
 
-    private string mTexLoaded = "";
+    private string mTexLoaded = string.Empty;
 
     public ImagePanel Pnl;
     private SendMailBoxWindow mSendMailBoxWindow;
@@ -415,7 +415,7 @@ public partial class InventoryItem
                     Pnl.Texture = null;
                 }
 
-                mTexLoaded = "";
+                mTexLoaded = string.Empty;
             }
 
             if (mDescWindow != null)

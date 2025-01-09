@@ -1695,7 +1695,7 @@ public static partial class CommandProcessing
     {
         if (input == null)
         {
-            input = "";
+            input = string.Empty;
         }
 
         if (player != null && input.Contains("\\"))

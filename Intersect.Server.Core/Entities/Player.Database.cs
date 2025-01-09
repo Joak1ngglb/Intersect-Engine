@@ -215,7 +215,7 @@ public partial class Player
         // player.Items = player.Items.OrderBy(inventorySlot => inventorySlot?.Slot).ToList();
         // player.Hotbar = player.Hotbar.OrderBy(hotbarSlot => hotbarSlot?.Slot).ToList();
         // player.Spells = player.Spells.OrderBy(spellSlot => spellSlot?.Slot).ToList();
-        MailBox.GetMails(DbInterface.CreatePlayerContext(), player);
+        
         return true;
     }
 

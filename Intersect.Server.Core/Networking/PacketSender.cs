@@ -20,6 +20,7 @@ using Intersect.Server.General;
 using Intersect.Server.Localization;
 using Intersect.Server.Maps;
 using Intersect.Utilities;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 namespace Intersect.Server.Networking;
@@ -113,9 +114,9 @@ public static partial class PacketSender
 
             // Send our friend list over so the UI can adjust accordingly without having to open it client-side first.
             PacketSender.SendFriends(player);
+         NotifyPlayerOnLogin(player);
         }
     }
-
     //MapAreaPacket
     public static void SendAreaPacket(Player player)
     {
@@ -2466,37 +2467,20 @@ public static partial class PacketSender
     }
     public static void SendOpenMailBox(Player player)
     {
-        // Crear lista de correos para enviar al cliente
-        List<MailBoxUpdatePacket> mails = new List<MailBoxUpdatePacket>();
-        foreach (MailBox mail in player.MailBoxs)
+        var mails = new List<MailBoxUpdatePacket>();
+        foreach (var mail in player.MailBoxs)
         {
-            // Crear lista de adjuntos
-            List<MailAttachmentPacket> attachments = new List<MailAttachmentPacket>();
-            foreach (var attachment in mail.Attachments)
+            var attachments = mail.Attachments.Select(a => new MailAttachmentPacket
             {
-                attachments.Add(new MailAttachmentPacket
-                {
-                    ItemId = attachment.ItemId,
-                    Quantity = attachment.Quantity,
-                    Properties = attachment.Properties
-                });
-            }
+                ItemId = a.ItemId,
+                Quantity = a.Quantity,
+                Properties = a.Properties
+            }).ToList();
 
-            // Crear paquete del correo
-            MailBoxUpdatePacket m = new MailBoxUpdatePacket(
-                mail.Id,
-                mail.Title,
-                mail.Message,
-                mail.Sender.Name,
-                attachments
-            );
-            mails.Add(m);
+            mails.Add(new MailBoxUpdatePacket(mail.Id, mail.Title, mail.Message, mail.Player?.Name ?? "Desconocido", attachments));
         }
 
-        // Enviar lista de correos al cliente
         player.SendPacket(new MailBoxsUpdatePacket(mails.ToArray()));
-
-        // Enviar paquete de apertura de la bandeja de entrada
         player.SendPacket(new MailBoxPacket(true, false));
     }
 
@@ -2514,6 +2498,60 @@ public static partial class PacketSender
         // Enviar paquete para abrir la ventana de envío de correos
         player.SendPacket(new MailBoxPacket(true, true));
     }
+    public static void SendMail(Player sender, string recipientName, string title, string message, List<MailAttachment> attachments)
+    {
+        using var context = DbInterface.CreatePlayerContext(readOnly: false);
 
-   
+        var recipient = context.Players
+            .AsNoTracking()
+            .SingleOrDefault(p => p.Name == recipientName);
+
+        if (recipient == null)
+        {
+            PacketSender.SendChatMsg(sender, $"El jugador {recipientName} no existe.", ChatMessageType.Error, CustomColors.Alerts.Info);
+            return;
+        }
+
+        var mail = new MailBox(sender, recipient, title, message, attachments);
+
+        var onlineRecipient = Player.FindOnline(recipientName);
+        if (onlineRecipient != null)
+        {
+            onlineRecipient.MailBoxs.Add(mail);
+            PacketSender.SendChatMsg(onlineRecipient, "Has recibido un nuevo correo.", ChatMessageType.Notice, CustomColors.Alerts.Info);
+            PacketSender.SendOpenMailBox(onlineRecipient);
+        }
+        else
+        {
+            context.Entry(recipient).State = EntityState.Detached; // Desvincular si está siendo rastreado
+            context.Entry(mail.Player).State = EntityState.Detached;
+            context.Entry(mail.Sender).State = EntityState.Detached;
+            context.Player_MailBox.Add(mail);
+
+            try
+            {
+                context.SaveChanges();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                Log.Error("Conflicto de concurrencia detectado al guardar correo.", ex);
+            }
+        }
+
+        PacketSender.SendChatMsg(sender, "Correo enviado con éxito.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+    }
+
+    public static void NotifyPlayerOnLogin(Player player)
+    {
+        // Cargar correos pendientes desde la base de datos
+        MailBox.GetMails(DbInterface.CreatePlayerContext(), player);
+
+        // Verificar si hay correos con adjuntos pendientes
+        if (player.MailBoxs.Any(mail => mail.Attachments != null && mail.Attachments.Count > 0))
+        {
+            PacketSender.SendChatMsg(player, "Tienes nuevos correos en tu bandeja de entrada.", ChatMessageType.Notice, CustomColors.Alerts.Info);
+            PacketSender.SendOpenMailBox(player);
+        }
+    }
+
 }

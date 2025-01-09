@@ -23,16 +23,23 @@ namespace Intersect.Server.Database.PlayerData.Players
         }
 
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get; private set; }
+        public Guid Id { get;  set; }
+        
+
+        [JsonProperty(nameof(Player))]
+        private Guid JsonPlayerId => Player?.Id ?? Guid.Empty;
+
+        [JsonProperty(nameof(Sender))]
+        private Guid JsonTargetId => Sender?.Id ?? Guid.Empty;
 
         [JsonIgnore]
-        public virtual Player Player { get; private set; }
+        public virtual Player Player { get;  set; }
 
         [JsonIgnore]
-        public virtual Player Sender { get; private set; }
+        public virtual Player Sender { get;  set; }
 
-        public string Title { get; private set; }
-        public string Message { get; private set; }
+        public string Title { get;  set; }
+        public string Message { get;  set; }
 
         [Column("Attachments")]
         public string AttachmentsJson
@@ -75,8 +82,8 @@ namespace Intersect.Server.Database.PlayerData.Players
                                         ?? new List<MailAttachment>();
                 }
             }
-        }
-    }
+        }      
+            }
 
     public class MailAttachment
     {

@@ -492,14 +492,7 @@ internal sealed partial class PacketHandler
             return;
         }
 
-        var recipient = Player.Find(packet.To);
-        if (recipient == null)
-        {
-            PacketSender.SendChatMsg(player, $"{Strings.Mails.playernotfound} ({packet.To})", ChatMessageType.Error, CustomColors.Alerts.Info);
-            player.CloseMailBox();
-            return;
-        }
-
+        // Manejar adjuntos
         var attachments = new List<MailAttachment>();
         foreach (var attachment in packet.Attachments)
         {
@@ -515,17 +508,18 @@ internal sealed partial class PacketHandler
             else
             {
                 PacketSender.SendChatMsg(player, Strings.Mails.invaliditem, ChatMessageType.Error, CustomColors.Alerts.Info);
+                player.CloseMailBox();
                 return;
             }
         }
 
+        // Delegar la lógica de envío a PacketSender.SendMail
+        PacketSender.SendMail(player, packet.To, packet.Title, packet.Message, attachments);
 
-        var mail = new MailBox(player, recipient, packet.Title, packet.Message, attachments);
-        recipient.MailBoxs.Add(mail);
-
-        PacketSender.SendChatMsg(recipient, Strings.Mails.newmail, ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+        // Cerrar la ventana de correos del remitente
         player.CloseMailBox();
     }
+
     public void HandlePacket(Client client, TakeMailPacket packet)
     {
         var player = client?.Entity;
@@ -560,10 +554,15 @@ internal sealed partial class PacketHandler
         // Actualizar inventario después de recibir ítems
         PacketSender.SendInventory(player);
 
-        player.MailBoxs.Remove(mail);
+        using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+        {
+            context.Player_MailBox.Remove(mail); // Eliminar el correo de la base de datos
+            context.SaveChanges();
+        }
+
+        player.MailBoxs.Remove(mail); // Eliminar el correo en memoria
         PacketSender.SendOpenMailBox(player);
     }
-
 
     #region "Client Packets"
 

@@ -1619,11 +1619,21 @@ public partial class Entity : IEntity
         // Dibujar borde blanco si el nombre es negro
         if (cachedNameColor == Color.Black)
         {
-        var outlineColor = Color.White; // Cambiar el nombre de la variable para evitar conflicto
-        Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f) - 1, (int)y - 1, 1, outlineColor);
-        Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f) + 1, (int)y - 1, 1, outlineColor);
-        Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f) - 1, (int)y + 1, 1, outlineColor);
-        Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, x - (int)Math.Ceiling(textSize.X / 2f) + 1, (int)y + 1, 1, outlineColor);
+            var outlineColor = Color.FromArgb(128, 255, 255, 255); // Blanco semitransparente
+            var offsets = new[] { -1, 1 };
+
+            foreach (var offsetX in offsets)
+            {
+                foreach (var offsetY in offsets)
+                {
+                    Graphics.Renderer.DrawString(
+                        name, Graphics.EntityNameFont,
+                        x - (int)Math.Ceiling(textSize.X / 2f) + offsetX,
+                        (int)y + offsetY,
+                        1, outlineColor
+                    );
+                }
+            }
         }
 
         Graphics.Renderer.DrawString(

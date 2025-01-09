@@ -24,6 +24,7 @@ using Intersect.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
+
 namespace Intersect.Server.Networking;
 
 
@@ -2079,6 +2080,11 @@ public static partial class PacketSender
     public static void SendChatBubbleToPlayer(Player player, Guid entityId, EntityType type, string text, Guid mapId)
     {
         player.SendPacket(new ChatBubblePacket(entityId, type, mapId, text));
+    }
+
+    public static void SendChatBubbleToProximity(Player player, Guid entityId, EntityType type, string text, Guid mapId)
+    {
+            SendDataToProximityOnMapInstance(mapId, player.MapInstanceId, new ChatBubblePacket(entityId, type, mapId, text));
     }
 
     public static void SendQuestOffer(Player player, Guid questId, Dictionary<Guid, int> questRewardItems, Tuple<long, Dictionary<JobType, long>> tuple)

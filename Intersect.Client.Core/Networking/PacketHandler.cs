@@ -2345,15 +2345,10 @@ internal sealed partial class PacketHandler
     // Mail
     public void HandlePacket(IPacketSender packetSender, MailBoxsUpdatePacket packet)
     {
-        // Limpiar la lista de correos existente
         Globals.Mails.Clear();
-
-        // Iterar sobre los correos del paquete recibido
         foreach (MailBoxUpdatePacket mail in packet.Mails)
         {
-            // Crear lista de adjuntos
             var attachments = new List<MailAttachment>();
-
             if (mail.Attachments != null)
             {
                 foreach (var attachment in mail.Attachments)
@@ -2366,18 +2361,9 @@ internal sealed partial class PacketHandler
                     });
                 }
             }
-
-            // Agregar el correo a la lista global
-            Globals.Mails.Add(new Mail(
-                mail.MailID,
-                mail.Name,
-                mail.Message,
-                mail.SenderName,
-                attachments
-            ));
+            Globals.Mails.Add(new Mail(mail.MailID, mail.Name, mail.Message, mail.SenderName, attachments));
         }
     }
-
 
     public void HandlePacket(IPacketSender packetSender, MailBoxPacket packet)
     {

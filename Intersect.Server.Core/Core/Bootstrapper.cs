@@ -316,7 +316,7 @@ internal static class Bootstrapper
         Console.WriteLine(@"| |_) ||  _ <  | |  | |_| | | |_| | | |___ ");
         Console.WriteLine(@"|____/ |_| \_\|___| |____/   \____| |_____|");
         Console.WriteLine(Strings.Intro.Tagline);
-        Console.WriteLine(@"Copyright (C) 2020 Ascension Game Dev");
+        Console.WriteLine(@"Copyright (c) 2020-2025 Ascension Game Dev");
         Console.WriteLine(Strings.Intro.Version.ToString(Assembly.GetExecutingAssembly().GetName().Version));
         Console.WriteLine(Strings.Intro.Support);
         Console.WriteLine();

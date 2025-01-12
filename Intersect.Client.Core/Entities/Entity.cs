@@ -1092,13 +1092,12 @@ public partial class Entity : IEntity
         // Copy the actual render color, because we'll be editing it later and don't want to overwrite it.
         var renderColor = new Color(Color.A, Color.R, Color.G, Color.B);
 
-        string transformedSprite = string.Empty;
         if (Flash && FlashColor != null) // Flash the sprite some color for some duration
         {
             renderColor = FlashColor;
         }
 
-        string transformedSprite = "";
+        string transformedSprite = string.Empty;
 
         // Loop through the entity status list.
         for (var n = 0; n < Status.Count; n++)

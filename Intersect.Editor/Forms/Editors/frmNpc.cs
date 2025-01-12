@@ -310,8 +310,6 @@ public partial class FrmNpc : EditorForm
             nudARP.Value = mEditorItem.Stats[(int)Stat.ArmorPenetration];
             nudVit.Value = mEditorItem.Stats[(int)Stat.Vitality];
             nudWis.Value = mEditorItem.Stats[(int)Stat.Wisdom];
-            nudHp.Value = mEditorItem.MaxVital[(int)Vital.Health];
-            nudMana.Value = mEditorItem.MaxVital[(int)Vital.Mana];
             nudExp.Value = mEditorItem.Experience;
             chkAttackAllies.Checked = mEditorItem.AttackAllies;
             chkEnabled.Checked = mEditorItem.NpcVsNpcEnabled;

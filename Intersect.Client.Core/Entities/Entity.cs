@@ -1097,7 +1097,7 @@ public partial class Entity : IEntity
             renderColor = FlashColor;
         }
 
-        string transformedSprite = "";
+        string transformedSprite = string.Empty;
 
         // Loop through the entity status list.
         for (var n = 0; n < Status.Count; n++)

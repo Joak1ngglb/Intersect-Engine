@@ -382,6 +382,9 @@ public static partial class Strings
         public readonly LocalizedString ApiRoles = @"API roles for {00}:";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString ApiRolesNotGranted = @"No API roles have been granted.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString CharacterCount = @" - {00} Characters.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -986,7 +989,7 @@ public static partial class Strings
     public sealed partial class NotificationsNamespace : LocaleNamespace
     {
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString Copyright = @"Copyright (C) 2020-2024 Ascension Game Dev, All Rights Reserved";
+        public readonly LocalizedString Copyright = @"Copyright (c) 2020-2025 Ascension Game Dev, All Rights Reserved";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString Product = @"Intersect Game Engine";

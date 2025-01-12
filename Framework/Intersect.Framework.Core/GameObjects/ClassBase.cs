@@ -16,17 +16,96 @@ public partial class ClassBase : DatabaseObject<ClassBase>, IFolderable
 
     public const long DEFAULT_EXPERIENCE_INCREASE = 50;
 
-    [NotMapped]
-    public int[] BaseStat = new int[Enum.GetValues<Stat>().Length];
+    [NotMapped, JsonIgnore]
+    public int[] BaseStat { get; set; } = new int[Enum.GetValues<Stat>().Length];
+
+    [NotMapped, JsonIgnore]
+    public long[] BaseVital { get; set; } = new long[Enum.GetValues<Vital>().Length];
+
+    [JsonProperty(nameof(BaseVital)), NotMapped]
+    public IReadOnlyDictionary<Vital, long> BaseVitalLookup
+    {
+        get =>
+            BaseVital.Select((value, index) => (value, index))
+                .ToDictionary(t => (Vital)t.index, t => t.value)
+                .AsReadOnly();
+        set
+        {
+            foreach (var (key, val) in value)
+            {
+                VitalRegen[(int)key] = val;
+            }
+        }
+    }
+
+    [JsonProperty(nameof(VitalIncrease)), NotMapped]
+    public IReadOnlyDictionary<Vital, long> VitalIncreaseLookup
+    {
+        get =>
+            VitalIncrease.Select((value, index) => (value, index))
+                .ToDictionary(t => (Vital)t.index, t => t.value)
+                .AsReadOnly();
+        set
+        {
+            foreach (var (key, val) in value)
+            {
+                VitalIncrease[(int)key] = val;
+            }
+        }
+    }
+
+    [JsonProperty(nameof(VitalRegen)), NotMapped]
+    public IReadOnlyDictionary<Vital, long> VitalRegenLookup
+    {
+        get =>
+            VitalRegen.Select((value, index) => (value, index))
+                .ToDictionary(t => (Vital)t.index, t => t.value)
+                .AsReadOnly();
+        set
+        {
+            foreach (var (key, val) in value)
+            {
+                VitalRegen[(int)key] = val;
+            }
+        }
+    }
+
+    [JsonProperty(nameof(BaseStat)), NotMapped]
+    public IReadOnlyDictionary<Stat, int> BaseStatLookup
+    {
+        get =>
+            BaseStat.Select((statValue, index) => (statValue, index))
+                .ToDictionary(t => (Stat)t.index, t => t.statValue)
+                .AsReadOnly();
+        set
+        {
+            foreach (var (key, val) in value)
+            {
+                BaseStat[(int)key] = val;
+            }
+        }
+    }
+
+    [JsonProperty(nameof(StatIncrease)), NotMapped]
+    public IReadOnlyDictionary<Stat, int> StatIncreaseLookup
+    {
+        get =>
+            StatIncrease.Select((statValue, index) => (statValue, index))
+                .ToDictionary(t => (Stat)t.index, t => t.statValue)
+                .AsReadOnly();
+        set
+        {
+            foreach (var (key, val) in value)
+            {
+                StatIncrease[(int)key] = val;
+            }
+        }
+    }
+
+    [NotMapped] public Dictionary<int, long> ExperienceOverrides { get; set; } = [];
 
     [NotMapped]
-    public long[] BaseVital = new long[Enum.GetValues<Vital>().Length];
-
-    [NotMapped]
-    public Dictionary<int, long> ExperienceOverrides = new Dictionary<int, long>();
-
-    [NotMapped]
-    public List<ClassItem> Items = new List<ClassItem>();
+    public List<ClassItem> Items { get; set; } = [];
 
     [JsonIgnore]
     private long mBaseExp;
@@ -35,19 +114,19 @@ public partial class ClassBase : DatabaseObject<ClassBase>, IFolderable
     private long mExpIncrease;
 
     [NotMapped]
-    public List<ClassSpell> Spells = new List<ClassSpell>();
+    public List<ClassSpell> Spells { get; set; } = [];
 
     [NotMapped]
-    public List<ClassSprite> Sprites = new List<ClassSprite>();
+    public List<ClassSprite> Sprites { get; set; } = [];
 
-    [NotMapped]
-    public int[] StatIncrease = new int[Enum.GetValues<Stat>().Length];
+    [NotMapped, JsonIgnore]
+    public int[] StatIncrease { get; set; } = new int[Enum.GetValues<Stat>().Length];
 
-    [NotMapped]
-    public long[] VitalIncrease = new long[Enum.GetValues<Vital>().Length];
+    [NotMapped, JsonIgnore]
+    public long[] VitalIncrease { get; set; } = new long[Enum.GetValues<Vital>().Length];
 
-    [NotMapped]
-    public long[] VitalRegen = new long[Enum.GetValues<Vital>().Length];
+    [NotMapped, JsonIgnore]
+    public long[] VitalRegen { get; set; } = new long[Enum.GetValues<Vital>().Length];
 
     [JsonConstructor]
     public ClassBase(Guid id) : base(id)
@@ -243,7 +322,7 @@ public partial class ClassBase : DatabaseObject<ClassBase>, IFolderable
     }
 
     /// <inheritdoc />
-    public string Folder { get; set; } = "";
+    public string Folder { get; set; } = string.Empty;
 
     public long ExperienceToNextLevel(int level)
     {
@@ -284,9 +363,9 @@ public partial class ClassSpell
 
 public partial class ClassSprite
 {
-    public string Face = "";
+    public string Face = string.Empty;
 
     public Gender Gender;
 
-    public string Sprite = "";
+    public string Sprite = string.Empty;
 }

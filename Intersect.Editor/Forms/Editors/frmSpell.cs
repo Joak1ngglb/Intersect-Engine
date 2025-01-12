@@ -976,7 +976,7 @@ public partial class FrmSpell : EditorForm
 
     private void btnAddCooldownGroup_Click(object sender, EventArgs e)
     {
-        var cdGroupName = "";
+        var cdGroupName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.SpellEditor.CooldownGroupPrompt, Strings.SpellEditor.CooldownGroupTitle, ref cdGroupName,
             DarkDialogButton.OkCancel
@@ -1070,7 +1070,7 @@ public partial class FrmSpell : EditorForm
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.SpellEditor.folderprompt, Strings.SpellEditor.foldertitle, ref folderName,
             DarkDialogButton.OkCancel

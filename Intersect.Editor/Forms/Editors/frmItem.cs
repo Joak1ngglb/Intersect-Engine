@@ -1090,7 +1090,7 @@ public partial class FrmItem : EditorForm
 
     private void btnAddCooldownGroup_Click(object sender, EventArgs e)
     {
-        var cdGroupName = "";
+        var cdGroupName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.ItemEditor.CooldownGroupPrompt, Strings.ItemEditor.CooldownGroupTitle, ref cdGroupName,
             DarkDialogButton.OkCancel
@@ -1332,7 +1332,7 @@ public partial class FrmItem : EditorForm
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.ItemEditor.folderprompt, Strings.ItemEditor.foldertitle, ref folderName,
             DarkDialogButton.OkCancel

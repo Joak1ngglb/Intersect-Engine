@@ -16,7 +16,6 @@ using Intersect.GameObjects.Maps;
 using Intersect.Logging;
 using Microsoft.Xna.Framework.Graphics;
 using WeifenLuo.WinFormsUI.Docking;
-using Timer = System.Windows.Forms.Timer;
 
 namespace Intersect.Editor.Forms.DockingElements;
 
@@ -35,17 +34,6 @@ public partial class FrmMapEditor : DockContent
     private SwapChainRenderTarget mChain;
 
     private bool mMapChanged;
-
-    // MapGrid Cursor
-    private Bitmap mCurSprite;
-
-    private readonly string mCurFolder = "resources/cursors/";
-
-    private string mCurPath;
-
-    private Point mCurClickPoint;
-
-    private Timer cursorUpdateTimer;
 
     public struct IconInfo
     {
@@ -76,11 +64,13 @@ public partial class FrmMapEditor : DockContent
         InitializeComponent();
         Icon = Program.Icon;
         picMap.MouseLeave += (_sender, _args) => tooltipMapAttribute?.Hide();
-        // Initialize cursor timer
-        cursorUpdateTimer = new Timer();
-        cursorUpdateTimer.Interval = 200;
-        cursorUpdateTimer.Tick += CursorUpdateTimer_Tick;
-        cursorUpdateTimer.Start();
+
+        Globals.ToolChanged += Globals_ToolChanged;
+    }
+
+    private void Globals_ToolChanged(object? sender, EventArgs e)
+    {
+        SetCursorSpriteInGrid();
     }
 
     private void InitLocalization()
@@ -2356,86 +2346,148 @@ public partial class FrmMapEditor : DockContent
 
     private void picMap_MouseEnter(object sender, EventArgs e)
     {
-        var enableCursorSprites = Preferences.LoadPreference("EnableCursorSprites");
+        if (Globals.EditingLight != null || Globals.CurrentEditor != -1)
+        {
+            RemoveSpriteCursorInGrid();
+            return;
+        }
 
-        if (!Globals.MapEditorWindow.DockPanel.Focused && Globals.CurrentEditor == -1)
+        if (!Globals.MapEditorWindow.DockPanel.Focused)
         {
             Globals.MapEditorWindow.DockPanel.Focus();
         }
 
-        if (!string.IsNullOrEmpty(enableCursorSprites) && !Convert.ToBoolean(enableCursorSprites))
-        {
-            RemoveSpriteCursorInGrid();
-        }
+        SetCursorSpriteInGrid();
     }
-
     private void picMap_MouseLeave(object sender, EventArgs e)
     {
         RemoveSpriteCursorInGrid();
     }
 
-    private void CursorUpdateTimer_Tick(object sender, EventArgs e)
-    {
-        if (Globals.EditingLight != null || Globals.CurrentEditor != -1 ||
-            !Globals.MapEditorWindow.DockPanel.Focused)
-        {
-            return;
-        }
-
-        SetCursorSpriteInGrid();
-    }
-
     private void SetCursorSpriteInGrid()
     {
-        if (!Directory.Exists(mCurFolder))
+        if (!Preferences.EnableCursorSprites)
         {
             return;
         }
 
-        var enableCursorSprites = Preferences.LoadPreference("EnableCursorSprites");
-
-        if (!(!string.IsNullOrEmpty(enableCursorSprites) && Convert.ToBoolean(enableCursorSprites)))
-        {
-            return;
-        }
-
-        mCurPath = $"{mCurFolder}editor_{Globals.CurrentTool.ToString().ToLowerInvariant()}.png";
-
-        if (!File.Exists(mCurPath))
-        {
-            return;
-        }
-
-        mCurClickPoint = ToolCursor.ToolCursorDict[Globals.CurrentTool].CursorClickPoint;
-        mCurSprite = new Bitmap(mCurPath);
-        Cursor = CreateCursorInGrid(mCurSprite, mCurClickPoint);
+        var currentTool = Globals.CurrentTool;
+        var toolCursor = GetOrCreateCursorForTool(currentTool);
+        Cursor = toolCursor ?? Cursors.Default;
     }
 
     private void RemoveSpriteCursorInGrid()
     {
-        if (mCurSprite == default)
+        if (!_toolCursors.Contains(Cursor))
         {
+            // Exit instead of setting the cursor to default if it's not a custom cursor
             return;
         }
-
-        mCurSprite.Dispose();
-        DestroyIcon(Cursor.Handle);
+        
         Cursor = Cursors.Default;
+    }
+
+    private static Cursor? GetOrCreateCursorForTool(EditingTool editingTool)
+    {
+        if (_toolCursorCache.TryGetValue(editingTool, out var toolCursor))
+        {
+            return toolCursor;
+        }
+
+        if (!ToolCursor.ToolCursorDict.TryGetValue(editingTool, out var toolCursorInfo))
+        {
+            var loadedClickPointKeys = string.Join(", ", ToolCursor.ToolCursorDict.Keys);
+            Log.Error(
+                $"Unable to load click point for {editingTool}, click points only exist for: {loadedClickPointKeys}"
+            );
+            return null;
+        }
+
+        if (!Directory.Exists(ToolCursor.CursorsFolder))
+        {
+            return null;
+        }
+
+        var cursorFileName = $"editor_{editingTool.ToString().ToLowerInvariant()}.png";
+        var cursorPath = Path.Combine(ToolCursor.CursorsFolder, cursorFileName);
+        var cursorAbsolutePath = Path.GetFullPath(cursorPath);
+        var loggingCursorPath = cursorPath;
+#if DEBUG
+        loggingCursorPath = cursorAbsolutePath;
+#endif
+        if (!File.Exists(cursorAbsolutePath))
+        {
+            Log.Error(
+                $"Custom cursor texture '{cursorFileName}' does not exist in {ToolCursor.CursorsFolder} resolved to {loggingCursorPath}"
+            );
+            return null;
+        }
+
+        Bitmap cursorBitmap;
+        try
+        {
+            cursorBitmap = new Bitmap(cursorAbsolutePath);
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, $"Failed to load custom cursor for {editingTool} resolved to {loggingCursorPath}");
+            return null;
+        }
+
+        toolCursor = CreateCursorInGrid(cursorBitmap, toolCursorInfo.CursorClickPoint, cursorFileName);
+        if (toolCursor == null)
+        {
+            return null;
+        }
+
+        _toolCursors.Add(toolCursor);
+        _toolCursorCache[editingTool] = toolCursor;
+
+        return toolCursor;
     }
 
     /// <summary>
     /// Creates a cursor from a bitmap depending on the user preferences and selected tool.
     /// </summary>
-    private Cursor CreateCursorInGrid(Bitmap bmp, Point curHotSpot)
+    private static Cursor? CreateCursorInGrid(Bitmap cursorBitmap, Point cursorClickPoint, string logName)
     {
-        DestroyIcon(Cursor.Handle);
-        IntPtr ptr = bmp.GetHicon();
-        IconInfo tmp = new IconInfo();
-        GetIconInfo(ptr, ref tmp);
-        tmp.XHotspot = curHotSpot.X;
-        tmp.YHotspot = curHotSpot.Y;
-        tmp.FIcon = false;
-        ptr = CreateIconIndirect(ref tmp);
-        return new Cursor(ptr);
+        try
+        {
+            IntPtr bitmapHicon = cursorBitmap.GetHicon();
+            if (bitmapHicon == IntPtr.Zero)
+            {
+                Log.Warn($"Failed to get bitmap icon handle for {logName}");
+                return null;
+            }
+
+            IconInfo cursorIconInfo = new IconInfo();
+            if (!GetIconInfo(bitmapHicon, ref cursorIconInfo))
+            {
+                Log.Warn($"Failed to get icon info for {logName}");
+                return null;
+            }
+
+            cursorIconInfo.XHotspot = cursorClickPoint.X;
+            cursorIconInfo.YHotspot = cursorClickPoint.Y;
+            cursorIconInfo.FIcon = false;
+
+            var cursorIcon = CreateIconIndirect(ref cursorIconInfo);
+            // ReSharper disable once InvertIf
+            if (cursorIcon == IntPtr.Zero)
+            {
+                Log.Warn($"Failed to create cursor icon for {logName}");
+                return null;
+            }
+
+            return new Cursor(cursorIcon);
+        }
+        catch (Exception exception)
+        {
+            Log.Error(exception, $"Error while creating cursor for {logName}");
+            return null;
+        }
     }
+
+    private static readonly HashSet<Cursor> _toolCursors = [];
+    private static readonly Dictionary<EditingTool, Cursor> _toolCursorCache = [];
 }

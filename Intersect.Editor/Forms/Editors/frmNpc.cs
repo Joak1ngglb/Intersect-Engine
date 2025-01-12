@@ -305,6 +305,8 @@ public partial class FrmNpc : EditorForm
             nudDef.Value = mEditorItem.Stats[(int)Stat.Defense];
             nudMR.Value = mEditorItem.Stats[(int)Stat.MagicResist];
             nudSpd.Value = mEditorItem.Stats[(int)Stat.Speed];
+            nudHp.Value = mEditorItem.MaxVitals[(int)Vital.Health];
+            nudMana.Value = mEditorItem.MaxVitals[(int)Vital.Mana];
             nudARP.Value = mEditorItem.Stats[(int)Stat.ArmorPenetration];
             nudVit.Value = mEditorItem.Stats[(int)Stat.Vitality];
             nudWis.Value = mEditorItem.Stats[(int)Stat.Wisdom];
@@ -735,12 +737,12 @@ public partial class FrmNpc : EditorForm
 
     private void nudHp_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.MaxVital[(int)Vital.Health] = (int)nudHp.Value;
+        mEditorItem.MaxVitals[(int)Vital.Health] = (int)nudHp.Value;
     }
 
     private void nudMana_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.MaxVital[(int)Vital.Mana] = (int)nudMana.Value;
+        mEditorItem.MaxVitals[(int)Vital.Mana] = (int)nudMana.Value;
     }
 
     private void nudExp_ValueChanged(object sender, EventArgs e)
@@ -1011,7 +1013,7 @@ public partial class FrmNpc : EditorForm
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.NpcEditor.folderprompt, Strings.NpcEditor.foldertitle, ref folderName, DarkDialogButton.OkCancel
         );

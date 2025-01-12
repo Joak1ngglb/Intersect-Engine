@@ -82,7 +82,7 @@ public partial class Entity : IEntity
     public Animation?[] EquipmentAnimations { get; set; } = new Animation[Options.EquipmentSlots.Count];
 
     //Extras
-    public string Face { get; set; } = "";
+    public string Face { get; set; } = string.Empty;
 
     public Label FooterLabel { get; set; } = new(string.Empty, Color.White);
 
@@ -127,7 +127,7 @@ public partial class Entity : IEntity
 
     private long mLastUpdate;
 
-    protected string mMySprite = "";
+    protected string mMySprite = string.Empty;
 
     public Color Color { get; set; } = new Color(255, 255, 255, 255);
 
@@ -137,13 +137,13 @@ public partial class Entity : IEntity
 
     protected byte mRenderPriority = 1;
 
-    protected string mTransformedSprite = "";
+    protected string mTransformedSprite = string.Empty;
 
     private long mWalkTimer;
 
     public int[] MyEquipment { get; set; } = new int[Options.EquipmentSlots.Count];
 
-    public string Name { get; set; } = "";
+    public string Name { get; set; } = string.Empty;
 
     public Color? NameColor { get; set; } = null;
 
@@ -1088,10 +1088,11 @@ public partial class Entity : IEntity
             return;
         }
 
-        var sprite = "";
+        var sprite = string.Empty;
         // Copy the actual render color, because we'll be editing it later and don't want to overwrite it.
         var renderColor = new Color(Color.A, Color.R, Color.G, Color.B);
 
+        string transformedSprite = string.Empty;
         if (Flash && FlashColor != null) // Flash the sprite some color for some duration
         {
             renderColor = FlashColor;
@@ -1545,19 +1546,19 @@ public partial class Entity : IEntity
 
             if (nivelDiferencia >= 10)
             {
-                cachedNameColor = Color.Black; // NPC tiene 10 niveles más que el jugador
+                cachedNameColor = Color.Black; // NPC tiene 10 niveles m�s que el jugador
             }
             else if (nivelDiferencia >= 5)
             {
-                cachedNameColor = Color.Red; // NPC tiene 5 niveles más que el jugador
+                cachedNameColor = Color.Red; // NPC tiene 5 niveles m�s que el jugador
             }
             else if (nivelDiferencia >= -2)
             {
-                cachedNameColor = Color.White; // NPC tiene hasta 2 niveles más que el jugador
+                cachedNameColor = Color.White; // NPC tiene hasta 2 niveles m�s que el jugador
             }
             else if (nivelDiferencia <= -5)
             {
-                cachedNameColor = Color.Green; // Jugador tiene 5 niveles más que el NPC
+                cachedNameColor = Color.Green; // Jugador tiene 5 niveles m�s que el NPC
             }
         }
 
@@ -2545,18 +2546,18 @@ public partial class Entity : IEntity
         var myFinalX = X + (OffsetX / Options.TileWidth);
         var otherFinalX = other.X + (other.OffsetX / Options.TileWidth);
 
-        // Si están en diferentes niveles Z, el que está más arriba está al frente
+        // Si est�n en diferentes niveles Z, el que est� m�s arriba est� al frente
         if (Z != other.Z)
         {
             return Z > other.Z;
         }
 
-        // Calcular si están en rango cercano (1 tile de distancia)
+        // Calcular si est�n en rango cercano (1 tile de distancia)
         var xDiff = Math.Abs(myFinalX - otherFinalX);
         var yDiff = Math.Abs(myFinalY - otherFinalY);
         var isNearby = xDiff <= 1 && yDiff <= 1;
 
-        // Solo considerar la superposición si están cerca
+        // Solo considerar la superposici�n si est�n cerca
         if (isNearby)
         {
             return myFinalY > otherFinalY;
@@ -2570,7 +2571,7 @@ public partial class Entity : IEntity
         return other.IsInFrontOf(this);
     }
 
-    // Nuevo método para verificar si una entidad está cerca de otra
+    // Nuevo m�todo para verificar si una entidad est� cerca de otra
     public virtual bool IsNear(Entity other, int tileRange = 1)
     {
         if (MapId != other.MapId)

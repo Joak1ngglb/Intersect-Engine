@@ -3,13 +3,17 @@ using System.Reflection;
 using System.Threading.RateLimiting;
 using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Reflection;
 using Intersect.Logging;
 using Intersect.Server.Core;
+using Intersect.Server.Web.Authentication;
 using Intersect.Server.Web.Configuration;
 using Intersect.Server.Web.Constraints;
 using Intersect.Server.Web.Middleware;
 using Intersect.Server.Web.RestApi.Payloads;
+using Intersect.Server.Web.RestApi.Routes;
 using Intersect.Server.Web.Serialization;
+using Intersect.Server.Web.Swagger.Filters;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -17,6 +21,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.OData;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +30,9 @@ using Microsoft.Extensions.FileProviders.Physical;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using Newtonsoft.Json.Converters;
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
 namespace Intersect.Server.Web;
 
@@ -33,6 +41,7 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
     private WebApplication? _app;
     private static readonly Assembly Assembly = typeof(ApiService).Assembly;
 
+    // ReSharper disable once MemberCanBeMadeStatic.Local
     private WebApplication? Configure()
     {
         UnpackAppSettings();
@@ -48,7 +57,7 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
         // I can't get System.Text.Json to deserialize an array as non-null, and it totally ignores
         // the JsonConverter attribute I tried putting on it, so I am just giving up and doing this
         // to make sure the array is not null in the event that it is empty.
-        configuration.StaticFilePaths ??= new List<StaticFilePathOptions>();
+        configuration.StaticFilePaths ??= [];
 
         if (!configuration.Enabled)
         {
@@ -74,10 +83,10 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
         builder.Services.AddRouting(
             routeOptions =>
             {
-                routeOptions.ConstraintMap.Add(nameof(AdminAction), typeof(AdminActionsConstraint));
+                routeOptions.ConstraintMap.Add(nameof(AdminAction), typeof(EnumConstraint<AdminAction>));
+                routeOptions.ConstraintMap.Add(nameof(GameObjectType), typeof(EnumConstraint<GameObjectType>));
                 routeOptions.ConstraintMap.Add(nameof(ChatMessage), typeof(ChatMessage.RouteConstraint));
-                routeOptions.ConstraintMap.Add(nameof(GameObjectType), typeof(GameObjectTypeConstraint));
-                routeOptions.ConstraintMap.Add(nameof(LookupKey), typeof(LookupKeyConstraint));
+                routeOptions.ConstraintMap.Add(nameof(LookupKey), typeof(NonNullConstraint));
             }
         );
 
@@ -88,12 +97,12 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                     "client_per_second",
                     context => RateLimitPartition.GetSlidingWindowLimiter(
                         partitionKey: context.User.Identity?.Name ?? "__no_api_key__",
-                        factory: partition => new SlidingWindowRateLimiterOptions
+                        factory: _ => new SlidingWindowRateLimiterOptions
                         {
                             AutoReplenishment = true,
                             PermitLimit = 5,
                             QueueLimit = 0,
-                            Window = TimeSpan.FromMinutes(1)
+                            Window = TimeSpan.FromMinutes(1),
                         }
                     )
                 );
@@ -101,47 +110,115 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                     "client_per_minute",
                     context => RateLimitPartition.GetSlidingWindowLimiter(
                         partitionKey: context.User.Identity?.Name ?? "__no_api_key__",
-                        factory: partition => new SlidingWindowRateLimiterOptions
+                        factory: _ => new SlidingWindowRateLimiterOptions
                         {
                             AutoReplenishment = true,
                             PermitLimit = 1,
                             QueueLimit = 0,
-                            Window = TimeSpan.FromSeconds(1)
+                            Window = TimeSpan.FromSeconds(1),
                         }
                     )
                 );
             }
         );
 
-        builder.Services.AddControllers(
-                mvcOptions =>
-                {
-                    mvcOptions.FormatterMappings.ClearMediaTypeMappingForFormat("application/xml");
-                    mvcOptions.FormatterMappings.ClearMediaTypeMappingForFormat("text/xml");
-                    mvcOptions.FormatterMappings.ClearMediaTypeMappingForFormat("text/json");
-                    mvcOptions.FormatterMappings.ClearMediaTypeMappingForFormat("application/xml");
-                }
-            )
+        builder.Services.AddControllers()
             .AddNewtonsoftJson(
                 newtonsoftOptions =>
                 {
                     newtonsoftOptions.SerializerSettings.ContractResolver =
                         new ApiVisibilityContractResolver(new HttpContextAccessor());
+                    newtonsoftOptions.SerializerSettings.Converters.Add(new StringEnumConverter());
                 }
             )
-            .AddOData(
-                options =>
+            .AddFormatterMappings(
+                formatterMappings =>
                 {
-                    options.Count().Select().OrderBy();
-                    options.RouteOptions.EnableKeyInParenthesis = false;
-                    options.RouteOptions.EnableNonParenthesisForEmptyParameterFunction = true;
-                    options.RouteOptions.EnableQualifiedOperationCall = false;
-                    options.RouteOptions.EnableUnqualifiedOperationCall = true;
+                    formatterMappings.ClearMediaTypeMappingForFormat("application/xml");
+                    formatterMappings.ClearMediaTypeMappingForFormat("text/xml");
+                    formatterMappings.ClearMediaTypeMappingForFormat("text/json");
                 }
             );
+
+        // builder.Services.ConfigureHttpJsonOptions(
+        //     jsonOptions => jsonOptions.SerializerOptions.Converters.Add(new JsonStringEnumConverter())
+        // );
+
         builder.Services.AddEndpointsApiExplorer();
+
         builder.Services.AddHealthChecks();
-        builder.Services.AddSwaggerGen();
+
+        builder.Services.AddSwaggerGen(
+            sgo =>
+            {
+                var version = typeof(ApiService).Assembly.GetVersionName();
+                sgo.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = $"{Options.Instance.GameName} v{version} API",
+                    Version = version,
+                });
+
+                sgo.TagActionsBy(
+                    api =>
+                    {
+                        List<string> tags = [];
+
+                        var groupName = api.GroupName;
+                        if (!string.IsNullOrWhiteSpace(groupName))
+                        {
+                            tags.Add(groupName);
+                        }
+
+                        if (api.ActionDescriptor is ControllerActionDescriptor controllerDescriptor)
+                        {
+                            tags.Add(controllerDescriptor.ControllerName);
+                        }
+
+                        foreach (var parameterDescriptor in api.ActionDescriptor.Parameters)
+                        {
+                            if (parameterDescriptor.ParameterType.IsEnum)
+                            {
+                                tags.Add("Admin Actions");
+                            }
+                        }
+
+                        return tags;
+                    }
+                );
+
+                sgo.OrderActionsBy(api => api.RelativePath ?? api.GroupName ?? api.HttpMethod);
+
+                var documentFilterTokenRequest =
+                    new PolymorphicDocumentFilter<OAuthController.TokenRequest, OAuthController.GrantType>("grant_type")
+                        .WithSubtype<OAuthController.TokenRequestPasswordGrant>(OAuthController.GrantType.Password)
+                        .WithSubtype<OAuthController.TokenRequestRefreshTokenGrant>(
+                            OAuthController.GrantType.RefreshToken
+                        );
+                sgo.AddDocumentFilterInstance(documentFilterTokenRequest);
+                sgo.AddSchemaFilterInstance(documentFilterTokenRequest.CreateSchemaFilter());
+                sgo.SchemaFilter<LookupKeySchemaFilter>();
+                sgo.SchemaFilter<DictionarySchemaFilter>();
+                sgo.SchemaFilter<GameObjectTypeSchemaFilter>();
+                sgo.OperationFilter<MetadataOperationFilter>();
+                sgo.OperationFilter<AuthorizationOperationFilter>();
+                sgo.DocumentFilter<GeneratorDocumentFilter>();
+                sgo.EnableAnnotations(enableAnnotationsForInheritance: true, enableAnnotationsForPolymorphism: true);
+                sgo.UseOneOfForPolymorphism();
+                sgo.UseAllOfForInheritance();
+                sgo.AddSecurityDefinition(
+                    SecuritySchemes.Bearer,
+                    new OpenApiSecurityScheme
+                    {
+                        Name = nameof(HttpRequestHeader.Authorization),
+                        In = ParameterLocation.Header,
+                        Type = SecuritySchemeType.Http,
+                        Scheme = SecuritySchemes.Bearer,
+                        Description = "JWT token obtained from the /api/oauth/token endpoint",
+                    }
+                );
+            });
+        builder.Services.AddSwaggerGenNewtonsoftSupport();
+
         var tokenGenerationOptionsSection =
             apiConfigurationSection.GetRequiredSection(nameof(TokenGenerationOptions));
         var tokenGenerationOptions = tokenGenerationOptionsSection.Get<TokenGenerationOptions>();
@@ -174,10 +251,10 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                     options.TokenValidationParameters.ValidIssuer ??= tokenGenerationOptions.Issuer;
                     options.Events = new JwtBearerEvents
                     {
-                        OnAuthenticationFailed = async context => {},
-                        OnChallenge = async context => {},
-                        OnMessageReceived = async context => {},
-                        OnTokenValidated = async context => {},
+                        OnAuthenticationFailed = async _ => {},
+                        OnChallenge = async _ => {},
+                        OnMessageReceived = async _ => {},
+                        OnTokenValidated = async _ => {},
                     };
                     SymmetricSecurityKey issuerKey = new(tokenGenerationOptions.SecretData);
                     options.TokenValidationParameters.IssuerSigningKey = issuerKey;
@@ -269,6 +346,11 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
         if (app.Environment.IsDevelopment())
         {
             app.UseODataRouteDebug();
+        }
+
+        // Swagger is always enabled in development, but outside of development it needs to be manually enabled
+        if (configuration.EnableSwaggerUI || app.Environment.IsDevelopment())
+        {
             app.UseSwagger();
             app.UseSwaggerUI();
         }

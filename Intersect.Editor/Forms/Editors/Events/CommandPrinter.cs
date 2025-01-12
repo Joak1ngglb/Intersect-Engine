@@ -690,7 +690,7 @@ public static partial class CommandPrinter
 
     private static string GetCommandText(AddChatboxTextCommand command, MapInstance map)
     {
-        var channel = "";
+        var channel = string.Empty;
         switch (command.Channel)
         {
             case ChatboxChannel.Player:
@@ -717,7 +717,7 @@ public static partial class CommandPrinter
 
     private static string GetCommandText(SetSelfSwitchCommand command, MapInstance map)
     {
-        var selfvalue = "";
+        var selfvalue = string.Empty;
         selfvalue = Strings.EventCommandList.False;
         if (command.Value)
         {
@@ -1115,7 +1115,7 @@ public static partial class CommandPrinter
         }
         else
         {
-            var spawnOpt = "";
+            var spawnOpt = string.Empty;
             switch (command.Dir)
             {
                 //0 does not adhere to direction, 1 is Spawning Relative to Direction, 2 is Rotating Relative to Direction, and 3 is both.
@@ -1336,7 +1336,7 @@ public static partial class CommandPrinter
 
     private static string GetVariableModText(SetVariableCommand command, BooleanVariableMod mod)
     {
-        var varvalue = "";
+        var varvalue = string.Empty;
         if (mod.DuplicateVariableId != Guid.Empty)
         {
             if (mod.DupVariableType == VariableType.PlayerVariable)
@@ -1412,7 +1412,7 @@ public static partial class CommandPrinter
 
     private static string GetVariableModText(SetVariableCommand command, IntegerVariableMod mod)
     {
-        var varvalue = "";
+        var varvalue = string.Empty;
         switch (mod.ModType)
         {
             case VariableModType.Set:
@@ -1675,7 +1675,7 @@ public static partial class CommandPrinter
 
     private static string GetVariableModText(SetVariableCommand command, StringVariableMod mod)
     {
-        var varvalue = "";
+        var varvalue = string.Empty;
         switch (mod.ModType)
         {
             case VariableModType.Set:

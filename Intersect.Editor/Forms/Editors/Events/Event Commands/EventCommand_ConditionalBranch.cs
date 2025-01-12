@@ -1235,7 +1235,7 @@ public partial class EventCommandConditionalBranch : UserControl
         else
         {
             cmbInvVariable.SelectedIndex = -1;
-            cmbInvVariable.Text = "";
+            cmbInvVariable.Text = string.Empty;
         }
     }
 

@@ -155,7 +155,7 @@ public partial class Resource : Entity
             if (Randomization.Next(1, 10001) <= drop.Chance * 100 && ItemBase.Get(drop.ItemId) != null)
             {
                 var slot = new InventorySlot(itemSlot);
-                slot.Set(new Item(drop.ItemId, Randomization.Next(drop.MinQuantity, drop.Quantity + 1+ BonusDrop)));
+                slot.Set(new Item(drop.ItemId, Randomization.Next(drop.MinQuantity, drop.Quantity + 1) + BonusDrop));
                 Items.Add(slot);
                 itemSlot++;
             }

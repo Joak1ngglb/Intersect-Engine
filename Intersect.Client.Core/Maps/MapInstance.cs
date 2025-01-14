@@ -766,8 +766,6 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                     {
                         tileBuffer.SetData();
                     }
-                }
-            }
 
             var endVbo = DateTime.UtcNow;
             var elapsedVbo = endVbo - startVbo;

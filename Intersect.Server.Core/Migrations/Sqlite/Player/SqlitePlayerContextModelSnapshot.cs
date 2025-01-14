@@ -15,7 +15,7 @@ namespace Intersect.Server.Migrations.Sqlite.Player
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "7.0.11");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
 
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Api.RefreshToken", b =>
                 {
@@ -852,7 +852,8 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                 {
                     b.HasOne("Intersect.Server.Database.PlayerData.Players.Guild", "DbGuild")
                         .WithMany()
-                        .HasForeignKey("DbGuildId");
+                        .HasForeignKey("DbGuildId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Intersect.Server.Database.PlayerData.User", "User")
                         .WithMany("Players")

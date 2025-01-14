@@ -835,8 +835,6 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                             }
                         }
                     }
-                }
-            }
 
                     var endVbo = DateTime.UtcNow;
                     var elapsedVbo = endVbo - startVbo;

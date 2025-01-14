@@ -200,26 +200,75 @@ public partial class Player : Entity
     [NotMapped, JsonIgnore]
     public bool InOpenInstance => InstanceType != MapInstanceType.Personal && InstanceType != MapInstanceType.Shared;
 
-    /// <summary>
-    /// References the in-memory copy of the guild for this player, reference this instead of the Guild property below.
-    /// </summary>
-    [NotMapped][JsonIgnore] public Guild Guild { get; set; }
-
     [NotMapped][JsonIgnore] public bool IsInGuild => Guild != null;
 
-    [NotMapped] public Guid GuildId => DbGuildId ?? default;
+    public Guid? GuildId { get; set; }
 
     [JsonIgnore]
-    public Guid? DbGuildId { get; set; }
+    [ForeignKey(nameof(GuildId))]
+    public Guild? Guild
+    {
+        get => _guild;
+        set
+        {
+            _guild = value;
+            GuildId = _guild?.Id;
+        }
+    }
 
-    /// <summary>
-    /// This field is used for EF database fields only and should never be assigned to or used, instead the guild instance will be assigned to CachedGuild above
-    /// </summary>
-    [JsonIgnore] [ForeignKey(nameof(DbGuildId))] public Guild? DbGuild { get; set; }
+    public Guid? PendingGuildInviteFromId
+    {
+        get => _pendingGuildInviteFromId;
+        private set
+        {
+            _pendingGuildInviteFromId = value;
+            if (_pendingGuildInviteFromId != PendingGuildInviteFrom?.Id)
+            {
+                PendingGuildInviteFrom = null;
+            }
+        }
+    }
+
+    [JsonIgnore]
+    [ForeignKey(nameof(PendingGuildInviteFromId))]
+    public Player? PendingGuildInviteFrom { get; set; }
+
+    public Guid? PendingGuildInviteToId
+    {
+        get => _pendingGuildInviteToId;
+        private set
+        {
+            _pendingGuildInviteToId = value;
+            if (_pendingGuildInviteToId != PendingGuildInviteTo?.Id)
+            {
+                PendingGuildInviteTo = null;
+            }
+        }
+    }
+
+    [JsonIgnore]
+    [ForeignKey(nameof(PendingGuildInviteToId))]
+    public Guild? PendingGuildInviteTo { get; set; }
 
     [NotMapped]
-    [JsonIgnore]
-    public Tuple<Player, Guild> GuildInvite { get; set; }
+    public GuildInvite PendingGuildInvite
+    {
+        get => new()
+        {
+            FromId = PendingGuildInviteFrom?.Id ?? PendingGuildInviteFromId ?? default,
+            ToId = PendingGuildInviteTo?.Id ?? PendingGuildInviteToId ?? default,
+        };
+        set
+        {
+            if (value == PendingGuildInvite)
+            {
+                return;
+            }
+
+            PendingGuildInviteFromId = value.FromId == default ? null : value.FromId;
+            PendingGuildInviteToId = value.ToId == default ? null : value.ToId;
+        }
+    }
 
     public int GuildRank { get; set; }
 
@@ -415,6 +464,8 @@ public partial class Player : Entity
             return;
         }
 
+        Guild?.NotifyPlayerDisposed(this);
+
         base.Dispose();
     }
 
@@ -531,7 +582,6 @@ public partial class Player : Entity
 
         //Send guild update to all members when logging out
         Guild?.UpdateMemberList();
-        Guild = null;
         GuildBank = false;
 
         //If our client has disconnected or logged out but we have kept the user logged in due to being in combat then we should try to logout the user now
@@ -7708,6 +7758,9 @@ public partial class Player : Entity
     }
 
     [JsonIgnore] public ConcurrentDictionary<Guid, long> ItemCooldowns = new ConcurrentDictionary<Guid, long>();
+    private Guild _guild;
+    private Guid? _pendingGuildInviteFromId;
+    private Guid? _pendingGuildInviteToId;
 
     #endregion
 

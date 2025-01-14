@@ -360,7 +360,8 @@ public partial class Player
     {
         using (var context = DbInterface.CreatePlayerContext())
         {
-            var guildId = context.Players.Where(p => p.Id == Id && p.DbGuild.Id != null && p.DbGuild.Id != Guid.Empty).Select(p => p.DbGuild.Id).FirstOrDefault();
+            var guildId = context.Players.Where(p => p.Id == Id && p.Guild != null && p.Guild.Id != Guid.Empty)
+                .Select(p => p.Guild.Id).FirstOrDefault();
             if (guildId != default)
             {
                 Guild = Guild.LoadGuild(guildId);
@@ -373,6 +374,44 @@ public partial class Player
         }
     }
     #endregion
+
+    #region Saving
+
+    public void Save(PlayerContext? playerContext = null)
+    {
+        if (User is {} user)
+        {
+            user.Save(playerContext: playerContext);
+            return;
+        }
+
+        PlayerContext? createdPlayerContext = null;
+
+        try
+        {
+            if (playerContext == null || playerContext.IsReadOnly)
+            {
+                playerContext = createdPlayerContext = DbInterface.CreatePlayerContext(readOnly: false);
+            }
+
+            playerContext.Update(this);
+            playerContext.ChangeTracker.DetectChanges();
+            playerContext.SaveChanges();
+        }
+        catch (Exception exception)
+        {
+            Log.Error(
+                exception,
+                $"Error occurred while saving player {Id} ({nameof(playerContext)}={(createdPlayerContext == null ? "not null" : "null")}"
+            );
+        }
+        finally
+        {
+            createdPlayerContext?.Dispose();
+        }
+    }
+
+    #endregion Saving
 
     #region Listing
 
@@ -402,7 +441,7 @@ public partial class Player
 
                 if (guildId != Guid.Empty)
                 {
-                    compiledQuery = compiledQuery.Where(p => p.DbGuild.Id == guildId);
+                    compiledQuery = compiledQuery.Where(p => p.Guild.Id == guildId);
                 }
 
                 total = compiledQuery.Count();

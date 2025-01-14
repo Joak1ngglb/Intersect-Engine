@@ -114,6 +114,22 @@ public static partial class PacketSender
 
             // Send our friend list over so the UI can adjust accordingly without having to open it client-side first.
             PacketSender.SendFriends(player);
+
+            var pendingGuildInvite = player.PendingGuildInvite;
+            // ReSharper disable once InvertIf
+            if (pendingGuildInvite != default)
+            {
+                if (pendingGuildInvite.ToId == default)
+                {
+                    player.PendingGuildInvite = default;
+                    player.Save();
+                }
+                else
+                {
+                    var inviter = Player.Find(pendingGuildInvite.FromId);
+                    SendGuildInvite(player, inviter);
+                }
+            }
         }
     }
 
@@ -2274,9 +2290,15 @@ public static partial class PacketSender
     }
 
     //GuildRequestPacket
-    public static void SendGuildInvite(Player player, Player from)
+    public static void SendGuildInvite(Player player, Player? from)
     {
-        player.SendPacket(new GuildInvitePacket(from.Name, from.Guild.Name));
+        var guildName = from?.Guild?.Name;
+        if (guildName == null && from?.GuildId is {} guildId)
+        {
+            _ = Guild.TryGetName(guildId, out guildName);
+        }
+
+        player.SendPacket(new GuildInvitePacket(from?.Name, guildName));
     }
 
     public static void SendFade(Player player, FadeType fadeType, bool waitForCompletion, int speedMs)

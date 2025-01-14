@@ -936,7 +936,8 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                 {
                     b.HasOne("Intersect.Server.Database.PlayerData.Players.Guild", "DbGuild")
                         .WithMany()
-                        .HasForeignKey("DbGuildId");
+                        .HasForeignKey("DbGuildId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Intersect.Server.Database.PlayerData.User", "User")
                         .WithMany("Players")

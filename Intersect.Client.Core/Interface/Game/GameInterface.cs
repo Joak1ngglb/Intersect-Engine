@@ -727,7 +727,13 @@ public partial class GameInterface : MutableInterface
             GameMenu.CloseAllWindows();
             closedWindows = true;
         }
-     
+        if (TargetContextMenu.IsVisible)
+        {
+            TargetContextMenu.ToggleHidden();
+            closedWindows = true;
+        }
+
+
         return closedWindows;
     }
 

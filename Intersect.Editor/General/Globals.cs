@@ -217,18 +217,21 @@ public static partial class Globals
         }
     }
     private static readonly Dictionary<JobType, string> JobNames = new Dictionary<JobType, string>
-    {
-        { JobType.None, "None" },
-        { JobType.Farming, "Farming" },
-        { JobType.Mining, "Mining" },
-        { JobType.Fishing, "Fishing" },
-        { JobType.Lumberjack, "Lumberjack" },
-        { JobType.Hunter, "Hunting" },
-        { JobType.Alchemy, "Alchemy" },
-        { JobType.Smithing, "Blacksmith" },
-        { JobType.Cooking, "Cooking" },
-        { JobType.Crafting, "Crafting" }
-    };
+{
+    { JobType.None, "None" },
+    { JobType.Farming, "Farming" },
+    { JobType.Mining, "Mining" },
+    { JobType.Fishing, "Fishing" },
+    { JobType.Lumberjack, "Lumberjack" },
+    { JobType.Hunter, "Hunting" },
+    { JobType.Alchemy, "Alchemy" },
+    { JobType.Smithing, "Blacksmith" },
+    { JobType.Cooking, "Cooking" },
+    { JobType.Crafting, "Crafting" },
+    { JobType.Jewerly, "Jewelry" },
+    { JobType.Tanner, "Tanner" },
+    { JobType.Weaver, "Weaving" }
+};
 
     public static string GetJobName(JobType jobType)
     {

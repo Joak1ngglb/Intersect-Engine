@@ -505,6 +505,9 @@ public static partial class Strings
                 JobType.Smithing => "Blacksmithing",
                 JobType.Cooking => "Cooking",
                 JobType.Crafting => "Crafting",
+                JobType.Jewerly => "Jewerly ",
+                JobType.Tanner => "Tanner",
+                JobType.Weaver => "Weaving",
                 _ => null
             };
 

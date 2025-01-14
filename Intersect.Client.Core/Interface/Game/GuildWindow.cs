@@ -200,21 +200,28 @@ namespace Intersect.Client.Interface.Game
                 onSuccess: (s, e) => PacketSender.SendLeaveGuild()
             );
 
-
-            // Add Popup Button
-            _buttonAddPopup = new Button(_panelActions, "InvitePopupButton")
+// Add Popup Button
+_buttonAddPopup = new Button(_panelActions, "InvitePopupButton")
+{
+    Text = Strings.Guilds.Invite,
+    IsHidden = true
+};
+_buttonAddPopup.SetBounds(180, 0, 80, 30);
+_buttonAddPopup.Clicked += (s, e) =>
+{
+    new InputBox(
+        title: Strings.Guilds.InviteMemberTitle,
+        prompt: Strings.Guilds.InviteMemberPrompt.ToString(Globals.Me?.Guild),
+        inputType: InputBox.InputType.TextInput,
+        onSuccess: (s, e) =>
+        {
+            if (s is InputBox inputBox && inputBox.TextValue.Trim().Length >= 3)
             {
-                Text = Strings.Guilds.Invite,
-                IsHidden = true
-            };
-            _buttonAddPopup.SetBounds(180, 0, 80, 30);
-            _buttonAddPopup.Clicked += (s, e) =>
-            {
-                _ = new InputBox(
-                    title: Strings.Guilds.InviteMemberTitle,
-                    prompt: Strings.Guilds.InviteMemberPrompt.ToString(Globals.Me?.Guild),
-                    inputType: InputBox.InputType.TextInput,
-                    onSuccess: (s, e) =>
+                PacketSender.SendInvite(inputBox.TextValue.Trim());
+            }
+        }
+    ).Focus();
+};
                     {
                         if (s is InputBox inputBox && inputBox.TextValue.Trim().Length >= 3)
                         {
@@ -243,7 +250,8 @@ namespace Intersect.Client.Interface.Game
                 {
                     Interface.GameUi.SetChatboxText("/pm " + _selectedMember!.Name + " ");
                 }
-            };
+).Focus();
+        };
 
             // Promote Options
             _promoteOptions = new MenuItem[Options.Instance.Guild.Ranks.Length - 2];
@@ -254,9 +262,84 @@ namespace Intersect.Client.Interface.Game
                 _promoteOptions[i - 1].Clicked += promoteOption_Clicked;
             }
 
-            // Demote Options
-            _demoteOptions = new MenuItem[Options.Instance.Guild.Ranks.Length - 2];
-            for (int i = 2; i < Options.Instance.Guild.Ranks.Length; i++)
+// Promote Options
+_promoteOptions = new MenuItem[Options.Instance.Guild.Ranks.Length - 2];
+for (int i = 1; i < Options.Instance.Guild.Ranks.Length - 1; i++)
+{
+    _promoteOptions[i - 1] = _contextMenu.AddItem(Strings.Guilds.Promote.ToString(Options.Instance.Guild.Ranks[i].Title));
+    _promoteOptions[i - 1].UserData = i;
+    _promoteOptions[i - 1].Clicked += promoteOption_Clicked;
+}
+
+// Demote Options
+_demoteOptions = new MenuItem[Options.Instance.Guild.Ranks.Length - 2];
+for (int i = 2; i < Options.Instance.Guild.Ranks.Length; i++)
+{
+    _demoteOptions[i - 2] = _contextMenu.AddItem(Strings.Guilds.Demote.ToString(Options.Instance.Guild.Ranks[i].Title));
+    _demoteOptions[i - 2].UserData = i;
+    _demoteOptions[i - 2].Clicked += demoteOption_Clicked;
+}
+
+// Kick Option
+_kickOption = _contextMenu.AddItem(Strings.Guilds.Kick);
+_kickOption.Clicked += kickOption_Clicked;
+
+// Transfer Option
+_transferOption = _contextMenu.AddItem(Strings.Guilds.Transfer);
+_transferOption.Clicked += transferOption_Clicked;
+
+#endregion
+
+UpdateList();
+
+_contextMenu.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer?.GetResolutionString());
+LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer?.GetResolutionString());
+
+_addButtonUsed = !_buttonAdd.IsHidden;
+_addPopupButtonUsed = !_buttonAddPopup.IsHidden;
+}
+
+//Methods
+public void Update()
+{
+    if (IsHidden)
+    {
+        return;
+    }
+
+    // Force our window title to co-operate, might be empty after creating/joining a guild.
+    if (!string.IsNullOrEmpty(Globals.Me?.Guild) && Title != Globals.Me.Guild)
+    {
+        Title = Globals.Me.Guild;
+    }
+}
+
+public override void Hide()
+{
+    _contextMenu?.Close();
+    base.Hide();
+}
+
+#region "Member List"
+
+public void UpdateList()
+{
+    //Clear previous instances if already existing
+    _listGuildMembers.Clear();
+
+    foreach (var member in Globals.Me?.GuildMembers ?? [])
+    {
+        var str = member.Online ? Strings.Guilds.OnlineListEntry : Strings.Guilds.OfflineListEntry;
+        var row = _listGuildMembers.AddRow(str.ToString(Options.Instance.Guild.Ranks[member.Rank].Title, member.Name, member.MapName));
+        row.Name = "GuildMemberRow";
+        row.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer?.GetResolutionString());
+        row.SetToolTipText(Strings.Guilds.Tooltip.ToString(member.Level, member.ClassName));
+        row.UserData = member;
+        row.Clicked += member_Clicked;
+        row.RightClicked += member_RightClicked;
+
+        //Row Render color (red = offline, green = online)
+        if (member.Online == true)
             {
                 _demoteOptions[i - 2] = _contextMenu.AddItem(Strings.Guilds.Demote.ToString(Options.Instance.Guild.Ranks[i].Title));
                 _demoteOptions[i - 2].UserData = i;
@@ -452,11 +535,11 @@ namespace Intersect.Client.Interface.Game
             var symbolPath = "resources/Guild/Symbols/" + Globals.Me.GuildSymbolFile;
             var fileName = Path.GetFileName(symbolPath);
 
-            // Asignar textura al símbolo
-            mSymbolLogo.Texture = Globals.ContentManager.GetTexture(
-                Framework.Content.TextureType.Guild,
-                fileName
-            );
+// Asignar textura al símbolo
+mSymbolLogo.Texture = Globals.ContentManager.GetTexture(
+    Framework.Content.TextureType.Guild,
+    fileName
+);
 
             if (mSymbolLogo.Texture != null)
             {

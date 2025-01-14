@@ -582,10 +582,6 @@ namespace Intersect.Server.Migrations.MySql.Player
                     b.Property<DateTime?>("CreationDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<Guid?>("DbGuildId")
-                        .HasColumnType("char(36)")
-                        .UseCollation("ascii_general_ci");
-
                     b.Property<int>("Dir")
                         .HasColumnType("int");
 
@@ -605,6 +601,10 @@ namespace Intersect.Server.Migrations.MySql.Player
 
                     b.Property<int>("Gender")
                         .HasColumnType("int");
+
+                    b.Property<Guid?>("GuildId")
+                        .HasColumnType("char(36)")
+                        .UseCollation("ascii_general_ci");
 
                     b.Property<DateTime>("GuildJoinDate")
                         .HasColumnType("datetime(6)");
@@ -718,7 +718,7 @@ namespace Intersect.Server.Migrations.MySql.Player
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DbGuildId");
+                    b.HasIndex("GuildId");
 
                     b.HasIndex("UserId");
 
@@ -911,9 +911,9 @@ namespace Intersect.Server.Migrations.MySql.Player
 
             modelBuilder.Entity("Intersect.Server.Entities.Player", b =>
                 {
-                    b.HasOne("Intersect.Server.Database.PlayerData.Players.Guild", "DbGuild")
+                    b.HasOne("Intersect.Server.Database.PlayerData.Players.Guild", "Guild")
                         .WithMany()
-                        .HasForeignKey("DbGuildId")
+                        .HasForeignKey("GuildId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Intersect.Server.Database.PlayerData.User", "User")
@@ -922,7 +922,7 @@ namespace Intersect.Server.Migrations.MySql.Player
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("DbGuild");
+                    b.Navigation("Guild");
 
                     b.Navigation("User");
                 });

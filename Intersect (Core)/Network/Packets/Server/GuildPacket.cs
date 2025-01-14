@@ -44,9 +44,9 @@ public partial class GuildMember
     [Key(3)]
     public int Level;
     [Key(4)]
-    public string Class;
+    public string ClassName;
     [Key(5)]
-    public string Map;
+    public string MapName;
     [Key(6)]
     public bool Online = false;
     [Key(7)]
@@ -62,25 +62,26 @@ public partial class GuildMember
     {
 
     }
-    public GuildMember(Guid id, string name, int rank, int level, string cls, string map)
+public GuildMember(Guid id, string name, int rank, int level, string className, string mapName)
     {
         Id = id;
         Name = name;
         Rank = rank;
         Level = level;
-        Class = cls;
-        Map = map;
+        ClassName = className;
+        MapName = mapName;
    
     }
-    public GuildMember(Guid id, string name, int rank, int level, string cls, string map,float percexp,long xpdoned)
+    public GuildMember(Guid id, string name, int rank, int level, string className, string mapName, float percexp, long xpdoned)
     {
         Id = id;
         Name = name;
         Rank = rank;
         Level = level;
-        Class = cls;
-        Map = map;
+        ClassName = className;
+        MapName = mapName;
         ExperiencePerc = percexp;
         DonatedXp = xpdoned;
+    }
     }
 }

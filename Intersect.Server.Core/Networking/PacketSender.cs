@@ -2437,6 +2437,19 @@ public static partial class PacketSender
         // Depuración en el servidor
       //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
     }
+    public static void SendUpdateItemLevel(Player player, Guid itemId, int newEnchantmentLevel)
+    {
+        if (player == null)
+        {
+            return;
+        }
+
+        // Crear el paquete con los datos necesarios
+        var packet = new UpdateItemLevelPacket(itemId, newEnchantmentLevel);
+
+        // Enviar el paquete al cliente
+        player.SendPacket(packet, TransmissionMode.All);
+    }
 
 
 }

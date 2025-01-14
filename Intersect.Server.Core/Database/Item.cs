@@ -77,6 +77,7 @@ public class Item : IItem
     public Guid ItemId { get; set; } = Guid.Empty;
 
     [NotMapped] public string ItemName => ItemBase.GetName(ItemId);
+    public int EnchantmentLevel { get; set; } = 0;
 
     public int Quantity { get; set; }
 
@@ -380,6 +381,7 @@ public class Item : IItem
         BagId = item.BagId;
         Bag = item.Bag;
         Properties = new ItemProperties(item.Properties);
+        EnchantmentLevel = item.EnchantmentLevel;
     }
 
     /// <summary>
@@ -416,4 +418,21 @@ public class Item : IItem
 
         return default != bag;
     }
+   public void ApplyEnchantment(int level)
+{
+    if (Descriptor?.ItemType != ItemType.Equipment)
+    {
+        return; // Solo aplica a equipos
+    }
+
+    EnchantmentLevel = Math.Clamp(level, 0, 10);
+
+    foreach (var stat in Enum.GetValues<Stat>())
+    {
+        if (Descriptor.TryGetRangeFor(stat, out var range))
+        {
+            Properties.StatModifiers[(int)stat] += (int)(range.Roll() * (0.05 * EnchantmentLevel));
+        }
+    }
+}
 }

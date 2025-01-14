@@ -5,6 +5,7 @@ using Intersect.Client.Interface.Game.Bag;
 using Intersect.Client.Interface.Game.Bank;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Game.Crafting;
+using Intersect.Client.Interface.Game.Enchanting;
 using Intersect.Client.Interface.Game.EntityPanel;
 using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
@@ -48,6 +49,9 @@ public partial class GameInterface : MutableInterface
     private ShopWindow mShopWindow;
 
     private MapItemWindow mMapItemWindow;
+    private EnchantItemWindow mEnchantItemWindow;
+    private bool mShouldOpenEnchantWindow;
+    private bool mShouldCloseEnchantWindow;
 
     private bool mShouldCloseBag;
 
@@ -127,8 +131,8 @@ public partial class GameInterface : MutableInterface
         mQuestOfferWindow = new QuestOfferWindow(GameCanvas);
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
-       // mJobsWindow = new JobsWindow(GameCanvas);
-
+        // mJobsWindow = new JobsWindow(GameCanvas);
+        mEnchantItemWindow = new EnchantItemWindow(GameCanvas);
     }
 
     //Chatbox
@@ -317,7 +321,22 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow.Update();
         AnnouncementWindow?.Update();
         mPictureWindow?.Update();
+        if (mShouldOpenEnchantWindow)
+        {
+            OpenEnchantWindow();
+        }
 
+        // Cerrar la ventana de encantamiento
+        if (mShouldCloseEnchantWindow)
+        {
+            CloseEnchantWindow();
+        }
+
+        // Actualizar la ventana de encantamiento si está visible
+        if (mEnchantItemWindow != null && mEnchantItemWindow.IsVisible())
+        {
+            mEnchantItemWindow.Update();
+        }
         if (Globals.QuestOffers.Count > 0)
         {
             var quest = QuestBase.Get(Globals.QuestOffers[0]);
@@ -533,7 +552,33 @@ public partial class GameInterface : MutableInterface
         Globals.InTrade = false;
         PacketSender.SendDeclineTrade();
     }
+    public void NotifyOpenEnchantWindow()
+    {
+        mShouldOpenEnchantWindow = true;
+    }
 
+    public void NotifyCloseEnchantWindow()
+    {
+        mShouldCloseEnchantWindow = true;
+    }
+
+    private void OpenEnchantWindow()
+    {
+        if (mEnchantItemWindow != null)
+        {
+            mEnchantItemWindow.Show();
+        }
+        mShouldOpenEnchantWindow = false;
+    }
+
+    private void CloseEnchantWindow()
+    {
+        if (mEnchantItemWindow != null)
+        {
+            mEnchantItemWindow.Hide();
+        }
+        mShouldCloseEnchantWindow = false;
+    }
     public bool CloseAllWindows()
     {
         var closedWindows = false;

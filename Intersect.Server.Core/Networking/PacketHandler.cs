@@ -2977,4 +2977,32 @@ internal sealed partial class PacketHandler
     }
 
     #endregion
+
+    public void HandlePacket(Client client, EnchantItemPacket packet)
+    {
+        var player = client.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var item = player.Items.FirstOrDefault(i => i?.ItemId == packet.ItemId);
+        if (item == null)
+        {
+            PacketSender.SendChatMsg(player, "El ítem no es válido.", ChatMessageType.Error);
+            return;
+        }
+
+        // Intentar encantar el ítem
+        if (player.TryUpgradeItem(packet.ItemId, packet.TargetLevel, packet.CurrencyId, packet.CurrencyAmount, packet.UseAmulet))
+        {
+            PacketSender.SendChatMsg(player, $"¡Encantamiento exitoso! Nivel actual: +{item.EnchantmentLevel}.", ChatMessageType.Experience);
+            PacketSender.SendInventoryItemUpdate(player, player.Items.IndexOf(item));
+        }
+        else
+        {
+            PacketSender.SendChatMsg(player, "El encantamiento falló.", ChatMessageType.Error);
+        }
+    }
+
 }

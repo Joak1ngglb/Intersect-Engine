@@ -350,6 +350,9 @@ namespace Intersect.Server.Migrations.Sqlite.Game
                     b.Property<bool>("CanBank")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("CanBeEnchanted")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("CanDrop")
                         .HasColumnType("INTEGER")
                         .HasColumnName("Bound");
@@ -507,6 +510,9 @@ namespace Intersect.Server.Migrations.Sqlite.Game
 
                     b.Property<bool>("TwoHanded")
                         .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("UpgradeMaterialId")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("VitalsJson")
                         .HasColumnType("TEXT")

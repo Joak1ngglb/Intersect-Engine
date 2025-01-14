@@ -4,6 +4,7 @@ using Intersect.Server.Networking;
 using Intersect.Enums;
 using Intersect.Server.Localization;
 using Intersect.Config;
+using Intersect.Server.Database;
 
 namespace Intersect.Server.Entities
 {
@@ -84,6 +85,77 @@ namespace Intersect.Server.Entities
             recentMessages[message] = DateTime.Now;
             PacketSender.SendChatMsg(this, message, (ChatMessageType)type);
         }
+        public bool HasSufficientCurrency(Guid currencyId, int amountRequired)
+        {
+            // Verifica si el jugador tiene suficiente cantidad del ítem moneda
+            return FindInventoryItemQuantity(currencyId) >= amountRequired;
+        }
+
+        public bool DeductCurrency(Guid currencyId, int amount)
+        {
+            // Verifica si el jugador tiene suficiente cantidad antes de deducir
+            if (!HasSufficientCurrency(currencyId, amount))
+            {
+                return false; // No hay suficientes recursos
+            }
+
+            // Deducir el ítem del inventario
+            return TryTakeItem(currencyId, amount, ItemHandling.Normal, sendUpdate: true);
+        }
+        public bool TryUpgradeItem(Guid itemId, int level, Guid currencyId, int currencyAmountRequired, bool useAmulet = false)
+        {
+            // Buscar el ítem en el inventario del jugador
+            var item = Items.FirstOrDefault(i => i?.ItemId == itemId);
+            if (item == null || item.Descriptor?.ItemType != ItemType.Equipment || level <= item.EnchantmentLevel)
+            {
+                PacketSender.SendChatMsg(this, "El ítem no es válido o no se puede mejorar.", ChatMessageType.Error);
+                return false; // Ítem inválido o no se puede mejorar
+            }
+
+            // Verificar si el jugador tiene suficiente moneda
+            if (!HasSufficientCurrency(currencyId, currencyAmountRequired))
+            {
+                PacketSender.SendChatMsg(this, "No tienes suficientes recursos para mejorar el ítem.", ChatMessageType.Error);
+                return false; // No hay suficientes recursos
+            }
+
+            // Deduce la cantidad necesaria de moneda
+            DeductCurrency(currencyId, currencyAmountRequired);
+
+            // Determinar si la mejora es exitosa
+            var successRate = item.Descriptor.GetUpgradeSuccessRate(level);
+            if (Random.Shared.NextDouble() <= successRate)
+            {
+                // Aplicar la mejora
+                item.ApplyEnchantment(level);
+
+                // Mensaje de éxito
+                PacketSender.SendChatMsg(this, $"¡Encantamiento exitoso! El ítem ahora está en nivel +{level}.", ChatMessageType.Experience);
+
+                using (var playerContext = DbInterface.CreatePlayerContext(readOnly: false))
+                {
+                    // Guardar el estado del jugador en la base de datos
+                    playerContext.Players.Update(this); // 'this' hace referencia al jugador actual
+                    playerContext.SaveChanges();
+                }
+                PacketSender.SendUpdateItemLevel(this,itemId, level);
+                return true;
+            }
+            else if (!useAmulet)
+            {
+                // Fallo: Reducir nivel de encantamiento si no se usa amuleto
+                item.EnchantmentLevel = Math.Max(0, item.EnchantmentLevel - 1);
+                PacketSender.SendChatMsg(this, "El encantamiento falló y el nivel del ítem ha disminuido.", ChatMessageType.Error);
+            }
+            else
+            {
+                // Fallo protegido por amuleto
+                PacketSender.SendChatMsg(this, "El encantamiento falló, pero el amuleto protegió el nivel del ítem.", ChatMessageType.Notice);
+            }
+
+            return false; // Mejora fallida
+        }
+
 
     }
 

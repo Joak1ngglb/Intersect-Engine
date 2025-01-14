@@ -520,5 +520,9 @@ public static partial class PacketSender
     {
         Network.SendPacket(new TargetPacket(targetId));
     }
+    public static void SendEnchantItem(Guid itemId, int targetLevel, Guid currencyId, int currencyAmount, bool useAmulet)
+    {
+        Network.SendPacket(new EnchantItemPacket(itemId, targetLevel, currencyId, currencyAmount, useAmulet));
+    }
 
 }

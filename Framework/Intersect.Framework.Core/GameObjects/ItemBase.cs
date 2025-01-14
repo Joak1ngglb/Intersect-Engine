@@ -405,7 +405,21 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
             range.Validate();
         }
     }
+    [NotMapped]
+    [JsonProperty("canBeEnchanted")]
+    public bool CanBeEnchanted { get; set; }
+    [NotMapped]
+    [JsonProperty("upgradeMaterialId")]
+    public Guid UpgradeMaterialId { get; set; }
+    public int GetUpgradeCost(int level)
+    {
+        return level * 100; // Ejemplo: costo incremental
+    }
 
+    public double GetUpgradeSuccessRate(int level)
+    {
+        return Math.Max(0.1, 1.0 - (0.1 * level)); // Probabilidad decreciente
+    }
     public int GetEffectPercentage(ItemEffect type)
     {
         return Effects.Find(effect => effect.Type == type)?.Percentage ?? 0;

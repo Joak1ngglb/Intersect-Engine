@@ -16,7 +16,12 @@ public class Item : IItem
 
     public ItemProperties ItemProperties { get; set; }
 
+    // Propiedad para nivel de encantamiento
+    public int EnchantmentLevel => ItemProperties?.EnchantmentLevel ?? 0;
+
     public ItemBase Base => ItemBase.Get(ItemId);
+
+
 
     public void Load(Guid id, int quantity, Guid? bagId, ItemProperties itemProperties)
     {

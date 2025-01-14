@@ -27,6 +27,7 @@ using Intersect.Client.Interface.Shared;
 using Intersect.Network.Packets.Client;
 using Intersect.Config;
 using Intersect.Framework.Core.Config;
+using Intersect.Client.Interface.Game;
 
 namespace Intersect.Client.Networking;
 
@@ -2341,8 +2342,24 @@ internal sealed partial class PacketHandler
             //PacketSender.SendChatMsg($"[DEBUG] Trabajo {job.Key}: Nivel {jobData.Level}, Exp {jobData.Experience}/{jobData.ExperienceToNextLevel}", 5);
         }
     }
-  
 
+    public void HandleUpdateItemLevelPacket(UpdateItemLevelPacket packet)
+    {
+        // Buscar el ítem en el inventario del cliente
+        var inventoryItem = Globals.Me.Inventory.FirstOrDefault(item => item?.ItemId == packet.ItemId);
+
+        if (inventoryItem != null)
+        {
+            // Actualizar el nivel de encantamiento del ítem
+            inventoryItem.ItemProperties.EnchantmentLevel = packet.NewEnchantmentLevel;
+        
+            // Actualizar la interfaz
+         
+            PacketSender.SendChatMsg($"El nivel de encantamiento de {inventoryItem.Base.Name} se ha actualizado a +{packet.NewEnchantmentLevel}.", 4);
+           
+           
+        }
+    }
 
 
 }

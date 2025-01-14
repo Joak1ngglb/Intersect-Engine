@@ -90,36 +90,46 @@ namespace Intersect.Client.Interface.Game.Job
         {
             var jobTypes = Enum.GetValues(typeof(JobType)).Cast<JobType>();
 
-            int yOffset = 10; // Added spacing for better alignment
+            // Crear un ScrollControl para contener todos los trabajos
+            var scrollContainer = new ScrollControl(JobsPanel, "JobsScrollContainer");
+            scrollContainer.SetPosition(0, 0);
+            scrollContainer.SetSize(JobsPanel.Width, JobsPanel.Height);
+            scrollContainer.EnableScroll(false, true); // Habilita el scroll vertical
+
+            int yOffset = 10; // Espaciado inicial
 
             foreach (var jobType in jobTypes)
             {
-                if (jobType == JobType.None )
+                if (jobType == JobType.None || jobType == JobType.JobCount)
                 {
                     continue;
                 }
-                if (jobType == JobType.JobCount)
-                {
-                    continue;
-                }
-                var container = new Button(JobsPanel, $"{jobType}Container");
+
+                // Contenedor del trabajo
+                var container = new Button(scrollContainer, $"{jobType}Container");
                 container.SetPosition(5, yOffset);
-                container.SetSize(190, 50); // Botón más compacto
+                container.SetSize(scrollContainer.Width - 20, 50); // Botón más compacto
                 container.Clicked += (sender, args) => JobButtonClicked(sender, args, jobType);
 
+                // Ícono del trabajo
                 var icon = new ImagePanel(container, $"{jobType}Icon");
                 icon.SetPosition(5, 5);
-                icon.SetSize(40, 40); // Adjusted size for better visibility
+                icon.SetSize(40, 40); // Tamaño ajustado para mejor visibilidad
 
+                // Etiqueta del trabajo
                 var label = new Label(container, $"{jobType}NameLbl");
                 label.SetPosition(50, 15);
-                label.SetText(Strings.Job.GetJobName(jobType));                              
-                            
-                JobsPanel.AddChild(container);
+                label.SetText(Strings.Job.GetJobName(jobType));
 
-                yOffset += 60; // Adjusted spacing between job buttons
+                scrollContainer.AddChild(container); // Añade el contenedor al ScrollControl
+
+                yOffset += 60; // Espaciado entre botones
             }
+
+            // Ajustar el tamaño interno del scroll para que se ajuste a todos los trabajos
+            scrollContainer.SetInnerSize(scrollContainer.Width, yOffset);
         }
+
         private void InitializeInfoPanel(JobType jobType)
         {
                      

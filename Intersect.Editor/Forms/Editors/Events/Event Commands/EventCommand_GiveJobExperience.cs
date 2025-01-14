@@ -72,6 +72,11 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
                     comboIndex++;
                 }
             }
+            if (ComboBoxJobMapping.Count != Enum.GetValues(typeof(JobType)).Length - 2) // Excluyendo None y JobCount
+            {
+                throw new InvalidOperationException("ComboBoxJobMapping no contiene todos los trabajos.");
+            }
+
         }
 
         private void InitializeJobExperiences()
@@ -101,21 +106,25 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
             ResetExperience();
             if (selectedJob == JobType.None)
             {
+                MessageBox.Show("No se puede asignar experiencia a un trabajo inválido.");
                 return;
             }
 
             JobExperience[selectedJob] = selectedExperience;
 
-            // Asignar valores al comando
-            mMyCommand.JobExp[selectedJob] = selectedExperience;
+            // Verifica si el comando acepta correctamente el trabajo
+            if (!mMyCommand.JobExp.ContainsKey(selectedJob))
+            {
+                mMyCommand.JobExp[selectedJob] = selectedExperience;
+            }
 
-            // Actualizar la interfaz
             cmbJob.SelectedIndex = ComboBoxJobMapping.FirstOrDefault(x => x.Value == selectedJob).Key;
             nudExperience.Value = selectedExperience;
             UpdateCommandPrinter();
 
             mEventEditor.FinishCommandEdit();
         }
+
 
         private void ResetExperience()
         {
@@ -141,6 +150,13 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
             {
                 selectedJob = job;
             }
+            else
+            {
+                // Maneja casos en los que el índice no esté en el diccionario
+                selectedJob = JobType.None;
+                MessageBox.Show("Job seleccionado no válido. Por favor, revisa el ComboBoxJobMapping.");
+            }
         }
+
     }
 }

@@ -2994,15 +2994,9 @@ internal sealed partial class PacketHandler
         }
 
         // Intentar encantar el ítem
-        if (player.TryUpgradeItem(packet.ItemId, packet.TargetLevel, packet.CurrencyId, packet.CurrencyAmount, packet.UseAmulet))
-        {
-            PacketSender.SendChatMsg(player, $"¡Encantamiento exitoso! Nivel actual: +{item.EnchantmentLevel}.", ChatMessageType.Experience);
-            PacketSender.SendInventoryItemUpdate(player, player.Items.IndexOf(item));
-        }
-        else
-        {
-            PacketSender.SendChatMsg(player, "El encantamiento falló.", ChatMessageType.Error);
-        }
+        player.TryUpgradeItem(packet.ItemId, packet.TargetLevel, packet.CurrencyId, packet.CurrencyAmount, packet.UseAmulet);
+        PacketSender.SendChatMsg(player, $"¡Encantamiento exitoso! Nivel actual: +{item.EnchantmentLevel}.", ChatMessageType.Experience);
+        PacketSender.SendInventoryItemUpdate(player, player.Items.IndexOf(item));
     }
 
 }

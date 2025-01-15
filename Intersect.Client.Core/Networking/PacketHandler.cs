@@ -1317,7 +1317,7 @@ internal sealed partial class PacketHandler
     {
         if (Globals.Me != null)
         {
-            Globals.Me.Inventory[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.Me.Inventory[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties,packet.EnchantmentLevel);
             Globals.Me.InventoryUpdatedDelegate?.Invoke();
         }
     }
@@ -1699,7 +1699,7 @@ internal sealed partial class PacketHandler
         if (packet.ItemId != Guid.Empty)
         {
             Globals.Bank[slot] = new Item();
-            Globals.Bank[slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.Bank[slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties,packet.EnchantmentLevel);
         }
         else
         {
@@ -2042,7 +2042,7 @@ internal sealed partial class PacketHandler
         else
         {
             Globals.Trade[side, slot] = new Item();
-            Globals.Trade[side, slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.Trade[side, slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties, packet.EnchantmentLevel);
         }
     }
 
@@ -2113,7 +2113,7 @@ internal sealed partial class PacketHandler
         else
         {
             Globals.Bag[packet.Slot] = new Item();
-            Globals.Bag[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.Bag[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties, packet.EnchantmentLevel);
         }
     }
 
@@ -2352,7 +2352,7 @@ internal sealed partial class PacketHandler
         {
             // Actualizar el nivel de encantamiento del ítem
             inventoryItem.ItemProperties.EnchantmentLevel = packet.NewEnchantmentLevel;
-        
+            
             // Actualizar la interfaz
          
             PacketSender.SendChatMsg($"El nivel de encantamiento de {inventoryItem.Base.Name} se ha actualizado a +{packet.NewEnchantmentLevel}.", 4);

@@ -5,6 +5,7 @@ using Intersect.Enums;
 using Intersect.Server.Localization;
 using Intersect.Config;
 using Intersect.Server.Database;
+using Intersect.Logging;
 
 namespace Intersect.Server.Entities
 {
@@ -102,25 +103,29 @@ namespace Intersect.Server.Entities
             // Deducir el ítem del inventario
             return TryTakeItem(currencyId, amount, ItemHandling.Normal, sendUpdate: true);
         }
-        public bool TryUpgradeItem(Guid itemId, int level, Guid currencyId, int currencyAmountRequired, bool useAmulet = false)
+        public void TryUpgradeItem(Guid itemId, int level, Guid currencyId, int currencyAmountRequired, bool useAmulet = false)
         {
             // Buscar el ítem en el inventario del jugador
             var item = Items.FirstOrDefault(i => i?.ItemId == itemId);
             if (item == null || item.Descriptor?.ItemType != ItemType.Equipment || level <= item.EnchantmentLevel)
             {
                 PacketSender.SendChatMsg(this, "El ítem no es válido o no se puede mejorar.", ChatMessageType.Error);
-                return false; // Ítem inválido o no se puede mejorar
+                return; // Salir si el ítem no es válido
             }
 
             // Verificar si el jugador tiene suficiente moneda
             if (!HasSufficientCurrency(currencyId, currencyAmountRequired))
             {
                 PacketSender.SendChatMsg(this, "No tienes suficientes recursos para mejorar el ítem.", ChatMessageType.Error);
-                return false; // No hay suficientes recursos
+                return; // Salir si no hay suficiente moneda
             }
 
             // Deduce la cantidad necesaria de moneda
-            DeductCurrency(currencyId, currencyAmountRequired);
+            if (!DeductCurrency(currencyId, currencyAmountRequired))
+            {
+                PacketSender.SendChatMsg(this, "Error al deducir la moneda necesaria.", ChatMessageType.Error);
+                return; // Salir si la deducción falla
+            }
 
             // Determinar si la mejora es exitosa
             var successRate = item.Descriptor.GetUpgradeSuccessRate(level);
@@ -132,28 +137,39 @@ namespace Intersect.Server.Entities
                 // Mensaje de éxito
                 PacketSender.SendChatMsg(this, $"¡Encantamiento exitoso! El ítem ahora está en nivel +{level}.", ChatMessageType.Experience);
 
-                using (var playerContext = DbInterface.CreatePlayerContext(readOnly: false))
+                // Guardar cambios en la base de datos
+                try
                 {
-                    // Guardar el estado del jugador en la base de datos
-                    playerContext.Players.Update(this); // 'this' hace referencia al jugador actual
-                    playerContext.SaveChanges();
+                    using (var playerContext = DbInterface.CreatePlayerContext(readOnly: false))
+                    {
+                        playerContext.Players.Update(this); // 'this' hace referencia al jugador actual
+                        playerContext.Player_Items.Update(item);
+                        playerContext.SaveChanges();
+                    }
+
+                    // Notificar al cliente sobre la actualización del nivel del ítem
+                    PacketSender.SendUpdateItemLevel(this, itemId, level);
                 }
-                PacketSender.SendUpdateItemLevel(this,itemId, level);
-                return true;
-            }
-            else if (!useAmulet)
-            {
-                // Fallo: Reducir nivel de encantamiento si no se usa amuleto
-                item.EnchantmentLevel = Math.Max(0, item.EnchantmentLevel - 1);
-                PacketSender.SendChatMsg(this, "El encantamiento falló y el nivel del ítem ha disminuido.", ChatMessageType.Error);
+                catch (Exception ex)
+                {
+                    PacketSender.SendChatMsg(this, "Error al guardar los cambios en la base de datos.", ChatMessageType.Error);
+                    Log.Error($"Error al guardar los cambios del encantamiento: {ex.Message}");
+                }
             }
             else
             {
-                // Fallo protegido por amuleto
-                PacketSender.SendChatMsg(this, "El encantamiento falló, pero el amuleto protegió el nivel del ítem.", ChatMessageType.Notice);
+                if (!useAmulet)
+                {
+                    // Fallo: Reducir nivel de encantamiento si no se usa amuleto
+                    item.EnchantmentLevel = Math.Max(0, item.EnchantmentLevel - 1);
+                    PacketSender.SendChatMsg(this, "El encantamiento falló y el nivel del ítem ha disminuido.", ChatMessageType.Error);
+                }
+                else
+                {
+                    // Fallo protegido por amuleto
+                    PacketSender.SendChatMsg(this, "El encantamiento falló, pero el amuleto protegió el nivel del ítem.", ChatMessageType.Notice);
+                }
             }
-
-            return false; // Mejora fallida
         }
 
 

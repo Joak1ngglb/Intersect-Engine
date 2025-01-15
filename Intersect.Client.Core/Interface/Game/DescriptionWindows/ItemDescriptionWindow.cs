@@ -20,7 +20,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
     protected string mTitleOverride;
 
     protected string mValueLabel;
-
+ 
     protected SpellDescriptionWindow? mSpellDescWindow;
 
     public ItemDescriptionWindow(
@@ -31,6 +31,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         ItemProperties? itemProperties,
         string titleOverride = "",
         string valueLabel = ""
+  
     ) : base(Interface.GameUi.GameCanvas, "DescriptionWindow")
     {
         mItem = item;
@@ -38,7 +39,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         mItemProperties = itemProperties;
         mTitleOverride = titleOverride;
         mValueLabel = valueLabel;
-
+ 
         GenerateComponents();
         SetupDescriptionWindow();
         SetPosition(x, y);

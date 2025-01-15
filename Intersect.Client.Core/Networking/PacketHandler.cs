@@ -2342,24 +2342,25 @@ internal sealed partial class PacketHandler
             //PacketSender.SendChatMsg($"[DEBUG] Trabajo {job.Key}: Nivel {jobData.Level}, Exp {jobData.Experience}/{jobData.ExperienceToNextLevel}", 5);
         }
     }
-
     public void HandleUpdateItemLevelPacket(UpdateItemLevelPacket packet)
     {
         // Buscar el ítem en el inventario del cliente
-        var inventoryItem = Globals.Me.Inventory.FirstOrDefault(item => item?.ItemId == packet.ItemId);
+        var inventoryItem = Globals.Me.Inventory.FirstOrDefault(i => i?.ItemId == packet.ItemId);
 
         if (inventoryItem != null)
         {
-            // Actualizar el nivel de encantamiento del ítem
+            // Actualizar nivel de encantamiento
             inventoryItem.ItemProperties.EnchantmentLevel = packet.NewEnchantmentLevel;
-            
-            // Actualizar la interfaz
+
+           
          
-            PacketSender.SendChatMsg($"El nivel de encantamiento de {inventoryItem.Base.Name} se ha actualizado a +{packet.NewEnchantmentLevel}.", 4);
-           
-           
+        }
+        else
+        {
+            Log.Error($"Ítem con ID {packet.ItemId} no encontrado en el inventario.");
         }
     }
+
 
 
 }

@@ -418,21 +418,27 @@ public class Item : IItem
 
         return default != bag;
     }
-   public void ApplyEnchantment(int level)
-{
-    if (Descriptor?.ItemType != ItemType.Equipment)
+    public void ApplyEnchantment(int level)
     {
-        return; // Solo aplica a equipos
-    }
-
-    EnchantmentLevel = Math.Clamp(level, 0, 10);
-
-    foreach (var stat in Enum.GetValues<Stat>())
-    {
-        if (Descriptor.TryGetRangeFor(stat, out var range))
+        if (Descriptor?.ItemType != ItemType.Equipment)
         {
-            Properties.StatModifiers[(int)stat] += (int)(range.Roll() * (0.05 * EnchantmentLevel));
+            return; // Solo aplica a equipos
+        }
+
+        EnchantmentLevel = Math.Clamp(level, 0, 10);
+
+        // Reiniciar los modificadores de stats
+        foreach (var stat in Enum.GetValues<Stat>())
+        {
+            Properties.StatModifiers[(int)stat] = 0;
+
+            // Calcular y aplicar los nuevos valores
+            if (Descriptor.TryGetRangeFor(stat, out var range))
+            {
+                Properties.StatModifiers[(int)stat] += (int)(range.Roll() * (0.05 * EnchantmentLevel));
+            }
         }
     }
-}
+   
+
 }

@@ -69,6 +69,9 @@ public static partial class Strings
         public readonly LocalizedString LoadFail = @"Failed to load account. Please try logging in again.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString PlayerSavingTryAgainLater = @"'{00}' is currently being saved, please try again later.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString MaxCharacters = @"You have already created the maximum number of characters. Delete one before creating a new one.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -142,6 +145,15 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString InvalidSlotToSwap = @"Invalid slots to swap!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NotEnoughInInventory = @"There are not {00} of {01} in your inventory to deposit.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NotEnoughBankSpaceForItem = @"There is not enough space in the bank to store {00} of {01}!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NotEnoughBankSpaceForOneOfItem = @"There is not enough space in the bank to store a {00}!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString WithdrawInvalid = @"Invalid item selected to withdraw!";
@@ -702,6 +714,9 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString NoticeError = @"Error Notice";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString UnknownErrorPleaseTryAgain = @"An unknown error occurred, please try again.";
     }
 
     public sealed partial class GuildsNamespace : LocaleNamespace

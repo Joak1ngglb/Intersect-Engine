@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
 using Intersect.Logging;
 using Intersect.Server.Database;
@@ -33,6 +33,26 @@ public partial class Player
     [NotMapped, JsonIgnore]
     public long SaveTimer { get; set; } = Timing.Global.Milliseconds + Options.Instance.Processing.PlayerSaveInterval;
 
+    [NotMapped, JsonIgnore]
+    public bool IsSaving
+    {
+        get
+        {
+            lock (_pendingLogoutLock)
+            {
+                if (_pendingLogouts.Contains(Id))
+                {
+                    return true;
+                }
+            }
+
+            lock (_savingLock)
+            {
+                return _saving;
+            }
+        }
+    }
+
     #endregion
 
     #region Entity Framework
@@ -41,7 +61,7 @@ public partial class Player
 
     public static bool TryFetch(
         LookupKey lookupKey,
-        out Player? player,
+        [NotNullWhen(true)] out Player? player,
         bool loadRelationships = false,
         bool loadBags = false
     )
@@ -49,8 +69,8 @@ public partial class Player
 
     public static bool TryFetch(
         LookupKey lookupKey,
-        [NotNullWhen(true)] out Client? client,
-        out Player? player,
+        out Client? client,
+        [NotNullWhen(true)] out Player? player,
         bool loadRelationships = false,
         bool loadBags = false
     )
@@ -62,7 +82,7 @@ public partial class Player
             return false;
         }
 
-        if (lookupKey.HasId)
+        if (lookupKey.IsId)
         {
             client = Globals.Clients.Find(queryClient => lookupKey.Id == queryClient?.Entity?.Id);
             player = client?.Entity ?? Find(lookupKey.Id);
@@ -171,15 +191,6 @@ public partial class Player
 
     public bool LoadRelationships(PlayerContext playerContext, bool loadBags = false)
     {
-        lock (_savingLock)
-        {
-            if (_saving)
-            {
-                Log.Warn($"Skipping loading relationships for player {Id} because it is being saved.");
-                return false;
-            }
-        }
-
         var entityEntry = playerContext.Players.Attach(this);
         entityEntry.Collection(p => p.Bank).Load();
         entityEntry.Collection(p => p.Hotbar).Load();
@@ -511,11 +522,12 @@ public partial class Player
                 .Skip(offset)
                 .Take(count)
                 .Include(p => p.Bank)
+                .Include(p => p.Guild)
                 .Include(p => p.Hotbar)
-                .Include(p => p.Quests)
-                .Include(p => p.Variables)
                 .Include(p => p.Items)
+                .Include(p => p.Quests)
                 .Include(p => p.Spells)
+                .Include(p => p.Variables)
                 .AsSplitQuery()
         ) ??
         throw new InvalidOperationException();
@@ -528,11 +540,12 @@ public partial class Player
                 .Skip(offset)
                 .Take(count)
                 .Include(p => p.Bank)
+                .Include(p => p.Guild)
                 .Include(p => p.Hotbar)
-                .Include(p => p.Quests)
-                .Include(p => p.Variables)
                 .Include(p => p.Items)
+                .Include(p => p.Quests)
                 .Include(p => p.Spells)
+                .Include(p => p.Variables)
                 .AsSplitQuery()
         ) ??
         throw new InvalidOperationException();

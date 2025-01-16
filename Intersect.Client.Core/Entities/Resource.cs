@@ -314,7 +314,7 @@ public partial class Resource : Entity, IResource
             return;
         }
 
-        if (!mHasRenderBounds)
+        if (!_recalculateRenderBounds)
         {
             CalculateRenderBounds();
         }
@@ -331,8 +331,8 @@ public partial class Resource : Entity, IResource
             // Dibujar la textura del recurso con la transparencia ajustada
             Graphics.DrawGameTexture(
                 Texture,
-                mSrcRectangle,
-                mDestRectangle,
+                _renderBoundsSrc,
+                _renderBoundsDest,
                 renderColor
             );
         }

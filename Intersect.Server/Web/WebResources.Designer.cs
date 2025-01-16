@@ -70,15 +70,6 @@ namespace Intersect.Server.Web {
         }
         
         /// <summary>
-        ///   Busca una cadena traducida similar a Guild: {0}.
-        /// </summary>
-        internal static string GuildX {
-            get {
-                return ResourceManager.GetString("GuildX", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Busca una cadena traducida similar a Home.
         /// </summary>
         internal static string Home {

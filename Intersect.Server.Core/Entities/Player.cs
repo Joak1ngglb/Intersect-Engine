@@ -2967,7 +2967,7 @@ public partial class Player : Entity
         }
 
         var bankInterface = new BankInterface<BankSlot>(this, Bank);
-        return bankOverflow && bankInterface.TryDepositItem(item, sendUpdate);
+        return bankOverflow && bankInterface.TryDepositItem(item: item, sendUpdate: sendUpdate, giveItem: true);
     }
 
     /// <summary>

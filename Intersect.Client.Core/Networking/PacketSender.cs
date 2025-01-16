@@ -149,7 +149,7 @@ public static partial class PacketSender
     {
         if (sender is InputBox inputBox && inputBox.UserData is Guid eventId)
         {
-            Network.SendPacket(new EventInputVariablePacket(eventId, (int)inputBox.Value, inputBox.TextValue));
+            Network.SendPacket(new EventInputVariablePacket(eventId, inputBox.BooleanValue, (int)inputBox.Value, inputBox.TextValue));
         }
     }
 
@@ -157,7 +157,7 @@ public static partial class PacketSender
     {
         if (sender is InputBox inputBox && inputBox.UserData is Guid eventId)
         {
-            Network.SendPacket(new EventInputVariablePacket(eventId, (int)inputBox.Value, inputBox.TextValue, true));
+            Network.SendPacket(new EventInputVariablePacket(eventId, inputBox.BooleanValue, (int)inputBox.Value, inputBox.TextValue, true));
         }
     }
 
@@ -499,7 +499,7 @@ public static partial class PacketSender
     {
         Network.SendPacket(new UpdateGuildMemberPacket(id, null, Enums.GuildMemberUpdateAction.Transfer));
     }
-  
+
     public static void SendClosePicture(Guid eventId)
     {
         if (eventId != Guid.Empty)

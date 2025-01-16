@@ -1,4 +1,5 @@
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
 using Intersect.GameObjects.Events;
@@ -932,12 +933,12 @@ internal sealed partial class NetworkedPacketHandler
                     break;
 
                 case GameObjectType.PlayerVariable:
-                    obj = PlayerVariableBase.Get(id);
+                    obj = PlayerVariableDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.ServerVariable:
-                    obj = ServerVariableBase.Get(id);
+                    obj = ServerVariableDescriptor.Get(id);
 
                     break;
 
@@ -948,12 +949,12 @@ internal sealed partial class NetworkedPacketHandler
                     break;
 
                 case GameObjectType.GuildVariable:
-                    obj = GuildVariableBase.Get(id);
+                    obj = GuildVariableDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.UserVariable:
-                    obj = UserVariableBase.Get(id);
+                    obj = UserVariableDescriptor.Get(id);
 
                     break;
 
@@ -1065,12 +1066,12 @@ internal sealed partial class NetworkedPacketHandler
                     break;
 
                 case GameObjectType.PlayerVariable:
-                    obj = PlayerVariableBase.Get(id);
+                    obj = PlayerVariableDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.ServerVariable:
-                    obj = ServerVariableBase.Get(id);
+                    obj = ServerVariableDescriptor.Get(id);
 
                     break;
 
@@ -1081,12 +1082,12 @@ internal sealed partial class NetworkedPacketHandler
                     break;
 
                 case GameObjectType.GuildVariable:
-                    obj = GuildVariableBase.Get(id);
+                    obj = GuildVariableDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.UserVariable:
-                    obj = UserVariableBase.Get(id);
+                    obj = UserVariableDescriptor.Get(id);
 
                     break;
             case GameObjectType.Sets:

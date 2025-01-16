@@ -1,10 +1,9 @@
 using System.Text;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Events.Commands;
-using Intersect.GameObjects.Switches_and_Variables;
-using Intersect.Network.Packets.Server;
 using Intersect.Server.Core.MapInstancing;
 using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData.Players;
@@ -85,29 +84,29 @@ public static partial class CommandProcessing
 
         if (command.VariableType == VariableType.PlayerVariable)
         {
-            var variable = PlayerVariableBase.Get(command.VariableId);
+            var variable = PlayerVariableDescriptor.Get(command.VariableId);
             if (variable != null)
             {
-                type = (int)variable.Type;
+                type = (int)variable.DataType;
             }
         }
         else if (command.VariableType == VariableType.ServerVariable)
         {
-            var variable = ServerVariableBase.Get(command.VariableId);
+            var variable = ServerVariableDescriptor.Get(command.VariableId);
             if (variable != null)
             {
-                type = (int)variable.Type;
+                type = (int)variable.DataType;
             }
         }
         else if (command.VariableType == VariableType.GuildVariable)
         {
-            var variable = GuildVariableBase.Get(command.VariableId);
-            type = (int)variable.Type;
+            var variable = GuildVariableDescriptor.Get(command.VariableId);
+            type = (int)variable.DataType;
         }
         else if (command.VariableType == VariableType.UserVariable)
         {
-            var variable = UserVariableBase.Get(command.VariableId);
-            type = (int)variable.Type;
+            var variable = UserVariableDescriptor.Get(command.VariableId);
+            type = (int)variable.DataType;
         }
         else if (type == -1)
         {
@@ -166,7 +165,7 @@ public static partial class CommandProcessing
         {
             if (command.ShowChatBubbleInProximity)
             {
-                
+
                 PacketSender.SendChatBubbleToProximity(
                         player,
                         instance.PageInstance.Id,
@@ -177,7 +176,7 @@ public static partial class CommandProcessing
             }
             else
             {
-                
+
                 PacketSender.SendChatBubbleToPlayer(
                     player,
                     instance.PageInstance.Id,
@@ -445,7 +444,7 @@ public static partial class CommandProcessing
 
                     break;
                 case VariableType.ServerVariable:
-                    quantity = (int)ServerVariableBase.Get(command.VariableId)?.Value.Integer;
+                    quantity = (int)ServerVariableDescriptor.Get(command.VariableId)?.Value.Integer;
 
                     break;
 
@@ -538,7 +537,7 @@ public static partial class CommandProcessing
 
                     break;
                 case VariableType.ServerVariable:
-                    quantity = (int)ServerVariableBase.Get(command.VariableId)?.Value.Integer;
+                    quantity = (int)ServerVariableDescriptor.Get(command.VariableId)?.Value.Integer;
 
                     break;
                 case VariableType.GuildVariable:
@@ -1393,10 +1392,10 @@ public static partial class CommandProcessing
     {
         var success = false;
 
-        var variable = PlayerVariableBase.Get(command.VariableId);
+        var variable = PlayerVariableDescriptor.Get(command.VariableId);
         if (variable != null)
         {
-            if (variable.Type == VariableDataType.String)
+            if (variable.DataType == VariableDataType.String)
             {
                 var data = player.GetVariable(variable.Id)?.Value;
                 if (data != null)
@@ -1435,8 +1434,77 @@ public static partial class CommandProcessing
         Stack<CommandInstance> callStack
     )
     {
-        PacketSender.SendOpenGuildWindow(player);
+        var success = false;
+        var playerVariable = PlayerVariableDescriptor.Get(command.VariableId);
 
+        // We only accept Strings as our Guild Names!
+        if (playerVariable.DataType == VariableDataType.String)
+        {
+            // Get our intended guild name
+            var gname = player.GetVariable(playerVariable.Id)?.Value.String?.Trim();
+
+            // Can we use this name according to our configuration?
+            if (gname != null && FieldChecking.IsValidGuildName(gname, Strings.Regex.GuildName))
+            {
+                // Is the name already in use?
+                if (Guild.GetGuild(gname) == null)
+                {
+                    // Is the player already in a guild?
+                    if (player.Guild == null)
+                    {
+                        // Finally, we can actually MAKE this guild happen!
+                        var guild = Guild.CreateGuild(player, gname);
+                        if (guild != null)
+                        {
+                            // Send them a welcome message!
+                            PacketSender.SendChatMsg(player, Strings.Guilds.Welcome.ToString(gname), ChatMessageType.Guild, CustomColors.Alerts.Success);
+
+                            // Denote that we were successful.
+                            success = true;
+                        }
+                    }
+                    else
+                    {
+                        // This cheeky bugger is already in a guild, tell him so!
+                        PacketSender.SendChatMsg(player, Strings.Guilds.AlreadyInGuild, ChatMessageType.Guild, CustomColors.Alerts.Error);
+                    }
+                }
+                else
+                {
+                    // This name already exists, oh dear!
+                    PacketSender.SendChatMsg(player, Strings.Guilds.GuildNameInUse, ChatMessageType.Guild, CustomColors.Alerts.Error);
+                }
+            }
+            else
+            {
+                // Let our player know they need to adjust their name.
+                PacketSender.SendChatMsg(player, Strings.Guilds.VariableInvalid, ChatMessageType.Guild, CustomColors.Alerts.Error);
+            }
+        }
+        else
+        {
+            // Notify the user that something went wrong, the user really shouldn't see this.. Assuming the creator set up his events properly.
+            PacketSender.SendChatMsg(player, Strings.Guilds.VariableNotString, ChatMessageType.Guild, CustomColors.Alerts.Error);
+        }
+
+        List<EventCommand> newCommandList = null;
+        if (success && stackInfo.Page.CommandLists.ContainsKey(command.BranchIds[0]))
+        {
+            newCommandList = stackInfo.Page.CommandLists[command.BranchIds[0]];
+        }
+
+        if (!success && stackInfo.Page.CommandLists.ContainsKey(command.BranchIds[1]))
+        {
+            newCommandList = stackInfo.Page.CommandLists[command.BranchIds[1]];
+        }
+
+        var tmpStack = new CommandInstance(stackInfo.Page)
+        {
+            CommandList = newCommandList,
+            CommandIndex = 0,
+        };
+
+        callStack.Push(tmpStack);
     }
 
     private static void ProcessCommand(
@@ -1517,7 +1585,7 @@ public static partial class CommandProcessing
 
                 break;
             case VariableType.ServerVariable:
-                quantity = (int)ServerVariableBase.Get(command.VariableId)?.Value.Integer;
+                quantity = (int)ServerVariableDescriptor.Get(command.VariableId)?.Value.Integer;
 
                 break;
             case VariableType.GuildVariable:
@@ -1743,25 +1811,25 @@ public static partial class CommandProcessing
             foreach (var val in DbInterface.ServerVariableEventTextLookup)
             {
                 if (input.Contains(val.Key))
-                    sb.Replace(val.Key, (val.Value).Value.ToString((val.Value).Type));
+                    sb.Replace(val.Key, (val.Value).Value.ToString((val.Value).DataType));
             }
 
             foreach (var val in DbInterface.PlayerVariableEventTextLookup)
             {
                 if (input.Contains(val.Key))
-                    sb.Replace(val.Key, player.GetVariableValue(val.Value.Id).ToString((val.Value).Type));
+                    sb.Replace(val.Key, player.GetVariableValue(val.Value.Id).ToString((val.Value).DataType));
             }
 
             foreach (var val in DbInterface.GuildVariableEventTextLookup)
             {
                 if (input.Contains(val.Key))
-                    sb.Replace(val.Key, (player.Guild?.GetVariableValue(val.Value.Id) ?? new VariableValue()).ToString((val.Value).Type));
+                    sb.Replace(val.Key, (player.Guild?.GetVariableValue(val.Value.Id) ?? new VariableValue()).ToString((val.Value).DataType));
             }
 
             foreach (var val in DbInterface.UserVariableEventTextLookup)
             {
                 if (input.Contains(val.Key))
-                    sb.Replace(val.Key, (player.User.GetVariableValue(val.Value.Id) ?? new VariableValue()).ToString((val.Value).Type));
+                    sb.Replace(val.Key, (player.User.GetVariableValue(val.Value.Id) ?? new VariableValue()).ToString((val.Value).DataType));
             }
 
             if (instance != null)
@@ -1804,7 +1872,7 @@ public static partial class CommandProcessing
         }
         else if (command.VariableType == VariableType.ServerVariable)
         {
-            value = ServerVariableBase.Get(command.VariableId)?.Value;
+            value = ServerVariableDescriptor.Get(command.VariableId)?.Value;
         }
         else if (command.VariableType == VariableType.GuildVariable)
         {
@@ -1835,10 +1903,10 @@ public static partial class CommandProcessing
             }
             else if (mod.DupVariableType == VariableType.ServerVariable)
             {
-                var variable = ServerVariableBase.Get(mod.DuplicateVariableId);
+                var variable = ServerVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (variable != null)
                 {
-                    value.Boolean = ServerVariableBase.Get(mod.DuplicateVariableId).Value.Boolean;
+                    value.Boolean = ServerVariableDescriptor.Get(mod.DuplicateVariableId).Value.Boolean;
                 }
             }
             else if (mod.DupVariableType == VariableType.GuildVariable)
@@ -1850,7 +1918,7 @@ public static partial class CommandProcessing
             }
             else if (mod.DupVariableType == VariableType.UserVariable)
             {
-                var variable = UserVariableBase.Get(mod.DuplicateVariableId);
+                var variable = UserVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (variable != null)
                 {
                     value.Boolean = player.User.GetVariableValue(mod.DuplicateVariableId).Value.Boolean;
@@ -1893,7 +1961,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 Player.StartCommonEventsWithTriggerForAll(CommonEventTrigger.ServerVariableChange, "", command.VariableId.ToString());
-                DbInterface.UpdatedServerVariables.AddOrUpdate(command.VariableId, ServerVariableBase.Get(command.VariableId), (key, oldValue) => ServerVariableBase.Get(command.VariableId));
+                DbInterface.UpdatedServerVariables.AddOrUpdate(command.VariableId, ServerVariableDescriptor.Get(command.VariableId), (key, oldValue) => ServerVariableDescriptor.Get(command.VariableId));
             }
         }
         else if (command.VariableType == VariableType.GuildVariable)
@@ -1901,7 +1969,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 guild.StartCommonEventsWithTriggerForAll(CommonEventTrigger.GuildVariableChange, "", command.VariableId.ToString());
-                guild.UpdatedVariables.AddOrUpdate(command.VariableId, GuildVariableBase.Get(command.VariableId), (key, oldValue) => GuildVariableBase.Get(command.VariableId));
+                guild.UpdatedVariables.AddOrUpdate(command.VariableId, GuildVariableDescriptor.Get(command.VariableId), (key, oldValue) => GuildVariableDescriptor.Get(command.VariableId));
             }
         }
         else if (command.VariableType == VariableType.UserVariable)
@@ -1909,7 +1977,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 player.User.StartCommonEventsWithTriggerForAll(CommonEventTrigger.UserVariableChange, "", command.VariableId.ToString());
-                player.User.UpdatedVariables.AddOrUpdate(command.VariableId, UserVariableBase.Get(command.VariableId), (key, oldValue) => UserVariableBase.Get(command.VariableId));
+                player.User.UpdatedVariables.AddOrUpdate(command.VariableId, UserVariableDescriptor.Get(command.VariableId), (key, oldValue) => UserVariableDescriptor.Get(command.VariableId));
             }
         }
     }
@@ -1930,7 +1998,7 @@ public static partial class CommandProcessing
         }
         else if (command.VariableType == VariableType.ServerVariable)
         {
-            value = ServerVariableBase.Get(command.VariableId)?.Value;
+            value = ServerVariableDescriptor.Get(command.VariableId)?.Value;
         }
         else if (command.VariableType == VariableType.GuildVariable)
         {
@@ -2000,7 +2068,7 @@ public static partial class CommandProcessing
 
                 break;
             case VariableModType.DupGlobalVar:
-                var dupServerVariable = ServerVariableBase.Get(mod.DuplicateVariableId);
+                var dupServerVariable = ServerVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (dupServerVariable != null)
                 {
                     value.Integer = dupServerVariable.Value.Integer;
@@ -2012,7 +2080,7 @@ public static partial class CommandProcessing
 
                 break;
             case VariableModType.AddGlobalVar:
-                var asv = ServerVariableBase.Get(mod.DuplicateVariableId);
+                var asv = ServerVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (asv != null)
                 {
                     value.Integer += asv.Value.Integer;
@@ -2024,7 +2092,7 @@ public static partial class CommandProcessing
 
                 break;
             case VariableModType.SubtractGlobalVar:
-                var ssv = ServerVariableBase.Get(mod.DuplicateVariableId);
+                var ssv = ServerVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (ssv != null)
                 {
                     value.Integer -= ssv.Value.Integer;
@@ -2036,7 +2104,7 @@ public static partial class CommandProcessing
 
                 break;
             case VariableModType.MultiplyGlobalVar:
-                var msv = ServerVariableBase.Get(mod.DuplicateVariableId);
+                var msv = ServerVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (msv != null)
                 {
                     value.Integer *= msv.Value.Integer;
@@ -2051,7 +2119,7 @@ public static partial class CommandProcessing
 
                 break;
             case VariableModType.DivideGlobalVar:
-                var dsv = ServerVariableBase.Get(mod.DuplicateVariableId);
+                var dsv = ServerVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (dsv != null)
                 {
                     if (dsv.Value != 0) //Idiot proofing divide by 0 LOL
@@ -2066,7 +2134,7 @@ public static partial class CommandProcessing
 
                 break;
             case VariableModType.LeftShiftGlobalVar:
-                var lhsv = ServerVariableBase.Get(mod.DuplicateVariableId);
+                var lhsv = ServerVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (lhsv != null)
                 {
                     value.Integer = value.Integer << (int)lhsv.Value.Integer;
@@ -2078,7 +2146,7 @@ public static partial class CommandProcessing
 
                 break;
             case VariableModType.RightShiftGlobalVar:
-                var rhsv = ServerVariableBase.Get(mod.DuplicateVariableId);
+                var rhsv = ServerVariableDescriptor.Get(mod.DuplicateVariableId);
                 if (rhsv != null)
                 {
                     value.Integer = value.Integer >> (int)rhsv.Value.Integer;
@@ -2114,7 +2182,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 Player.StartCommonEventsWithTriggerForAll(CommonEventTrigger.ServerVariableChange, "", command.VariableId.ToString());
-                DbInterface.UpdatedServerVariables.AddOrUpdate(command.VariableId, ServerVariableBase.Get(command.VariableId), (key, oldValue) => ServerVariableBase.Get(command.VariableId));
+                DbInterface.UpdatedServerVariables.AddOrUpdate(command.VariableId, ServerVariableDescriptor.Get(command.VariableId), (key, oldValue) => ServerVariableDescriptor.Get(command.VariableId));
             }
         }
         else if (command.VariableType == VariableType.GuildVariable)
@@ -2122,7 +2190,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 guild.StartCommonEventsWithTriggerForAll(CommonEventTrigger.GuildVariableChange, "", command.VariableId.ToString());
-                guild.UpdatedVariables.AddOrUpdate(command.VariableId, GuildVariableBase.Get(command.VariableId), (key, oldValue) => GuildVariableBase.Get(command.VariableId));
+                guild.UpdatedVariables.AddOrUpdate(command.VariableId, GuildVariableDescriptor.Get(command.VariableId), (key, oldValue) => GuildVariableDescriptor.Get(command.VariableId));
             }
         }
         else if (command.VariableType == VariableType.UserVariable)
@@ -2130,7 +2198,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 player.User.StartCommonEventsWithTriggerForAll(CommonEventTrigger.UserVariableChange, "", command.VariableId.ToString());
-                player.User.UpdatedVariables.AddOrUpdate(command.VariableId, UserVariableBase.Get(command.VariableId), (key, oldValue) => UserVariableBase.Get(command.VariableId));
+                player.User.UpdatedVariables.AddOrUpdate(command.VariableId, UserVariableDescriptor.Get(command.VariableId), (key, oldValue) => UserVariableDescriptor.Get(command.VariableId));
             }
         }
     }
@@ -2151,7 +2219,7 @@ public static partial class CommandProcessing
         }
         else if (command.VariableType == VariableType.ServerVariable)
         {
-            value = ServerVariableBase.Get(command.VariableId)?.Value;
+            value = ServerVariableDescriptor.Get(command.VariableId)?.Value;
         }
         else if (command.VariableType == VariableType.GuildVariable)
         {
@@ -2214,7 +2282,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 Player.StartCommonEventsWithTriggerForAll(CommonEventTrigger.ServerVariableChange, "", command.VariableId.ToString());
-                DbInterface.UpdatedServerVariables.AddOrUpdate(command.VariableId, ServerVariableBase.Get(command.VariableId), (key, oldValue) => ServerVariableBase.Get(command.VariableId));
+                DbInterface.UpdatedServerVariables.AddOrUpdate(command.VariableId, ServerVariableDescriptor.Get(command.VariableId), (key, oldValue) => ServerVariableDescriptor.Get(command.VariableId));
             }
         }
         else if (command.VariableType == VariableType.GuildVariable)
@@ -2222,7 +2290,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 guild.StartCommonEventsWithTriggerForAll(CommonEventTrigger.GuildVariableChange, "", command.VariableId.ToString());
-                guild.UpdatedVariables.AddOrUpdate(command.VariableId, GuildVariableBase.Get(command.VariableId), (key, oldValue) => GuildVariableBase.Get(command.VariableId));
+                guild.UpdatedVariables.AddOrUpdate(command.VariableId, GuildVariableDescriptor.Get(command.VariableId), (key, oldValue) => GuildVariableDescriptor.Get(command.VariableId));
             }
         }
         else if (command.VariableType == VariableType.UserVariable)
@@ -2230,7 +2298,7 @@ public static partial class CommandProcessing
             if (changed)
             {
                 player.User.StartCommonEventsWithTriggerForAll(CommonEventTrigger.UserVariableChange, "", command.VariableId.ToString());
-                player.User.UpdatedVariables.AddOrUpdate(command.VariableId, UserVariableBase.Get(command.VariableId), (key, oldValue) => UserVariableBase.Get(command.VariableId));
+                player.User.UpdatedVariables.AddOrUpdate(command.VariableId, UserVariableDescriptor.Get(command.VariableId), (key, oldValue) => UserVariableDescriptor.Get(command.VariableId));
             }
         }
     }

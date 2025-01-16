@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Intersect.Config;
 using Intersect.Enums;
 using Intersect.Framework.Core.Config;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
 using Intersect.GameObjects.Events;
@@ -1831,14 +1832,14 @@ public static partial class PacketSender
 
                 break;
             case GameObjectType.PlayerVariable:
-                foreach (var obj in PlayerVariableBase.Lookup)
+                foreach (var obj in PlayerVariableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.ServerVariable:
-                foreach (var obj in ServerVariableBase.Lookup)
+                foreach (var obj in ServerVariableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
@@ -1854,14 +1855,14 @@ public static partial class PacketSender
             case GameObjectType.Time:
                 break;
             case GameObjectType.GuildVariable:
-                foreach (var obj in GuildVariableBase.Lookup)
+                foreach (var obj in GuildVariableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.UserVariable:
-                foreach (var obj in UserVariableBase.Lookup)
+                foreach (var obj in UserVariableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }

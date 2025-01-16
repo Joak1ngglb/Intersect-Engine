@@ -203,5 +203,11 @@ namespace Intersect.Server.Web {
                 return ResourceManager.GetString("XsPlayers", resourceCulture);
             }
         }
+        
+        internal static string GuildX {
+            get {
+                return ResourceManager.GetString("GuildX", resourceCulture);
+            }
+        }
     }
 }

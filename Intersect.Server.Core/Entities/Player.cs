@@ -477,7 +477,7 @@ public partial class Player : Entity
         }
     }
 
-    public void TryLogout(bool force = false, bool softLogout = false)
+    public void TryLogout(bool force = false, bool softLogout = false, TaskCompletionSource? logoutCompletionSource = null)
     {
         LastOnline = DateTime.Now;
         Client = default;
@@ -490,11 +490,15 @@ public partial class Player : Entity
 
         if (CombatTimer < Timing.Global.Milliseconds || force)
         {
-            Logout(softLogout);
+            Logout(softLogout: softLogout, logoutCompletionSource: logoutCompletionSource);
+        }
+        else
+        {
+            logoutCompletionSource?.TrySetResult();
         }
     }
 
-    private void Logout(bool softLogout = false)
+    private void Logout(bool softLogout = false, TaskCompletionSource? logoutCompletionSource = null)
     {
         lock (_savingLock)
         {
@@ -595,13 +599,14 @@ public partial class Player : Entity
             User?.TryLogout(softLogout);
         }
 
-#if DIAGNOSTIC
-        var stackTrace = Environment.StackTrace;
-#else
-        var stackTrace = default(string);
-#endif
         var logoutOperationId = Guid.NewGuid();
-        DbInterface.Pool.QueueWorkItem(CompleteLogout, logoutOperationId, softLogout, stackTrace);
+        DbInterface.Pool.QueueWorkItem(
+            CompleteLogout,
+            logoutOperationId,
+            softLogout,
+            logoutCompletionSource,
+            Debugger.IsAttached ? Environment.StackTrace : default
+        );
     }
 
 #if DIAGNOSTIC
@@ -611,7 +616,12 @@ public partial class Player : Entity
     private static readonly HashSet<Guid> _pendingLogouts = [];
     private static readonly object _pendingLogoutLock = new();
 
-    public void CompleteLogout(Guid logoutOperationId, bool softLogout, string? stackTrace = default)
+    public void CompleteLogout(
+        Guid logoutOperationId,
+        bool softLogout,
+        TaskCompletionSource? logoutCompletionSource,
+        string? stackTrace = default
+    )
     {
         if (logoutOperationId != default)
         {
@@ -653,9 +663,10 @@ public partial class Player : Entity
                     throw new UnreachableException();
             }
         }
-        catch
+        catch (Exception exception)
         {
             Log.Warn($"Crashed while saving for logout {logoutOperationId}");
+            logoutCompletionSource?.TrySetException(exception);
             throw;
         }
 
@@ -674,6 +685,8 @@ public partial class Player : Entity
             {
                 _pendingLogouts.Remove(Id);
             }
+
+            logoutCompletionSource?.TrySetResult();
         }
 
 #if DIAGNOSTIC

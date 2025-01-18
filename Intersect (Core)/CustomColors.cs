@@ -259,7 +259,18 @@ public static partial class CustomColors
         };
 
     }
+    public sealed partial class ItemDescNamespace
+    {
+        public Color Primary = Color.White;
 
+        public Color Muted = new Color(255, 160, 160, 160);
+        public Color Better = new Color(255, 129, 186, 40);
+        public Color Worse = new Color(255, 222, 124, 112);
+
+        public Color Notice = new Color(255, 217, 218, 157);
+
+        public Color Special = new Color(255, 206, 109, 241);
+    }
     #region Serialization
 
     public static bool Load()
@@ -338,6 +349,7 @@ public static partial class CustomColors
 
         public readonly QuestWindowNamespace QuestWindow = new QuestWindowNamespace();
 
+        public readonly ItemDescNamespace ItemDesc = new ItemDescNamespace();
     }
 
     // ReSharper restore MemberHidesStaticFromOuterClass
@@ -359,6 +371,8 @@ public static partial class CustomColors
     public static CombatNamespace Combat => Root.Combat;
 
     public static ItemsNamespace Items => Root.Items;
+
+    public static ItemDescNamespace ItemDesc => Root.ItemDesc;
 
     #endregion
 

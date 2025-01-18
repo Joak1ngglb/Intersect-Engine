@@ -22,6 +22,10 @@ using Intersect.GameObjects.Maps;
 using Intersect.Logging;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
+using Intersect.Client.Items;
+using Intersect.Client.Interface.Game.Chat;
+using Intersect.Config.Guilds;
+using Intersect.Client.Interface.Game.DescriptionWindows;
 
 namespace Intersect.Client.Entities;
 
@@ -59,6 +63,7 @@ public partial class Player : Entity, IPlayer
     IReadOnlyList<IHotbarInstance> IPlayer.HotbarSlots => Hotbar.ToList();
 
     public HotbarInstance[] Hotbar { get; set; } = new HotbarInstance[Options.Instance.PlayerOpts.HotbarSlotCount];
+    private ItemDescriptionWindow mItemTargetBox;
 
     public InventoryUpdated? InventoryUpdatedDelegate { get; set; }
 

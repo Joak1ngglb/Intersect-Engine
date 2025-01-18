@@ -201,6 +201,138 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         var description = AddDescription();
         description.AddText(Strings.ItemDescription.Description.ToString(mItem.Description), Color.White);
     }
+    private int GetStatDifference(int statIndex)
+    {
+        var slot = mItem.EquipmentSlot;
+
+        // Obtener la estadística base del nuevo ítem
+        var newItemStat = mItem.StatsGiven[statIndex];
+        if (mItemProperties?.StatModifiers != null)
+        {
+            newItemStat += mItemProperties.StatModifiers[statIndex];
+        }
+
+        // Verificar si hay un ítem equipado en la misma ranura
+        if (Globals.Me.MyEquipment[slot] != -1)
+        {
+            var equippedItem = Globals.Me.Inventory[Globals.Me.MyEquipment[slot]];
+            if (equippedItem != null)
+            {
+                // Obtener las estadísticas del ítem equipado
+                var equippedStat = equippedItem.Base.StatsGiven[statIndex];
+                if (equippedItem.ItemProperties?.StatModifiers != null)
+                {
+                    equippedStat += equippedItem.ItemProperties.StatModifiers[statIndex];
+                }
+
+                // Devolver la diferencia entre las estadísticas del nuevo y del equipado
+                return newItemStat - equippedStat;
+            }
+            else
+            {
+                // No hay ítem equipado; devolver la estadística del nuevo ítem
+                return newItemStat;
+            }
+        }
+        else
+        {
+            // No hay ítem en la ranura; devolver la estadística del nuevo ítem
+            return newItemStat;
+        }
+    }
+
+
+    private int GetBaseDamageDifference()
+    {
+        var equippedDamage = GetEquippedWeapon()?.Damage ?? 0;
+        return mItem.Damage - equippedDamage;
+    }
+
+    private ItemBase? GetEquippedWeapon()
+    {
+        var slot = Options.WeaponIndex;
+        return Globals.Me.MyEquipment[slot] != -1
+            ? Globals.Me.Inventory[Globals.Me.MyEquipment[slot]].Base
+            : null;
+    }
+    private int GetVitalDifference(int vitalIndex)
+    {
+        var equippedVital = GetEquippedVital(vitalIndex);
+        var newItemVital = mItem.VitalsGiven[vitalIndex];
+        return (int)(newItemVital - equippedVital);
+    }
+
+    private int GetEquippedVital(int vitalIndex)
+    {
+        var slot = mItem.EquipmentSlot;
+        var equippedItem = Globals.Me.MyEquipment[slot] != -1
+            ? Globals.Me.Inventory[Globals.Me.MyEquipment[slot]].Base
+            : null;
+
+        return (int)(equippedItem?.VitalsGiven[vitalIndex] ?? 0);
+    }
+    private int GetBonusEffectDifference(ItemEffect effectType)
+    {
+        var equippedEffect = GetEquippedEffect(effectType);
+        var newEffect = mItem.Effects.FirstOrDefault(e => e.Type == effectType)?.Percentage ?? 0;
+        return newEffect - equippedEffect;
+    }
+
+    private int GetEquippedEffect(ItemEffect effectType)
+    {
+        var slot = mItem.EquipmentSlot;
+        var equippedItem = Globals.Me.MyEquipment[slot] != -1
+            ? Globals.Me.Inventory[Globals.Me.MyEquipment[slot]].Base
+            : null;
+
+        return equippedItem?.Effects.FirstOrDefault(e => e.Type == effectType)?.Percentage ?? 0;
+    }
+    private int GetVitalRegenDifference(int vitalIndex)
+    {
+        var equippedRegen = GetEquippedVitalRegen(vitalIndex);
+        var newItemRegen = mItem.VitalsRegen[vitalIndex];
+        return (int)(newItemRegen - equippedRegen);
+    }
+
+    private int GetEquippedVitalRegen(int vitalIndex)
+    {
+        var slot = mItem.EquipmentSlot;
+        var equippedItem = Globals.Me.MyEquipment[slot] != -1
+            ? Globals.Me.Inventory[Globals.Me.MyEquipment[slot]].Base
+            : null;
+
+        return (int)(equippedItem?.VitalsRegen[vitalIndex] ?? 0);
+    }
+    private int GetCritChanceDifference()
+    {
+        var slot = mItem.EquipmentSlot;
+        var equippedCritChance = Globals.Me.MyEquipment[slot] != -1
+            ? Globals.Me.Inventory[Globals.Me.MyEquipment[slot]].Base?.CritChance ?? 0
+            : 0;
+
+        return mItem.CritChance - equippedCritChance;
+    }
+
+    private double GetCritMultiplierDifference()
+    {
+        var slot = mItem.EquipmentSlot;
+        var equippedCritMultiplier = Globals.Me.MyEquipment[slot] != -1
+            ? Globals.Me.Inventory[Globals.Me.MyEquipment[slot]].Base?.CritMultiplier ?? 0
+            : 0;
+
+        return mItem.CritMultiplier - equippedCritMultiplier;
+    }
+ 
+    private int GetScalingDifference()
+    {
+        var slot = mItem.EquipmentSlot;
+        var equippedScaling = Globals.Me.MyEquipment[slot] != -1
+            ? Globals.Me.Inventory[Globals.Me.MyEquipment[slot]].Base?.Scaling ?? 0
+            : 0;
+
+        return mItem.Scaling - equippedScaling;
+    }
+
 
     protected void SetupEquipmentInfo()
     {
@@ -214,7 +346,8 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         if (mItem.EquipmentSlot == Options.WeaponIndex)
         {
             // Base Damage:
-            rows.AddKeyValueRow(Strings.ItemDescription.BaseDamage, mItem.Damage.ToString());
+            var damageDiff = GetBaseDamageDifference();
+            DisplayKeyValueRowWithDifference(damageDiff, Strings.ItemDescription.BaseDamage, mItem.Damage.ToString(), rows);
 
             // Damage Type:
             Strings.ItemDescription.DamageTypes.TryGetValue(mItem.DamageType, out var damageType);
@@ -223,25 +356,29 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
             if (mItem.Scaling > 0)
             {
                 Strings.ItemDescription.Stats.TryGetValue(mItem.ScalingStat, out var stat);
-                rows.AddKeyValueRow(Strings.ItemDescription.ScalingStat, stat);
+                var scalingDiff = GetScalingDifference();
+                DisplayKeyValueRowWithDifference(scalingDiff, Strings.ItemDescription.ScalingStat, stat, rows);
+
                 rows.AddKeyValueRow(Strings.ItemDescription.ScalingPercentage, Strings.ItemDescription.Percentage.ToString(mItem.Scaling));
             }
 
             // Crit Chance
             if (mItem.CritChance > 0)
             {
-                rows.AddKeyValueRow(Strings.ItemDescription.CritChance, Strings.ItemDescription.Percentage.ToString(mItem.CritChance));
-                rows.AddKeyValueRow(Strings.ItemDescription.CritMultiplier, Strings.ItemDescription.Multiplier.ToString(mItem.CritMultiplier));
+                var critChanceDiff = GetCritChanceDifference();
+                DisplayKeyValueRowWithDifference(critChanceDiff, Strings.ItemDescription.CritChance, Strings.ItemDescription.Percentage.ToString(mItem.CritChance), rows);
+
+                var critMultiplierDiff = GetCritMultiplierDifference();
+                DisplayKeyValueRowWithDifference(critMultiplierDiff, Strings.ItemDescription.CritMultiplier, Strings.ItemDescription.Multiplier.ToString(mItem.CritMultiplier), rows);
             }
 
             // Attack Speed
-            // Are we supposed to change our attack time based on a modifier?
             if (mItem.AttackSpeedModifier == 0)
             {
-                // No modifier, assuming base attack rate? We have to calculate the speed stat manually here though..!
+                // Calculate base attack speed manually.
                 var speed = Globals.Me.Stat[(int)Stat.Speed];
 
-                // Remove currently equipped weapon stats.. We want to create a fair display!
+                // Adjust for currently equipped weapon stats.
                 var weaponSlot = Globals.Me.MyEquipment[Options.WeaponIndex];
                 if (weaponSlot != -1)
                 {
@@ -255,7 +392,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
                     }
                 }
 
-                // Add current item's speed stats!
+                // Add current item's speed stats.
                 if (mItemProperties?.StatModifiers != default)
                 {
                     speed += mItem.StatsGiven[(int)Stat.Speed];
@@ -263,22 +400,24 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
                     speed += (int)Math.Floor(speed * (mItem.PercentageStatsGiven[(int)Stat.Speed] / 100f));
                 }
 
-                // Display the actual speed this weapon would have based off of our calculated speed stat.
+                // Display calculated attack speed.
                 rows.AddKeyValueRow(Strings.ItemDescription.AttackSpeed, TimeSpan.FromMilliseconds(Globals.Me.CalculateAttackTime(speed)).WithSuffix());
+
+                // Compare with equipped weapon's attack speed.
+                var attackSpeedDiff = GetAttackSpeedDifference();
+                DisplayKeyValueRowWithDifference(attackSpeedDiff, Strings.ItemDescription.AttackSpeedComparison, TimeSpan.FromMilliseconds(Globals.Me.CalculateAttackTime(speed)).WithSuffix(), rows);
             }
             else if (mItem.AttackSpeedModifier == 1)
             {
-                // Static, so this weapon's attack speed.
                 rows.AddKeyValueRow(Strings.ItemDescription.AttackSpeed, TimeSpan.FromMilliseconds(mItem.AttackSpeedValue).WithSuffix());
             }
             else if (mItem.AttackSpeedModifier == 2)
             {
-                // Percentage based.
                 rows.AddKeyValueRow(Strings.ItemDescription.AttackSpeed, Strings.ItemDescription.Percentage.ToString(mItem.AttackSpeedValue));
             }
         }
 
-        //Blocking options
+        // Blocking options
         if (mItem.EquipmentSlot == Options.ShieldIndex)
         {
             if (mItem.BlockChance > 0)
@@ -297,72 +436,96 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
             }
         }
 
+       
         // Vitals
         for (var i = 0; i < Enum.GetValues<Vital>().Length; i++)
         {
-            if (mItem.VitalsGiven[i] != 0 && mItem.PercentageVitalsGiven[i] != 0)
+            var vitalLabel = Strings.ItemDescription.Vitals[i];
+            var vitalValue = mItem.VitalsGiven[i];
+            var percentageVitalValue = mItem.PercentageVitalsGiven[i];
+            var vitalDiff = GetVitalDifference(i);
+
+            if (vitalValue != 0 && percentageVitalValue != 0)
             {
-                rows.AddKeyValueRow(Strings.ItemDescription.Vitals[i], Strings.ItemDescription.RegularAndPercentage.ToString(mItem.VitalsGiven[i], mItem.PercentageVitalsGiven[i]));
+                DisplayKeyValueRowWithDifferenceAndPercent(vitalDiff, percentageVitalValue, vitalLabel, vitalValue.ToString(), rows);
             }
-            else if (mItem.VitalsGiven[i] != 0)
+            else if (vitalValue != 0)
             {
-                rows.AddKeyValueRow(Strings.ItemDescription.Vitals[i], mItem.VitalsGiven[i].ToString());
+                DisplayKeyValueRowWithDifference(vitalDiff, vitalLabel, vitalValue.ToString(), rows);
             }
-            else if (mItem.PercentageVitalsGiven[i] != 0)
+            else if (percentageVitalValue != 0)
             {
-                rows.AddKeyValueRow(Strings.ItemDescription.Vitals[i], Strings.ItemDescription.Percentage.ToString(mItem.PercentageVitalsGiven[i]));
+                rows.AddKeyValueRow(vitalLabel, Strings.ItemDescription.Percentage.ToString(percentageVitalValue), CustomColors.ItemDesc.Muted,Color.White);
             }
         }
+
 
         // Vitals Regen
         for (var i = 0; i < Enum.GetValues<Vital>().Length; i++)
         {
-            if (mItem.VitalsRegen[i] != 0)
+            var vitalRegenLabel = Strings.ItemDescription.VitalsRegen[i];
+            var vitalRegenValue = mItem.VitalsRegen[i];
+            var vitalRegenDiff = GetVitalRegenDifference(i);
+
+            if (vitalRegenValue > 0)
             {
-                rows.AddKeyValueRow(Strings.ItemDescription.VitalsRegen[i], Strings.ItemDescription.Percentage.ToString(mItem.VitalsRegen[i]));
+                DisplayKeyValueRowWithDifference(vitalRegenDiff, vitalRegenLabel, Strings.ItemDescription.Percentage.ToString(vitalRegenValue), rows);
             }
         }
-
         // Stats
         var statModifiers = mItemProperties?.StatModifiers;
         for (var statIndex = 0; statIndex < Enum.GetValues<Stat>().Length; statIndex++)
         {
             var stat = (Stat)statIndex;
-            // Do we have item properties, if so this is a finished item. Otherwise does this item not have growing stats?
             var statLabel = Strings.ItemDescription.StatCounts[statIndex];
             ItemRange? rangeForStat = default;
             var percentageGivenForStat = mItem.PercentageStatsGiven[statIndex];
-            if (statModifiers != default || !mItem.TryGetRangeFor(stat, out rangeForStat) || rangeForStat.LowRange == rangeForStat.HighRange)
+            var statDiff = GetStatDifference(statIndex);
+
+            // Si hay modificadores o el rango de estadísticas es fijo
+            if (statModifiers != null || !mItem.TryGetRangeFor(stat, out rangeForStat) || rangeForStat.LowRange == rangeForStat.HighRange)
             {
                 var flatValueGivenForStat = mItem.StatsGiven[statIndex];
-                if (statModifiers != default)
+                if (statModifiers != null)
                 {
                     flatValueGivenForStat += statModifiers[statIndex];
                 }
 
-                // If the range is something like 1 to 1 then it should just be added into the flat stat
                 flatValueGivenForStat += rangeForStat?.LowRange ?? 0;
 
                 if (flatValueGivenForStat != 0 && percentageGivenForStat != 0)
                 {
-                    rows.AddKeyValueRow(
+                    // Mostrar valores regulares y porcentuales con diferencias y colores
+                    DisplayKeyValueRowWithDifferenceAndPercent(
+                        statDiff,
+                        percentageGivenForStat,
                         statLabel,
-                        Strings.ItemDescription.RegularAndPercentage.ToString(flatValueGivenForStat, percentageGivenForStat)
+                        flatValueGivenForStat.ToString(),
+                        rows
                     );
                 }
                 else if (flatValueGivenForStat != 0)
                 {
-                    rows.AddKeyValueRow(statLabel, flatValueGivenForStat.ToString());
+                    // Mostrar solo valores regulares con diferencias y colores
+                    DisplayKeyValueRowWithDifference(
+                        statDiff,
+                        statLabel,
+                        flatValueGivenForStat.ToString(),
+                        rows
+                    );
                 }
                 else if (percentageGivenForStat != 0)
                 {
+                    // Mostrar solo valores porcentuales
                     rows.AddKeyValueRow(
                         statLabel,
-                        Strings.ItemDescription.Percentage.ToString(percentageGivenForStat)
+                        Strings.ItemDescription.Percentage.ToString(percentageGivenForStat),
+                        CustomColors.ItemDesc.Muted,
+                        CustomColors.ItemDesc.Muted
                     );
                 }
             }
-            // We do not have item properties and have growing stats! So don't display a finished stat but a range instead.
+            // Si las estadísticas tienen un rango de crecimiento
             else if (mItem.TryGetRangeFor(stat, out var range))
             {
                 var statGiven = mItem.StatsGiven[statIndex];
@@ -380,21 +543,38 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
                     );
                 }
 
-                rows.AddKeyValueRow(statLabel, statMessage);
+                // Mostrar el rango y las diferencias
+                rows.AddKeyValueRow(statLabel, statMessage, CustomColors.ItemDesc.Muted, Color.White);
+                DisplayKeyValueRowWithDifferenceAndPercent(
+                    statDiff,
+                    percentageGivenForStat,
+                    statLabel,
+                    statGiven.ToString(),
+                    rows
+                );
             }
         }
 
-        // Bonus Effect
+
+
+        // Bonus Effects
         foreach (var effect in mItem.Effects)
         {
             if (effect.Type != ItemEffect.None && effect.Percentage != 0)
             {
-                rows.AddKeyValueRow(Strings.ItemDescription.BonusEffects[(int)effect.Type], Strings.ItemDescription.Percentage.ToString(effect.Percentage));
+                var bonusDiff = GetBonusEffectDifference(effect.Type);
+                DisplayKeyValueRowWithDifference(bonusDiff, Strings.ItemDescription.BonusEffects[(int)effect.Type], Strings.ItemDescription.Percentage.ToString(effect.Percentage), rows);
             }
         }
 
         // Resize the container.
         rows.SizeToChildren(true, true);
+    }
+
+    private int GetAttackSpeedDifference()
+    {
+        var equippedSpeed = GetEquippedWeapon()?.AttackSpeedValue ?? 0;
+        return mItem.AttackSpeedValue - equippedSpeed;
     }
 
     protected void SetupConsumableInfo()
@@ -519,4 +699,88 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         base.Dispose();
         mSpellDescWindow?.Dispose();
     }
+
+    private void DisplayKeyValueRowWithDifference(int statDiff, string keyString, string valueString, Components.RowContainerComponent rows, string unit = "")
+    {
+        // Si hay una diferencia, mostrar con el color adecuado
+        if (statDiff != 0)
+        {
+            if (Math.Sign(statDiff) > 0)
+            {
+                // Diferencia positiva
+                rows.AddKeyValueRow(
+                    keyString,
+                    $"{valueString} (+{statDiff}{unit})",
+                    CustomColors.ItemDesc.Muted,
+                    CustomColors.ItemDesc.Better
+                );
+            }
+            else
+            {
+                // Diferencia negativa
+                rows.AddKeyValueRow(
+                    keyString,
+                    $"{valueString} ({statDiff}{unit})",
+                    CustomColors.ItemDesc.Muted,
+                    CustomColors.ItemDesc.Worse
+                );
+            }
+        }
+        else
+        {
+            // Sin diferencia: solo mostrar el valor base
+            rows.AddKeyValueRow(
+                keyString,
+                valueString,
+                CustomColors.ItemDesc.Muted, CustomColors.ItemDesc.Muted
+            );
+        }
+    }
+
+
+    private void DisplayKeyValueRowWithDifferenceAndPercent(int statDiff, int percentDiff, string keyString, string valueString, Components.RowContainerComponent rows)
+    {
+        string statString = statDiff != 0
+            ? (Math.Sign(statDiff) > 0 ? $"+{statDiff}" : $"{statDiff}")
+            : "";
+
+        string percentString = percentDiff != 0
+            ? (Math.Sign(percentDiff) > 0 ? $"+{percentDiff}%" : $"{percentDiff}%")
+            : "";
+
+        var color = Math.Sign(statDiff) > 0
+            ? CustomColors.ItemDesc.Better
+            : CustomColors.ItemDesc.Worse;
+
+        if (statDiff != 0 || percentDiff != 0)
+        {
+            rows.AddKeyValueRow(keyString, $"{valueString} ({statString}, {percentString})", CustomColors.ItemDesc.Muted, color);
+        }
+        else
+        {
+            rows.AddKeyValueRow(keyString, valueString, CustomColors.ItemDesc.Muted,color);
+        }
+    }
+
+    private void DisplayKeyValueRowWithDifference(
+        double statDiff,
+        string keyString,
+        string valueString,
+        Components.RowContainerComponent rows,
+        string unit = "")
+    {
+        if (statDiff != 0)
+        {
+            var differenceText = Math.Sign(statDiff) > 0
+                ? $"+{statDiff.ToString("0.##")}{unit}"
+                : $"{statDiff.ToString("0.##")}{unit}";
+
+            rows.AddKeyValueRow(keyString, $"{valueString} ({differenceText})");
+        }
+        else
+        {
+            rows.AddKeyValueRow(keyString, valueString);
+        }
+    }
+
 }

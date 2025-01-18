@@ -1742,6 +1742,8 @@ public static partial class Strings
             {"Epic", @"Epic"},
             {"Legendary", @"Legendary"},
         };
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString AttackSpeedComparison = @"Attack Speed: {00} ({01})";
     }
 
     public partial struct Keys

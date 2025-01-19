@@ -2409,13 +2409,13 @@ public static partial class PacketSender
     {
         if (player == null || player.Jobs == null || player.Jobs.Count == 0)
         {
-            PacketSender.SendChatMsg(player, "Error: No hay trabajos inicializados para este jugador.", ChatMessageType.Notice);
+            player.InitializeJobs();
             return;
         }
 
         var jobData = new Dictionary<JobType, JobData>();
         // Inicializar trabajos si no están presentes
-        player.InitializeJobs();
+       
         foreach (var job in player.Jobs)
         {
             var jobType = job.Key;

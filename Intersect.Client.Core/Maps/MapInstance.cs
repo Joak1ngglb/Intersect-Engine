@@ -749,16 +749,16 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             //     () =>
             //     {
             var startVbo = DateTime.UtcNow;
-            Dictionary<string, GameTileBuffer[][]> buffers = [];
-            foreach (var layer in Options.Instance.MapOpts.Layers.All)
+            Dictionary<string, GameTileBuffer[][]> buffers = new Dictionary<string, GameTileBuffer[][]>();
+            foreach (var mapLayer in Options.Instance.MapOpts.Layers.All)
             {
-                var layerBuffers = DrawMapLayer(layer, X, Y);
+                var layerBuffers = DrawMapLayer(mapLayer, X, Y);
                 if (layerBuffers == default)
                 {
                     continue;
                 }
 
-                buffers[layer] = layerBuffers;
+                buffers[mapLayer] = layerBuffers;
                 for (var animationFrameIndex = 0; animationFrameIndex < MapAnimationFrames; animationFrameIndex++)
                 {
                     var layerBuffersForFrame = layerBuffers[animationFrameIndex];
@@ -766,24 +766,29 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                     {
                         tileBuffer.SetData();
                     }
+                }
 
-            var endVbo = DateTime.UtcNow;
-            var elapsedVbo = endVbo - startVbo;
-            Log.Info($"Built VBO for map instance {Id} in {elapsedVbo.TotalMilliseconds}ms");
+                var endVbo = DateTime.UtcNow;
+                var elapsedVbo = endVbo - startVbo;
+                Log.Info($"Built VBO for map instance {Id} in {elapsedVbo.TotalMilliseconds}ms");
 
-            // lock (mTileBuffers)
-            // {
-            foreach (var (layer, layerBuffers) in buffers)
-            {
-                _tileBuffersPerLayer[layer] = layerBuffers;
+                // lock (mTileBuffers)
+                // {
+                foreach (var kvp in buffers)
+                {
+                    var layerKey = kvp.Key;
+                    var layerBuffersArray = kvp.Value;
+                    _tileBuffersPerLayer[layerKey] = layerBuffersArray;
+                }
+                // }
+
+                //         _vboCompute = default;
+                //     }
+                // );
             }
-            // }
-
-            //         _vboCompute = default;
-            //     }
-            // );
         }
     }
+
 
     public void DestroyVBOs()
     {
@@ -1515,22 +1520,22 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             // Vertical movement (upward first, then downward in an inverted U shape)
             var height = _tileHeight * 2; // Maximum height the message will reach
             var yOffset = -height * (1 - (progress - 0.5f) * (progress - 0.5f) * 4); // Smooth inverted U movement
-            var y = (float)(Y + actionMessage.Y * _tileHeight + yOffset); // Ensure float
+            var yPosition = (float)(Y + actionMessage.Y * _tileHeight + yOffset); // Ensure float
 
             // Horizontal movement (keeps moving in the launch direction)
             var xOffset = actionMessage.XOffset * (1 - progress); // Moves in the initial direction and slows down
-            var x = (float)(X + actionMessage.X * _tileWidth + xOffset); // Ensure float
+            var xPosition = (float)(X + actionMessage.X * _tileWidth + xOffset); // Ensure float
 
             // Gradual scaling (shrinks progressively)
             var scale = 1 - progress * 0.5f; // Scale from 1.0 to 0.5 (adjustable)
 
             // Render the message
-            var textWidth = Graphics.Renderer.MeasureText(actionMessage.Text, Graphics.ActionMsgFont, scale).X;
+            var textWidthScaled = Graphics.Renderer.MeasureText(actionMessage.Text, Graphics.ActionMsgFont, scale).X;
             Graphics.Renderer.DrawString(
                 actionMessage.Text,
                 Graphics.ActionMsgFont,
-                x - (float)(textWidth / 2f), // Center the text
-                y,
+                xPosition - (float)(textWidthScaled / 2f), // Center the text
+                yPosition,
                 scale, // Apply scaling to the text
                 actionMessage.Color, // Text color comes directly from actionMessage.Color
                 true, // worldPos

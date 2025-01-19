@@ -7,17 +7,12 @@ using Intersect.Client.General;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
-using Intersect.Client.Framework.Graphics;
-using System.Diagnostics;
 
 namespace Intersect.Client.Entities;
 
 public partial class Resource : Entity, IResource
 {
     private bool _waitingForTilesets;
-    private const byte BEHIND_ALPHA = 120; // Nivel de transparencia cuando el jugador está detrás
-    private const byte NORMAL_ALPHA = 255; // Nivel de transparencia normal
-    private bool _playerBehind;
 
     public ResourceBase? BaseResource { get; set; }
 
@@ -47,34 +42,22 @@ public partial class Resource : Entity, IResource
             }
 
             mMySprite = value;
-            ReloadSpriteTexture();
-        }
-    }
-
-    private void ReloadSpriteTexture()
-    {
-        if (BaseResource == null)
-        {
-            return;
-        }
-
-        if (IsDead && BaseResource.Exhausted.GraphicFromTileset ||
-            !IsDead && BaseResource.Initial.GraphicFromTileset)
-        {
-            if (GameContentManager.Current.TilesetsLoaded)
+            if (IsDead && BaseResource.Exhausted.GraphicFromTileset ||
+                !IsDead && BaseResource.Initial.GraphicFromTileset)
             {
-
-                Texture = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Tileset, mMySprite);
+                if (GameContentManager.Current.TilesetsLoaded)
+                {
+                    Texture = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Tileset, mMySprite);
+                }
+                else
+                {
+                    _waitingForTilesets = true;
+                }
             }
             else
             {
-                _waitingForTilesets = true;
+                Texture = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Resource, mMySprite);
             }
-        }
-        else
-        {
-            Texture = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Resource, mMySprite);
-        }
 
             mHasRenderBounds = false;
         }
@@ -131,13 +114,16 @@ public partial class Resource : Entity, IResource
 
             return false;
         }
-
-        var map = Maps.MapInstance.Get(MapId);
-        LatestMap = map;
-        if (map == null || !map.InView())
+        else
         {
-            Globals.EntitiesToDispose.Add(Id);
-            return false;
+            var map = Maps.MapInstance.Get(MapId);
+            LatestMap = map;
+            if (map == null || !map.InView())
+            {
+                Globals.EntitiesToDispose.Add(Id);
+
+                return false;
+            }
         }
 
         if (!mHasRenderBounds)
@@ -183,20 +169,10 @@ public partial class Resource : Entity, IResource
         //Otherwise we are alive or dead and we want to render below players/npcs
         if (renderList != null)
         {
-            renderList.Add(this);
+            _ = renderList.Remove(this);
         }
 
-        if (map == null)
-        {
-            return null;
-        }
-
-        if (Globals.MapGrid == default)
-        {
-            return null;
-        }
-
-        if (Globals.Me?.MapInstance == null)
+        if (map == null || Globals.Me == null || Globals.Me.MapInstance == null || Globals.MapGrid == default)
         {
             return null;
         }
@@ -257,6 +233,16 @@ public partial class Resource : Entity, IResource
             return;
         }
 
+        if (_waitingForTilesets && !GameContentManager.Current.TilesetsLoaded)
+        {
+            return;
+        }
+
+        if (_waitingForTilesets && GameContentManager.Current.TilesetsLoaded)
+        {
+            _waitingForTilesets = false;
+        }
+
         if (Texture != null)
         {
             mSrcRectangle.X = 0;
@@ -283,8 +269,8 @@ public partial class Resource : Entity, IResource
 
             mDestRectangle.Width = mSrcRectangle.Width;
             mDestRectangle.Height = mSrcRectangle.Height;
-            mDestRectangle.Y = (int)(map.Y + Y * Options.TileHeight + OffsetY);
-            mDestRectangle.X = (int)(map.X + X * Options.TileWidth + OffsetX);
+            mDestRectangle.Y = (int) (map.Y + Y * Options.TileHeight + OffsetY);
+            mDestRectangle.X = (int) (map.X + X * Options.TileWidth + OffsetX);
             if (mSrcRectangle.Height > Options.TileHeight)
             {
                 mDestRectangle.Y -= mSrcRectangle.Height - Options.TileHeight;
@@ -296,59 +282,20 @@ public partial class Resource : Entity, IResource
             }
 
             mHasRenderBounds = true;
-        mDestRectangle.Width = mSrcRectangle.Width;
-        mDestRectangle.Height = mSrcRectangle.Height;
-        mDestRectangle.Y = (int)(map.Y + Y * Options.TileHeight + OffsetY);
-        mDestRectangle.X = (int)(map.X + X * Options.TileWidth + OffsetX);
-        if (mSrcRectangle.Height > Options.TileHeight)
-        {
-            mDestRectangle.Y -= mSrcRectangle.Height - Options.TileHeight;
         }
     }
 
     //Rendering Resources
     public override void Draw()
     {
-        if (MapInstance == null || Texture == null)
+        if (MapInstance == null)
         {
             return;
         }
 
-        if (!_recalculateRenderBounds)
+        if (Texture != null)
         {
-            CalculateRenderBounds();
+            Graphics.DrawGameTexture(Texture, mSrcRectangle, mDestRectangle, Intersect.Color.White);
         }
-
-        try
-        {
-            // Determinar si el jugador está detrás del recurso
-            _playerBehind = IsPlayerBehindResource();
-
-            // Ajustar la transparencia según la posición del jugador
-            var alpha = _playerBehind ? BEHIND_ALPHA : NORMAL_ALPHA;
-            var renderColor = new Color(alpha, 255, 255, 255);
-
-            // Dibujar la textura del recurso con la transparencia ajustada
-            Graphics.DrawGameTexture(
-                Texture,
-                _renderBoundsSrc,
-                _renderBoundsDest,
-                renderColor
-            );
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error al dibujar recurso: {ex.Message}");
-        }
-    }
-    private bool IsPlayerBehindResource()
-    {
-        var player = Globals.Me;
-        if (player == null || player.MapId != MapId)
-        {
-            return false;
-        }
-
-        return IsNear(player, 1) && player.IsBehind(this);
     }
 }

@@ -109,6 +109,7 @@ public partial class SeedUsers : SeedData<User>
                     StatPoints = 0,
                     Sprite = "1.png",
                     Face = null
+                    
                 };
 
                 player.InitializeJobs();
@@ -125,7 +126,7 @@ public partial class SeedUsers : SeedData<User>
                 {
                     player.Stat[i].BaseStat = 0;
                 }
-                // **Inicialización de trabajos**
+           
 
                 user.Players?.Add(player);
                 player.ValidateLists();
@@ -142,7 +143,7 @@ public partial class SeedUsers : SeedData<User>
                 {
                     player.Stat[i].BaseStat = 0;
                 }
-                // **Inicialización de trabajos**
+         
                
                 user.Players?.Add(player);
                 player.ValidateLists();

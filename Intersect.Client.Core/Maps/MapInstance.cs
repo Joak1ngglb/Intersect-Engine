@@ -609,47 +609,47 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 switch (mapAttribute.Type)
                 {
                     case MapAttributeType.Animation:
+                    {
+                        var anim = AnimationBase.Get(((MapAnimationAttribute)mapAttribute).AnimationId);
+                        if (anim == null)
                         {
-                            var anim = AnimationBase.Get(((MapAnimationAttribute)mapAttribute).AnimationId);
-                            if (anim == null)
-                            {
-                                continue;
-                            }
-
-                            if (!mAttributeAnimInstances.ContainsKey(mapAttribute))
-                            {
-                                var animInstance = new Animation(anim, true);
-                                animInstance.SetPosition(
-                                    X + x * _tileWidth + _tileHalfWidth,
-                                    Y + y * _tileHeight + _tileHalfHeight, x, y, Id, 0
-                                );
-
-                                mAttributeAnimInstances.Add(mapAttribute, animInstance);
-                            }
-
-                            mAttributeAnimInstances[mapAttribute].Update();
-                            break;
+                            continue;
                         }
+
+                        if (!mAttributeAnimInstances.ContainsKey(mapAttribute))
+                        {
+                            var animInstance = new Animation(anim, true);
+                            animInstance.SetPosition(
+                                X + x * _tileWidth + _tileHalfWidth,
+                                Y + y * _tileHeight + _tileHalfHeight, x, y, Id, 0
+                            );
+
+                            mAttributeAnimInstances.Add(mapAttribute, animInstance);
+                        }
+
+                        mAttributeAnimInstances[mapAttribute].Update();
+                        break;
+                    }
                     case MapAttributeType.Critter:
+                    {
+                        var critterAttribute = ((MapCritterAttribute)mapAttribute);
+                        var sprite = critterAttribute.Sprite;
+                        var anim = AnimationBase.Get(critterAttribute.AnimationId);
+                        if (anim == null && TextUtils.IsNone(sprite))
                         {
-                            var critterAttribute = ((MapCritterAttribute)mapAttribute);
-                            var sprite = critterAttribute.Sprite;
-                            var anim = AnimationBase.Get(critterAttribute.AnimationId);
-                            if (anim == null && TextUtils.IsNone(sprite))
-                            {
-                                continue;
-                            }
-
-                            if (!mAttributeCritterInstances.ContainsKey(mapAttribute))
-                            {
-                                var critter = new Critter(this, (byte)x, (byte)y, critterAttribute);
-                                LocalCritters.Add(critter.Id, critter);
-                                mAttributeCritterInstances.Add(mapAttribute, critter);
-                            }
-
-                            mAttributeCritterInstances[mapAttribute].Update();
-                            break;
+                            continue;
                         }
+
+                        if (!mAttributeCritterInstances.ContainsKey(mapAttribute))
+                        {
+                            var critter = new Critter(this, (byte)x, (byte)y, critterAttribute);
+                            LocalCritters.Add(critter.Id, critter);
+                            mAttributeCritterInstances.Add(mapAttribute, critter);
+                        }
+
+                        mAttributeCritterInstances[mapAttribute].Update();
+                        break;
+                    }
                 }
             }
         }
@@ -748,36 +748,38 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             // _vboCompute = Task.Run(
             //     () =>
             //     {
-            var startVbo = DateTime.UtcNow;
-            Dictionary<string, GameTileBuffer[][]> buffers = [];
-            foreach (var layer in Options.Instance.MapOpts.Layers.All)
-            {
-                var layerBuffers = DrawMapLayer(layer, X, Y);
-                if (layerBuffers == default)
-                {
-                    continue;
-                }
-
-                buffers[layer] = layerBuffers;
-                for (var animationFrameIndex = 0; animationFrameIndex < MapAnimationFrames; animationFrameIndex++)
-                {
-                    var layerBuffersForFrame = layerBuffers[animationFrameIndex];
-                    foreach (var tileBuffer in layerBuffersForFrame)
+                    var startVbo = DateTime.UtcNow;
+                    Dictionary<string, GameTileBuffer[][]> buffers = [];
+                    foreach (var layer in Options.Instance.MapOpts.Layers.All)
                     {
-                        tileBuffer.SetData();
+                        var layerBuffers = DrawMapLayer(layer, X, Y);
+                        if (layerBuffers == default)
+                        {
+                            continue;
+                        }
+
+                        buffers[layer] = layerBuffers;
+                        for (var animationFrameIndex = 0; animationFrameIndex < MapAnimationFrames; animationFrameIndex++)
+                        {
+                            var layerBuffersForFrame = layerBuffers[animationFrameIndex];
+                            foreach (var tileBuffer in layerBuffersForFrame)
+                            {
+                                tileBuffer.SetData();
+                            }
+                        }
                     }
 
-            var endVbo = DateTime.UtcNow;
-            var elapsedVbo = endVbo - startVbo;
-            Log.Info($"Built VBO for map instance {Id} in {elapsedVbo.TotalMilliseconds}ms");
+                    var endVbo = DateTime.UtcNow;
+                    var elapsedVbo = endVbo - startVbo;
+                    Log.Info($"Built VBO for map instance {Id} in {elapsedVbo.TotalMilliseconds}ms");
 
-            // lock (mTileBuffers)
-            // {
-            foreach (var (layer, layerBuffers) in buffers)
-            {
-                _tileBuffersPerLayer[layer] = layerBuffers;
-            }
-            // }
+                    // lock (mTileBuffers)
+                    // {
+                        foreach (var (layer, layerBuffers) in buffers)
+                        {
+                            _tileBuffersPerLayer[layer] = layerBuffers;
+                        }
+                    // }
 
             //         _vboCompute = default;
             //     }
@@ -1508,43 +1510,22 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 (1000 - (int)(actionMessage.TransmissionTimer - Timing.Global.MillisecondsUtc)) / 1000;
             var textWidth = Graphics.Renderer.MeasureText(actionMessage.Text, Graphics.ActionMsgFont, 1).X;
 
-            // Remaining time and progress (0 to 1)
-            var timeRemaining = actionMessage.TransmissionTimer - Timing.Global.MillisecondsUtc;
-            var progress = Math.Max(0, 1 - timeRemaining / 1000f); // Progress from 0 to 1
-
-            // Vertical movement (upward first, then downward in an inverted U shape)
-            var height = _tileHeight * 2; // Maximum height the message will reach
-            var yOffset = -height * (1 - (progress - 0.5f) * (progress - 0.5f) * 4); // Smooth inverted U movement
-            var y = (float)(Y + actionMessage.Y * _tileHeight + yOffset); // Ensure float
-
-            // Horizontal movement (keeps moving in the launch direction)
-            var xOffset = actionMessage.XOffset * (1 - progress); // Moves in the initial direction and slows down
-            var x = (float)(X + actionMessage.X * _tileWidth + xOffset); // Ensure float
-
-            // Gradual scaling (shrinks progressively)
-            var scale = 1 - progress * 0.5f; // Scale from 1.0 to 0.5 (adjustable)
-
-            // Render the message
-            var textWidth = Graphics.Renderer.MeasureText(actionMessage.Text, Graphics.ActionMsgFont, scale).X;
             Graphics.Renderer.DrawString(
                 actionMessage.Text,
                 Graphics.ActionMsgFont,
-                x - (float)(textWidth / 2f), // Center the text
+                x - textWidth / 2f,
                 y,
-                scale, // Apply scaling to the text
-                actionMessage.Color, // Text color comes directly from actionMessage.Color
-                true, // worldPos
-                null, // renderTexture
-                new Color(
-                    0, 0, 0, 255 // Fixed black border
-                ) // Fixed border color
+                1,
+                actionMessage.Color,
+                true,
+                null,
+                new Color(40, 40, 40)
             );
 
-            // Try to remove the message
+            //Try to remove
             actionMessage.TryRemove();
         }
     }
-
 
     //Events
     public void AddEvent(Guid evtId, EventEntityPacket packet)

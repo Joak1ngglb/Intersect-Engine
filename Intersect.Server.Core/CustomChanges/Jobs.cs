@@ -3,6 +3,7 @@ using Intersect.Enums;
 using Intersect.Framework.Core.Config;
 using Intersect.Server.Localization;
 using Intersect.Server.Networking;
+using Intersect.Utilities;
 using Newtonsoft.Json;
 
 namespace Intersect.Server.Entities
@@ -81,7 +82,19 @@ namespace Intersect.Server.Entities
         public JobType JobType { get; set; }
         public int JobLevel { get; set; } = 1;
         public long JobExp { get; set; } = 0;
+        public int JobPoints { get; set; } = 0; // Nueva propiedad para los puntos de trabajo
 
+        [JsonIgnore, Column(nameof(JobAllocatedPoints))]
+        public string JobPointsJson
+        {
+            get => DatabaseUtils.SaveIntArray(JobAllocatedPoints, Enum.GetValues<Stat>().Length);
+            set => JobAllocatedPoints = DatabaseUtils.LoadIntArray(value, Enum.GetValues<Stat>().Length);
+        }
+
+        [NotMapped]
+        public int[] JobAllocatedPoints { get; set; } = new int[Enum.GetValues<Stat>().Length];
+        // Lista de habilidades asociadas al trabajo
+        public List<JobSkill> Skills { get; set; } = new List<JobSkill>();
         public PlayerJob(JobType jobType)
         {
             JobType = jobType;
@@ -127,10 +140,83 @@ namespace Intersect.Server.Entities
         private void LevelUp(Player player)
         {
             JobLevel++;
-
+            JobPoints += Options.JobPointGainPerLevel; // Otorga puntos al subir de nivel
             var levelUpMessage = Strings.Player.GetJobLevelUpMessage(JobType);
             PacketSender.SendChatMsg(player, string.Format(levelUpMessage, JobLevel), ChatMessageType.Experience);
             PacketSender.SendActionMsg(player, $"¡{JobType} Level UP!", CustomColors.Combat.JobLevelUp);
         }
+
+        public void AddJobPoints(int points)
+        {
+            JobPoints += points;
+        }
+
+        public bool SpendJobPoints(int points)
+        {
+            if (JobPoints >= points)
+            {
+                JobPoints -= points;
+                return true;
+            }
+            return false; // No hay suficientes puntos
+        }
+        public bool UnlockSkill(Guid skillId, Player player)
+        {
+            var skill = Skills.FirstOrDefault(s => s.SkillId == skillId);
+
+            if (skill == null)
+            {
+                PacketSender.SendChatMsg(player, $"Error: Habilidad no encontrada para el trabajo {JobType}.", ChatMessageType.Error);
+                return false;
+            }
+
+            if (skill.Unlocked)
+            {
+                PacketSender.SendChatMsg(player, "La habilidad ya está desbloqueada.", ChatMessageType.Error);
+                return false;
+            }
+
+            if (JobPoints < skill.Cost)
+            {
+                PacketSender.SendChatMsg(player, "No tienes suficientes puntos de trabajo para desbloquear esta habilidad.", ChatMessageType.Error);
+                return false;
+            }
+
+            if (JobLevel < skill.RequiredLevel)
+            {
+                PacketSender.SendChatMsg(player, $"Debes ser nivel {skill.RequiredLevel} en {JobType} para desbloquear esta habilidad.", ChatMessageType.Error);
+                return false;
+            }
+
+            // Desbloquea la habilidad
+            skill.Unlocked = true;
+            JobPoints -= skill.Cost;
+
+            PacketSender.SendJobSync(player); // Sincroniza los datos
+            PacketSender.SendChatMsg(player, $"¡Habilidad '{skill.Name}' desbloqueada con éxito!", ChatMessageType.Notice);
+
+            return true;
+        }
+        public float GetEffectMultiplier(JobSkillEffectType effectType)
+        {
+            // Suma los efectos activos para un tipo específico
+            return Skills
+                .Where(skill => skill.Unlocked && skill.EffectType == effectType)
+                .Sum(skill => skill.EffectValue);
+        }
+
     }
+    public class JobSkill
+    {
+        public Guid SkillId { get; set; } // Identificador único de la habilidad
+        public string Name { get; set; } // Nombre de la habilidad
+        public int RequiredLevel { get; set; } // Nivel requerido para desbloquear
+        public int Cost { get; set; } // Costo en puntos para desbloquear
+        public bool Unlocked { get; set; } = false; // Estado de desbloqueo
+        public JobSkillEffectType EffectType { get; set; } // Tipo de efecto
+
+        public float EffectValue { get; set; } // Valor del efecto (porcentaje o cantidad)
+
+    }
+
 }

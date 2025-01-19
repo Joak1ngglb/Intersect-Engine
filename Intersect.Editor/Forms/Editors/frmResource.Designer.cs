@@ -37,6 +37,8 @@ namespace Intersect.Editor.Forms.Editors
             txtSearch = new DarkTextBox();
             lstGameObjects = new Controls.GameObjectList();
             grpGeneral = new DarkGroupBox();
+            nudLevel = new DarkNumericUpDown();
+            label3 = new Label();
             btnAddFolder = new DarkButton();
             lblFolder = new Label();
             cmbFolder = new DarkComboBox();
@@ -110,10 +112,9 @@ namespace Intersect.Editor.Forms.Editors
             toolStripItemPaste = new ToolStripButton();
             toolStripSeparator3 = new ToolStripSeparator();
             toolStripItemUndo = new ToolStripButton();
-            nudLevel = new DarkNumericUpDown();
-            label3 = new Label();
             grpResources.SuspendLayout();
             grpGeneral.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)nudLevel).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudMaxHp).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudMinHp).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudSpawnDuration).BeginInit();
@@ -134,7 +135,6 @@ namespace Intersect.Editor.Forms.Editors
             ((System.ComponentModel.ISupportInitialize)nudDropAmount).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudDropChance).BeginInit();
             toolStrip.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)nudLevel).BeginInit();
             SuspendLayout();
             // 
             // grpResources
@@ -229,6 +229,29 @@ namespace Intersect.Editor.Forms.Editors
             grpGeneral.TabIndex = 15;
             grpGeneral.TabStop = false;
             grpGeneral.Text = "General";
+            // 
+            // nudLevel
+            // 
+            nudLevel.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudLevel.ForeColor = System.Drawing.Color.Gainsboro;
+            nudLevel.Location = new System.Drawing.Point(88, 174);
+            nudLevel.Margin = new Padding(4, 3, 4, 3);
+            nudLevel.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            nudLevel.Name = "nudLevel";
+            nudLevel.Size = new Size(158, 23);
+            nudLevel.TabIndex = 54;
+            nudLevel.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudLevel.ValueChanged += nudLevel_ValueChanged;
+            // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Location = new System.Drawing.Point(7, 177);
+            label3.Margin = new Padding(4, 0, 4, 0);
+            label3.Name = "label3";
+            label3.Size = new Size(37, 15);
+            label3.TabIndex = 53;
+            label3.Text = "Level:";
             // 
             // btnAddFolder
             // 
@@ -735,7 +758,7 @@ namespace Intersect.Editor.Forms.Editors
             cmbJobType.FlatStyle = FlatStyle.Flat;
             cmbJobType.ForeColor = System.Drawing.Color.Gainsboro;
             cmbJobType.FormattingEnabled = true;
-            cmbJobType.Location = new System.Drawing.Point(9, 37);
+            cmbJobType.Location = new System.Drawing.Point(52, 30);
             cmbJobType.Margin = new Padding(4, 3, 4, 3);
             cmbJobType.Name = "cmbJobType";
             cmbJobType.Size = new Size(116, 24);
@@ -770,7 +793,7 @@ namespace Intersect.Editor.Forms.Editors
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new System.Drawing.Point(5, 19);
+            label1.Location = new System.Drawing.Point(48, 12);
             label1.Margin = new Padding(2, 0, 2, 0);
             label1.Name = "label1";
             label1.Size = new Size(25, 15);
@@ -1163,29 +1186,6 @@ namespace Intersect.Editor.Forms.Editors
             toolStripItemUndo.Text = "Undo";
             toolStripItemUndo.Click += toolStripItemUndo_Click;
             // 
-            // nudLevel
-            // 
-            nudLevel.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
-            nudLevel.ForeColor = System.Drawing.Color.Gainsboro;
-            nudLevel.Location = new System.Drawing.Point(88, 174);
-            nudLevel.Margin = new Padding(4, 3, 4, 3);
-            nudLevel.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
-            nudLevel.Name = "nudLevel";
-            nudLevel.Size = new Size(158, 23);
-            nudLevel.TabIndex = 54;
-            nudLevel.Value = new decimal(new int[] { 0, 0, 0, 0 });
-            nudLevel.ValueChanged += nudLevel_ValueChanged;
-            // 
-            // label3
-            // 
-            label3.AutoSize = true;
-            label3.Location = new System.Drawing.Point(7, 177);
-            label3.Margin = new Padding(4, 0, 4, 0);
-            label3.Name = "label3";
-            label3.Size = new Size(37, 15);
-            label3.TabIndex = 53;
-            label3.Text = "Level:";
-            // 
             // FrmResource
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -1212,6 +1212,7 @@ namespace Intersect.Editor.Forms.Editors
             grpResources.PerformLayout();
             grpGeneral.ResumeLayout(false);
             grpGeneral.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)nudLevel).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudMaxHp).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudMinHp).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudSpawnDuration).EndInit();
@@ -1239,7 +1240,6 @@ namespace Intersect.Editor.Forms.Editors
             ((System.ComponentModel.ISupportInitialize)nudDropChance).EndInit();
             toolStrip.ResumeLayout(false);
             toolStrip.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)nudLevel).EndInit();
             ResumeLayout(false);
         }
 

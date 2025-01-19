@@ -12,7 +12,7 @@ namespace Intersect.Framework.Core.Config
         /// </summary>
         public int MaxJobLevel { get; set; } = 100;
 
-   
+        public int JobPointGainPerLevel { get; set; } = 1;
         /// <summary>
         /// Growth rate for job experience required per level.
         /// </summary>

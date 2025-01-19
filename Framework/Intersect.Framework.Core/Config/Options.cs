@@ -218,6 +218,7 @@ public partial class Options
     public static Dictionary<JobType, long> JobBaseExp => Instance.JobOpts.JobBaseExp;
 
     public static double GainBaseExponent => Instance.JobOpts.ExpGrowthRate;
+    public static int JobPointGainPerLevel => Instance.JobOpts.JobPointGainPerLevel;
     public static EquipmentOptions Equipment => Instance.EquipmentOpts;
 
     public static CombatOptions Combat => Instance.CombatOpts;

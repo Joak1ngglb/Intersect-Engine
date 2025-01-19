@@ -2409,13 +2409,15 @@ public static partial class PacketSender
     {
         if (player == null || player.Jobs == null || player.Jobs.Count == 0)
         {
-            PacketSender.SendChatMsg(player, "Error: No hay trabajos inicializados para este jugador.", ChatMessageType.Notice);
+            // Inicializar trabajos si no están presentes
+            player.InitializeJobs();
+           // PacketSender.SendChatMsg(player, "Error: No hay trabajos inicializados para este jugadoasdasdasr.", ChatMessageType.Notice);
             return;
         }
 
         var jobData = new Dictionary<JobType, JobData>();
         // Inicializar trabajos si no están presentes
-        player.InitializeJobs();
+      
         foreach (var job in player.Jobs)
         {
             var jobType = job.Key;
@@ -2426,7 +2428,16 @@ public static partial class PacketSender
             {
                 Level = jobDetails.JobLevel,
                 Experience = jobDetails.JobExp,
-                ExperienceToNextLevel = jobDetails.GetExperienceToNextLevel(jobDetails.JobLevel)
+                ExperienceToNextLevel = jobDetails.GetExperienceToNextLevel(jobDetails.JobLevel),
+                JobPoints = jobDetails.JobPoints,
+                 Skills = jobDetails.Skills.Select(s => new SkillData
+                 {
+                     SkillId = s.SkillId,
+                     Name = s.Name,
+                     RequiredLevel = s.RequiredLevel,
+                     Cost = s.Cost,
+                     Unlocked = s.Unlocked
+                 }).ToList()
             };
         }
 

@@ -3,13 +3,14 @@ using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.Client.General;
 using Intersect.Client.Localization;
+using Intersect.Core;
 using Intersect.GameObjects.Ranges;
-using Intersect.Logging;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Interface.Game.DescriptionWindows.Components;
 using Intersect.Client.Framework.Gwen;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Interface.Game.DescriptionWindows;
 
@@ -126,7 +127,11 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error setting rarity description for rarity {Rarity}",
+                mItem.Rarity
+            );
             throw;
         }
 

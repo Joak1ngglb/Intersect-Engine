@@ -7,9 +7,7 @@ using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Ranges;
 using Intersect.Models;
 using Intersect.Utilities;
-
 using Microsoft.EntityFrameworkCore;
-
 using Newtonsoft.Json;
 using static Intersect.Config.ItemOptions;
 

@@ -5,16 +5,15 @@ using Intersect.Client.Framework.Content;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Compression;
 using Intersect.Configuration;
-using Intersect.Logging;
+using Intersect.Core;
 using Intersect.Plugins;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Framework.File_Management;
 
 
 public abstract partial class GameContentManager : IContentManager
 {
-    public ILogger Logger { get; }
-
     public enum UI
     {
         Menu,
@@ -79,9 +78,8 @@ public abstract partial class GameContentManager : IContentManager
 
     public ContentWatcher ContentWatcher { get; protected set; }
 
-    protected GameContentManager(ILogger logger)
+    protected GameContentManager()
     {
-        Logger = logger;
         Current = this;
     }
 
@@ -480,7 +478,11 @@ public abstract partial class GameContentManager : IContentManager
                     }
                     catch (Exception exception)
                     {
-                        Logger.Debug(exception);
+                        ApplicationContext.Context.Value?.Logger.LogDebug(
+                            exception,
+                            "Error occurred saving {ResourcePath}",
+                            resourcePath
+                        );
                     }
                 });
                 return;
@@ -497,7 +499,11 @@ public abstract partial class GameContentManager : IContentManager
             }
             catch (Exception exception)
             {
-                Logger.Debug(exception);
+                ApplicationContext.Context.Value?.Logger.LogDebug(
+                    exception,
+                    "Error occurred saving {ResourcePath}",
+                    resourcePath
+                );
             }
         });
     }

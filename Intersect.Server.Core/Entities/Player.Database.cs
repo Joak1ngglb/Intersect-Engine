@@ -1,19 +1,18 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
-
 using Intersect.Logging;
+using Intersect.Core;
 using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData;
 using Intersect.Server.General;
 using Intersect.Server.Networking;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Utilities;
-
 using Microsoft.EntityFrameworkCore;
-
 using Newtonsoft.Json;
 using Intersect.Server.Collections.Indexing;
 using Intersect.Server.Collections.Sorting;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Server.Entities;
 
@@ -121,9 +120,9 @@ public partial class Player
 
             return player;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error while finding player {Id}", playerId);
             return null;
         }
     }
@@ -152,9 +151,13 @@ public partial class Player
             _ = Validate(player);
             return player;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error while finding player '{PlayerName}'",
+                playerName
+            );
             return null;
         }
     }
@@ -179,9 +182,13 @@ public partial class Player
                 return AnyPlayerByName(context, name);
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error while checking if player '{PlayerName}' exists",
+                name
+            );
             return false;
         }
     }
@@ -284,7 +291,7 @@ public partial class Player
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"Failed to load friends for {Name}.");
+            ApplicationContext.Context.Value?.Logger.LogError(ex, $"Failed to load friends for {Name}.");
             //ServerContext.DispatchUnhandledException(new Exception("Failed to save user, shutting down to prevent rollbacks!"), true);
         }
     }
@@ -322,7 +329,7 @@ public partial class Player
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to add friend " + friend.Name + " to " + Name + "'s friends list.");
+            ApplicationContext.Context.Value?.Logger.LogError(ex, "Failed to add friend " + friend.Name + " to " + Name + "'s friends list.");
             return false;
         }
     }
@@ -357,7 +364,7 @@ public partial class Player
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"Failed to remove friendship between {id} and {otherId}.");
+            ApplicationContext.Context.Value?.Logger.LogError(ex, $"Failed to remove friendship between {id} and {otherId}.");
             return false;
         }
     }
@@ -410,7 +417,7 @@ public partial class Player
         }
         catch (Exception exception)
         {
-            Log.Error(
+            ApplicationContext.Context.Value?.Logger.LogError(
                 exception,
                 $"Error occurred while saving player {Id} ({nameof(playerContext)}={(createdPlayerContext == null ? "not null" : "null")}"
             );
@@ -434,9 +441,9 @@ public partial class Player
                 return context.Players.Count();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error counting players");
             return 0;
         }
     }
@@ -479,9 +486,9 @@ public partial class Player
                 return compiledQuery.Skip(skip).Take(take).ToList();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error listing players");
             total = 0;
             return null;
         }
@@ -504,9 +511,9 @@ public partial class Player
                 return results?.ToList();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error ranking players");
             return null;
         }
     }

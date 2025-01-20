@@ -16,11 +16,11 @@ using Intersect.Client.Maps;
 using Intersect.Client.Networking;
 using Intersect.Config.Guilds;
 using Intersect.Configuration;
+using Intersect.Core;
 using Intersect.Enums;
 using Intersect.Extensions;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Maps;
-using Intersect.Logging;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
 using Intersect.Client.Items;
@@ -29,6 +29,7 @@ using Intersect.Config.Guilds;
 using Intersect.Client.Interface.Game.DescriptionWindows;
 using Intersect.Client.Framework.Content;
 using Intersect.Client.Framework.Graphics;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Entities;
 
@@ -667,7 +668,11 @@ public partial class Player : Entity, IPlayer
     {
         if (slot < 0 || Spells.Length <= slot)
         {
-            Log.Warn(new ArgumentOutOfRangeException(nameof(slot), slot, $@"Slot was out of the range [0,{Spells.Length}"));
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                new ArgumentOutOfRangeException(nameof(slot), slot, $@"Slot was out of the range [0,{Spells.Length}"),
+                "Tried to get remaining cooldown for spell in invalid slot {SlotIndex}",
+                slot
+            );
             return 0;
         }
 
@@ -841,14 +846,14 @@ public partial class Player : Entity, IPlayer
         slot ??= Inventory[inventorySlotIndex];
         if (!ItemBase.TryGet(slot.ItemId, out var itemDescriptor))
         {
-            Log.Warn($"Tried to move item that does not exist from slot {inventorySlotIndex}: {itemDescriptor.Id}");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to move item that does not exist from slot {inventorySlotIndex}: {itemDescriptor.Id}");
             return false;
         }
 
         // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (quantityHint == 0)
         {
-            Log.Warn($"Tried to move 0 of '{itemDescriptor.Name}' ({itemDescriptor.Id})");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to move 0 of '{itemDescriptor.Name}' ({itemDescriptor.Id})");
             return false;
         }
 
@@ -966,14 +971,14 @@ public partial class Player : Entity, IPlayer
         slot ??= Globals.Bank[bankSlotIndex];
         if (!ItemBase.TryGet(slot.ItemId, out var itemDescriptor))
         {
-            Log.Warn($"Tried to move item that does not exist from slot {bankSlotIndex}: {itemDescriptor.Id}");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to move item that does not exist from slot {bankSlotIndex}: {itemDescriptor.Id}");
             return false;
         }
 
         // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (quantityHint == 0)
         {
-            Log.Warn($"Tried to move 0 of '{itemDescriptor.Name}' ({itemDescriptor.Id})");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to move 0 of '{itemDescriptor.Name}' ({itemDescriptor.Id})");
             return false;
         }
 
@@ -2561,7 +2566,7 @@ public partial class Player : Entity, IPlayer
 
     public override bool IsAllyOf(Player en)
     {
-        if (base.IsAllyOf(en)) 
+        if (base.IsAllyOf(en))
         {
             return true;
         }
@@ -2900,7 +2905,7 @@ public partial class Player : Entity, IPlayer
             }
         }
     }
-    
+
     // Checks if the target is at the opposite direction of the current player's direction.
     // The comparison also takes into account whether diagonal movement is enabled or not.
     private static bool IsTargetAtOppositeDirection(Direction currentDir, Direction targetDir)

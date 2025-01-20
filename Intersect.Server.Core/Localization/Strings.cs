@@ -1,10 +1,11 @@
 using System.Text;
 using Intersect.Config;
+using Intersect.Core;
 using Intersect.Framework.Core.Config;
 using Intersect.Localization;
-using Intersect.Logging;
 using Intersect.Server.Core;
 using Intersect.Server.Networking.Helpers;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect.Server.Localization;
@@ -1431,7 +1432,7 @@ public static partial class Strings
                     );
                 }
 
-                Log.Error(exception);
+                ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to deserialize strings");
 
                 return false;
             }
@@ -1453,7 +1454,7 @@ public static partial class Strings
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to save strings");
 
             return false;
         }

@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Intersect.Enums;
 using Intersect.Framework.Core.Config;
 using Intersect.Framework.Core.Serialization;
@@ -8,7 +7,6 @@ using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Events.Commands;
 using Intersect.Localization;
 using Intersect.Models;
-
 using Newtonsoft.Json;
 
 namespace Intersect.GameObjects;

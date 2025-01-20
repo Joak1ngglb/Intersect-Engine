@@ -338,7 +338,7 @@ public partial class InventoryItem
     public void Update()
     {
         var equipped = false;
-        for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+        for (var i = 0; i < Options.Instance.Equipment.Slots.Count; i++)
         {
             if (Globals.Me.MyEquipment[i] == DisplaySlot)
             {
@@ -490,7 +490,7 @@ public partial class InventoryItem
                 //Check inventory first.
                 if (mInventoryWindow.RenderBounds().IntersectsWith(dragRect))
                 {
-                    for (var i = 0; i < Options.MaxInvItems; i++)
+                    for (var i = 0; i < Options.Instance.Player.MaxInventory; i++)
                     {
                         if (mInventoryWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
                         {
@@ -524,7 +524,7 @@ public partial class InventoryItem
                 }
                 else if (Interface.GameUi.Hotbar.RenderBounds().IntersectsWith(dragRect))
                 {
-                    for (var i = 0; i < Options.Instance.PlayerOpts.HotbarSlotCount; i++)
+                    for (var i = 0; i < Options.Instance.Player.HotbarSlotCount; i++)
                     {
                         if (Interface.GameUi.Hotbar.Items[i].RenderBounds().IntersectsWith(dragRect))
                         {

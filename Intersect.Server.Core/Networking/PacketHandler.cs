@@ -108,7 +108,7 @@ internal sealed partial class PacketHandler
             return false;
         }
 
-        var packetOptions = Options.Instance.SecurityOpts?.PacketOpts;
+        var packetOptions = Options.Instance.Security?.PacketOpts;
         var thresholds = client.PacketFloodingThreshholds;
 
 
@@ -290,17 +290,17 @@ internal sealed partial class PacketHandler
             var deltaAdjusted = localAdjustedMs - remoteAdjustedMs;
             var deltaWithPing = deltaAdjusted - ping;
 
-            var configurableMininumPing = Options.Instance.SecurityOpts.PacketOpts.MinimumPing;
-            var configurableErrorMarginFactor = Options.Instance.SecurityOpts.PacketOpts.ErrorMarginFactor;
-            var configurableNaturalLowerMargin = Options.Instance.SecurityOpts.PacketOpts.NaturalLowerMargin;
-            var configurableNaturalUpperMargin = Options.Instance.SecurityOpts.PacketOpts.NaturalUpperMargin;
-            var configurableAllowedSpikePackets = Options.Instance.SecurityOpts.PacketOpts.AllowedSpikePackets;
-            var configurableBaseDesyncForgiveness = Options.Instance.SecurityOpts.PacketOpts.BaseDesyncForegiveness;
+            var configurableMininumPing = Options.Instance.Security.PacketOpts.MinimumPing;
+            var configurableErrorMarginFactor = Options.Instance.Security.PacketOpts.ErrorMarginFactor;
+            var configurableNaturalLowerMargin = Options.Instance.Security.PacketOpts.NaturalLowerMargin;
+            var configurableNaturalUpperMargin = Options.Instance.Security.PacketOpts.NaturalUpperMargin;
+            var configurableAllowedSpikePackets = Options.Instance.Security.PacketOpts.AllowedSpikePackets;
+            var configurableBaseDesyncForgiveness = Options.Instance.Security.PacketOpts.BaseDesyncForegiveness;
             var configurablePingDesyncForgivenessFactor =
-                Options.Instance.SecurityOpts.PacketOpts.DesyncForgivenessFactor;
+                Options.Instance.Security.PacketOpts.DesyncForgivenessFactor;
 
             var configurablePacketDesyncForgivenessInternal =
-                Options.Instance.SecurityOpts.PacketOpts.DesyncForgivenessInterval;
+                Options.Instance.Security.PacketOpts.DesyncForgivenessInterval;
 
             var errorMargin = Math.Max(ping, configurableMininumPing) * configurableErrorMarginFactor;
             var errorRangeMinimum = ping - errorMargin;
@@ -766,7 +766,7 @@ internal sealed partial class PacketHandler
         client.ResetTimeout();
 
         // Are we at capacity yet, or can this user still log in?
-        if (Globals.OnlineList.Count >= Options.MaxLoggedinUsers)
+        if (Globals.OnlineList.Count >= Options.Instance.MaximumLoggedInUsers)
         {
             PacketSender.SendError(client, Strings.Networking.ServerFull, Strings.General.NoticeError);
 
@@ -877,11 +877,11 @@ internal sealed partial class PacketHandler
         if (client.User != null)
         {
             //Logged In
-            client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.PlayerThreshholds;
+            client.PacketFloodingThreshholds = Options.Instance.Security.PacketOpts.PlayerThreshholds;
 
             if (client.User.Power.IsAdmin || client.User.Power.IsModerator)
             {
-                client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.ModAdminThreshholds;
+                client.PacketFloodingThreshholds = Options.Instance.Security.PacketOpts.ModAdminThreshholds;
             }
         }
 
@@ -897,7 +897,7 @@ internal sealed partial class PacketHandler
         }
 
         //Check that server is in admin only mode
-        if (Options.AdminOnly)
+        if (Options.Instance.AdminOnly)
         {
             if (client.Power == UserRights.None)
             {
@@ -936,7 +936,7 @@ internal sealed partial class PacketHandler
         }
 
         // Show character select menu or login right away by following configuration preferences.
-        if (Options.MaxCharacters > 1 || !Options.Instance.PlayerOpts.SkipCharacterSelect)
+        if (Options.Instance.Player.MaxCharacters > 1 || !Options.Instance.Player.SkipCharacterSelect)
         {
             PacketSender.SendPlayerCharacters(client);
         }
@@ -968,7 +968,7 @@ internal sealed partial class PacketHandler
                 : UserActivityHistory.UserAction.DisconnectLogout, $"{client.Name},{client.Entity?.Name}");
 
         if (packet.ReturningToCharSelect &&
-            (Options.MaxCharacters > 1 || !Options.Instance.PlayerOpts.SkipCharacterSelect))
+            (Options.Instance.Player.MaxCharacters > 1 || !Options.Instance.Player.SkipCharacterSelect))
         {
             ApplicationContext.Context.Value?.Logger.LogDebug($"[{nameof(LogoutPacket)}] Returning to character select from player {client.Entity?.Id} ({client.User?.Id})");
             client.Entity?.TryLogout(false, true);
@@ -1054,7 +1054,7 @@ internal sealed partial class PacketHandler
 
         var clientTime = packet.Adjusted / TimeSpan.TicksPerMillisecond;
         if (player.ClientMoveTimer <= clientTime &&
-            (Options.Instance.PlayerOpts.AllowCombatMovement || player.ClientAttackTimer <= clientTime))
+            (Options.Instance.Player.AllowCombatMovement || player.ClientAttackTimer <= clientTime))
         {
             if (
                 (player.CanMoveInDirection(packet.Dir, out var blockerType, out _) || blockerType == MovementBlockerType.Slide)
@@ -1118,12 +1118,12 @@ internal sealed partial class PacketHandler
         if (player.LastChatTime > Timing.Global.MillisecondsUtc)
         {
             PacketSender.SendChatMsg(player, Strings.Chat.TooFast, ChatMessageType.Notice);
-            player.LastChatTime = Timing.Global.MillisecondsUtc + Options.MinChatInterval;
+            player.LastChatTime = Timing.Global.MillisecondsUtc + Options.Instance.Chat.MinIntervalBetweenChats;
 
             return;
         }
 
-        if (packet.Message.Length > Options.MaxChatLength)
+        if (packet.Message.Length > Options.Instance.Chat.MaxChatLength)
         {
             return;
         }
@@ -1291,10 +1291,10 @@ internal sealed partial class PacketHandler
                 );
 
                 // Show an announcement banner if configured to do so as well!
-                if (Options.Chat.ShowAnnouncementBanners)
+                if (Options.Instance.Chat.ShowAnnouncementBanners)
                 {
                     // TODO: Make the duration configurable through chat?
-                    PacketSender.SendGameAnnouncement(msg, Options.Chat.AnnouncementDisplayDuration);
+                    PacketSender.SendGameAnnouncement(msg, Options.Instance.Chat.AnnouncementDisplayDuration);
                 }
 
                 ChatHistory.LogMessage(player, msg.Trim(), ChatMessageType.Notice, Guid.Empty);
@@ -1460,7 +1460,7 @@ internal sealed partial class PacketHandler
 
         var clientTime = packet.Adjusted / TimeSpan.TicksPerMillisecond;
         if (player.ClientAttackTimer > clientTime ||
-            (!Options.Instance.PlayerOpts.AllowCombatMovement && player.ClientMoveTimer > clientTime))
+            (!Options.Instance.Player.AllowCombatMovement && player.ClientMoveTimer > clientTime))
         {
             return;
         }
@@ -1472,7 +1472,7 @@ internal sealed partial class PacketHandler
 
         if (player.IsCasting)
         {
-            if (Options.Combat.EnableCombatChatMessages)
+            if (Options.Instance.Combat.EnableCombatChatMessages)
             {
                 PacketSender.SendChatMsg(player, Strings.Combat.ChannelingNoAttack, ChatMessageType.Combat);
             }
@@ -1488,7 +1488,7 @@ internal sealed partial class PacketHandler
         {
             if (status.Type == SpellEffect.Stun)
             {
-                if (Options.Combat.EnableCombatChatMessages)
+                if (Options.Instance.Combat.EnableCombatChatMessages)
                 {
                     PacketSender.SendChatMsg(player, Strings.Combat.StunAttacking, ChatMessageType.Combat);
                 }
@@ -1498,7 +1498,7 @@ internal sealed partial class PacketHandler
 
             if (status.Type == SpellEffect.Sleep)
             {
-                if (Options.Combat.EnableCombatChatMessages)
+                if (Options.Instance.Combat.EnableCombatChatMessages)
                 {
                     PacketSender.SendChatMsg(player, Strings.Combat.SleepAttacking, ChatMessageType.Combat);
                 }
@@ -1562,7 +1562,7 @@ internal sealed partial class PacketHandler
 
         //Fire projectile instead if weapon has it
 
-        if (player.TryGetEquippedItem(Options.WeaponIndex, out var equippedWeapon))
+        if (player.TryGetEquippedItem(Options.Instance.Equipment.WeaponSlot, out var equippedWeapon))
         {
             var weaponItem = equippedWeapon.Descriptor;
 
@@ -1749,7 +1749,7 @@ internal sealed partial class PacketHandler
 
         client.ResetTimeout();
 
-        if (Options.BlockClientRegistrations)
+        if (Options.Instance.BlockClientRegistrations)
         {
             PacketSender.SendError(client, Strings.Account.RegistrationsBlocked, Strings.General.NoticeError);
 
@@ -1799,18 +1799,18 @@ internal sealed partial class PacketHandler
                 if (client.User != null)
                 {
                     //Logged In
-                    client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.PlayerThreshholds;
+                    client.PacketFloodingThreshholds = Options.Instance.Security.PacketOpts.PlayerThreshholds;
 
                     if (client.User.Power.IsAdmin || client.User.Power.IsModerator)
                     {
-                        client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.ModAdminThreshholds;
+                        client.PacketFloodingThreshholds = Options.Instance.Security.PacketOpts.ModAdminThreshholds;
                     }
                 }
 
                 // PacketSender.SendServerConfig(client); // TODO: We already send this when the client is initialized, why do we send it again here?
 
                 //Check that server is in admin only mode
-                if (Options.AdminOnly)
+                if (Options.Instance.AdminOnly)
                 {
                     if (client.Power == UserRights.None)
                     {
@@ -1863,7 +1863,7 @@ internal sealed partial class PacketHandler
         };
 
         newChar.ValidateLists();
-        for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+        for (var i = 0; i < Options.Instance.Equipment.Slots.Count; i++)
         {
             newChar.Equipment[i] = -1;
         }
@@ -1927,7 +1927,7 @@ internal sealed partial class PacketHandler
     public void HandlePacket(Client client, PickupItemPacket packet)
     {
         var player = client.Entity;
-        if (player == null || packet.TileIndex < 0 || packet.TileIndex >= Options.MapWidth * Options.MapHeight)
+        if (player == null || packet.TileIndex < 0 || packet.TileIndex >= Options.Instance.Map.MapWidth * Options.Instance.Map.MapHeight)
         {
             return;
         }
@@ -1940,8 +1940,8 @@ internal sealed partial class PacketHandler
         var playerMapController = playerMapInstance.GetController();
 
         var lootDistance = Math.Min(
-            Math.Min(Options.Instance.MapOpts.MapWidth, Options.Instance.MapOpts.MapHeight),
-            Options.Loot.MaximumLootWindowDistance
+            Math.Min(Options.Instance.Map.MapWidth, Options.Instance.Map.MapHeight),
+            Options.Instance.Loot.MaximumLootWindowDistance
         );
 
         if (player.GetDistanceTo(playerMapController, packet.TileIndex % Options.MapWidth, (int)Math.Floor(packet.TileIndex / (float)Options.MapWidth)) > lootDistance)
@@ -2381,12 +2381,12 @@ internal sealed partial class PacketHandler
                 if (player.PartyRequests.ContainsKey(player.PartyRequester))
                 {
                     player.PartyRequests[player.PartyRequester] =
-                        Timing.Global.Milliseconds + Options.RequestTimeout;
+                        Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout;
                 }
                 else
                 {
                     player.PartyRequests.Add(
-                        player.PartyRequester, Timing.Global.Milliseconds + Options.RequestTimeout
+                        player.PartyRequester, Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout
                     );
                 }
             }
@@ -2461,9 +2461,9 @@ internal sealed partial class PacketHandler
 
         var target = Player.FindOnline(packet.TargetId);
 
-        if (target != null && target.Id != player.Id && player.InRangeOf(target, Options.TradeRange))
+        if (target != null && target.Id != player.Id && player.InRangeOf(target, Options.Instance.Player.TradeRange))
         {
-            if (player.InRangeOf(target, Options.TradeRange))
+            if (player.InRangeOf(target, Options.Instance.Player.TradeRange))
             {
                 target.InviteToTrade(player);
 
@@ -2494,7 +2494,7 @@ internal sealed partial class PacketHandler
                     if (player.Trading.Requester.Trading.Counterparty == null
                     ) //They could have accepted another trade since.
                     {
-                        if (player.InRangeOf(player.Trading.Requester, Options.TradeRange))
+                        if (player.InRangeOf(player.Trading.Requester, Options.Instance.Player.TradeRange))
                         {
                             //Check if still in range lolz
                             player.Trading.Requester.StartTrade(player);
@@ -2524,12 +2524,12 @@ internal sealed partial class PacketHandler
                     if (player.Trading.Requests.ContainsKey(player.Trading.Requester))
                     {
                         player.Trading.Requests[player.Trading.Requester] =
-                            Timing.Global.Milliseconds + Options.RequestTimeout;
+                            Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout;
                     }
                     else
                     {
                         player.Trading.Requests.Add(
-                            player.Trading.Requester, Timing.Global.Milliseconds + Options.RequestTimeout
+                            player.Trading.Requester, Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout
                         );
                     }
                 }
@@ -2818,12 +2818,12 @@ internal sealed partial class PacketHandler
                     if (player.FriendRequests.ContainsKey(player.FriendRequester))
                     {
                         player.FriendRequests[player.FriendRequester] =
-                            Timing.Global.Milliseconds + Options.RequestTimeout;
+                            Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout;
                     }
                     else
                     {
                         player.FriendRequests.Add(
-                            client.Entity.FriendRequester, Timing.Global.Milliseconds + Options.RequestTimeout
+                            client.Entity.FriendRequester, Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout
                         );
                     }
                 }
@@ -2933,7 +2933,7 @@ internal sealed partial class PacketHandler
     //NewCharacterPacket
     public void HandlePacket(Client client, NewCharacterPacket packet)
     {
-        if (client?.Characters?.Count < Options.MaxCharacters)
+        if (client?.Characters?.Count < Options.Instance.Player.MaxCharacters)
         {
             PacketSender.SendGameObjects(client, GameObjectType.Class);
             PacketSender.SendCreateCharacter(client);

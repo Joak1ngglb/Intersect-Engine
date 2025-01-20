@@ -128,8 +128,8 @@ public partial class FrmSpell : EditorForm
             GameContentManager.GetOverridesFor(GameContentManager.TextureType.Entity, "cast").ToArray()
         );
 
-        nudWarpX.Maximum = (int)Options.MapWidth;
-        nudWarpY.Maximum = (int)Options.MapHeight;
+        nudWarpX.Maximum = (int)Options.Instance.Map.MapWidth;
+        nudWarpY.Maximum = (int)Options.Instance.Map.MapHeight;
 
         cmbWarpMap.Items.Clear();
         cmbWarpMap.Items.AddRange(MapList.OrderedMaps.Select(map => map?.Name).ToArray());
@@ -1079,7 +1079,7 @@ public partial class FrmSpell : EditorForm
         }
 
         // Do we add item cooldown groups as well?
-        if (Options.Combat.LinkSpellAndItemCooldowns)
+        if (Options.Instance.Combat.LinkSpellAndItemCooldowns)
         {
             foreach (var itm in ItemBase.Lookup)
             {

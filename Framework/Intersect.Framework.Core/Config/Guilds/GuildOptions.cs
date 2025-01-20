@@ -42,7 +42,7 @@ public partial class GuildOptions
     /// </summary>
     public GuildRank[] Ranks { get; set; } = new GuildRank[]
     {
-        new GuildRank()
+        new()
         {
             Title = "Master",
             Limit = 1,
@@ -58,7 +58,7 @@ public partial class GuildOptions
                 ChangeXP=true
             }
         },
-        new GuildRank()
+        new()
         {
             Title = "Officer",
             Limit = 10,
@@ -74,7 +74,7 @@ public partial class GuildOptions
                 ChangeXP=true
             }
         },
-        new GuildRank()
+        new()
         {
             Title = "Member",
             Limit = -1,
@@ -90,7 +90,7 @@ public partial class GuildOptions
                 ChangeXP=true
             }
         },
-        new GuildRank()
+        new()
         {
             Title = "Newbie",
             Limit = -1,

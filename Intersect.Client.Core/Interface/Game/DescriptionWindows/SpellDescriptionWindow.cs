@@ -156,7 +156,7 @@ public partial class SpellDescriptionWindow : DescriptionWindowBase
         }
 
         // Ignores global cooldown if enabled?
-        if (Options.Instance.CombatOpts.EnableGlobalCooldowns && mSpell.IgnoreGlobalCooldown)
+        if (Options.Instance.Combat.EnableGlobalCooldowns && mSpell.IgnoreGlobalCooldown)
         {
             rows.AddKeyValueRow(Strings.SpellDescription.IgnoreGlobalCooldown, string.Empty);
         }
@@ -323,7 +323,7 @@ public partial class SpellDescriptionWindow : DescriptionWindowBase
         }
 
         // Ignore Z-Dimension?
-        if (Options.Map.ZDimensionVisible && mSpell.Dash.IgnoreZDimensionAttributes)
+        if (Options.Instance.Map.ZDimensionVisible && mSpell.Dash.IgnoreZDimensionAttributes)
         {
             rows.AddKeyValueRow(Strings.SpellDescription.IgnoreZDimension, String.Empty);
         }

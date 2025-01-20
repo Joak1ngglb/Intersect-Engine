@@ -141,10 +141,10 @@ public static partial class Graphics
 
     public static void InitInGame()
     {
-        RenderingEntities = new HashSet<Entity>[6, Options.MapHeight * 5];
+        RenderingEntities = new HashSet<Entity>[6, Options.Instance.Map.MapHeight * 5];
         for (var z = 0; z < 6; z++)
         {
-            for (var i = 0; i < Options.MapHeight * 5; i++)
+            for (var i = 0; i < Options.Instance.Map.MapHeight * 5; i++)
             {
                 RenderingEntities[z, i] = [];
             }
@@ -335,7 +335,7 @@ public static partial class Graphics
         // Handle our plugin drawing.
         Globals.OnGameDraw(DrawStates.BelowPlayer, deltaTime);
 
-        var mapHeight = Options.MapHeight;
+        var mapHeight = Options.Instance.Map.MapHeight;
         for (var y = 0; y < mapHeight * 5; y++)
         {
             for (var x = 0; x < 3; x++)
@@ -631,7 +631,7 @@ public static partial class Graphics
         }
 
         if (!new FloatRect(
-            map.X, map.Y, Options.TileWidth * Options.MapWidth, Options.TileHeight * Options.MapHeight
+            map.X, map.Y, Options.Instance.Map.TileWidth * Options.Instance.Map.MapWidth, Options.Instance.Map.TileHeight * Options.Instance.Map.MapHeight
         ).IntersectsWith(WorldViewport))
         {
             return;
@@ -655,8 +655,8 @@ public static partial class Graphics
         var mapBounds = new FloatRect(
             map.X,
             map.Y,
-            Options.TileWidth * Options.MapWidth,
-            Options.TileHeight * Options.MapHeight
+            Options.Instance.Map.TileWidth * Options.Instance.Map.MapWidth,
+            Options.Instance.Map.TileHeight * Options.Instance.Map.MapHeight
         );
 
         if (!mapBounds.IntersectsWith(WorldViewport))

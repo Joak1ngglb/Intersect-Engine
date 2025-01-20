@@ -830,7 +830,7 @@ public static partial class DbInterface
                         foreach (var map in context.Maps)
                         {
                             MapController.Lookup.Set(map.Id, map);
-                            if (Options.Instance.MapOpts.Layers.DestroyOrphanedLayers)
+                            if (Options.Instance.Map.Layers.DestroyOrphanedLayers)
                             {
                                 map.DestroyOrphanedLayers();
                             }

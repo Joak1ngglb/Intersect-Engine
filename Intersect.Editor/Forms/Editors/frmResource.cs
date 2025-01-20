@@ -47,7 +47,7 @@ public partial class FrmResource : EditorForm
 
         cmbToolType.Items.Clear();
         cmbToolType.Items.Add(Strings.General.None);
-        cmbToolType.Items.AddRange(Options.ToolTypes.ToArray());
+        cmbToolType.Items.AddRange(Options.Instance.Equipment.ToolTypes.ToArray());
         cmbEvent.Items.Clear();
         cmbEvent.Items.Add(Strings.General.None);
         cmbEvent.Items.AddRange(EventBase.Names);
@@ -434,8 +434,8 @@ public partial class FrmResource : EditorForm
             gfx.DrawRectangle(
                 new Pen(System.Drawing.Color.White, 2f),
                 new Rectangle(
-                    selX * Options.TileWidth, selY * Options.TileHeight,
-                    Options.TileWidth + selW * Options.TileWidth, Options.TileHeight + selH * Options.TileHeight
+                    selX * Options.Instance.Map.TileWidth, selY * Options.Instance.Map.TileHeight,
+                    Options.Instance.Map.TileWidth + selW * Options.Instance.Map.TileWidth, Options.Instance.Map.TileHeight + selH * Options.Instance.Map.TileHeight
                 )
             );
         }
@@ -478,8 +478,8 @@ public partial class FrmResource : EditorForm
             gfx.DrawRectangle(
                 new Pen(System.Drawing.Color.White, 2f),
                 new Rectangle(
-                    selX * Options.TileWidth, selY * Options.TileHeight,
-                    Options.TileWidth + selW * Options.TileWidth, Options.TileHeight + selH * Options.TileHeight
+                    selX * Options.Instance.Map.TileWidth, selY * Options.Instance.Map.TileHeight,
+                    Options.Instance.Map.TileWidth + selW * Options.Instance.Map.TileWidth, Options.Instance.Map.TileHeight + selH * Options.Instance.Map.TileHeight
                 )
             );
         }

@@ -169,7 +169,7 @@ public partial class Player : Entity, IPlayer
 
     public Player(Guid id, PlayerEntityPacket packet) : base(id, packet, EntityType.Player)
     {
-        for (var i = 0; i < Options.Instance.PlayerOpts.HotbarSlotCount; i++)
+        for (var i = 0; i < Options.Instance.Player.HotbarSlotCount; i++)
         {
             Hotbar[i] = new HotbarInstance();
         }
@@ -270,7 +270,7 @@ public partial class Player : Entity, IPlayer
                 if (IsCasting)
                 {
                     if (IsCastingCheckTimer < Timing.Global.Milliseconds &&
-                        Options.Combat.EnableCombatChatMessages)
+                        Options.Instance.Combat.EnableCombatChatMessages)
                     {
                         ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Combat.AttackWhileCastingDeny,
                             CustomColors.Alerts.Declined, ChatMessageType.Combat));
@@ -279,7 +279,7 @@ public partial class Player : Entity, IPlayer
                 }
                 else if (Globals.Me?.TryAttack() == false)
                 {
-                    if (!Globals.Me.IsAttacking && (!IsMoving || Options.Instance.PlayerOpts.AllowCombatMovement))
+                    if (!Globals.Me.IsAttacking && (!IsMoving || Options.Instance.Player.AllowCombatMovement))
                     {
                         Globals.Me.AttackTimer = Timing.Global.Milliseconds + Globals.Me.CalculateAttackTime();
                     }
@@ -479,7 +479,7 @@ public partial class Player : Entity, IPlayer
 
     public int FindItem(Guid itemId, int itemVal = 1)
     {
-        for (var i = 0; i < Options.MaxInvItems; i++)
+        for (var i = 0; i < Options.Instance.Player.MaxInventory; i++)
         {
             if (Inventory[i].ItemId == itemId && Inventory[i].Quantity >= itemVal)
             {
@@ -587,7 +587,7 @@ public partial class Player : Entity, IPlayer
 
     public bool IsEquipped(int slot)
     {
-        for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+        for (var i = 0; i < Options.Instance.Equipment.Slots.Count; i++)
         {
             if (MyEquipment[i] == slot)
             {
@@ -1270,7 +1270,7 @@ public partial class Player : Entity, IPlayer
         {
             var spellBase = SpellBase.Get(Spells[index].Id);
 
-            if (spellBase.CastDuration > 0 && (Options.Instance.CombatOpts.MovementCancelsCast && Globals.Me?.IsMoving == true))
+            if (spellBase.CastDuration > 0 && (Options.Instance.Combat.MovementCancelsCast && Globals.Me?.IsMoving == true))
             {
                 return;
             }
@@ -1374,9 +1374,9 @@ public partial class Player : Entity, IPlayer
     // Change the dimension if the player is on a gateway
     private void TryToChangeDimension()
     {
-        if (X < Options.MapWidth && X >= 0)
+        if (X < Options.Instance.Map.MapWidth && X >= 0)
         {
-            if (Y < Options.MapHeight && Y >= 0)
+            if (Y < Options.Instance.Map.MapHeight && Y >= 0)
             {
                 if (Maps.MapInstance.Get(MapId) != null && Maps.MapInstance.Get(MapId).Attributes[X, Y] != null)
                 {
@@ -1432,7 +1432,7 @@ public partial class Player : Entity, IPlayer
         }
         else
         {
-            var diagonalMovement = inputX != 0 && Options.Instance.MapOpts.EnableDiagonalMovement;
+            var diagonalMovement = inputX != 0 && Options.Instance.Map.EnableDiagonalMovement;
             var inputXDirection = Math.Sign(inputX) switch
             {
                 < 0 => Direction.Left,
@@ -1483,7 +1483,7 @@ public partial class Player : Entity, IPlayer
         TurnAround();
 
         var castInput = -1;
-        for (var barSlot = 0; barSlot < Options.Instance.PlayerOpts.HotbarSlotCount; barSlot++)
+        for (var barSlot = 0; barSlot < Options.Instance.Player.HotbarSlotCount; barSlot++)
         {
             if (!mLastHotbarUseTime.ContainsKey(barSlot))
             {
@@ -1515,12 +1515,12 @@ public partial class Player : Entity, IPlayer
             if (myMap != null && targetMap != null)
             {
                 //Calculate World Tile of Me
-                var x1 = X + myMap.GridX * Options.MapWidth;
-                var y1 = Y + myMap.GridY * Options.MapHeight;
+                var x1 = X + myMap.GridX * Options.Instance.Map.MapWidth;
+                var y1 = Y + myMap.GridY * Options.Instance.Map.MapHeight;
 
                 //Calculate world tile of target
-                var x2 = target.X + targetMap.GridX * Options.MapWidth;
-                var y2 = target.Y + targetMap.GridY * Options.MapHeight;
+                var x2 = target.X + targetMap.GridX * Options.Instance.Map.MapWidth;
+                var y2 = target.Y + targetMap.GridY * Options.Instance.Map.MapHeight;
 
                 return (int)Math.Sqrt(Math.Pow(x1 - x2, 2) + Math.Pow(y1 - y2, 2));
             }
@@ -1642,7 +1642,7 @@ public partial class Player : Entity, IPlayer
         var validEntities = mlastTargetList.ToArray();
 
         // Reduce the number of targets down to what is in our allowed range.
-        validEntities = validEntities.Where(en => en.Value.DistanceTo <= Options.Combat.MaxPlayerAutoTargetRadius).ToArray();
+        validEntities = validEntities.Where(en => en.Value.DistanceTo <= Options.Instance.Combat.MaxPlayerAutoTargetRadius).ToArray();
 
         int currentDistance = 9999;
         long currentTime = Timing.Global.Milliseconds;
@@ -1752,7 +1752,7 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        if (!Options.Instance.PlayerOpts.EnableAutoTurnToTarget)
+        if (!Options.Instance.Player.EnableAutoTurnToTarget)
         {
             return;
         }
@@ -1771,7 +1771,7 @@ public partial class Player : Entity, IPlayer
 
         if (IsMoving || Dir == MoveDir || Dir == directionToTarget)
         {
-            AutoTurnToTargetTimer = Timing.Global.Milliseconds + Options.Instance.PlayerOpts.AutoTurnToTargetDelay;
+            AutoTurnToTargetTimer = Timing.Global.Milliseconds + Options.Instance.Player.AutoTurnToTargetDelay;
             return;
         }
 
@@ -1780,7 +1780,7 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        if (Options.Instance.PlayerOpts.AutoTurnToTargetIgnoresEntitiesBehind &&
+        if (Options.Instance.Player.AutoTurnToTargetIgnoresEntitiesBehind &&
             IsTargetAtOppositeDirection(Dir, directionToTarget))
         {
             return;
@@ -1802,7 +1802,7 @@ public partial class Player : Entity, IPlayer
 
     public bool TryBlock()
     {
-        var shieldIndex = Options.ShieldIndex;
+        var shieldIndex = Options.Instance.Equipment.ShieldSlot;
         var myShieldIndex = MyEquipment[shieldIndex];
 
         // Return false if character is attacking, or blocking or if they don't have a shield equipped.
@@ -1954,25 +1954,25 @@ public partial class Player : Entity, IPlayer
 
             if (x < 0)
             {
-                tmpX = Options.MapWidth - x * -1;
+                tmpX = Options.Instance.Map.MapWidth - x * -1;
                 gridX--;
             }
 
             if (y < 0)
             {
-                tmpY = Options.MapHeight - y * -1;
+                tmpY = Options.Instance.Map.MapHeight - y * -1;
                 gridY--;
             }
 
-            if (y > Options.MapHeight - 1)
+            if (y > Options.Instance.Map.MapHeight - 1)
             {
-                tmpY = y - Options.MapHeight;
+                tmpY = y - Options.Instance.Map.MapHeight;
                 gridY++;
             }
 
-            if (x > Options.MapWidth - 1)
+            if (x > Options.Instance.Map.MapWidth - 1)
             {
-                tmpX = x - Options.MapWidth;
+                tmpX = x - Options.Instance.Map.MapWidth;
                 gridX++;
             }
 
@@ -2013,17 +2013,17 @@ public partial class Player : Entity, IPlayer
 
         foreach (MapInstance map in Maps.MapInstance.Lookup.Values.Cast<MapInstance>())
         {
-            if (x >= map.X && x <= map.X + Options.MapWidth * Options.TileWidth)
+            if (x >= map.X && x <= map.X + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth)
             {
-                if (y >= map.Y && y <= map.Y + Options.MapHeight * Options.TileHeight)
+                if (y >= map.Y && y <= map.Y + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight)
                 {
                     //Remove the offsets to just be dealing with pixels within the map selected
                     x -= (int)map.X;
                     y -= (int)map.Y;
 
                     //transform pixel format to tile format
-                    x /= Options.TileWidth;
-                    y /= Options.TileHeight;
+                    x /= Options.Instance.Map.TileWidth;
+                    y /= Options.Instance.Map.TileHeight;
                     var mapId = map.Id;
 
                     if (TryGetRealLocation(ref x, ref y, ref mapId))
@@ -2170,7 +2170,7 @@ public partial class Player : Entity, IPlayer
     public static bool TryPickupItem(Guid mapId, int tileIndex, Guid uniqueId = new(), bool firstOnly = false)
     {
         var map = Maps.MapInstance.Get(mapId);
-        if (map == null || tileIndex < 0 || tileIndex >= Options.MapWidth * Options.MapHeight)
+        if (map == null || tileIndex < 0 || tileIndex >= Options.Instance.Map.MapWidth * Options.Instance.Map.MapHeight)
         {
             return false;
         }
@@ -2229,20 +2229,20 @@ public partial class Player : Entity, IPlayer
 
         if (this == Globals.Me)
         {
-            if (Options.WeaponIndex > -1 &&
-                Options.WeaponIndex < Equipment.Length &&
-                MyEquipment[Options.WeaponIndex] >= 0)
+            if (Options.Instance.Equipment.WeaponSlot > -1 &&
+                Options.Instance.Equipment.WeaponSlot < Equipment.Length &&
+                MyEquipment[Options.Instance.Equipment.WeaponSlot] >= 0)
             {
-                weapon = ItemBase.Get(Inventory[MyEquipment[Options.WeaponIndex]].ItemId);
+                weapon = ItemBase.Get(Inventory[MyEquipment[Options.Instance.Equipment.WeaponSlot]].ItemId);
             }
         }
         else
         {
-            if (Options.WeaponIndex > -1 &&
-                Options.WeaponIndex < Equipment.Length &&
-                Equipment[Options.WeaponIndex] != Guid.Empty)
+            if (Options.Instance.Equipment.WeaponSlot > -1 &&
+                Options.Instance.Equipment.WeaponSlot < Equipment.Length &&
+                Equipment[Options.Instance.Equipment.WeaponSlot] != Guid.Empty)
             {
-                weapon = ItemBase.Get(Equipment[Options.WeaponIndex]);
+                weapon = ItemBase.Get(Equipment[Options.Instance.Equipment.WeaponSlot]);
             }
         }
 
@@ -2268,10 +2268,10 @@ public partial class Player : Entity, IPlayer
     /// <returns></returns>
     public virtual int CalculateAttackTime(int speed)
     {
-        return (int)(Options.MaxAttackRate +
-                      (Options.MinAttackRate - Options.MaxAttackRate) *
-                      (((float)Options.MaxStatValue - speed) /
-                       Options.MaxStatValue));
+        return (int)(Options.Instance.Combat.MaxAttackRate +
+                      (Options.Instance.Combat.MinAttackRate - Options.Instance.Combat.MaxAttackRate) *
+                      (((float)Options.Instance.Player.MaxStat - speed) /
+                       Options.Instance.Player.MaxStat));
     }
 
     //Movement Processing
@@ -2308,7 +2308,7 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        if (IsAttacking && !Options.Instance.PlayerOpts.AllowCombatMovement)
+        if (IsAttacking && !Options.Instance.Player.AllowCombatMovement)
         {
             return;
         }
@@ -2323,12 +2323,12 @@ public partial class Player : Entity, IPlayer
 
         //Try to move if able and not casting spells.
         if (IsMoving || MoveTimer >= Timing.Global.Milliseconds ||
-            (!Options.Combat.MovementCancelsCast && IsCasting))
+            (!Options.Instance.Combat.MovementCancelsCast && IsCasting))
         {
             return;
         }
 
-        if (Options.Combat.MovementCancelsCast)
+        if (Options.Instance.Combat.MovementCancelsCast)
         {
             CastTime = 0;
         }
@@ -2336,7 +2336,7 @@ public partial class Player : Entity, IPlayer
         var dir = Dir;
         var moveDir = MoveDir;
 
-        var enableCrossingDiagonalBlocks = Options.Instance.MapOpts.EnableCrossingDiagonalBlocks;
+        var enableCrossingDiagonalBlocks = Options.Instance.Map.EnableCrossingDiagonalBlocks;
 
         if (moveDir != Direction.None)
         {
@@ -2382,7 +2382,7 @@ public partial class Player : Entity, IPlayer
                 }
                 else
                 {
-                    OffsetX = delta.X > 0 ? -Options.TileWidth : Options.TileWidth;
+                    OffsetX = delta.X > 0 ? -Options.Instance.Map.TileWidth : Options.Instance.Map.TileWidth;
                 }
 
                 if (delta.Y == 0)
@@ -2391,7 +2391,7 @@ public partial class Player : Entity, IPlayer
                 }
                 else
                 {
-                    OffsetY = delta.Y > 0 ? -Options.TileHeight : Options.TileHeight;
+                    OffsetY = delta.Y > 0 ? -Options.Instance.Map.TileHeight : Options.Instance.Map.TileHeight;
                 }
 
                 break;
@@ -2405,16 +2405,16 @@ public partial class Player : Entity, IPlayer
 
         if (IsMoving)
         {
-            if (position.X < 0 || position.Y < 0 || position.X > Options.MapWidth - 1 || position.Y > Options.MapHeight - 1)
+            if (position.X < 0 || position.Y < 0 || position.X > Options.Instance.Map.MapWidth - 1 || position.Y > Options.Instance.Map.MapHeight - 1)
             {
                 var gridX = Maps.MapInstance.Get(Globals.Me.MapId).GridX;
                 var gridY = Maps.MapInstance.Get(Globals.Me.MapId).GridY;
                 if (position.X < 0)
                 {
                     gridX--;
-                    X = (byte)(Options.MapWidth - 1);
+                    X = (byte)(Options.Instance.Map.MapWidth - 1);
                 }
-                else if (position.X >= Options.MapWidth)
+                else if (position.X >= Options.Instance.Map.MapWidth)
                 {
                     X = 0;
                     gridX++;
@@ -2427,9 +2427,9 @@ public partial class Player : Entity, IPlayer
                 if (position.Y < 0)
                 {
                     gridY--;
-                    Y = (byte)(Options.MapHeight - 1);
+                    Y = (byte)(Options.Instance.Map.MapHeight - 1);
                 }
-                else if (position.Y >= Options.MapHeight)
+                else if (position.Y >= Options.Instance.Map.MapHeight)
                 {
                     Y = 0;
                     gridY++;
@@ -2804,10 +2804,10 @@ public partial class Player : Entity, IPlayer
             var mouseInWorld = Graphics.ConvertToWorldPoint(Globals.InputManager.GetMousePosition());
             foreach (MapInstance map in Maps.MapInstance.Lookup.Values.Cast<MapInstance>())
             {
-                if (mouseInWorld.X >= map.X && mouseInWorld.X <= map.X + Options.MapWidth * Options.TileWidth)
+                if (mouseInWorld.X >= map.X && mouseInWorld.X <= map.X + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth)
                 {
                     if (mouseInWorld.Y >= map.Y &&
-                        mouseInWorld.Y <= map.Y + Options.MapHeight * Options.TileHeight)
+                        mouseInWorld.Y <= map.Y + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight)
                     {
                         var mapId = map.Id;
 
@@ -2882,7 +2882,7 @@ public partial class Player : Entity, IPlayer
         }
 
         // If players hold the 'TurnAround' Control Key and tap to any direction, they will turn on their own axis.
-        for (var direction = 0; direction < Options.Instance.MapOpts.MovementDirections; direction++)
+        for (var direction = 0; direction < Options.Instance.Map.MovementDirections; direction++)
         {
             if (!Controls.KeyDown(Control.TurnAround) || direction != (int)Globals.Me.MoveDir || IsTurnAroundWhileCastingDisabled)
             {
@@ -2910,7 +2910,7 @@ public partial class Player : Entity, IPlayer
     // The comparison also takes into account whether diagonal movement is enabled or not.
     private static bool IsTargetAtOppositeDirection(Direction currentDir, Direction targetDir)
     {
-        if (Options.Instance.MapOpts.EnableDiagonalMovement)
+        if (Options.Instance.Map.EnableDiagonalMovement)
         {
             // If diagonal movement is disabled, check opposite directions on 4 directions.
             switch (currentDir)
@@ -2928,7 +2928,7 @@ public partial class Player : Entity, IPlayer
                     return targetDir is Direction.Left or Direction.UpLeft or Direction.DownLeft;
 
                 default:
-                    if (!Options.Instance.MapOpts.EnableDiagonalMovement)
+                    if (!Options.Instance.Map.EnableDiagonalMovement)
                     {
                         return false;
                     }

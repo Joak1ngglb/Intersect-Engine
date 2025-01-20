@@ -296,7 +296,7 @@ public partial class FrmClass : EditorForm
         cmbSpawnItem.Items.AddRange(ItemBase.Names);
         cmbSpell.Items.Clear();
         cmbSpell.Items.AddRange(SpellBase.Names);
-        nudLevel.Maximum = Options.MaxLevel;
+        nudLevel.Maximum = Options.Instance.Player.MaxLevel;
         cmbAttackAnimation.Items.Clear();
         cmbAttackAnimation.Items.Add(Strings.General.None);
         cmbAttackAnimation.Items.AddRange(AnimationBase.Names);
@@ -1271,7 +1271,7 @@ public partial class FrmClass : EditorForm
 
         expGrid.Rows.Clear();
 
-        for (var i = 1; i <= Options.MaxLevel; i++)
+        for (var i = 1; i <= Options.Instance.Player.MaxLevel; i++)
         {
             var index = expGrid.Rows.Add(i.ToString(), "", "");
             var row = expGrid.Rows[index];
@@ -1286,7 +1286,7 @@ public partial class FrmClass : EditorForm
     {
         if (end == -1)
         {
-            end = Options.MaxLevel;
+            end = Options.Instance.Player.MaxLevel;
         }
 
         if (start > end)
@@ -1301,7 +1301,7 @@ public partial class FrmClass : EditorForm
 
         for (var i = start; i <= end; i++)
         {
-            if (i < Options.MaxLevel)
+            if (i < Options.Instance.Player.MaxLevel)
             {
                 if (mEditorItem.ExperienceOverrides.ContainsKey(i))
                 {

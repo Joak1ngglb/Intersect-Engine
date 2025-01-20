@@ -1,7 +1,11 @@
 using Intersect.Config;
 using Intersect.Config.Guilds;
+using Intersect.Config;
+using Intersect.Config.Guilds;
 using Intersect.Framework.Core.Config;
 using Intersect.Logging;
+using Intersect.Core;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect;
@@ -98,31 +102,46 @@ public partial class Options
 
     public ItemOptions Items = new ItemOptions();
 
+    [JsonIgnore]
+    public string OptionsData { get; private set; } = string.Empty;
+
     public static Options Instance { get; private set; }
 
     [JsonIgnore]
     public bool SendingToClient { get; set; } = true;
 
-    //Public Getters
-    public static ushort ServerPort
-    {
-        get => Instance._serverPort;
-        set => Instance._serverPort = value;
-    }
+    [JsonProperty(Order = -3)]
+    public bool AdminOnly { get; set; }
+
+    public List<string> AnimatedSprites { get; set; } = [];
+
+    [JsonProperty(Order = -2)]
+    public bool BlockClientRegistrations { get; set; }
+
+    public ushort ValidPasswordResetTimeMinutes { get; set; } = 30;
+
+    [JsonProperty(Order = 0)]
+    public bool OpenPortChecker { get; set; } = true;
+
+    [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+    public string? PortCheckerUrl { get; set; }
+
+    public int MaxClientConnections { get; set; } = 100;
 
     /// <summary>
-    /// Defines the maximum amount of logged in users our server is allowed to handle.
+    /// Defines the maximum amount of logged-in users our server is allowed to handle.
     /// </summary>
-    public static int MaxLoggedinUsers => Instance._maxUsers;
+    public int MaximumLoggedInUsers { get; set; } = 50;
 
-    public static int MaxStatValue => Instance.PlayerOpts.MaxStat;
+    [JsonProperty(Order = -1)]
+    public bool UPnP { get; set; } = true;
 
     public static int MaxLevel => Instance.PlayerOpts.MaxLevel;
     public static int MaxInvItems => Instance.PlayerOpts.MaxInventory;
 
-    public static int MaxCharacters => Instance.PlayerOpts.MaxCharacters;
+    public EquipmentOptions Equipment = new();
 
-    public static int ItemDropChance => Instance.PlayerOpts.ItemDropChance;
+    public int EventWatchdogKillThreshold { get; set; } = 5000;
 
     public static int RequestTimeout => Instance.PlayerOpts.RequestTimeout;
 
@@ -229,23 +248,65 @@ public partial class Options
     [JsonProperty("GameName", Order = -5)]
     public string GameName { get; set; } = DEFAULT_GAME_NAME;
 
-    [JsonProperty("ServerPort", Order = -4)]
-    public ushort _serverPort { get; set; } = DEFAULT_SERVER_PORT;
+    [JsonProperty(Order = -4)]
+    public ushort ServerPort { get; set; } = DEFAULT_SERVER_PORT;
 
     /// <summary>
     /// Passability configuration by map zone
     /// </summary>
-    public Passability Passability { get; } = new Passability();
+    public Passability Passability { get; } = new();
+
+    public MapOptions Map = new();
+
+    public DatabaseOptions GameDatabase = new();
+
+    public DatabaseOptions LoggingDatabase = new();
+
+    public DatabaseOptions PlayerDatabase = new();
+
+    public PlayerOptions Player = new();
+
+    public PartyOptions Party = new();
+
+    public SecurityOptions Security = new();
+
+    public LootOptions Loot = new();
+
+    public ProcessingOptions Processing = new();
+
+    public SpriteOptions Sprites = new();
+
+    public NpcOptions Npc = new();
+
+    public MetricsOptions Metrics = new();
+
+    public PacketOptions Packets = new();
+
+    public SmtpSettings SmtpSettings = new();
+
+    public QuestOptions Quest = new();
+
+    public GuildOptions Guild = new();
+
+    public LoggingOptions Logging = new();
+
+    public BankOptions Bank = new();
+
+    public InstancingOptions Instancing = new();
+
+    public ItemOptions Items = new();
+
+    public static Options Instance { get; private set; }
+
+    public static bool IsLoaded => Instance != null;
 
     public bool SmtpValid { get; set; }
 
-    public static string OptionsData => optionsCompressed;
-
     public void FixAnimatedSprites()
     {
-        for (var i = 0; i < _animatedSprites.Count; i++)
+        for (var i = 0; i < AnimatedSprites.Count; i++)
         {
-            _animatedSprites[i] = _animatedSprites[i].ToLower();
+            AnimatedSprites[i] = AnimatedSprites[i].ToLower();
         }
     }
 
@@ -253,40 +314,61 @@ public partial class Options
 
     public static bool LoadFromDisk()
     {
-        Instance = new Options();
+        Options instance = new();
+        Instance = instance;
+
+        var pathToServerConfig = Path.Combine(ResourcesDirectory, "config.json");
         if (!Directory.Exists(ResourcesDirectory))
         {
             Directory.CreateDirectory(ResourcesDirectory);
         }
-
-        var configPath = Path.Combine(ResourcesDirectory, "config.json");
-
-        if (File.Exists(configPath))
+        else if (File.Exists(pathToServerConfig))
         {
-            Instance = JsonConvert.DeserializeObject<Options>(
-                File.ReadAllText(configPath)
-            );
+            instance = JsonConvert.DeserializeObject<Options>(File.ReadAllText(pathToServerConfig)) ?? instance;
+            Instance = instance;
         }
 
-        Instance.SmtpValid = Instance.SmtpSettings.IsValid();
-        Instance.SendingToClient = false;
-        Instance.FixAnimatedSprites();
-        File.WriteAllText(configPath, JsonConvert.SerializeObject(Instance, Formatting.Indented));
-        Instance.SendingToClient = true;
-        optionsCompressed = JsonConvert.SerializeObject(Instance);
+        instance.SmtpValid = instance.SmtpSettings.IsValid();
+        instance.FixAnimatedSprites();
+
+        SaveToDisk();
 
         return true;
     }
 
     public static void SaveToDisk()
     {
-        Instance.SendingToClient = false;
-        File.WriteAllText(
-            Path.Combine(ResourcesDirectory, "config.json"),
-            JsonConvert.SerializeObject(Instance, Formatting.Indented)
-        );
-        Instance.SendingToClient = true;
-        optionsCompressed = JsonConvert.SerializeObject(Instance);
+        if (Instance is not { } instance)
+        {
+            ApplicationContext.Context.Value?.Logger.LogError("Tried to save null instance to disk");
+            return;
+        }
+
+        if (!Directory.Exists(ResourcesDirectory))
+        {
+            Directory.CreateDirectory(ResourcesDirectory);
+        }
+
+        var pathToServerConfig = Path.Combine(ResourcesDirectory, "config.json");
+
+        instance.SendingToClient = false;
+        try
+        {
+            File.WriteAllText(
+                pathToServerConfig,
+                JsonConvert.SerializeObject(instance, Formatting.Indented)
+            );
+        }
+        catch (Exception exception)
+        {
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Failed to save options to {OptionsPath}",
+                pathToServerConfig
+            );
+        }
+        instance.SendingToClient = true;
+        instance.OptionsData = JsonConvert.SerializeObject(instance);
     }
 
     public static void LoadFromServer(string data)
@@ -331,7 +413,7 @@ public partial class Options
     }
 
     // ReSharper disable once UnusedMember.Global
-    public bool ShouldSerializeSecurityOpts()
+    public bool ShouldSerializeSecurity()
     {
         return !SendingToClient;
     }

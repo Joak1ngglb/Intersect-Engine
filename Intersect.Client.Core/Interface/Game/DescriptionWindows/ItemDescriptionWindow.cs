@@ -93,9 +93,8 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         if (mItem.ItemType == ItemType.Equipment)
         {
             var equipSlot = Options.Equipment.Slots[mItem.EquipmentSlot];
-
-            // 🔥 Si es arma y tiene subtipo, mostrar solo el subtipo
-            if (mItem.EquipmentSlot == Options.WeaponIndex && !string.IsNullOrWhiteSpace(mItem.Subtype))
+            var extraInfo = equipSlot;
+            if (mItem.EquipmentSlot == Options.Equipment.WeaponSlot && mItem.TwoHanded)
             {
                 header.SetSubtitle($"{mItem.Subtype}", Color.White);
             }
@@ -167,7 +166,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
     {
         AddDivider();
         var rows = AddRowContainer();
-       
+        
         if (mItem.EquipmentSlot == Options.WeaponIndex)
         {
             DisplayKeyValueRowWithDifference(GetBaseDamageDifference(), Strings.ItemDescription.BaseDamage, mItem.Damage.ToString(), rows);

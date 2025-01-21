@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing.Imaging;
 using DarkUI.Forms;
 using Intersect.Editor.Content;
@@ -6,36 +7,43 @@ using Intersect.Editor.General;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Networking;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.NPCs;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
 using Intersect.Utilities;
+using EventDescriptor = Intersect.Framework.Core.GameObjects.Events.EventDescriptor;
 using Graphics = System.Drawing.Graphics;
 
 namespace Intersect.Editor.Forms.Editors;
 
-
 public partial class FrmNpc : EditorForm
 {
 
-    private List<NpcBase> mChanged = new List<NpcBase>();
+    private List<NPCDescriptor> mChanged = [];
 
     private string mCopiedItem;
 
-    private NpcBase mEditorItem;
+    private NPCDescriptor mEditorItem;
 
-    private List<string> mKnownFolders = new List<string>();
+    private List<string> mKnownFolders = [];
+
+    private BindingList<NotifiableDrop> _dropList = [];
 
     public FrmNpc()
     {
         ApplyHooks();
         InitializeComponent();
         Icon = Program.Icon;
+        _btnSave = btnSave;
+        _btnCancel = btnCancel;
 
         lstGameObjects.Init(UpdateToolStripItems, AssignEditorItem, toolStripItemNew_Click, toolStripItemCopy_Click, toolStripItemUndo_Click, toolStripItemPaste_Click, toolStripItemDelete_Click);
     }
     private void AssignEditorItem(Guid id)
     {
-        mEditorItem = NpcBase.Get(id);
+        mEditorItem = NPCDescriptor.Get(id);
         UpdateEditor();
     }
 
@@ -44,7 +52,7 @@ public partial class FrmNpc : EditorForm
         if (type == GameObjectType.Npc)
         {
             InitEditor();
-            if (mEditorItem != null && !NpcBase.Lookup.Values.Contains(mEditorItem))
+            if (mEditorItem != null && !NPCDescriptor.Lookup.Values.Contains(mEditorItem))
             {
                 mEditorItem = null;
                 UpdateEditor();
@@ -91,21 +99,21 @@ public partial class FrmNpc : EditorForm
         );
 
         cmbSpell.Items.Clear();
-        cmbSpell.Items.AddRange(SpellBase.Names);
+        cmbSpell.Items.AddRange(SpellDescriptor.Names);
         cmbHostileNPC.Items.Clear();
-        cmbHostileNPC.Items.AddRange(NpcBase.Names);
+        cmbHostileNPC.Items.AddRange(NPCDescriptor.Names);
         cmbDropItem.Items.Clear();
         cmbDropItem.Items.Add(Strings.General.None);
-        cmbDropItem.Items.AddRange(ItemBase.Names);
+        cmbDropItem.Items.AddRange(ItemDescriptor.Names);
         cmbAttackAnimation.Items.Clear();
         cmbAttackAnimation.Items.Add(Strings.General.None);
-        cmbAttackAnimation.Items.AddRange(AnimationBase.Names);
+        cmbAttackAnimation.Items.AddRange(AnimationDescriptor.Names);
         cmbOnDeathEventKiller.Items.Clear();
         cmbOnDeathEventKiller.Items.Add(Strings.General.None);
-        cmbOnDeathEventKiller.Items.AddRange(EventBase.Names);
+        cmbOnDeathEventKiller.Items.AddRange(EventDescriptor.Names);
         cmbOnDeathEventParty.Items.Clear();
         cmbOnDeathEventParty.Items.Add(Strings.General.None);
-        cmbOnDeathEventParty.Items.AddRange(EventBase.Names);
+        cmbOnDeathEventParty.Items.AddRange(EventDescriptor.Names);
         cmbScalingStat.Items.Clear();
         for (var x = 0; x < Enum.GetValues<Stat>().Length; x++)
         {
@@ -295,8 +303,8 @@ public partial class FrmNpc : EditorForm
             nudResetRadius.Value = mEditorItem.ResetRadius;
 
             //Common Events
-            cmbOnDeathEventKiller.SelectedIndex = EventBase.ListIndex(mEditorItem.OnDeathEventId) + 1;
-            cmbOnDeathEventParty.SelectedIndex = EventBase.ListIndex(mEditorItem.OnDeathPartyEventId) + 1;
+            cmbOnDeathEventKiller.SelectedIndex = EventDescriptor.ListIndex(mEditorItem.OnDeathEventId) + 1;
+            cmbOnDeathEventParty.SelectedIndex = EventDescriptor.ListIndex(mEditorItem.OnDeathPartyEventId) + 1;
 
             nudStr.Value = mEditorItem.Stats[(int)Stat.Attack];
             nudMag.Value = mEditorItem.Stats[(int)Stat.AbilityPower];
@@ -306,9 +314,8 @@ public partial class FrmNpc : EditorForm
             nudARP.Value = mEditorItem.Stats[(int)Stat.ArmorPenetration];
             nudVit.Value = mEditorItem.Stats[(int)Stat.Vitality];
             nudWis.Value = mEditorItem.Stats[(int)Stat.Wisdom];
-            nudHp.Value = mEditorItem.MaxVitals[(int)Vital.Health];
-            nudMana.Value = mEditorItem.MaxVitals[(int)Vital.Mana];
-
+            nudHp.Value = mEditorItem.MaxVital[(int)Vital.Health];
+            nudMana.Value = mEditorItem.MaxVital[(int)Vital.Mana];
             nudExp.Value = mEditorItem.Experience;
             chkAttackAllies.Checked = mEditorItem.AttackAllies;
             chkEnabled.Checked = mEditorItem.NpcVsNpcEnabled;
@@ -320,12 +327,10 @@ public partial class FrmNpc : EditorForm
             nudScaling.Value = mEditorItem.Scaling;
             cmbDamageType.SelectedIndex = mEditorItem.DamageType;
             cmbScalingStat.SelectedIndex = mEditorItem.ScalingStat;
-            cmbAttackAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.AttackAnimationId) + 1;
+            cmbAttackAnimation.SelectedIndex = AnimationDescriptor.ListIndex(mEditorItem.AttackAnimationId) + 1;
             cmbAttackSpeedModifier.SelectedIndex = mEditorItem.AttackSpeedModifier;
             nudAttackSpeedValue.Value = mEditorItem.AttackSpeedValue;
-            //Vitals
-            nudHp.Value = mEditorItem.MaxVital[(int)Vital.Health];
-            nudMana.Value = mEditorItem.MaxVital[(int)Vital.Mana];
+
             //Regen
             nudHpRegen.Value = mEditorItem.VitalRegen[(int)Vital.Health];
             nudMpRegen.Value = mEditorItem.VitalRegen[(int)Vital.Mana];
@@ -336,7 +341,7 @@ public partial class FrmNpc : EditorForm
             {
                 if (mEditorItem.Spells[i] != Guid.Empty)
                 {
-                    lstSpells.Items.Add(SpellBase.GetName(mEditorItem.Spells[i]));
+                    lstSpells.Items.Add(SpellDescriptor.GetName(mEditorItem.Spells[i]));
                 }
                 else
                 {
@@ -347,7 +352,7 @@ public partial class FrmNpc : EditorForm
             if (lstSpells.Items.Count > 0)
             {
                 lstSpells.SelectedIndex = 0;
-                cmbSpell.SelectedIndex = SpellBase.ListIndex(mEditorItem.Spells[lstSpells.SelectedIndex]);
+                cmbSpell.SelectedIndex = SpellDescriptor.ListIndex(mEditorItem.Spells[lstSpells.SelectedIndex]);
             }
 
             cmbFreq.SelectedIndex = mEditorItem.SpellFrequency;
@@ -358,7 +363,7 @@ public partial class FrmNpc : EditorForm
             {
                 if (mEditorItem.AggroList[i] != Guid.Empty)
                 {
-                    lstAggro.Items.Add(NpcBase.GetName(mEditorItem.AggroList[i]));
+                    lstAggro.Items.Add(NPCDescriptor.GetName(mEditorItem.AggroList[i]));
                 }
                 else
                 {
@@ -386,6 +391,8 @@ public partial class FrmNpc : EditorForm
             pnlContainer.Hide();
         }
 
+        var hasItem = mEditorItem != null;
+        UpdateEditorButtons(hasItem);
         UpdateToolStripItems();
     }
 
@@ -439,15 +446,12 @@ public partial class FrmNpc : EditorForm
         picNpc.BackgroundImage = picSpriteBmp;
     }
 
-    private void UpdateDropValues(bool keepIndex = false)
+    private void UpdateDropValues()
     {
-        var index = lstDrops.SelectedIndex;
-        lstDrops.Items.Clear();
-
-        var drops = mEditorItem.Drops.ToArray();
-        foreach (var drop in drops)
+        _dropList.Clear();
+        foreach (var drop in mEditorItem.Drops)
         {
-            if (ItemBase.Get(drop.ItemId) == null)
+            _dropList.Add(new NotifiableDrop
             {
                 mEditorItem.Drops.Remove(drop);
             }
@@ -478,17 +482,17 @@ public partial class FrmNpc : EditorForm
 
     private void frmNpc_FormClosed(object sender, FormClosedEventArgs e)
     {
-        Globals.CurrentEditor = -1;
+        btnCancel_Click(null, null);
     }
 
     private void btnAdd_Click(object sender, EventArgs e)
     {
-        mEditorItem.Spells.Add(SpellBase.IdFromList(cmbSpell.SelectedIndex));
+        mEditorItem.Spells.Add(SpellDescriptor.IdFromList(cmbSpell.SelectedIndex));
         var n = lstSpells.SelectedIndex;
         lstSpells.Items.Clear();
         for (var i = 0; i < mEditorItem.Spells.Count; i++)
         {
-            lstSpells.Items.Add(SpellBase.GetName(mEditorItem.Spells[i]));
+            lstSpells.Items.Add(SpellDescriptor.GetName(mEditorItem.Spells[i]));
         }
 
         lstSpells.SelectedIndex = n;
@@ -521,13 +525,13 @@ public partial class FrmNpc : EditorForm
 
     private void btnAddAggro_Click(object sender, EventArgs e)
     {
-        mEditorItem.AggroList.Add(NpcBase.IdFromList(cmbHostileNPC.SelectedIndex));
+        mEditorItem.AggroList.Add(NPCDescriptor.IdFromList(cmbHostileNPC.SelectedIndex));
         lstAggro.Items.Clear();
         for (var i = 0; i < mEditorItem.AggroList.Count; i++)
         {
             if (mEditorItem.AggroList[i] != Guid.Empty)
             {
-                lstAggro.Items.Add(NpcBase.GetName(mEditorItem.AggroList[i]));
+                lstAggro.Items.Add(NPCDescriptor.GetName(mEditorItem.AggroList[i]));
             }
             else
             {
@@ -634,7 +638,7 @@ public partial class FrmNpc : EditorForm
     private void cmbAttackAnimation_SelectedIndexChanged(object sender, EventArgs e)
     {
         mEditorItem.AttackAnimation =
-            AnimationBase.Get(AnimationBase.IdFromList(cmbAttackAnimation.SelectedIndex - 1));
+            AnimationDescriptor.Get(AnimationDescriptor.IdFromList(cmbAttackAnimation.SelectedIndex - 1));
     }
 
     private void cmbDamageType_SelectedIndexChanged(object sender, EventArgs e)
@@ -651,7 +655,7 @@ public partial class FrmNpc : EditorForm
     {
         if (lstSpells.SelectedIndex > -1)
         {
-            cmbSpell.SelectedIndex = SpellBase.ListIndex(mEditorItem.Spells[lstSpells.SelectedIndex]);
+            cmbSpell.SelectedIndex = SpellDescriptor.ListIndex(mEditorItem.Spells[lstSpells.SelectedIndex]);
         }
     }
 
@@ -659,14 +663,14 @@ public partial class FrmNpc : EditorForm
     {
         if (lstSpells.SelectedIndex > -1 && lstSpells.SelectedIndex < mEditorItem.Spells.Count)
         {
-            mEditorItem.Spells[lstSpells.SelectedIndex] = SpellBase.IdFromList(cmbSpell.SelectedIndex);
+            mEditorItem.Spells[lstSpells.SelectedIndex] = SpellDescriptor.IdFromList(cmbSpell.SelectedIndex);
         }
 
         var n = lstSpells.SelectedIndex;
         lstSpells.Items.Clear();
         for (var i = 0; i < mEditorItem.Spells.Count; i++)
         {
-            lstSpells.Items.Add(SpellBase.GetName(mEditorItem.Spells[i]));
+            lstSpells.Items.Add(SpellDescriptor.GetName(mEditorItem.Spells[i]));
         }
 
         lstSpells.SelectedIndex = n;
@@ -699,17 +703,17 @@ public partial class FrmNpc : EditorForm
 
     private void nudDef_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.Stats[(int)Stat.Defense] = (int)nudDef.Value;
+        mEditorItem.Stats[(int)Stat.Resistance] = (int)nudDef.Value;
     }
 
     private void nudMR_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.Stats[(int)Stat.MagicResist] = (int)nudMR.Value;
+        mEditorItem.Stats[(int)Stat.Agility] = (int)nudMR.Value;
     }
 
     private void nudSpd_ValueChanged(object sender, EventArgs e)
     {
-        mEditorItem.Stats[(int)Stat.Speed] = (int)nudSpd.Value;
+        mEditorItem.Stats[(int)Stat.Vitality] = (int)nudSpd.Value;
     }
     private void nudARP_ValueChanged(object sender, EventArgs e)
     {
@@ -793,7 +797,7 @@ public partial class FrmNpc : EditorForm
         }
     }
 
-    private void btnDropAdd_Click(object sender, EventArgs e)
+    private void cmbDropItem_SelectedIndexChanged(object sender, EventArgs e)
     {
         mEditorItem.Drops.Add(new Drop());
         mEditorItem.Drops[mEditorItem.Drops.Count - 1].ItemId = ItemBase.IdFromList(cmbDropItem.SelectedIndex - 1);
@@ -823,8 +827,79 @@ public partial class FrmNpc : EditorForm
             return;
         }
 
-        mEditorItem.Drops[(int)lstDrops.SelectedIndex].Chance = (double)nudDropChance.Value;
-        UpdateDropValues(true);
+        mEditorItem.Drops[index].ItemId = ItemDescriptor.IdFromList(cmbDropItem.SelectedIndex - 1);
+        _dropList[index].ItemId = mEditorItem.Drops[index].ItemId;
+    }
+
+    private void nudDropMaxAmount_ValueChanged(object sender, EventArgs e)
+    {
+        int index = lstDrops.SelectedIndex;
+        if (index < 0 || index > lstDrops.Items.Count)
+        {
+            return;
+        }
+
+        mEditorItem.Drops[index].MaxQuantity = (int)nudDropMaxAmount.Value;
+        _dropList[index].MaxQuantity = mEditorItem.Drops[index].MaxQuantity;
+    }
+
+    private void nudDropMinAmount_ValueChanged(object sender, EventArgs e)
+    {
+        int index = lstDrops.SelectedIndex;
+        if (index < 0 || index > lstDrops.Items.Count)
+        {
+            return;
+        }
+
+        mEditorItem.Drops[index].MinQuantity = (int)nudDropMinAmount.Value;
+        _dropList[index].MinQuantity = mEditorItem.Drops[index].MinQuantity;
+    }
+
+    private void nudDropChance_ValueChanged(object sender, EventArgs e)
+    {
+        int index = lstDrops.SelectedIndex;
+        if (index < 0 || index > lstDrops.Items.Count)
+        {
+            return;
+        }
+
+        mEditorItem.Drops[index].Chance = (double)nudDropChance.Value;
+        _dropList[index].Chance = mEditorItem.Drops[index].Chance;
+    }
+
+    private void btnDropAdd_Click(object sender, EventArgs e)
+    {
+        var drop = new Drop()
+        {
+            ItemId = ItemDescriptor.IdFromList(cmbDropItem.SelectedIndex - 1),
+            MaxQuantity = (int)nudDropMaxAmount.Value,
+            MinQuantity = (int)nudDropMinAmount.Value,
+            Chance = (double)nudDropChance.Value
+        };
+
+        mEditorItem.Drops.Add(drop);
+
+        _dropList.Add(new NotifiableDrop
+        {
+            ItemId = drop.ItemId,
+            MinQuantity = drop.MinQuantity,
+            MaxQuantity = drop.MaxQuantity,
+            Chance = drop.Chance
+        });
+
+        lstDrops.SelectedIndex = _dropList.Count - 1;
+    }
+
+    private void btnDropRemove_Click(object sender, EventArgs e)
+    {
+        if (lstDrops.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        var index = lstDrops.SelectedIndex;
+        mEditorItem.Drops.RemoveAt(index);
+        _dropList.RemoveAt(index);
     }
 
     private void chkIndividualLoot_CheckedChanged(object sender, EventArgs e)
@@ -916,12 +991,12 @@ public partial class FrmNpc : EditorForm
 
     private void cmbOnDeathEventKiller_SelectedIndexChanged(object sender, EventArgs e)
     {
-        mEditorItem.OnDeathEvent = EventBase.Get(EventBase.IdFromList(cmbOnDeathEventKiller.SelectedIndex - 1));
+        mEditorItem.OnDeathEvent = EventDescriptor.Get(EventDescriptor.IdFromList(cmbOnDeathEventKiller.SelectedIndex - 1));
     }
 
     private void cmbOnDeathEventParty_SelectedIndexChanged(object sender, EventArgs e)
     {
-        mEditorItem.OnDeathPartyEvent = EventBase.Get(EventBase.IdFromList(cmbOnDeathEventParty.SelectedIndex - 1));
+        mEditorItem.OnDeathPartyEvent = EventDescriptor.Get(EventDescriptor.IdFromList(cmbOnDeathEventParty.SelectedIndex - 1));
     }
 
     private void chkFocusDamageDealer_CheckedChanged(object sender, EventArgs e)
@@ -986,15 +1061,15 @@ public partial class FrmNpc : EditorForm
     {
         //Collect folders
         var mFolders = new List<string>();
-        foreach (var itm in NpcBase.Lookup)
+        foreach (var itm in NPCDescriptor.Lookup)
         {
-            if (!string.IsNullOrEmpty(((NpcBase)itm.Value).Folder) &&
-                !mFolders.Contains(((NpcBase)itm.Value).Folder))
+            if (!string.IsNullOrEmpty(((NPCDescriptor)itm.Value).Folder) &&
+                !mFolders.Contains(((NPCDescriptor)itm.Value).Folder))
             {
-                mFolders.Add(((NpcBase)itm.Value).Folder);
-                if (!mKnownFolders.Contains(((NpcBase)itm.Value).Folder))
+                mFolders.Add(((NPCDescriptor)itm.Value).Folder);
+                if (!mKnownFolders.Contains(((NPCDescriptor)itm.Value).Folder))
                 {
-                    mKnownFolders.Add(((NpcBase)itm.Value).Folder);
+                    mKnownFolders.Add(((NPCDescriptor)itm.Value).Folder);
                 }
             }
         }
@@ -1005,8 +1080,8 @@ public partial class FrmNpc : EditorForm
         cmbFolder.Items.Add("");
         cmbFolder.Items.AddRange(mKnownFolders.ToArray());
 
-        var items = NpcBase.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
-            new KeyValuePair<string, string>(((NpcBase)pair.Value)?.Name ?? Models.DatabaseObject<NpcBase>.Deleted, ((NpcBase)pair.Value)?.Folder ?? ""))).ToArray();
+        var items = NPCDescriptor.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
+            new KeyValuePair<string, string>(((NPCDescriptor)pair.Value)?.Name ?? Models.DatabaseObject<NPCDescriptor>.Deleted, ((NPCDescriptor)pair.Value)?.Folder ?? ""))).ToArray();
         lstGameObjects.Repopulate(items, mFolders, btnAlphabetical.Checked, CustomSearch(), txtSearch.Text);
     }
 

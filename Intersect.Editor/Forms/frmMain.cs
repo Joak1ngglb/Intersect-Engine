@@ -2211,11 +2211,11 @@ public partial class FrmMain : Form
 
             filesProcessed++;
 
-            var percentage = (float)(filesProcessed / (float)(fileCount + 1));
-            var outofeighty = (int)(percentage * 80f);
+            var percentage = (float) (filesProcessed / (float) (fileCount + 1));
+            var outOfEighty = (int)(percentage * 80f); // Use a fake partial percentage
 
             Globals.UpdateCreationProgressForm.SetProgress(
-                Strings.UpdatePacking.Calculating, outofeighty + 10, false
+                Strings.UpdatePacking.Calculating, Math.Min(80, outOfEighty) + 10, false
             );
 
             Application.DoEvents();

@@ -1,15 +1,17 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.Framework.Reflection;
-using Intersect.GameObjects;
-using Intersect.Logging;
-using Intersect.Reflection;
 using Intersect.Security;
+using Intersect.Server.Collections.Indexing;
+using Intersect.Server.Collections.Sorting;
 using Intersect.Server.Core;
 using Intersect.Server.Database.Logging.Entities;
 using Intersect.Server.Database.PlayerData.Api;
@@ -19,11 +21,11 @@ using Intersect.Server.Entities;
 using Intersect.Server.General;
 using Intersect.Server.Localization;
 using Intersect.Server.Networking;
-using Intersect.Server.Web.RestApi.Payloads;
 using Intersect.Utilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using VariableValue = Intersect.GameObjects.Switches_and_Variables.VariableValue;
+using VariableValue = Intersect.Framework.Core.GameObjects.Variables.VariableValue;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Local
 
@@ -43,7 +45,7 @@ public partial class User
     ///     Variables that have been updated for this account which need to be saved to the db
     /// </summary>
     [JsonIgnore]
-    public ConcurrentDictionary<Guid, UserVariableBase> UpdatedVariables = new();
+    public ConcurrentDictionary<Guid, UserVariableDescriptor> UpdatedVariables = new();
 
     public static int OnlineCount => OnlineUsers.Count;
 
@@ -71,6 +73,8 @@ public partial class User
     }
 
     [NotMapped] public UserRights Power { get; set; }
+
+    [JsonIgnore, NotMapped] public ImmutableList<string> Roles => Power.Roles;
 
     [JsonIgnore] public virtual List<Player> Players { get; set; } = new();
 
@@ -213,7 +217,7 @@ public partial class User
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"Failed to save user while adding character: {Name}");
+            ApplicationContext.Context.Value?.Logger.LogError(ex, $"Failed to save user while adding character: {Name}");
             ServerContext.DispatchUnhandledException(
                 new Exception("Failed to save user, shutting down to prevent rollbacks!")
             );
@@ -246,7 +250,7 @@ public partial class User
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to save user while deleting character: " + Name);
+            ApplicationContext.Context.Value?.Logger.LogError(ex, "Failed to save user while deleting character: " + Name);
             return false;
         }
     }
@@ -274,7 +278,7 @@ public partial class User
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to delete user: " + Name);
+            ApplicationContext.Context.Value?.Logger.LogError(ex, "Failed to delete user: " + Name);
             return false;
         }
     }
@@ -291,7 +295,7 @@ public partial class User
         {
             if (_lastSave < debounceMs + Timing.Global.MillisecondsUtc)
             {
-                Log.Debug("Skipping save due to debounce");
+                ApplicationContext.Context.Value?.Logger.LogDebug("Skipping save due to debounce");
                 return;
             }
         }
@@ -313,7 +317,7 @@ public partial class User
     private int _saveCounter = 0;
 #endif
 
-    private UserSaveResult Save(PlayerContext? playerContext, bool force = false, bool create = false)
+    public UserSaveResult Save(PlayerContext? playerContext, bool force = false, bool create = false)
     {
         lock (_lastSaveLock)
         {
@@ -343,13 +347,13 @@ public partial class User
             if (!lockTaken)
             {
 #if DIAGNOSTIC
-                Log.Debug($"Failed to take lock {Environment.StackTrace}");
+                ApplicationContext.Context.Value?.Logger.LogDebug($"Failed to take lock {Environment.StackTrace}");
 #endif
                 return UserSaveResult.SkippedCouldNotTakeLock;
             }
 
 #if DIAGNOSTIC
-            Log.Debug($"DBOP-A Save({playerContext}, {force}, {create}) #{currentExecutionId} {Name} ({Id})");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"DBOP-A Save({playerContext}, {force}, {create}) #{currentExecutionId} {Name} ({Id})");
 #endif
 
             if (playerContext == null)
@@ -378,7 +382,7 @@ public partial class User
                         try
                         {
                             playerContext.Users.Update(this);
-                            Log.Warn(invalidOperationException, $"Successfully recovered from {nameof(InvalidOperationException)}");
+                            ApplicationContext.Context.Value?.Logger.LogWarning(invalidOperationException, $"Successfully recovered from {nameof(InvalidOperationException)}");
                         }
                         catch (Exception exception)
                         {
@@ -416,7 +420,7 @@ public partial class User
             }
 
 #if DIAGNOSTIC
-            Log.Debug($"DBOP-B Save({playerContext}, {force}, {create}) #{currentExecutionId} {Name} ({Id})");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"DBOP-B Save({playerContext}, {force}, {create}) #{currentExecutionId} {Name} ({Id})");
 #endif
 
             var client = Globals.ClientLookup.Values.FirstOrDefault(c => c.User.Id == Id);
@@ -454,11 +458,11 @@ public partial class User
 #if DIAGNOSTIC
             suffix = $"#{currentExecutionId}";
 #endif
-            Log.Error(ex, $"Jackpot! Concurrency Bug For {Name} in {(createdContext == default ? "Existing" : "Created")} Context {suffix}");
-            Log.Error(concurrencyErrors.ToString());
+            ApplicationContext.Context.Value?.Logger.LogError(ex, $"Jackpot! Concurrency Bug For {Name} in {(createdContext == default ? "Existing" : "Created")} Context {suffix}");
+            ApplicationContext.Context.Value?.Logger.LogError(concurrencyErrors.ToString());
 
 #if DIAGNOSTIC
-            Log.Debug($"DBOP-C Save({playerContext}, {force}, {create}) #{currentExecutionId} {Name} ({Id})");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"DBOP-C Save({playerContext}, {force}, {create}) #{currentExecutionId} {Name} ({Id})");
 #endif
 
             var client = Globals.ClientLookup.Values.FirstOrDefault(c => c.User.Id == Id);
@@ -475,10 +479,10 @@ public partial class User
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to save user: " + Name);
+            ApplicationContext.Context.Value?.Logger.LogError(ex, "Failed to save user: " + Name);
 
 #if DIAGNOSTIC
-            Log.Debug($"DBOP-C Save({playerContext}, {force}, {create}) #{currentExecutionId} {Name} ({Id})");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"DBOP-C Save({playerContext}, {force}, {create}) #{currentExecutionId} {Name} ({Id})");
 #endif
 
             var client = Globals.ClientLookup.Values.FirstOrDefault(c => c.User.Id == Id);
@@ -529,18 +533,89 @@ public partial class User
         return user;
     }
 
-    public static Tuple<Client, User> Fetch(Guid userId)
+    public static bool TryFind(LookupKey lookupKey, [NotNullWhen(true)] out User? user)
     {
-        var client = Globals.Clients.Find(queryClient => userId == queryClient?.User?.Id);
-
-        return new Tuple<Client, User>(client, client?.User ?? FindById(userId));
+        using var playerContext = DbInterface.CreatePlayerContext();
+        return TryFind(lookupKey, playerContext, out user);
     }
 
-    public static Tuple<Client, User> Fetch(string userName)
-    {
-        var client = Globals.Clients.Find(queryClient => Entity.CompareName(userName, queryClient?.User?.Name));
+    public static bool TryFetch(LookupKey lookupKey, [NotNullWhen(true)] out User? user) => TryFetch(lookupKey, out user, out _);
 
-        return new Tuple<Client, User>(client, client?.User ?? Find(userName));
+    public static bool TryFetch(LookupKey lookupKey, [NotNullWhen(true)] out User? user, out Client? client)
+    {
+        if (lookupKey.IsInvalid)
+        {
+            user = default;
+            client = default;
+            return false;
+        }
+
+        if (lookupKey.IsId)
+        {
+            client = Globals.Clients.Find(queryClient => lookupKey.Id == queryClient?.User?.Id);
+            user = client?.User ?? FindById(lookupKey.Id);
+            return user != default;
+        }
+
+        client = Globals.Clients.Find(queryClient => Entity.CompareName(lookupKey.Name, queryClient?.User?.Name));
+        user = client?.User ?? Find(lookupKey.Name);
+        return user != default;
+    }
+
+    public bool TryLoadAvatarName(
+        [NotNullWhen(true)] out Player? playerWithAvatar,
+        [NotNullWhen(true)] out string? avatarName,
+        out bool isFace
+    )
+    {
+        foreach (var player in Players)
+        {
+            if (!player.TryLoadAvatarName(out avatarName, out isFace) || string.IsNullOrWhiteSpace(avatarName))
+            {
+                continue;
+            }
+
+            playerWithAvatar = player;
+            return true;
+        }
+
+        avatarName = null;
+        isFace = false;
+        playerWithAvatar = null;
+        return false;
+    }
+
+    public static bool TryAuthenticate(string username, string password, [NotNullWhen(true)] out User? user)
+    {
+        user = FindOnline(username);
+        if (user != default)
+        {
+            var hashedPassword = SaltPasswordHash(password, user.Salt);
+            if (string.Equals(user.Password, hashedPassword, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            user = default;
+            return false;
+        }
+
+        try
+        {
+            using var context = DbInterface.CreatePlayerContext();
+            var salt = GetUserSalt(username);
+            if (!string.IsNullOrWhiteSpace(salt))
+            {
+                var pass = SaltPasswordHash(password, salt);
+                user = QueryUserByNameAndPasswordShallow(context, username, pass);
+            }
+        }
+        catch (Exception exception)
+        {
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to authenticate {Username}", username);
+        }
+
+        return user != default;
     }
 
     public static bool TryLogin(
@@ -558,7 +633,7 @@ public partial class User
             var hashedPassword = SaltPasswordHash(ptPassword, user.Salt);
             if (!string.Equals(user.Password, hashedPassword, StringComparison.Ordinal))
             {
-                Log.Debug($"Login to {username} failed due invalid credentials");
+                ApplicationContext.Context.Value?.Logger.LogDebug($"Login to {username} failed due invalid credentials");
                 user = default;
                 failureReason = new LoginFailureReason(LoginFailureType.InvalidCredentials);
                 return false;
@@ -567,7 +642,7 @@ public partial class User
             var result = user.Save();
             if (result != UserSaveResult.Completed)
             {
-                Log.Error($"Login to {username} failed due to pre-logged in User save failure: {result}");
+                ApplicationContext.Context.Value?.Logger.LogError($"Login to {username} failed due to pre-logged in User save failure: {result}");
                 user = default;
                 failureReason = new LoginFailureReason(LoginFailureType.ServerError);
                 return false;
@@ -579,11 +654,10 @@ public partial class User
                 return true;
             }
 
-            Log.Error($"Login to {username} failed due to {nameof(PostLoad)}() returning null.");
+            ApplicationContext.Context.Value?.Logger.LogError($"Login to {username} failed due to {nameof(PostLoad)}() returning null.");
             user = default;
             failureReason = new LoginFailureReason(LoginFailureType.ServerError);
             return false;
-
         }
 
         try
@@ -592,9 +666,17 @@ public partial class User
             var salt = GetUserSalt(username);
             if (string.IsNullOrWhiteSpace(salt))
             {
-                Log.Error($"Login to {username} failed because the salt is empty.");
+                if (UserExists(username))
+                {
+                    ApplicationContext.Context.Value?.Logger.LogError($"Login to {username} failed because the salt is empty.");
+                    failureReason = new LoginFailureReason(LoginFailureType.ServerError);
+                }
+                else
+                {
+                    failureReason = new LoginFailureReason(LoginFailureType.InvalidCredentials);
+                }
+
                 user = default;
-                failureReason = new LoginFailureReason(LoginFailureType.ServerError);
                 return false;
             }
 
@@ -605,44 +687,101 @@ public partial class User
         }
         catch (Exception exception)
         {
-            Log.Error(exception, $"Login to {username} failed due to an exception");
+            ApplicationContext.Context.Value?.Logger.LogError(exception, $"Login to {username} failed due to an exception");
             user = default;
             failureReason = new LoginFailureReason(LoginFailureType.ServerError);
             return false;
         }
     }
 
-    public static User FindById(Guid userId)
+    public static bool TryFind(LookupKey lookupKey, PlayerContext playerContext, [NotNullWhen(true)] out User? user)
     {
-        using var playerContext = DbInterface.CreatePlayerContext();
-        return FindById(userId, playerContext);
-    }
-
-    public static User FindById(Guid userId, PlayerContext playerContext)
-    {
-        if (userId == Guid.Empty)
+        if (lookupKey.IsId)
         {
-            return null;
+            return TryFindById(lookupKey.Id, playerContext, out user);
         }
 
-        var user = FindOnline(userId);
+        if (lookupKey.IsName)
+        {
+            return TryFindByName(lookupKey.Name, playerContext, out user);
+        }
+
+        throw new InvalidOperationException($"Lookup key has neither an id nor a name: '{lookupKey}'");
+    }
+
+    public static bool TryFindByName(string username, [NotNullWhen(true)] out User? user)
+    {
+        using var playerContext = DbInterface.CreatePlayerContext();
+        return TryFindByName(username, playerContext, out user);
+    }
+
+    public static bool TryFindByName(string username, PlayerContext playerContext, [NotNullWhen(true)] out User? user)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            user = default;
+            return false;
+        }
+
+        user = FindOnline(username);
 
         if (user != null)
         {
-            return user;
+            return true;
         }
 
         try
         {
             using var context = DbInterface.CreatePlayerContext();
-            return QueryUserByIdShallow(playerContext, userId);
+            var queriedUser = QueryUserByNameShallow(context, username);
+            if (queriedUser != default)
+            {
+                user = queriedUser;
+                return true;
+            }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
-            return null;
+            ApplicationContext.Context.Value?.Logger.LogError(exception, $"Failed to find user by name '{username}'");
         }
+
+        return false;
     }
+
+    public static bool TryFindById(Guid userId, [NotNullWhen(true)] out User? user)
+    {
+        using var playerContext = DbInterface.CreatePlayerContext();
+        return TryFindById(userId, playerContext, out user);
+    }
+
+    public static bool TryFindById(Guid userId, PlayerContext playerContext, [NotNullWhen(true)] out User? user)
+    {
+        if (userId == default)
+        {
+            user = default;
+            return false;
+        }
+
+        user = FindOnline(userId);
+
+        if (user != null)
+        {
+            return true;
+        }
+
+        try
+        {
+            user = QueryUserByIdShallow(playerContext, userId);
+        }
+        catch (Exception exception)
+        {
+            ApplicationContext.Context.Value?.Logger.LogError(exception, $"Failed to find user by id '{userId}'");
+        }
+
+        return user != default;
+    }
+
+    public static User? FindById(Guid userId) => TryFindById(userId, out var user) ? user : default;
 
     public static User Find(string username)
     {
@@ -664,9 +803,9 @@ public partial class User
             var queriedUser = QueryUserByNameShallow(context, username);
             return queriedUser;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to find {Username}", username);
             return null;
         }
     }
@@ -701,9 +840,13 @@ public partial class User
             var queriedUser = QueryUserByNameOrEmailShallow(playerContext, nameOrEmail);
             return queriedUser;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Failed to load user by name or email '{UsernameOrEmail}'",
+                nameOrEmail
+            );
             return null;
         }
     }
@@ -732,9 +875,13 @@ public partial class User
         {
             return QueryUserByEmailShallow(playerContext, email);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Failed to load user for email address '{Email}'",
+                email
+            );
             return null;
         }
     }
@@ -754,14 +901,16 @@ public partial class User
 
         try
         {
-            using (var context = DbInterface.CreatePlayerContext())
-            {
-                return SaltByName(context, userName);
-            }
+            using var context = DbInterface.CreatePlayerContext();
+            return SaltByName(context, userName);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error getting salt for '{Username}'",
+                userName
+            );
             return null;
         }
     }
@@ -792,9 +941,13 @@ public partial class User
                 return AnyUserByNameOrEmail(context, nameOrEmail);
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error checking if user known by '{NameOrEmail}' exists",
+                nameOrEmail
+            );
             return false;
         }
     }
@@ -847,7 +1000,7 @@ public partial class User
     /// <returns></returns>
     private Variable CreateVariable(Guid id)
     {
-        if (UserVariableBase.Get(id) == null)
+        if (UserVariableDescriptor.Get(id) == null)
         {
             return null;
         }
@@ -904,7 +1057,7 @@ public partial class User
         error = default;
         user = default;
 
-        if (Options.BlockClientRegistrations)
+        if (Options.Instance.BlockClientRegistrations)
         {
             error = Strings.Account.RegistrationsBlocked;
             return false;
@@ -1065,9 +1218,9 @@ public partial class User
                 return users;
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error listing users");
             total = 0;
             return null;
         }

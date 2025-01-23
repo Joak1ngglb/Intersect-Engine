@@ -117,19 +117,24 @@ public static partial class Input
                 return;
             }
 
+            if (Interface.Interface.GameUi is not { } gameUi)
+            {
+                return;
+            }
+
             // First try and unfocus chat then close all UI elements, then untarget our target.. and THEN open the escape menu.
             // Most games do this, why not this?
-            if (Interface.Interface.GameUi != null && Interface.Interface.GameUi.ChatFocussed)
+            if (gameUi.ChatFocussed)
             {
-                Interface.Interface.GameUi.UnfocusChat = true;
+                gameUi.UnfocusChat = true;
             }
-            else if (Interface.Interface.GameUi != null && Interface.Interface.GameUi.CloseAllWindows())
+            else if (gameUi.CloseAllWindows())
             {
                 // We've closed our windows, don't do anything else. :)
             }
-            else if (Globals.Me != null && Globals.Me.TargetIndex != Guid.Empty && !Globals.Me.Status.Any(s => s.Type == Enums.SpellEffect.Taunt))
+            else if (Globals.Me is {} me && me.TargetIndex != default && me.Status.All(s => s.Type != SpellEffect.Taunt))
             {
-                _ = Globals.Me.ClearTarget();
+                _ = me.ClearTarget();
             }
             else
             {
@@ -137,11 +142,18 @@ public static partial class Input
 
                 if (simplifiedEscapeMenuSetting)
                 {
-                    Interface.Interface.GameUi?.GameMenu?.ToggleSimplifiedEscapeMenu();
+                    if (gameUi.EscapeMenu.IsVisible)
+                    {
+                        gameUi.EscapeMenu.ToggleHidden();
+                    }
+                    else
+                    {
+                        gameUi.GameMenu.ToggleSimplifiedEscapeMenu();
+                    }
                 }
                 else
                 {
-                    Interface.Interface.GameUi?.EscapeMenu?.ToggleHidden();
+                    gameUi.EscapeMenu.ToggleHidden();
                 }
             }
         }
@@ -268,7 +280,7 @@ public static partial class Input
                                     {
                                         _ = Player.TryPickupItem(
                                                 Globals.Me.MapInstance.Id,
-                                                Globals.Me.Y * Options.MapWidth + Globals.Me.X
+                                                Globals.Me.Y * Options.Instance.Map.MapWidth + Globals.Me.X
                                             );
                                     }
 
@@ -440,7 +452,7 @@ public static partial class Input
         if (Controls.Controls.ControlHasKey(Control.PickUp, modifier, key))
         {
             if (Globals.Me.MapInstance != default &&
-                Player.TryPickupItem(Globals.Me.MapInstance.Id, Globals.Me.Y * Options.MapWidth + Globals.Me.X, Guid.Empty, true)
+                Player.TryPickupItem(Globals.Me.MapInstance.Id, Globals.Me.Y * Options.Instance.Map.MapWidth + Globals.Me.X, Guid.Empty, true)
             )
             {
                 return;
@@ -527,12 +539,12 @@ public static partial class Input
 
         foreach (MapInstance map in MapInstance.Lookup.Values.Cast<MapInstance>())
         {
-            if (!(x >= map.X) || !(x <= map.X + Options.MapWidth * Options.TileWidth))
+            if (!(x >= map.X) || !(x <= map.X + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth))
             {
                 continue;
             }
 
-            if (!(y >= map.Y) || !(y <= map.Y + Options.MapHeight * Options.TileHeight))
+            if (!(y >= map.Y) || !(y <= map.Y + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight))
             {
                 continue;
             }
@@ -542,8 +554,8 @@ public static partial class Input
             y -= (int) map.Y;
 
             //transform pixel format to tile format
-            x /= Options.TileWidth;
-            y /= Options.TileHeight;
+            x /= Options.Instance.Map.TileWidth;
+            y /= Options.Instance.Map.TileHeight;
             var mapNum = map.Id;
 
             if (Globals.Me.TryGetRealLocation(ref x, ref y, ref mapNum))

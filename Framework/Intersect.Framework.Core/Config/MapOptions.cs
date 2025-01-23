@@ -1,4 +1,5 @@
 ﻿using System.Runtime.Serialization;
+using Intersect.Framework.Annotations;
 using Newtonsoft.Json;
 
 namespace Intersect.Config;
@@ -6,8 +7,12 @@ namespace Intersect.Config;
 /// <summary>
 ///  Options for the game map.
 /// </summary>
+[RequiresRestart]
 public partial class MapOptions
 {
+    public const int DefaultMapWidth = 32;
+    public const int DefaultMapHeight = 26;
+
     private bool _enableDiagonalMovement = true;
 
     /// <summary>
@@ -26,7 +31,7 @@ public partial class MapOptions
     public bool EnableCrossingDiagonalBlocks { get; set; }
 
     /// <summary>
-    /// Indicates whether or not diagonal movement is enabled for entities within the map.
+    /// Indicates whether diagonal movement is enabled for entities within the map.
     /// </summary>
     public bool EnableDiagonalMovement
     {
@@ -52,12 +57,12 @@ public partial class MapOptions
     /// <summary>
     /// The options for the map's layers.
     /// </summary>
-    public LayerOptions Layers { get; set; } = new LayerOptions();
+    public LayerOptions Layers { get; set; } = new();
 
     /// <summary>
     /// The height of the map in tiles.
     /// </summary>
-    public int MapHeight { get; set; } = 26;
+    public int MapHeight { get; set; } = DefaultMapHeight;
 
     /// <summary>
     /// The width of map items.
@@ -72,7 +77,7 @@ public partial class MapOptions
     /// <summary>
     /// The width of the map in tiles.
     /// </summary>
-    public int MapWidth { get; set; } = 32;
+    public int MapWidth { get; set; } = DefaultMapWidth;
 
     /// <summary>
     /// The number of movement directions available in the game for entities within the map.

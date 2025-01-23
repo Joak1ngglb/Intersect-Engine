@@ -7,9 +7,10 @@ using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
+using Intersect.Core;
 using Intersect.GameObjects;
-using Intersect.Logging;
 using Intersect.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Interface.Menu;
 
@@ -168,7 +169,7 @@ public partial class CreateCharacterWindow : ImagePanel
             classCount++;
         }
 
-        Log.Debug($"Added {classCount} classes to {nameof(CreateCharacterWindow)}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"Added {classCount} classes to {nameof(CreateCharacterWindow)}");
 
         LoadClass();
         UpdateDisplay();
@@ -444,7 +445,7 @@ public partial class CreateCharacterWindow : ImagePanel
     private void BackButton_Clicked(Base sender, ClickedEventArgs arguments)
     {
         Hide();
-        if (Options.Player.MaxCharacters <= 1)
+        if (Options.Instance.Player.MaxCharacters <= 1)
         {
             //Logout
             _mainMenu.Show();

@@ -1,5 +1,4 @@
 ﻿using DarkUI.Forms;
-
 using Intersect.Editor.Forms.Editors.Events;
 using Intersect.Editor.General;
 using Intersect.Editor.Localization;
@@ -151,7 +150,7 @@ public partial class FrmCommonEvent : EditorForm
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.CommonEventEditor.folderprompt, Strings.CommonEventEditor.foldertitle, ref folderName,
             DarkDialogButton.OkCancel

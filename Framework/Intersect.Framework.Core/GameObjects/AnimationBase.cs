@@ -1,8 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using Intersect.Models;
-
 using Microsoft.EntityFrameworkCore;
-
 using Newtonsoft.Json;
 
 namespace Intersect.GameObjects;
@@ -77,5 +75,5 @@ public partial class AnimationBase : DatabaseObject<AnimationBase>, IFolderable
     public bool CompleteSound { get; set; }
 
     /// <inheritdoc />
-    public string Folder { get; set; } = "";
+    public string Folder { get; set; } = string.Empty;
 }

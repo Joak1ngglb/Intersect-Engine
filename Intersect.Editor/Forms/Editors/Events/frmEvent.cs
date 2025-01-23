@@ -1,6 +1,5 @@
 using DarkUI.Controls;
 using DarkUI.Forms;
-
 using Intersect.Editor.Content;
 using Intersect.Editor.Core;
 using Intersect.Editor.Forms.Editors.Events.Event_Commands;
@@ -8,12 +7,12 @@ using Intersect.Editor.Localization;
 using Intersect.Editor.Maps;
 using Intersect.Editor.Networking;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Events.Commands;
 using Intersect.GameObjects.Maps;
 using Intersect.Utilities;
-
 using Newtonsoft.Json;
 using Graphics = System.Drawing.Graphics;
 
@@ -227,16 +226,16 @@ public partial class FrmEvent : Form
                     sourceBitmap,
                     new Rectangle(
                         pnlPreview.Width / 2 -
-                        (Options.TileWidth + CurrentPage.Graphic.Width * Options.TileWidth) / 2,
+                        (Options.Instance.Map.TileWidth + CurrentPage.Graphic.Width * Options.Instance.Map.TileWidth) / 2,
                         pnlPreview.Height / 2 -
-                        (Options.TileHeight + CurrentPage.Graphic.Height * Options.TileHeight) / 2,
-                        Options.TileWidth + CurrentPage.Graphic.Width * Options.TileWidth,
-                        Options.TileHeight + CurrentPage.Graphic.Height * Options.TileHeight
+                        (Options.Instance.Map.TileHeight + CurrentPage.Graphic.Height * Options.Instance.Map.TileHeight) / 2,
+                        Options.Instance.Map.TileWidth + CurrentPage.Graphic.Width * Options.Instance.Map.TileWidth,
+                        Options.Instance.Map.TileHeight + CurrentPage.Graphic.Height * Options.Instance.Map.TileHeight
                     ),
                     new Rectangle(
-                        CurrentPage.Graphic.X * Options.TileWidth, CurrentPage.Graphic.Y * Options.TileHeight,
-                        Options.TileWidth + CurrentPage.Graphic.Width * Options.TileWidth,
-                        Options.TileHeight + CurrentPage.Graphic.Height * Options.TileHeight
+                        CurrentPage.Graphic.X * Options.Instance.Map.TileWidth, CurrentPage.Graphic.Y * Options.Instance.Map.TileHeight,
+                        Options.Instance.Map.TileWidth + CurrentPage.Graphic.Width * Options.Instance.Map.TileWidth,
+                        Options.Instance.Map.TileHeight + CurrentPage.Graphic.Height * Options.Instance.Map.TileHeight
                     ), GraphicsUnit.Pixel
                 );
             }
@@ -1863,8 +1862,8 @@ public partial class FrmEvent : Form
             {
                 cmbVariable.Show();
                 cmbVariable.Items.Add(Strings.General.None);
-                cmbVariable.Items.AddRange(PlayerVariableBase.Names);
-                cmbVariable.SelectedIndex = PlayerVariableBase.ListIndex(CurrentPage.TriggerId) + 1;
+                cmbVariable.Items.AddRange(PlayerVariableDescriptor.Names);
+                cmbVariable.SelectedIndex = PlayerVariableDescriptor.ListIndex(CurrentPage.TriggerId) + 1;
                 lblVariableTrigger.Show();
                 lblVariableTrigger.Text = Strings.EventEditor.VariableTrigger;
             }
@@ -1872,8 +1871,8 @@ public partial class FrmEvent : Form
             {
                 cmbVariable.Show();
                 cmbVariable.Items.Add(Strings.General.None);
-                cmbVariable.Items.AddRange(ServerVariableBase.Names);
-                cmbVariable.SelectedIndex = ServerVariableBase.ListIndex(CurrentPage.TriggerId) + 1;
+                cmbVariable.Items.AddRange(ServerVariableDescriptor.Names);
+                cmbVariable.SelectedIndex = ServerVariableDescriptor.ListIndex(CurrentPage.TriggerId) + 1;
                 lblVariableTrigger.Show();
                 lblVariableTrigger.Text = Strings.EventEditor.VariableTrigger;
             }
@@ -1881,8 +1880,8 @@ public partial class FrmEvent : Form
             {
                 cmbVariable.Show();
                 cmbVariable.Items.Add(Strings.General.None);
-                cmbVariable.Items.AddRange(GuildVariableBase.Names);
-                cmbVariable.SelectedIndex = GuildVariableBase.ListIndex(CurrentPage.TriggerId) + 1;
+                cmbVariable.Items.AddRange(GuildVariableDescriptor.Names);
+                cmbVariable.SelectedIndex = GuildVariableDescriptor.ListIndex(CurrentPage.TriggerId) + 1;
                 lblVariableTrigger.Show();
                 lblVariableTrigger.Text = Strings.EventEditor.VariableTrigger;
             }
@@ -1890,8 +1889,8 @@ public partial class FrmEvent : Form
             {
                 cmbVariable.Show();
                 cmbVariable.Items.Add(Strings.General.None);
-                cmbVariable.Items.AddRange(UserVariableBase.Names);
-                cmbVariable.SelectedIndex = UserVariableBase.ListIndex(CurrentPage.TriggerId) + 1;
+                cmbVariable.Items.AddRange(UserVariableDescriptor.Names);
+                cmbVariable.SelectedIndex = UserVariableDescriptor.ListIndex(CurrentPage.TriggerId) + 1;
                 lblVariableTrigger.Show();
                 lblVariableTrigger.Text = Strings.EventEditor.VariableTrigger;
             }
@@ -1904,19 +1903,19 @@ public partial class FrmEvent : Form
         {
             if (cmbTrigger.SelectedIndex == (int)CommonEventTrigger.PlayerVariableChange)
             {
-                CurrentPage.TriggerId = PlayerVariableBase.IdFromList(cmbVariable.SelectedIndex - 1);
+                CurrentPage.TriggerId = PlayerVariableDescriptor.IdFromList(cmbVariable.SelectedIndex - 1);
             }
             else if (cmbTrigger.SelectedIndex == (int)CommonEventTrigger.ServerVariableChange)
             {
-                CurrentPage.TriggerId = ServerVariableBase.IdFromList(cmbVariable.SelectedIndex - 1);
+                CurrentPage.TriggerId = ServerVariableDescriptor.IdFromList(cmbVariable.SelectedIndex - 1);
             }
             else if (cmbTrigger.SelectedIndex == (int)CommonEventTrigger.GuildVariableChange)
             {
-                CurrentPage.TriggerId = GuildVariableBase.IdFromList(cmbVariable.SelectedIndex - 1);
+                CurrentPage.TriggerId = GuildVariableDescriptor.IdFromList(cmbVariable.SelectedIndex - 1);
             }
             else if (cmbTrigger.SelectedIndex == (int)CommonEventTrigger.UserVariableChange)
             {
-                CurrentPage.TriggerId = UserVariableBase.IdFromList(cmbVariable.SelectedIndex - 1);
+                CurrentPage.TriggerId = UserVariableDescriptor.IdFromList(cmbVariable.SelectedIndex - 1);
             }
         }
     }

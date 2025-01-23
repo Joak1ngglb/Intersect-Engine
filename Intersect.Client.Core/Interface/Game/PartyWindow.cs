@@ -69,7 +69,7 @@ public partial class PartyWindow
         mHpBarContainer.Clear();
         mHpBar.Clear();
 
-        for (var i = 0; i < Options.Party.MaximumMembers; i++)
+        for (var i = 0; i < Options.Instance.Party.MaximumMembers; i++)
         {
             //Labels
             mLblnames.Add(new Label(mPartyWindow, "MemberName" + i));
@@ -81,7 +81,7 @@ public partial class PartyWindow
             }
             else
             {
-                mLblnames[i].Text = "";
+                mLblnames[i].Text = string.Empty;
             }
 
             //Health bars
@@ -168,12 +168,12 @@ public partial class PartyWindow
         mLeader.Hide();
         mLeaderText.Hide();
         mLeaveButton.Hide();
-        for (var i = 0; i < Options.Instance.PartyOpts.MaximumMembers; i++)
+        for (var i = 0; i < Options.Instance.Party.MaximumMembers; i++)
         {
             mHpBarContainer[i].Hide();
             mHpLabel[i].Hide();
             mHpValue[i].Hide();
-            mLblnames[i].Text = "";
+            mLblnames[i].Text = string.Empty;
             mMpBarContainer[i].Hide();
             mMpLabel[i].Hide();
             mMpValue[i].Hide();
@@ -189,7 +189,7 @@ public partial class PartyWindow
             mLeaderText.Show();
             mLeaveButton.Show();
 
-            for (var i = 0; i < Options.Instance.PartyOpts.MaximumMembers; i++)
+            for (var i = 0; i < Options.Instance.Party.MaximumMembers; i++)
             {
                 if (i < Globals.Me.Party.Count)
                 {
@@ -285,7 +285,7 @@ public partial class PartyWindow
                         mKickButtons[i].SetToolTipText("");
                     }
 
-                    mLblnames[i].Text = "";
+                    mLblnames[i].Text = string.Empty;
                     mHpBar[i].SetSize(0, mHpBarContainer[i].Height);
                     mHpBarContainer[i].Hide();
                 }

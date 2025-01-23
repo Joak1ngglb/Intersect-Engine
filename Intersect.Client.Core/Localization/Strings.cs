@@ -1,9 +1,9 @@
 using System.Reflection;
 using Intersect.Configuration;
+using Intersect.Core;
 using Intersect.Enums;
 using Intersect.Localization;
-using Intersect.Logging;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -24,7 +24,7 @@ public static partial class Strings
         else
         {
             double returnVal = 0;
-            var postfix = "";
+            var postfix = string.Empty;
 
             // hundreds
             if (value <= 999)
@@ -141,7 +141,7 @@ public static partial class Strings
                             var jsonString = (string)serializedValue;
                             if (jsonString == default)
                             {
-                                Log.Warn($"{groupType.Name}.{fieldInfo.Name} is null.");
+                                ApplicationContext.Context.Value?.Logger.LogWarning($"{groupType.Name}.{fieldInfo.Name} is null.");
                                 missingStrings.Add($"{groupType.Name}.{fieldInfo.Name} (string)");
                                 serializedGroup[fieldInfo.Name] = (string)localizedString;
                             }
@@ -164,7 +164,13 @@ public static partial class Strings
                                 var fieldType = fieldInfo.FieldType;
                                 if (!fieldType.IsGenericType || typeof(Dictionary<,>) != fieldType.GetGenericTypeDefinition())
                                 {
-                                    Log.Error(new NotSupportedException($"Unsupported localization type for {groupType.Name}.{fieldInfo.Name}: {fieldInfo.FieldType.FullName}"));
+                                    ApplicationContext.Context.Value?.Logger.LogError(
+                                        new NotSupportedException(
+                                            $"Unsupported localization type for {groupType.Name}.{fieldInfo.Name}: {fieldInfo.FieldType.FullName}"
+                                        ),
+                                        "Invalid field type {Type}",
+                                        fieldType
+                                    );
                                     break;
                                 }
 
@@ -172,7 +178,15 @@ public static partial class Strings
                                 var localizedParameterType = parameters.Last();
                                 if (localizedParameterType != typeof(LocalizedString))
                                 {
-                                    Log.Error(new NotSupportedException($"Unsupported localization dictionary value type for {groupType.Name}.{fieldInfo.Name}: {localizedParameterType.FullName}"));
+                                    ApplicationContext.Context.Value?.Logger.LogError(
+                                        new NotSupportedException(
+                                            $"Unsupported localization dictionary value type for {groupType.Name}.{fieldInfo.Name}: {localizedParameterType.FullName}"
+                                        ),
+                                        "Unsupported localization dictionary value type for {GroupName}.{FieldName}: {ParameterTypeName}",
+                                        groupType.Name,
+                                        fieldInfo.Name,
+                                        localizedParameterType.FullName
+                                    );
                                     break;
                                 }
 
@@ -194,13 +208,13 @@ public static partial class Strings
 
             if (missingStrings.Count > 0)
             {
-                Log.Warn($"Missing strings, overwriting strings file:\n\t{string.Join(",\n\t", missingStrings)}");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Missing strings, overwriting strings file:\n\t{string.Join(",\n\t", missingStrings)}");
                 SaveSerialized(serialized);
             }
         }
         catch (Exception exception)
         {
-            Log.Warn(exception);
+            ApplicationContext.Context.Value?.Logger.LogWarning(exception, "Error occurred while loading strings");
             Save();
         }
 
@@ -920,9 +934,6 @@ public static partial class Strings
         public static LocalizedString ExpValue = @"{00} / {01}";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString Friend = "Befriend";
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Level = @"Lv. {00}";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -933,12 +944,6 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString NameAndLevel = @"{00}    {01}";
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString Party = @"Party";
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString Trade = @"Trade";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Vital0 = @"HP:";
@@ -1138,6 +1143,9 @@ public static partial class Strings
         public static LocalizedString InviteRequestPrompt = @"{00} would like to invite you to join their guild, {01}. Do you accept?";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString InviteRequestPromptMissingGuild = @"{00} would like to invite you to join their guild. Do you accept?";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString InviteRequestTitle = @"Guild Invite";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -1283,6 +1291,24 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Title = @"Inventory";
+    }
+
+    public partial struct EntityContextMenu
+    {
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString AddFriend = @"Add Friend";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString InviteToGuild = @"Invite to Guild";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString InviteToParty = @"Invite to Party";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString PrivateMessage = @"Private Message";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Trade = @"Trade";
     }
 
     public partial struct ItemContextMenu

@@ -1,6 +1,5 @@
 using System.Drawing.Imaging;
 using DarkUI.Forms;
-
 using Intersect.Editor.Content;
 using Intersect.Editor.Core;
 using Intersect.Editor.General;
@@ -38,10 +37,10 @@ public partial class FrmItem : EditorForm
         Icon = Program.Icon;
 
         cmbEquipmentSlot.Items.Clear();
-        cmbEquipmentSlot.Items.AddRange(Options.EquipmentSlots.ToArray());
+        cmbEquipmentSlot.Items.AddRange(Options.Instance.Equipment.Slots.ToArray());
         cmbToolType.Items.Clear();
         cmbToolType.Items.Add(Strings.General.None);
-        cmbToolType.Items.AddRange(Options.ToolTypes.ToArray());
+        cmbToolType.Items.AddRange(Options.Instance.Equipment.ToolTypes.ToArray());
 
         cmbProjectile.Items.Clear();
         cmbProjectile.Items.Add(Strings.General.None);
@@ -156,17 +155,17 @@ public partial class FrmItem : EditorForm
             cmbFemalePaperdoll.Items.Add(paperdollnames[i]);
         }
 
-        nudStr.Maximum = Options.MaxStatValue;
-        nudMag.Maximum = Options.MaxStatValue;
-        nudDef.Maximum = Options.MaxStatValue;
-        nudMR.Maximum = Options.MaxStatValue;
-        nudSpd.Maximum = Options.MaxStatValue;
+        nudStr.Maximum = Options.Instance.Player.MaxStat;
+        nudMag.Maximum = Options.Instance.Player.MaxStat;
+        nudDef.Maximum = Options.Instance.Player.MaxStat;
+        nudMR.Maximum = Options.Instance.Player.MaxStat;
+        nudSpd.Maximum = Options.Instance.Player.MaxStat;
 
-        nudStr.Minimum = -Options.MaxStatValue;
-        nudMag.Minimum = -Options.MaxStatValue;
-        nudDef.Minimum = -Options.MaxStatValue;
-        nudMR.Minimum = -Options.MaxStatValue;
-        nudSpd.Minimum = -Options.MaxStatValue;
+        nudStr.Minimum = -Options.Instance.Player.MaxStat;
+        nudMag.Minimum = -Options.Instance.Player.MaxStat;
+        nudDef.Minimum = -Options.Instance.Player.MaxStat;
+        nudMR.Minimum = -Options.Instance.Player.MaxStat;
+        nudSpd.Minimum = -Options.Instance.Player.MaxStat;
 
         InitLocalization();
         UpdateEditor();
@@ -635,12 +634,12 @@ public partial class FrmItem : EditorForm
     private void cmbEquipmentSlot_SelectedIndexChanged(object sender, EventArgs e)
     {
         mEditorItem.EquipmentSlot = cmbEquipmentSlot.SelectedIndex;
-        if (cmbEquipmentSlot.SelectedIndex == Options.WeaponIndex)
+        if (cmbEquipmentSlot.SelectedIndex == Options.Instance.Equipment.WeaponSlot)
         {
             grpShieldProperties.Hide();
             grpWeaponProperties.Show();
         }
-        else if (cmbEquipmentSlot.SelectedIndex == Options.ShieldIndex)
+        else if (cmbEquipmentSlot.SelectedIndex == Options.Instance.Equipment.ShieldSlot)
         {
             grpWeaponProperties.Hide();
             grpShieldProperties.Show();
@@ -1053,7 +1052,7 @@ public partial class FrmItem : EditorForm
 
     private void btnAddCooldownGroup_Click(object sender, EventArgs e)
     {
-        var cdGroupName = "";
+        var cdGroupName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.ItemEditor.CooldownGroupPrompt, Strings.ItemEditor.CooldownGroupTitle, ref cdGroupName,
             DarkDialogButton.OkCancel
@@ -1265,7 +1264,7 @@ public partial class FrmItem : EditorForm
         }
 
         // Do we add spell cooldown groups as well?
-        if (Options.Combat.LinkSpellAndItemCooldowns)
+        if (Options.Instance.Combat.LinkSpellAndItemCooldowns)
         {
             foreach (var itm in SpellBase.Lookup)
             {
@@ -1295,7 +1294,7 @@ public partial class FrmItem : EditorForm
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.ItemEditor.folderprompt, Strings.ItemEditor.foldertitle, ref folderName,
             DarkDialogButton.OkCancel

@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Intersect.Server.Database.Logging.Entities;
 
@@ -14,17 +13,9 @@ public partial class UserActivityHistory
 
     public Guid? PlayerId { get; set; }
 
-    [JsonIgnore]
     public UserAction Action { get; set; }
 
-    [JsonProperty("Action")]
-    public string ActionString => Enum.GetName(typeof(UserAction), Action);
-
-    [JsonIgnore]
     public PeerType Peer { get; set; }
-
-    [JsonProperty("Peer")]
-    public string PeerString => Enum.GetName(typeof(PeerType), Peer);
 
     public string Ip { get; set; }
 
@@ -75,19 +66,19 @@ public partial class UserActivityHistory
         DisconnectTimeout,
 
         DisconnectBan,
-        
+
         DisconnectBanFail,
 
         DisconnectKick,
-        
+
         DisconnectKickFail,
-        
+
         Kill,
-        
+
         KillFail,
-        
+
         Mute,
-        
+
         MuteFail,
 
         CreatePlayer,

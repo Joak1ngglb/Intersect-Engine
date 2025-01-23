@@ -1,5 +1,4 @@
 ﻿using System.Runtime.Serialization;
-
 using Newtonsoft.Json;
 
 namespace Intersect.Config;
@@ -9,7 +8,7 @@ public partial class PaperdollOptions
     [JsonIgnore]
     public List<string>[] Directions;
 
-    public List<string> Down = new List<string>()
+    public List<string> Down = new()
     {
         "Player",
         "Armor",
@@ -19,7 +18,7 @@ public partial class PaperdollOptions
         "Boots"
     };
 
-    public List<string> Left = new List<string>()
+    public List<string> Left = new()
     {
         "Player",
         "Armor",
@@ -29,7 +28,7 @@ public partial class PaperdollOptions
         "Boots"
     };
 
-    public List<string> Right = new List<string>()
+    public List<string> Right = new()
     {
         "Player",
         "Armor",
@@ -39,7 +38,7 @@ public partial class PaperdollOptions
         "Boots"
     };
 
-    public List<string> Up = new List<string>()
+    public List<string> Up = new()
     {
         "Player",
         "Armor",

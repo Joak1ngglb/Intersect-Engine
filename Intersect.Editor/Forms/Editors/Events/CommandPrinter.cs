@@ -1,13 +1,13 @@
 using System.Text;
-
 using Intersect.Editor.Localization;
 using Intersect.Editor.Maps;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Events.Commands;
 using Intersect.GameObjects.Maps.MapList;
-using Intersect.Logging;
+using Microsoft.Extensions.Logging;
 using VariableMod = Intersect.GameObjects.Events.VariableMod;
 
 namespace Intersect.Editor.Forms.Editors.Events;
@@ -184,12 +184,12 @@ public static partial class CommandPrinter
 
                         if ((cnd.BranchIds?.Length ?? 0) < 2)
                         {
-                            Log.Error("Missing branch ids in conditional branch.");
+                            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError("Missing branch ids in conditional branch.");
                         }
 
                         if (!page.CommandLists.TryGetValue(cnd.BranchIds[0], out var branchCommandList))
                         {
-                            Log.Error($"Missing command list for branch {cnd.BranchIds[0]}");
+                            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError($"Missing command list for branch {cnd.BranchIds[0]}");
                         }
 
                         PrintCommandList(
@@ -212,7 +212,7 @@ public static partial class CommandPrinter
 
                             if (!page.CommandLists.TryGetValue(cnd.BranchIds[1], out branchCommandList))
                             {
-                                Log.Error($"Missing command list for branch {cnd.BranchIds[1]}");
+                                Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError($"Missing command list for branch {cnd.BranchIds[1]}");
                             }
 
                             PrintCommandList(
@@ -689,7 +689,7 @@ public static partial class CommandPrinter
 
     private static string GetCommandText(AddChatboxTextCommand command, MapInstance map)
     {
-        var channel = "";
+        var channel = string.Empty;
         switch (command.Channel)
         {
             case ChatboxChannel.Player:
@@ -716,7 +716,7 @@ public static partial class CommandPrinter
 
     private static string GetCommandText(SetSelfSwitchCommand command, MapInstance map)
     {
-        var selfvalue = "";
+        var selfvalue = string.Empty;
         selfvalue = Strings.EventCommandList.False;
         if (command.Value)
         {
@@ -808,13 +808,13 @@ public static partial class CommandPrinter
             switch (command.VariableType)
             {
                 case VariableType.PlayerVariable:
-                    exp = string.Format(@"({0}: {1})", Strings.EventGiveExperience.PlayerVariable, PlayerVariableBase.GetName(command.VariableId));
+                    exp = string.Format(@"({0}: {1})", Strings.EventGiveExperience.PlayerVariable, PlayerVariableDescriptor.GetName(command.VariableId));
                     break;
                 case VariableType.ServerVariable:
-                    exp = string.Format(@"({0}: {1})", Strings.EventGiveExperience.ServerVariable, ServerVariableBase.GetName(command.VariableId));
+                    exp = string.Format(@"({0}: {1})", Strings.EventGiveExperience.ServerVariable, ServerVariableDescriptor.GetName(command.VariableId));
                     break;
                 case VariableType.GuildVariable:
-                    exp = string.Format(@"({0}: {1})", Strings.EventGiveExperience.GuildVariable, GuildVariableBase.GetName(command.VariableId));
+                    exp = string.Format(@"({0}: {1})", Strings.EventGiveExperience.GuildVariable, GuildVariableDescriptor.GetName(command.VariableId));
                     break;
             }
 
@@ -875,7 +875,7 @@ public static partial class CommandPrinter
             }
             else
             {
-                commandText = Strings.EventCommandList.unequipslot.ToString(Options.EquipmentSlots[command.Slot]);
+                commandText = Strings.EventCommandList.unequipslot.ToString(Options.Instance.Equipment.Slots[command.Slot]);
             }
         }
 
@@ -1114,7 +1114,7 @@ public static partial class CommandPrinter
         }
         else
         {
-            var spawnOpt = "";
+            var spawnOpt = string.Empty;
             switch (command.Dir)
             {
                 //0 does not adhere to direction, 1 is Spawning Relative to Direction, 2 is Rotating Relative to Direction, and 3 is both.
@@ -1193,7 +1193,7 @@ public static partial class CommandPrinter
 
     private static string GetCommandText(ChangeNameCommand command, MapInstance map)
     {
-        return Strings.EventCommandList.changename.ToString(PlayerVariableBase.GetName(command.VariableId));
+        return Strings.EventCommandList.changename.ToString(PlayerVariableDescriptor.GetName(command.VariableId));
     }
 
     private static string GetCommandText(HidePictureCommmand command, MapInstance map)
@@ -1287,7 +1287,7 @@ public static partial class CommandPrinter
 
     private static string GetCommandText(CreateGuildCommand command, MapInstance map)
     {
-        return Strings.EventCommandList.createguild.ToString(PlayerVariableBase.GetName(command.VariableId));
+        return Strings.EventCommandList.createguild.ToString(PlayerVariableDescriptor.GetName(command.VariableId));
     }
 
     private static string GetCommandText(DisbandGuildCommand command, MapInstance map)
@@ -1335,32 +1335,32 @@ public static partial class CommandPrinter
 
     private static string GetVariableModText(SetVariableCommand command, BooleanVariableMod mod)
     {
-        var varvalue = "";
+        var varvalue = string.Empty;
         if (mod.DuplicateVariableId != Guid.Empty)
         {
             if (mod.DupVariableType == VariableType.PlayerVariable)
             {
                 varvalue = Strings.EventCommandList.dupplayervariable.ToString(
-                    PlayerVariableBase.GetName(mod.DuplicateVariableId)
+                    PlayerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
             }
             else if (mod.DupVariableType == VariableType.ServerVariable)
             {
                 varvalue = Strings.EventCommandList.dupglobalvariable.ToString(
-                    ServerVariableBase.GetName(mod.DuplicateVariableId)
+                    ServerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
             }
             else if (mod.DupVariableType == VariableType.GuildVariable)
             {
                 varvalue = Strings.EventCommandList.dupguildvariable.ToString(
-                    GuildVariableBase.GetName(mod.DuplicateVariableId)
+                    GuildVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
             }
             else if (mod.DupVariableType == VariableType.UserVariable)
             {
                 varvalue = Strings.EventCommandList.DupUserVariable.ToString(
                     Strings.GameObjectStrings.UserVariable,
-                    UserVariableBase.GetName(mod.DuplicateVariableId)
+                    UserVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
             }
         }
@@ -1379,21 +1379,21 @@ public static partial class CommandPrinter
         if (command.VariableType == VariableType.PlayerVariable)
         {
             return Strings.EventCommandList.playervariable.ToString(
-                PlayerVariableBase.GetName(command.VariableId), varvalue
+                PlayerVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
         if (command.VariableType == VariableType.ServerVariable)
         {
             return Strings.EventCommandList.globalvariable.ToString(
-                ServerVariableBase.GetName(command.VariableId), varvalue
+                ServerVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
         if (command.VariableType == VariableType.GuildVariable)
         {
             return Strings.EventCommandList.guildvariable.ToString(
-                GuildVariableBase.GetName(command.VariableId), varvalue
+                GuildVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
@@ -1401,7 +1401,7 @@ public static partial class CommandPrinter
         {
             return Strings.EventCommandList.UserVariable.ToString(
                 Strings.GameObjectStrings.UserVariable,
-                UserVariableBase.GetName(command.VariableId),
+                UserVariableDescriptor.GetName(command.VariableId),
                 varvalue
             );
         }
@@ -1411,7 +1411,7 @@ public static partial class CommandPrinter
 
     private static string GetVariableModText(SetVariableCommand command, IntegerVariableMod mod)
     {
-        var varvalue = "";
+        var varvalue = string.Empty;
         switch (mod.ModType)
         {
             case VariableModType.Set:
@@ -1455,43 +1455,43 @@ public static partial class CommandPrinter
             //Player Variable
             case VariableModType.DupPlayerVar:
                 varvalue = Strings.EventCommandList.dupplayervariable.ToString(
-                    PlayerVariableBase.GetName(mod.DuplicateVariableId)
+                    PlayerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.AddPlayerVar:
                 varvalue = Strings.EventCommandList.addplayervariable.ToString(
-                    PlayerVariableBase.GetName(mod.DuplicateVariableId)
+                    PlayerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.SubtractPlayerVar:
                 varvalue = Strings.EventCommandList.subtractplayervariable.ToString(
-                    PlayerVariableBase.GetName(mod.DuplicateVariableId)
+                    PlayerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.MultiplyPlayerVar:
                 varvalue = Strings.EventCommandList.multiplyplayervariable.ToString(
-                    PlayerVariableBase.GetName(mod.DuplicateVariableId)
+                    PlayerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.DividePlayerVar:
                 varvalue = Strings.EventCommandList.divideplayervariable.ToString(
-                    PlayerVariableBase.GetName(mod.DuplicateVariableId)
+                    PlayerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.LeftShiftPlayerVar:
                 varvalue = Strings.EventCommandList.leftshiftplayervariable.ToString(
-                    PlayerVariableBase.GetName(mod.DuplicateVariableId)
+                    PlayerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.RightShiftPlayerVar:
                 varvalue = Strings.EventCommandList.rightshiftplayervariable.ToString(
-                    PlayerVariableBase.GetName(mod.DuplicateVariableId)
+                    PlayerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
@@ -1500,43 +1500,43 @@ public static partial class CommandPrinter
             //Global Variable
             case VariableModType.DupGlobalVar:
                 varvalue = Strings.EventCommandList.dupglobalvariable.ToString(
-                    ServerVariableBase.GetName(mod.DuplicateVariableId)
+                    ServerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.AddGlobalVar:
                 varvalue = Strings.EventCommandList.addglobalvariable.ToString(
-                    ServerVariableBase.GetName(mod.DuplicateVariableId)
+                    ServerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.SubtractGlobalVar:
                 varvalue = Strings.EventCommandList.subtractglobalvariable.ToString(
-                    ServerVariableBase.GetName(mod.DuplicateVariableId)
+                    ServerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.MultiplyGlobalVar:
                 varvalue = Strings.EventCommandList.multiplyglobalvariable.ToString(
-                    ServerVariableBase.GetName(mod.DuplicateVariableId)
+                    ServerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.DivideGlobalVar:
                 varvalue = Strings.EventCommandList.divideglobalvariable.ToString(
-                    ServerVariableBase.GetName(mod.DuplicateVariableId)
+                    ServerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.LeftShiftGlobalVar:
                 varvalue = Strings.EventCommandList.leftshiftglobalvariable.ToString(
-                    ServerVariableBase.GetName(mod.DuplicateVariableId)
+                    ServerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.RightShiftGlobalVar:
                 varvalue = Strings.EventCommandList.rightshiftglobalvariable.ToString(
-                    ServerVariableBase.GetName(mod.DuplicateVariableId)
+                    ServerVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
@@ -1545,43 +1545,43 @@ public static partial class CommandPrinter
             //Guilds Variable
             case VariableModType.DupGuildVar:
                 varvalue = Strings.EventCommandList.dupguildvariable.ToString(
-                    GuildVariableBase.GetName(mod.DuplicateVariableId)
+                    GuildVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.AddGuildVar:
                 varvalue = Strings.EventCommandList.addguildvariable.ToString(
-                    GuildVariableBase.GetName(mod.DuplicateVariableId)
+                    GuildVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.SubtractGuildVar:
                 varvalue = Strings.EventCommandList.subtractguildvariable.ToString(
-                    GuildVariableBase.GetName(mod.DuplicateVariableId)
+                    GuildVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.MultiplyGuildVar:
                 varvalue = Strings.EventCommandList.multiplyguildvariable.ToString(
-                    GuildVariableBase.GetName(mod.DuplicateVariableId)
+                    GuildVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.DivideGuildVar:
                 varvalue = Strings.EventCommandList.divideguildvariable.ToString(
-                    GuildVariableBase.GetName(mod.DuplicateVariableId)
+                    GuildVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.LeftShiftGuildVar:
                 varvalue = Strings.EventCommandList.leftshiftguildvariable.ToString(
-                    GuildVariableBase.GetName(mod.DuplicateVariableId)
+                    GuildVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.RightShiftGuildVar:
                 varvalue = Strings.EventCommandList.rightshiftguildvariable.ToString(
-                    GuildVariableBase.GetName(mod.DuplicateVariableId)
+                    GuildVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
@@ -1591,49 +1591,49 @@ public static partial class CommandPrinter
             case VariableModType.DuplicateUserVariable:
                 varvalue = Strings.EventCommandList.DupUserVariable.ToString(
                     Strings.GameObjectStrings.UserVariable,
-                    UserVariableBase.GetName(mod.DuplicateVariableId)
+                    UserVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.AddUserVariable:
                 varvalue = Strings.EventCommandList.AddUserVariable.ToString(
                     Strings.GameObjectStrings.UserVariable,
-                    UserVariableBase.GetName(mod.DuplicateVariableId)
+                    UserVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.SubtractUserVariable:
                 varvalue = Strings.EventCommandList.SubtractUserVariable.ToString(
                     Strings.GameObjectStrings.UserVariable,
-                    UserVariableBase.GetName(mod.DuplicateVariableId)
+                    UserVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.MultiplyUserVariable:
                 varvalue = Strings.EventCommandList.MultiplyUserVariable.ToString(
                     Strings.GameObjectStrings.UserVariable,
-                    UserVariableBase.GetName(mod.DuplicateVariableId)
+                    UserVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.DivideUserVariable:
                 varvalue = Strings.EventCommandList.DivideUserVariable.ToString(
                     Strings.GameObjectStrings.UserVariable,
-                    UserVariableBase.GetName(mod.DuplicateVariableId)
+                    UserVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.LeftShiftUserVariable:
                 varvalue = Strings.EventCommandList.LeftShiftUserVariable.ToString(
                     Strings.GameObjectStrings.UserVariable,
-                    UserVariableBase.GetName(mod.DuplicateVariableId)
+                    UserVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
             case VariableModType.RightShiftUserVariable:
                 varvalue = Strings.EventCommandList.RightShiftUserVariable.ToString(
                     Strings.GameObjectStrings.UserVariable,
-                    UserVariableBase.GetName(mod.DuplicateVariableId)
+                    UserVariableDescriptor.GetName(mod.DuplicateVariableId)
                 );
 
                 break;
@@ -1642,21 +1642,21 @@ public static partial class CommandPrinter
         if (command.VariableType == VariableType.PlayerVariable)
         {
             return Strings.EventCommandList.playervariable.ToString(
-                PlayerVariableBase.GetName(command.VariableId), varvalue
+                PlayerVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
         if (command.VariableType == VariableType.ServerVariable)
         {
             return Strings.EventCommandList.globalvariable.ToString(
-                ServerVariableBase.GetName(command.VariableId), varvalue
+                ServerVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
         if (command.VariableType == VariableType.GuildVariable)
         {
             return Strings.EventCommandList.guildvariable.ToString(
-                GuildVariableBase.GetName(command.VariableId), varvalue
+                GuildVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
@@ -1664,7 +1664,7 @@ public static partial class CommandPrinter
         {
             return Strings.EventCommandList.UserVariable.ToString(
                 Strings.GameObjectStrings.UserVariable,
-                UserVariableBase.GetName(command.VariableId),
+                UserVariableDescriptor.GetName(command.VariableId),
                 varvalue
             );
         }
@@ -1674,7 +1674,7 @@ public static partial class CommandPrinter
 
     private static string GetVariableModText(SetVariableCommand command, StringVariableMod mod)
     {
-        var varvalue = "";
+        var varvalue = string.Empty;
         switch (mod.ModType)
         {
             case VariableModType.Set:
@@ -1690,21 +1690,21 @@ public static partial class CommandPrinter
         if (command.VariableType == VariableType.PlayerVariable)
         {
             return Strings.EventCommandList.playervariable.ToString(
-                PlayerVariableBase.GetName(command.VariableId), varvalue
+                PlayerVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
         if (command.VariableType == VariableType.ServerVariable)
         {
             return Strings.EventCommandList.globalvariable.ToString(
-                ServerVariableBase.GetName(command.VariableId), varvalue
+                ServerVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
         if (command.VariableType == VariableType.GuildVariable)
         {
             return Strings.EventCommandList.guildvariable.ToString(
-                GuildVariableBase.GetName(command.VariableId), varvalue
+                GuildVariableDescriptor.GetName(command.VariableId), varvalue
             );
         }
 
@@ -1712,7 +1712,7 @@ public static partial class CommandPrinter
         {
             return Strings.EventCommandList.UserVariable.ToString(
                 Strings.GameObjectStrings.UserVariable,
-                UserVariableBase.GetName(command.VariableId),
+                UserVariableDescriptor.GetName(command.VariableId),
                 varvalue
             );
         }

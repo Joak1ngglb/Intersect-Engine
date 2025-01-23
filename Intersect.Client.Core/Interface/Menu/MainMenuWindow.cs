@@ -6,9 +6,10 @@ using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.General;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
-using Intersect.Logging;
+using Intersect.Core;
 using Intersect.Network;
 using Intersect.Network.Events;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Interface.Menu;
 
@@ -52,7 +53,7 @@ public partial class MainMenuWindow : Window
 
         _buttonRegister = new Button(this, nameof(_buttonRegister))
         {
-            IsDisabled = MainMenu.ActiveNetworkStatus != NetworkStatus.Online || (Options.Loaded && Options.BlockClientRegistrations),
+            IsDisabled = MainMenu.ActiveNetworkStatus != NetworkStatus.Online || (Options.IsLoaded && Options.Instance.BlockClientRegistrations),
             IsHidden = ClientContext.IsSinglePlayer,
             IsTabable = true,
             Text = Strings.MainMenu.Register,
@@ -84,7 +85,7 @@ public partial class MainMenuWindow : Window
 
     private static void _buttonExit_Clicked(Base sender, ClickedEventArgs arguments)
     {
-        Log.Info("User clicked exit button.");
+        ApplicationContext.Context.Value?.Logger.LogInformation("User clicked exit button.");
         Globals.IsRunning = false;
     }
 
@@ -197,6 +198,6 @@ public partial class MainMenuWindow : Window
     {
         var isOffline = MainMenu.ActiveNetworkStatus != NetworkStatus.Online;
         _buttonLogin.IsDisabled = isOffline;
-        _buttonRegister.IsDisabled = isOffline || (Options.Loaded && Options.BlockClientRegistrations);
+        _buttonRegister.IsDisabled = isOffline || (Options.IsLoaded && Options.Instance.BlockClientRegistrations);
     }
 }

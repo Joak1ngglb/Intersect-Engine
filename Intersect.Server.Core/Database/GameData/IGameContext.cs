@@ -1,9 +1,9 @@
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Maps.MapList;
 using Intersect.Server.Maps;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace Intersect.Server.Database.GameData;
@@ -40,7 +40,7 @@ public interface IGameContext : IDbContext
 
     DbSet<SpellBase> Spells { get; set; }
 
-    DbSet<ServerVariableBase> ServerVariables { get; set; }
+    DbSet<ServerVariableDescriptor> ServerVariables { get; set; }
 
     DbSet<TilesetBase> Tilesets { get; set; }
 

@@ -3,7 +3,6 @@ using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Entities.Pathfinding;
-using Intersect.Server.Framework;
 using Intersect.Server.Framework.Items;
 using Intersect.Server.Maps;
 using Intersect.Server.Networking;
@@ -761,7 +760,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.Down:
-                if (Y == Options.MapHeight - 1)
+                if (Y == Options.Instance.Map.MapHeight - 1)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -777,7 +776,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.Right:
-                if (X == Options.MapWidth - 1)
+                if (X == Options.Instance.Map.MapWidth - 1)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -793,7 +792,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.UpRight:
-                if (Y == 0 || X == Options.MapWidth - 1)
+                if (Y == 0 || X == Options.Instance.Map.MapWidth - 1)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -801,7 +800,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.DownRight:
-                if (Y == Options.MapHeight - 1 || X == Options.MapWidth - 1)
+                if (Y == Options.Instance.Map.MapHeight - 1 || X == Options.Instance.Map.MapWidth - 1)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -809,7 +808,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.DownLeft:
-                if (Y == Options.MapHeight - 1 || X == 0)
+                if (Y == Options.Instance.Map.MapHeight - 1 || X == 0)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;

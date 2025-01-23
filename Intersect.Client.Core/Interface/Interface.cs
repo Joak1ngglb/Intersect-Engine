@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using Intersect.Client.Core;
-using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Input;
@@ -10,7 +9,6 @@ using Intersect.Client.Interface.Game;
 using Intersect.Client.Interface.Menu;
 using Intersect.Client.Interface.Shared;
 using Intersect.Configuration;
-using Intersect.Models;
 using Base = Intersect.Client.Framework.Gwen.Renderer.Base;
 
 namespace Intersect.Client.Interface;
@@ -44,6 +42,8 @@ public static partial class Interface
     private static Canvas sMenuCanvas;
 
     public static bool SetupHandlers { get; set; }
+
+    private static Queue<Action> _onCreatedGameUi = [];
 
     public static GameInterface GameUi { get; private set; }
 
@@ -133,6 +133,11 @@ public static partial class Interface
         Globals.OnLifecycleChangeState();
 
         GwenInitialized = true;
+
+        while (GameUi is not null && _onCreatedGameUi.TryDequeue(out var action))
+        {
+            action();
+        }
     }
 
     public static void DestroyGwen(bool exiting = false)
@@ -325,6 +330,17 @@ public static partial class Interface
     }
 
     #endregion
+
+    public static void EnqueueInGame(Action action)
+    {
+        if (GameUi != null)
+        {
+            action();
+            return;
+        }
+
+        _onCreatedGameUi.Enqueue(action);
+    }
 
     public static Framework.Gwen.Control.Base FindControlAtCursor()
     {

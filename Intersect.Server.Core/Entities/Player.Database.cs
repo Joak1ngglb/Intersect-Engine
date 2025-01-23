@@ -1,16 +1,17 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
-using Intersect.Logging;
+using System.Diagnostics.CodeAnalysis;
+using Intersect.Core;
 using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData;
 using Intersect.Server.General;
 using Intersect.Server.Networking;
-using Intersect.Server.Web.RestApi.Payloads;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Utilities;
-
 using Microsoft.EntityFrameworkCore;
-
 using Newtonsoft.Json;
+using Intersect.Server.Collections.Indexing;
+using Intersect.Server.Collections.Sorting;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Server.Entities;
 
@@ -31,36 +32,65 @@ public partial class Player
     [NotMapped, JsonIgnore]
     public long SaveTimer { get; set; } = Timing.Global.Milliseconds + Options.Instance.Processing.PlayerSaveInterval;
 
+    [NotMapped, JsonIgnore]
+    public bool IsSaving
+    {
+        get
+        {
+            lock (_pendingLogoutLock)
+            {
+                if (_pendingLogouts.Contains(Id))
+                {
+                    return true;
+                }
+            }
+
+            lock (_savingLock)
+            {
+                return _saving;
+            }
+        }
+    }
+
     #endregion
 
     #region Entity Framework
 
     #region Lookup
 
-    public static Tuple<Client, Player> Fetch(LookupKey lookupKey)
+    public static bool TryFetch(
+        LookupKey lookupKey,
+        [NotNullWhen(true)] out Player? player,
+        bool loadRelationships = false,
+        bool loadBags = false
+    )
+        => TryFetch(lookupKey, out _, out player, loadRelationships, loadBags);
+
+    public static bool TryFetch(
+        LookupKey lookupKey,
+        out Client? client,
+        [NotNullWhen(true)] out Player? player,
+        bool loadRelationships = false,
+        bool loadBags = false
+    )
     {
-        if (!lookupKey.HasName && !lookupKey.HasId)
+        if (lookupKey.IsInvalid)
         {
-            return new Tuple<Client, Player>(null, null);
+            client = default;
+            player = default;
+            return false;
         }
 
-        // HasName checks if null or empty
-        // ReSharper disable once AssignNullToNotNullAttribute
-        return lookupKey.HasId ? Fetch(lookupKey.Id) : Fetch(lookupKey.Name);
-    }
+        if (lookupKey.IsId)
+        {
+            client = Globals.Clients.Find(queryClient => lookupKey.Id == queryClient?.Entity?.Id);
+            player = client?.Entity ?? Find(lookupKey.Id);
+            return player != default;
+        }
 
-    public static Tuple<Client, Player> Fetch(string playerName)
-    {
-        var client = Globals.Clients.Find(queryClient => Entity.CompareName(playerName, queryClient?.Entity?.Name));
-
-        return new Tuple<Client, Player>(client, client?.Entity ?? Player.Find(playerName));
-    }
-
-    public static Tuple<Client, Player> Fetch(Guid playerId)
-    {
-        var client = Globals.Clients.Find(queryClient => playerId == queryClient?.Entity?.Id);
-
-        return new Tuple<Client, Player>(client, client?.Entity ?? Player.Find(playerId));
+        client = Globals.Clients.Find(queryClient => CompareName(lookupKey.Name, queryClient?.Entity?.Name));
+        player = client?.Entity ?? Find(lookupKey.Name, loadRelationships: loadRelationships, loadBags: loadBags);
+        return player != default;
     }
 
     public static Player Find(Guid playerId)
@@ -83,14 +113,14 @@ public partial class Player
             _ = Validate(player);
             return player;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error while finding player {Id}", playerId);
             return null;
         }
     }
 
-    public static Player Find(string playerName)
+    public static Player Find(string playerName, bool loadRelationships = false, bool loadBags = false)
     {
         if (string.IsNullOrWhiteSpace(playerName))
         {
@@ -107,12 +137,20 @@ public partial class Player
         {
             using var context = DbInterface.CreatePlayerContext();
             player = QueryPlayerByName(context, playerName);
+            if (loadRelationships)
+            {
+                player.LoadRelationships(context, loadBags);
+            }
             _ = Validate(player);
             return player;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error while finding player '{PlayerName}'",
+                playerName
+            );
             return null;
         }
     }
@@ -137,9 +175,13 @@ public partial class Player
                 return AnyPlayerByName(context, name);
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error while checking if player '{PlayerName}' exists",
+                name
+            );
             return false;
         }
     }
@@ -148,17 +190,8 @@ public partial class Player
 
     #region Loading
 
-    public bool LoadRelationships(PlayerContext playerContext)
+    public bool LoadRelationships(PlayerContext playerContext, bool loadBags = false)
     {
-        lock (_savingLock)
-        {
-            if (_saving)
-            {
-                Log.Warn($"Skipping loading relationships for player {Id} because it is being saved.");
-                return false;
-            }
-        }
-
         var entityEntry = playerContext.Players.Attach(this);
         entityEntry.Collection(p => p.Bank).Load();
         entityEntry.Collection(p => p.Hotbar).Load();
@@ -166,6 +199,31 @@ public partial class Player
         entityEntry.Collection(p => p.Quests).Load();
         entityEntry.Collection(p => p.Spells).Load();
         entityEntry.Collection(p => p.Variables).Load();
+
+        if (loadBags)
+        {
+            foreach (var item in Items)
+            {
+                if (item.BagId == default)
+                {
+                    continue;
+                }
+
+                var navigationEntry = playerContext.Entry(item).Navigation(nameof(item.Bag));
+                if (navigationEntry.IsLoaded)
+                {
+                    continue;
+                }
+
+                navigationEntry.Load();
+                if (item.Bag != default)
+                {
+                    item.Bag.ValidateSlots();
+                    playerContext.Bags.Entry(item.Bag).Collection(b => b.Slots).Load();
+                }
+            }
+        }
+
         return Validate(this, playerContext);
     }
 
@@ -218,7 +276,7 @@ public partial class Player
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"Failed to load friends for {Name}.");
+            ApplicationContext.Context.Value?.Logger.LogError(ex, $"Failed to load friends for {Name}.");
             //ServerContext.DispatchUnhandledException(new Exception("Failed to save user, shutting down to prevent rollbacks!"), true);
         }
     }
@@ -256,7 +314,7 @@ public partial class Player
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to add friend " + friend.Name + " to " + Name + "'s friends list.");
+            ApplicationContext.Context.Value?.Logger.LogError(ex, "Failed to add friend " + friend.Name + " to " + Name + "'s friends list.");
             return false;
         }
     }
@@ -291,7 +349,7 @@ public partial class Player
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"Failed to remove friendship between {id} and {otherId}.");
+            ApplicationContext.Context.Value?.Logger.LogError(ex, $"Failed to remove friendship between {id} and {otherId}.");
             return false;
         }
     }
@@ -302,7 +360,8 @@ public partial class Player
     {
         using (var context = DbInterface.CreatePlayerContext())
         {
-            var guildId = context.Players.Where(p => p.Id == Id && p.DbGuild.Id != null && p.DbGuild.Id != Guid.Empty).Select(p => p.DbGuild.Id).FirstOrDefault();
+            var guildId = context.Players.Where(p => p.Id == Id && p.Guild != null && p.Guild.Id != Guid.Empty)
+                .Select(p => p.Guild.Id).FirstOrDefault();
             if (guildId != default)
             {
                 Guild = Guild.LoadGuild(guildId);
@@ -316,6 +375,44 @@ public partial class Player
     }
     #endregion
 
+    #region Saving
+
+    public void Save(PlayerContext? playerContext = null)
+    {
+        if (User is {} user)
+        {
+            user.Save(playerContext: playerContext);
+            return;
+        }
+
+        PlayerContext? createdPlayerContext = null;
+
+        try
+        {
+            if (playerContext == null || playerContext.IsReadOnly)
+            {
+                playerContext = createdPlayerContext = DbInterface.CreatePlayerContext(readOnly: false);
+            }
+
+            playerContext.Update(this);
+            playerContext.ChangeTracker.DetectChanges();
+            playerContext.SaveChanges();
+        }
+        catch (Exception exception)
+        {
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                $"Error occurred while saving player {Id} ({nameof(playerContext)}={(createdPlayerContext == null ? "not null" : "null")}"
+            );
+        }
+        finally
+        {
+            createdPlayerContext?.Dispose();
+        }
+    }
+
+    #endregion Saving
+
     #region Listing
 
     public static int Count()
@@ -327,9 +424,9 @@ public partial class Player
                 return context.Players.Count();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error counting players");
             return 0;
         }
     }
@@ -344,7 +441,7 @@ public partial class Player
 
                 if (guildId != Guid.Empty)
                 {
-                    compiledQuery = compiledQuery.Where(p => p.DbGuild.Id == guildId);
+                    compiledQuery = compiledQuery.Where(p => p.Guild.Id == guildId);
                 }
 
                 total = compiledQuery.Count();
@@ -372,9 +469,9 @@ public partial class Player
                 return compiledQuery.Skip(skip).Take(take).ToList();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error listing players");
             total = 0;
             return null;
         }
@@ -397,9 +494,9 @@ public partial class Player
                 return results?.ToList();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error ranking players");
             return null;
         }
     }
@@ -416,11 +513,12 @@ public partial class Player
                 .Skip(offset)
                 .Take(count)
                 .Include(p => p.Bank)
+                .Include(p => p.Guild)
                 .Include(p => p.Hotbar)
-                .Include(p => p.Quests)
-                .Include(p => p.Variables)
                 .Include(p => p.Items)
+                .Include(p => p.Quests)
                 .Include(p => p.Spells)
+                .Include(p => p.Variables)
                 .AsSplitQuery()
         ) ??
         throw new InvalidOperationException();
@@ -433,11 +531,12 @@ public partial class Player
                 .Skip(offset)
                 .Take(count)
                 .Include(p => p.Bank)
+                .Include(p => p.Guild)
                 .Include(p => p.Hotbar)
-                .Include(p => p.Quests)
-                .Include(p => p.Variables)
                 .Include(p => p.Items)
+                .Include(p => p.Quests)
                 .Include(p => p.Spells)
+                .Include(p => p.Variables)
                 .AsSplitQuery()
         ) ??
         throw new InvalidOperationException();

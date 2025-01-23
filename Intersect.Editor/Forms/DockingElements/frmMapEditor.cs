@@ -13,10 +13,9 @@ using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Maps;
-using Intersect.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
 using WeifenLuo.WinFormsUI.Docking;
-using Timer = System.Windows.Forms.Timer;
 
 namespace Intersect.Editor.Forms.DockingElements;
 
@@ -35,17 +34,6 @@ public partial class FrmMapEditor : DockContent
     private SwapChainRenderTarget mChain;
 
     private bool mMapChanged;
-
-    // MapGrid Cursor
-    private Bitmap mCurSprite;
-
-    private readonly string mCurFolder = "resources/cursors/";
-
-    private string mCurPath;
-
-    private Point mCurClickPoint;
-
-    private Timer cursorUpdateTimer;
 
     public struct IconInfo
     {
@@ -76,11 +64,13 @@ public partial class FrmMapEditor : DockContent
         InitializeComponent();
         Icon = Program.Icon;
         picMap.MouseLeave += (_sender, _args) => tooltipMapAttribute?.Hide();
-        // Initialize cursor timer
-        cursorUpdateTimer = new Timer();
-        cursorUpdateTimer.Interval = 200;
-        cursorUpdateTimer.Tick += CursorUpdateTimer_Tick;
-        cursorUpdateTimer.Start();
+
+        Globals.ToolChanged += Globals_ToolChanged;
+    }
+
+    private void Globals_ToolChanged(object? sender, EventArgs e)
+    {
+        SetCursorSpriteInGrid();
     }
 
     private void InitLocalization()
@@ -93,12 +83,12 @@ public partial class FrmMapEditor : DockContent
         PacketHandler.MapUpdatedDelegate += InitMapEditor;
         picMap.Size = pnlMapContainer.ClientSize;
         picMap.MinimumSize = new Size(
-            (Options.MapWidth + 2) * Options.TileWidth, (Options.MapHeight + 2) * Options.TileHeight
+            (Options.Instance.Map.MapWidth + 2) * Options.Instance.Map.TileWidth, (Options.Instance.Map.MapHeight + 2) * Options.Instance.Map.TileHeight
         );
 
         Core.Graphics.CurrentView = new Rectangle(
-            (picMap.Size.Width - Options.MapWidth * Options.TileWidth) / 2,
-            (picMap.Size.Height - Options.MapHeight * Options.TileHeight) / 2, picMap.Size.Width, picMap.Size.Height
+            (picMap.Size.Width - Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth) / 2,
+            (picMap.Size.Height - Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight) / 2, picMap.Size.Width, picMap.Size.Height
         );
 
         CreateSwapChain();
@@ -116,12 +106,12 @@ public partial class FrmMapEditor : DockContent
             pnlMapContainer.AutoScroll = true;
             picMap.Size = pnlMapContainer.ClientSize;
             picMap.MinimumSize = new Size(
-                (Options.MapWidth + 2) * Options.TileWidth, (Options.MapHeight + 2) * Options.TileHeight
+                (Options.Instance.Map.MapWidth + 2) * Options.Instance.Map.TileWidth, (Options.Instance.Map.MapHeight + 2) * Options.Instance.Map.TileHeight
             );
 
             Core.Graphics.CurrentView = new Rectangle(
-                (picMap.Size.Width - Options.MapWidth * Options.TileWidth) / 2,
-                (picMap.Size.Height - Options.MapHeight * Options.TileHeight) / 2, picMap.Size.Width,
+                (picMap.Size.Width - Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth) / 2,
+                (picMap.Size.Height - Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight) / 2, picMap.Size.Width,
                 picMap.Size.Height
             );
 
@@ -228,8 +218,8 @@ public partial class FrmMapEditor : DockContent
 
         if (e.X < Core.Graphics.CurrentView.Left ||
             e.Y < Core.Graphics.CurrentView.Top ||
-            e.X > Core.Graphics.CurrentView.Left + Options.MapWidth * Options.TileWidth ||
-            e.Y > Core.Graphics.CurrentView.Top + Options.MapHeight * Options.TileHeight)
+            e.X > Core.Graphics.CurrentView.Left + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth ||
+            e.Y > Core.Graphics.CurrentView.Top + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight)
         {
             if (Globals.Dragging)
             {
@@ -252,7 +242,7 @@ public partial class FrmMapEditor : DockContent
                 Globals.MouseButton = 0;
                 if (Globals.CurrentTool == EditingTool.Dropper)
                 {
-                    foreach (var layer in Enumerable.Reverse(Options.Instance.MapOpts.Layers.All))
+                    foreach (var layer in Enumerable.Reverse(Options.Instance.Map.Layers.All))
                     {
                         if (tmpMap.Layers[layer][Globals.CurTileX, Globals.CurTileY].TilesetId != Guid.Empty)
                         {
@@ -332,7 +322,7 @@ public partial class FrmMapEditor : DockContent
                     {
                         Globals.MapEditorWindow.SmartFillAttributes(Globals.CurTileX, Globals.CurTileY);
                     }
-                    else if (Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer))
+                    else if (Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer))
                     {
                         Globals.MapEditorWindow.SmartFillLayer(Globals.CurTileX, Globals.CurTileY);
                     }
@@ -345,7 +335,7 @@ public partial class FrmMapEditor : DockContent
                     {
                         Globals.MapEditorWindow.SmartEraseAttributes(Globals.CurTileX, Globals.CurTileY);
                     }
-                    else if (Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer))
+                    else if (Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer))
                     {
                         Globals.MapEditorWindow.SmartEraseLayer(Globals.CurTileX, Globals.CurTileY);
                     }
@@ -385,9 +375,9 @@ public partial class FrmMapEditor : DockContent
                                 for (var y = 0; y <= Globals.CurSelH; y++)
                                 {
                                     if (Globals.CurTileX + x >= 0 &&
-                                        Globals.CurTileX + x < Options.MapWidth &&
+                                        Globals.CurTileX + x < Options.Instance.Map.MapWidth &&
                                         Globals.CurTileY + y >= 0 &&
-                                        Globals.CurTileY + y < Options.MapHeight)
+                                        Globals.CurTileY + y < Options.Instance.Map.MapHeight)
                                     {
                                         tmpMap.Layers[Globals.CurrentLayer][Globals.CurTileX + x, Globals.CurTileY + y].TilesetId = Globals.CurrentTileset.Id;
                                         tmpMap.Layers[Globals.CurrentLayer][Globals.CurTileX + x, Globals.CurTileY + y].X = Globals.CurSelX + x;
@@ -430,7 +420,7 @@ public partial class FrmMapEditor : DockContent
 
                 if (Globals.CurrentTool == EditingTool.Fill)
                 {
-                    if (Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer))
+                    if (Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer))
                     {
                         Globals.MapEditorWindow.FillLayer();
                     }
@@ -439,7 +429,7 @@ public partial class FrmMapEditor : DockContent
                 }
                 else if (Globals.CurrentTool == EditingTool.Erase)
                 {
-                    if (Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer))
+                    if (Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer))
                     {
                         Globals.MapEditorWindow.EraseLayer();
                     }
@@ -526,7 +516,7 @@ public partial class FrmMapEditor : DockContent
             }
         }
 
-        if (Globals.CurTileX == Options.MapWidth - 1)
+        if (Globals.CurTileX == Options.Instance.Map.MapWidth - 1)
         {
             if (MapInstance.Get(tmpMap.Right) != null)
             {
@@ -534,7 +524,7 @@ public partial class FrmMapEditor : DockContent
             }
         }
 
-        if (Globals.CurTileY == Options.MapHeight - 1)
+        if (Globals.CurTileY == Options.Instance.Map.MapHeight - 1)
         {
             if (MapInstance.Get(tmpMap.Down) != null)
             {
@@ -554,24 +544,24 @@ public partial class FrmMapEditor : DockContent
         {
             Core.Graphics.CurrentView.X -= Globals.MouseX - e.X;
             Core.Graphics.CurrentView.Y -= Globals.MouseY - e.Y;
-            if (Core.Graphics.CurrentView.X > Options.MapWidth * Options.TileWidth)
+            if (Core.Graphics.CurrentView.X > Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth)
             {
-                Core.Graphics.CurrentView.X = Options.MapWidth * Options.TileWidth;
+                Core.Graphics.CurrentView.X = Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth;
             }
 
-            if (Core.Graphics.CurrentView.Y > Options.MapHeight * Options.TileHeight)
+            if (Core.Graphics.CurrentView.Y > Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight)
             {
-                Core.Graphics.CurrentView.Y = Options.MapHeight * Options.TileHeight;
+                Core.Graphics.CurrentView.Y = Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight;
             }
 
-            if (Core.Graphics.CurrentView.X - picMap.Width < -Options.TileWidth * Options.MapWidth * 2)
+            if (Core.Graphics.CurrentView.X - picMap.Width < -Options.Instance.Map.TileWidth * Options.Instance.Map.MapWidth * 2)
             {
-                Core.Graphics.CurrentView.X = -Options.TileWidth * Options.MapWidth * 2 + picMap.Width;
+                Core.Graphics.CurrentView.X = -Options.Instance.Map.TileWidth * Options.Instance.Map.MapWidth * 2 + picMap.Width;
             }
 
-            if (Core.Graphics.CurrentView.Y - picMap.Height < -Options.TileHeight * Options.MapHeight * 2)
+            if (Core.Graphics.CurrentView.Y - picMap.Height < -Options.Instance.Map.TileHeight * Options.Instance.Map.MapHeight * 2)
             {
-                Core.Graphics.CurrentView.Y = -Options.TileHeight * Options.MapHeight * 2 + picMap.Height;
+                Core.Graphics.CurrentView.Y = -Options.Instance.Map.TileHeight * Options.Instance.Map.MapHeight * 2 + picMap.Height;
             }
         }
 
@@ -580,8 +570,8 @@ public partial class FrmMapEditor : DockContent
 
         if (e.X < Core.Graphics.CurrentView.Left ||
             e.Y < Core.Graphics.CurrentView.Top ||
-            e.X > Core.Graphics.CurrentView.Left + Options.MapWidth * Options.TileWidth ||
-            e.Y > Core.Graphics.CurrentView.Top + Options.MapHeight * Options.TileHeight)
+            e.X > Core.Graphics.CurrentView.Left + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth ||
+            e.Y > Core.Graphics.CurrentView.Top + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight)
         {
             tooltipMapAttribute.Hide();
             return;
@@ -589,8 +579,8 @@ public partial class FrmMapEditor : DockContent
 
         var oldx = Globals.CurTileX;
         var oldy = Globals.CurTileY;
-        Globals.CurTileX = (int)Math.Floor((double)(e.X - Core.Graphics.CurrentView.Left) / Options.TileWidth);
-        Globals.CurTileY = (int)Math.Floor((double)(e.Y - Core.Graphics.CurrentView.Top) / Options.TileHeight);
+        Globals.CurTileX = (int)Math.Floor((double)(e.X - Core.Graphics.CurrentView.Left) / Options.Instance.Map.TileWidth);
+        Globals.CurTileY = (int)Math.Floor((double)(e.Y - Core.Graphics.CurrentView.Top) / Options.Instance.Map.TileHeight);
         if (Globals.CurTileX < 0)
         {
             Globals.CurTileX = 0;
@@ -601,14 +591,14 @@ public partial class FrmMapEditor : DockContent
             Globals.CurTileY = 0;
         }
 
-        if (Globals.CurTileX >= Options.MapWidth)
+        if (Globals.CurTileX >= Options.Instance.Map.MapWidth)
         {
-            Globals.CurTileX = Options.MapWidth - 1;
+            Globals.CurTileX = Options.Instance.Map.MapWidth - 1;
         }
 
-        if (Globals.CurTileY >= Options.MapHeight)
+        if (Globals.CurTileY >= Options.Instance.Map.MapHeight)
         {
-            Globals.CurTileY = Options.MapHeight - 1;
+            Globals.CurTileY = Options.Instance.Map.MapHeight - 1;
         }
 
         if (Globals.CurrentLayer == LayerOptions.Attributes)
@@ -621,17 +611,17 @@ public partial class FrmMapEditor : DockContent
                 tooltipMapAttribute.PerformLayout();
 
                 var currentView = Core.Graphics.CurrentView;
-                var left = currentView.Left + Options.TileWidth * (Globals.CurTileX + 1);
-                var top = currentView.Top + Options.TileHeight * Globals.CurTileY;
+                var left = currentView.Left + Options.Instance.Map.TileWidth * (Globals.CurTileX + 1);
+                var top = currentView.Top + Options.Instance.Map.TileHeight * Globals.CurTileY;
 
                 if (currentView.Width < left + tooltipMapAttribute.Width)
                 {
-                    left -= tooltipMapAttribute.Width + Options.TileWidth;
+                    left -= tooltipMapAttribute.Width + Options.Instance.Map.TileWidth;
                 }
 
                 if (currentView.Height < top + tooltipMapAttribute.Height)
                 {
-                    top -= tooltipMapAttribute.Height - Options.TileHeight;
+                    top -= tooltipMapAttribute.Height - Options.Instance.Map.TileHeight;
                 }
 
                 tooltipMapAttribute.Location = new System.Drawing.Point(left, top);
@@ -709,9 +699,9 @@ public partial class FrmMapEditor : DockContent
                                 for (var y = 0; y <= Globals.CurSelH; y++)
                                 {
                                     if (Globals.CurTileX + x >= 0 &&
-                                        Globals.CurTileX + x < Options.MapWidth &&
+                                        Globals.CurTileX + x < Options.Instance.Map.MapWidth &&
                                         Globals.CurTileY + y >= 0 &&
-                                        Globals.CurTileY + y < Options.MapHeight)
+                                        Globals.CurTileY + y < Options.Instance.Map.MapHeight)
                                     {
                                         tmpMap.Layers[Globals.CurrentLayer][Globals.CurTileX + x, Globals.CurTileY + y].TilesetId = Globals.CurrentTileset.Id;
 
@@ -758,7 +748,7 @@ public partial class FrmMapEditor : DockContent
                         }
                     }
 
-                    if (Globals.CurTileX == Options.MapWidth - 1)
+                    if (Globals.CurTileX == Options.Instance.Map.MapWidth - 1)
                     {
                         if (MapInstance.Get(tmpMap.Right) != null)
                         {
@@ -766,7 +756,7 @@ public partial class FrmMapEditor : DockContent
                         }
                     }
 
-                    if (Globals.CurTileY == Options.MapHeight - 1)
+                    if (Globals.CurTileY == Options.Instance.Map.MapHeight - 1)
                     {
                         if (MapInstance.Get(tmpMap.Down) != null)
                         {
@@ -788,7 +778,7 @@ public partial class FrmMapEditor : DockContent
                     {
                         Globals.MapLayersWindow.RemoveAttribute(tmpMap, Globals.CurTileX, Globals.CurTileY);
                     }
-                    else if (Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer))
+                    else if (Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer))
                     {
                         if (Globals.CurrentTool == EditingTool.Brush)
                         {
@@ -817,7 +807,7 @@ public partial class FrmMapEditor : DockContent
                     }
                 }
 
-                if (Globals.CurTileX == Options.MapWidth - 1)
+                if (Globals.CurTileX == Options.Instance.Map.MapWidth - 1)
                 {
                     if (MapInstance.Get(tmpMap.Right) != null)
                     {
@@ -825,7 +815,7 @@ public partial class FrmMapEditor : DockContent
                     }
                 }
 
-                if (Globals.CurTileY == Options.MapHeight - 1)
+                if (Globals.CurTileY == Options.Instance.Map.MapHeight - 1)
                 {
                     if (MapInstance.Get(tmpMap.Down) != null)
                     {
@@ -917,9 +907,9 @@ public partial class FrmMapEditor : DockContent
                             x1 = (x0 - selX) % (Globals.CurSelW + 1);
                             y1 = (y0 - selY) % (Globals.CurSelH + 1);
                             if (x0 >= 0 &&
-                                x0 < Options.MapWidth &&
+                                x0 < Options.Instance.Map.MapWidth &&
                                 y0 >= 0 &&
-                                y0 < Options.MapHeight &&
+                                y0 < Options.Instance.Map.MapHeight &&
                                 x0 < selX + selW + 1 &&
                                 y0 < selY + selH + 1)
                             {
@@ -1014,7 +1004,10 @@ public partial class FrmMapEditor : DockContent
 
         if (currentMap == null)
         {
-            Log.Error(new ArgumentNullException(nameof(currentMap)));
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
+                new ArgumentNullException(nameof(currentMap)),
+                "Current map unset"
+            );
 
             return;
         }
@@ -1045,7 +1038,7 @@ public partial class FrmMapEditor : DockContent
             gridX = -1;
         }
 
-        if (Globals.MouseX > Core.Graphics.CurrentView.Left + Options.MapWidth * Options.TileWidth)
+        if (Globals.MouseX > Core.Graphics.CurrentView.Left + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth)
         {
             gridX = 1;
         }
@@ -1055,7 +1048,7 @@ public partial class FrmMapEditor : DockContent
             gridY = -1;
         }
 
-        if (Globals.MouseY > Core.Graphics.CurrentView.Top + Options.MapHeight * Options.TileHeight)
+        if (Globals.MouseY > Core.Graphics.CurrentView.Top + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight)
         {
             gridY = 1;
         }
@@ -1314,9 +1307,9 @@ public partial class FrmMapEditor : DockContent
         {
             var x1 = 0;
             var y1 = 0;
-            for (var x = 0; x < Options.MapWidth; x++)
+            for (var x = 0; x < Options.Instance.Map.MapWidth; x++)
             {
-                for (var y = 0; y < Options.MapHeight; y++)
+                for (var y = 0; y < Options.Instance.Map.MapHeight; y++)
                 {
                     Globals.CurTileX = x;
                     Globals.CurTileY = y;
@@ -1327,7 +1320,7 @@ public partial class FrmMapEditor : DockContent
                             Globals.CurrentMap, Globals.CurTileX, Globals.CurTileY
                         );
                     }
-                    else if (Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer))
+                    else if (Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer))
                     {
                         if (Globals.Autotilemode == 0)
                         {
@@ -1401,9 +1394,9 @@ public partial class FrmMapEditor : DockContent
             ) ==
             DialogResult.Yes)
         {
-            for (var x = 0; x < Options.MapWidth; x++)
+            for (var x = 0; x < Options.Instance.Map.MapWidth; x++)
             {
-                for (var y = 0; y < Options.MapHeight; y++)
+                for (var y = 0; y < Options.Instance.Map.MapHeight; y++)
                 {
                     Globals.CurTileX = x;
                     Globals.CurTileY = y;
@@ -1414,7 +1407,7 @@ public partial class FrmMapEditor : DockContent
                             Globals.CurrentMap, Globals.CurTileX, Globals.CurTileY
                         );
                     }
-                    else if (Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer))
+                    else if (Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer))
                     {
                         tmpMap.Layers[Globals.CurrentLayer][Globals.CurTileX, Globals.CurTileY].TilesetId =
                             Guid.Empty;
@@ -1472,7 +1465,7 @@ public partial class FrmMapEditor : DockContent
 
     private void BFSFillTile(int x, int y, Tile target)
     {
-        if (x < 0 || x >= Options.MapWidth || y < 0 || y >= Options.MapHeight)
+        if (x < 0 || x >= Options.Instance.Map.MapWidth || y < 0 || y >= Options.Instance.Map.MapHeight)
         {
             return;
         }
@@ -1514,8 +1507,8 @@ public partial class FrmMapEditor : DockContent
                 if (
                     nextNeighbor.x < 0 ||
                     nextNeighbor.y < 0 ||
-                    nextNeighbor.x >= Options.MapWidth ||
-                    nextNeighbor.y >= Options.MapHeight
+                    nextNeighbor.x >= Options.Instance.Map.MapWidth ||
+                    nextNeighbor.y >= Options.Instance.Map.MapHeight
                 )
                 {
                     continue;
@@ -1586,7 +1579,7 @@ public partial class FrmMapEditor : DockContent
 
     private void SmartFillAttribute(int x, int y, string data = null, GameObjects.Maps.MapAttribute newAttribute = null)
     {
-        if (x < 0 || x >= Options.MapWidth || y < 0 || y >= Options.MapHeight)
+        if (x < 0 || x >= Options.Instance.Map.MapWidth || y < 0 || y >= Options.Instance.Map.MapHeight)
         {
             return;
         }
@@ -1636,7 +1629,7 @@ public partial class FrmMapEditor : DockContent
 
     private void SmartEraseTile(int x, int y, Tile target)
     {
-        if (x < 0 || x >= Options.MapWidth || y < 0 || y >= Options.MapHeight)
+        if (x < 0 || x >= Options.Instance.Map.MapWidth || y < 0 || y >= Options.Instance.Map.MapHeight)
         {
             return;
         }
@@ -1706,7 +1699,7 @@ public partial class FrmMapEditor : DockContent
     {
         var a = MapAttributeType.Walkable;
 
-        if (x < 0 || x >= Options.MapWidth || y < 0 || y >= Options.MapHeight)
+        if (x < 0 || x >= Options.Instance.Map.MapWidth || y < 0 || y >= Options.Instance.Map.MapHeight)
         {
             return;
         }
@@ -1817,10 +1810,10 @@ public partial class FrmMapEditor : DockContent
             }
         }
 
-        var layers = Options.Instance.MapOpts.Layers.All;
+        var layers = Options.Instance.Map.Layers.All;
         if (Globals.SelectionType == (int)SelectionTypes.CurrentLayer)
         {
-            layers = Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer) ? new List<string>() { Globals.CurrentLayer } : new List<string>();
+            layers = Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer) ? new List<string>() { Globals.CurrentLayer } : new List<string>();
         }
 
         //Finish by copying the source tiles over
@@ -1830,7 +1823,7 @@ public partial class FrmMapEditor : DockContent
             {
                 for (var y0 = selY + dragyoffset; y0 < selY + selH + 1 + dragyoffset; y0++)
                 {
-                    if (x0 >= 0 && x0 < Options.MapWidth && y0 >= 0 && y0 < Options.MapHeight)
+                    if (x0 >= 0 && x0 < Options.Instance.Map.MapWidth && y0 >= 0 && y0 < Options.Instance.Map.MapHeight)
                     {
                         tmpMap.Layers[layer][x0, y0].TilesetId = Globals.SelectionSource.Layers[layer][x0 - dragxoffset, y0 - dragyoffset].TilesetId;
                         tmpMap.Layers[layer][x0, y0].X = Globals.SelectionSource.Layers[layer][x0 - dragxoffset, y0 - dragyoffset].X;
@@ -1849,7 +1842,7 @@ public partial class FrmMapEditor : DockContent
         {
             for (var y0 = selY + dragyoffset; y0 < selY + selH + 1 + dragyoffset; y0++)
             {
-                if (x0 >= 0 && x0 < Options.MapWidth && y0 >= 0 && y0 < Options.MapHeight)
+                if (x0 >= 0 && x0 < Options.Instance.Map.MapWidth && y0 >= 0 && y0 < Options.Instance.Map.MapHeight)
                 {
                     //Attributes
                     if (Globals.SelectionType != (int)SelectionTypes.CurrentLayer ||
@@ -1969,10 +1962,10 @@ public partial class FrmMapEditor : DockContent
             }
         }
 
-        var layers = Options.Instance.MapOpts.Layers.All;
+        var layers = Options.Instance.Map.Layers.All;
         if (Globals.SelectionType == (int)SelectionTypes.CurrentLayer)
         {
-            layers = Options.Instance.MapOpts.Layers.All.Contains(Globals.CurrentLayer) ? new List<string>() { Globals.CurrentLayer } : new List<string>();
+            layers = Options.Instance.Map.Layers.All.Contains(Globals.CurrentLayer) ? new List<string>() { Globals.CurrentLayer } : new List<string>();
         }
 
         //start by deleting the source tiles
@@ -1983,9 +1976,9 @@ public partial class FrmMapEditor : DockContent
                 for (var y0 = selY; y0 < selY + selH + 1; y0++)
                 {
                     if (x0 >= 0 &&
-                        x0 < Options.MapWidth &&
+                        x0 < Options.Instance.Map.MapWidth &&
                         y0 >= 0 &&
-                        y0 < Options.MapHeight &&
+                        y0 < Options.Instance.Map.MapHeight &&
                         x0 < selX + selW + 1 &&
                         y0 < selY + selH + 1)
                     {
@@ -2007,9 +2000,9 @@ public partial class FrmMapEditor : DockContent
             for (var y0 = selY; y0 < selY + selH + 1; y0++)
             {
                 if (x0 >= 0 &&
-                    x0 < Options.MapWidth &&
+                    x0 < Options.Instance.Map.MapWidth &&
                     y0 >= 0 &&
-                    y0 < Options.MapHeight &&
+                    y0 < Options.Instance.Map.MapHeight &&
                     x0 < selX + selW + 1 &&
                     y0 < selY + selH + 1)
                 {
@@ -2114,7 +2107,7 @@ public partial class FrmMapEditor : DockContent
             {
                 for (var y = 0; y <= selH; y++)
                 {
-                    foreach (var layer in Options.Instance.MapOpts.Layers.All)
+                    foreach (var layer in Options.Instance.Map.Layers.All)
                     {
                         Globals.CurrentMap.Layers[layer][selX + x, selY + y] = tmpMap.Layers[layer][selX + x, selY + selH - y];
                     }
@@ -2188,7 +2181,7 @@ public partial class FrmMapEditor : DockContent
             {
                 for (var y = 0; y <= selH; y++)
                 {
-                    foreach (var layer in Options.Instance.MapOpts.Layers.All)
+                    foreach (var layer in Options.Instance.Map.Layers.All)
                     {
                         Globals.CurrentMap.Layers[layer][selX + x, selY + y] = tmpMap.Layers[layer][selX + selW - x, selY + y];
                     }
@@ -2336,19 +2329,19 @@ public partial class FrmMapEditor : DockContent
 
     private void pnlMapContainer_Resize(object sender, EventArgs e)
     {
-        if (!Options.Loaded)
+        if (!Options.IsLoaded)
         {
             return;
         }
 
         picMap.Size = pnlMapContainer.ClientSize;
         picMap.MinimumSize = new Size(
-            (Options.MapWidth + 2) * Options.TileWidth, (Options.MapHeight + 2) * Options.TileHeight
+            (Options.Instance.Map.MapWidth + 2) * Options.Instance.Map.TileWidth, (Options.Instance.Map.MapHeight + 2) * Options.Instance.Map.TileHeight
         );
 
         Core.Graphics.CurrentView = new Rectangle(
-            (picMap.Size.Width - Options.MapWidth * Options.TileWidth) / 2,
-            (picMap.Size.Height - Options.MapHeight * Options.TileHeight) / 2, picMap.Size.Width, picMap.Size.Height
+            (picMap.Size.Width - Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth) / 2,
+            (picMap.Size.Height - Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight) / 2, picMap.Size.Width, picMap.Size.Height
         );
 
         CreateSwapChain();
@@ -2356,86 +2349,151 @@ public partial class FrmMapEditor : DockContent
 
     private void picMap_MouseEnter(object sender, EventArgs e)
     {
-        var enableCursorSprites = Preferences.LoadPreference("EnableCursorSprites");
+        if (Globals.EditingLight != null || Globals.CurrentEditor != -1)
+        {
+            RemoveSpriteCursorInGrid();
+            return;
+        }
 
-        if (!Globals.MapEditorWindow.DockPanel.Focused && Globals.CurrentEditor == -1)
+        if (!Globals.MapEditorWindow.DockPanel.Focused)
         {
             Globals.MapEditorWindow.DockPanel.Focus();
         }
 
-        if (!string.IsNullOrEmpty(enableCursorSprites) && !Convert.ToBoolean(enableCursorSprites))
-        {
-            RemoveSpriteCursorInGrid();
-        }
+        SetCursorSpriteInGrid();
     }
-
     private void picMap_MouseLeave(object sender, EventArgs e)
     {
         RemoveSpriteCursorInGrid();
     }
 
-    private void CursorUpdateTimer_Tick(object sender, EventArgs e)
-    {
-        if (Globals.EditingLight != null || Globals.CurrentEditor != -1 ||
-            !Globals.MapEditorWindow.DockPanel.Focused)
-        {
-            return;
-        }
-
-        SetCursorSpriteInGrid();
-    }
-
     private void SetCursorSpriteInGrid()
     {
-        if (!Directory.Exists(mCurFolder))
+        if (!Preferences.EnableCursorSprites)
         {
             return;
         }
 
-        var enableCursorSprites = Preferences.LoadPreference("EnableCursorSprites");
-
-        if (!(!string.IsNullOrEmpty(enableCursorSprites) && Convert.ToBoolean(enableCursorSprites)))
-        {
-            return;
-        }
-
-        mCurPath = $"{mCurFolder}editor_{Globals.CurrentTool.ToString().ToLowerInvariant()}.png";
-
-        if (!File.Exists(mCurPath))
-        {
-            return;
-        }
-
-        mCurClickPoint = ToolCursor.ToolCursorDict[Globals.CurrentTool].CursorClickPoint;
-        mCurSprite = new Bitmap(mCurPath);
-        Cursor = CreateCursorInGrid(mCurSprite, mCurClickPoint);
+        var currentTool = Globals.CurrentTool;
+        var toolCursor = GetOrCreateCursorForTool(currentTool);
+        Cursor = toolCursor ?? Cursors.Default;
     }
 
     private void RemoveSpriteCursorInGrid()
     {
-        if (mCurSprite == default)
+        if (!_toolCursors.Contains(Cursor))
         {
+            // Exit instead of setting the cursor to default if it's not a custom cursor
             return;
         }
-
-        mCurSprite.Dispose();
-        DestroyIcon(Cursor.Handle);
+        
         Cursor = Cursors.Default;
+    }
+
+    private static Cursor? GetOrCreateCursorForTool(EditingTool editingTool)
+    {
+        if (_toolCursorCache.TryGetValue(editingTool, out var toolCursor))
+        {
+            return toolCursor;
+        }
+
+        if (!ToolCursor.ToolCursorDict.TryGetValue(editingTool, out var toolCursorInfo))
+        {
+            var loadedClickPointKeys = string.Join(", ", ToolCursor.ToolCursorDict.Keys);
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
+                $"Unable to load click point for {editingTool}, click points only exist for: {loadedClickPointKeys}"
+            );
+            return null;
+        }
+
+        if (!Directory.Exists(ToolCursor.CursorsFolder))
+        {
+            return null;
+        }
+
+        var cursorFileName = $"editor_{editingTool.ToString().ToLowerInvariant()}.png";
+        var cursorPath = Path.Combine(ToolCursor.CursorsFolder, cursorFileName);
+        var cursorAbsolutePath = Path.GetFullPath(cursorPath);
+        var loggingCursorPath = cursorPath;
+#if DEBUG
+        loggingCursorPath = cursorAbsolutePath;
+#endif
+        if (!File.Exists(cursorAbsolutePath))
+        {
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
+                $"Custom cursor texture '{cursorFileName}' does not exist in {ToolCursor.CursorsFolder} resolved to {loggingCursorPath}"
+            );
+            return null;
+        }
+
+        Bitmap cursorBitmap;
+        try
+        {
+            cursorBitmap = new Bitmap(cursorAbsolutePath);
+        }
+        catch (Exception exception)
+        {
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                $"Failed to load custom cursor for {editingTool} resolved to {loggingCursorPath}"
+            );
+            return null;
+        }
+
+        toolCursor = CreateCursorInGrid(cursorBitmap, toolCursorInfo.CursorClickPoint, cursorFileName);
+        if (toolCursor == null)
+        {
+            return null;
+        }
+
+        _toolCursors.Add(toolCursor);
+        _toolCursorCache[editingTool] = toolCursor;
+
+        return toolCursor;
     }
 
     /// <summary>
     /// Creates a cursor from a bitmap depending on the user preferences and selected tool.
     /// </summary>
-    private Cursor CreateCursorInGrid(Bitmap bmp, Point curHotSpot)
+    private static Cursor? CreateCursorInGrid(Bitmap cursorBitmap, Point cursorClickPoint, string logName)
     {
-        DestroyIcon(Cursor.Handle);
-        IntPtr ptr = bmp.GetHicon();
-        IconInfo tmp = new IconInfo();
-        GetIconInfo(ptr, ref tmp);
-        tmp.XHotspot = curHotSpot.X;
-        tmp.YHotspot = curHotSpot.Y;
-        tmp.FIcon = false;
-        ptr = CreateIconIndirect(ref tmp);
-        return new Cursor(ptr);
+        try
+        {
+            IntPtr bitmapHicon = cursorBitmap.GetHicon();
+            if (bitmapHicon == IntPtr.Zero)
+            {
+                Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning($"Failed to get bitmap icon handle for {logName}");
+                return null;
+            }
+
+            IconInfo cursorIconInfo = new IconInfo();
+            if (!GetIconInfo(bitmapHicon, ref cursorIconInfo))
+            {
+                Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning($"Failed to get icon info for {logName}");
+                return null;
+            }
+
+            cursorIconInfo.XHotspot = cursorClickPoint.X;
+            cursorIconInfo.YHotspot = cursorClickPoint.Y;
+            cursorIconInfo.FIcon = false;
+
+            var cursorIcon = CreateIconIndirect(ref cursorIconInfo);
+            // ReSharper disable once InvertIf
+            if (cursorIcon == IntPtr.Zero)
+            {
+                Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning($"Failed to create cursor icon for {logName}");
+                return null;
+            }
+
+            return new Cursor(cursorIcon);
+        }
+        catch (Exception exception)
+        {
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(exception, $"Error while creating cursor for {logName}");
+            return null;
+        }
     }
+
+    private static readonly HashSet<Cursor> _toolCursors = [];
+    private static readonly Dictionary<EditingTool, Cursor> _toolCursorCache = [];
 }

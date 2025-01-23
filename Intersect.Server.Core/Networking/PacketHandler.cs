@@ -3,7 +3,6 @@ using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Maps;
-using Intersect.Logging;
 using Intersect.Network;
 using Intersect.Network.Packets;
 using Intersect.Network.Packets.Client;
@@ -20,8 +19,10 @@ using Intersect.Utilities;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
+using Intersect.Core;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Core;
+using Microsoft.Extensions.Logging;
 using ChatMsgPacket = Intersect.Network.Packets.Client.ChatMsgPacket;
 using LoginPacket = Intersect.Network.Packets.Client.LoginPacket;
 using PartyInvitePacket = Intersect.Network.Packets.Client.PartyInvitePacket;
@@ -106,13 +107,13 @@ internal sealed partial class PacketHandler
             return false;
         }
 
-        var packetOptions = Options.Instance.SecurityOpts?.PacketOpts;
-        var thresholds = client.PacketFloodingThreshholds;
+        var packetOptions = Options.Instance.Security?.Packets;
+        var thresholds = client.PacketFloodingThresholds;
 
 
         if (pSize > thresholds.MaxPacketSize)
         {
-            Log.Error(
+            ApplicationContext.Context.Value?.Logger.LogError(
                 Strings.Errors.ErrorFloodSize.ToString(
                     pSize, client?.User?.Name ?? "", client?.Entity?.Name ?? "", client.Ip
                 )
@@ -129,7 +130,7 @@ internal sealed partial class PacketHandler
             client.PacketCount++;
             if (client.PacketCount > thresholds.MaxPacketPerSec)
             {
-                Log.Error(
+                ApplicationContext.Context.Value?.Logger.LogError(
                     Strings.Errors.ErrorFloodBurst.ToString(
                         client.PacketCount, client?.User?.Name ?? "", client?.Entity?.Name ?? "", client.Ip
                     )
@@ -148,7 +149,7 @@ internal sealed partial class PacketHandler
 
                 if (client.FloodDetects > 3)
                 {
-                    //Log.Error(
+                    //ApplicationContext.Context.Value?.Logger.LogError(
                     //    Strings.Errors.floodaverage.ToString(
                     //        client.TotalFloodDetects, client?.User?.Name ?? "", client?.Entity?.Name ?? "",
                     //        client.GetIp()
@@ -164,7 +165,7 @@ internal sealed partial class PacketHandler
                 //TODO: Make this check a rolling average somehow to prevent constant flooding right below the threshholds.
                 if (client.TotalFloodDetects > 10)
                 {
-                    //Log.Error(string.Format("[Flood]: Total Detections: {00} [User: {01} | Player: {02} | IP {03}]", client.TotalFloodDetects, client?.User?.Name ?? "", client?.Entity?.Name ?? "", client.GetIp()));
+                    //ApplicationContext.Context.Value?.Logger.LogError(string.Format("[Flood]: Total Detections: {00} [User: {01} | Player: {02} | IP {03}]", client.TotalFloodDetects, client?.User?.Name ?? "", client?.Entity?.Name ?? "", client.GetIp()));
                     //client.Disconnect("Flooding detected.");
                     //return false;
                 }
@@ -181,7 +182,7 @@ internal sealed partial class PacketHandler
         {
             if (client.PacketFloodDetect)
             {
-                Log.Diagnostic(string.Format("Possible Flood Detected: Packets in last second {00} [User: {01} | Player: {02} | IP {03}]", client.PacketCount, client?.User?.Name ?? "", client?.Entity?.Name ?? "", client.Ip));
+                ApplicationContext.Context.Value?.Logger.LogTrace(string.Format("Possible Flood Detected: Packets in last second {00} [User: {01} | Player: {02} | IP {03}]", client.PacketCount, client?.User?.Name ?? "", client?.Entity?.Name ?? "", client.Ip));
             }
 
             client.PacketCount = 0;
@@ -199,7 +200,7 @@ internal sealed partial class PacketHandler
         var client = Client.FindBeta4Client(connection);
         if (client == null)
         {
-            Log.Error("Client was null when packet was being handled.");
+            ApplicationContext.Context.Value?.Logger.LogError("Client was null when packet was being handled.");
             return false;
         }
 
@@ -221,7 +222,7 @@ internal sealed partial class PacketHandler
                 return false;
 
             case null:
-                Log.Error($@"Received null packet from {client.Id} ({client.Name}).");
+                ApplicationContext.Context.Value?.Logger.LogError($@"Received null packet from {client.Id} ({client.Name}).");
                 client.Disconnect("Error processing packet.");
 
                 return true;
@@ -256,16 +257,16 @@ internal sealed partial class PacketHandler
                     sanitizationBuilder.AppendLine();
                 }
 
-                Log.Warn(sanitizationBuilder.ToString());
+                ApplicationContext.Context.Value?.Logger.LogWarning(sanitizationBuilder.ToString());
             }
         }
         catch (Exception exception)
         {
-            Log.Error(
+            ApplicationContext.Context.Value?.Logger.LogError(
                 $"Client Packet Error! [Packet: {packet.GetType().Name} | User: {client.Name ?? ""} | Player: {client.Entity?.Name ?? ""} | IP {client.Ip}]"
             );
 
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Client packet error");
             client.Disconnect("Error processing packet.");
 
             return false;
@@ -288,17 +289,17 @@ internal sealed partial class PacketHandler
             var deltaAdjusted = localAdjustedMs - remoteAdjustedMs;
             var deltaWithPing = deltaAdjusted - ping;
 
-            var configurableMininumPing = Options.Instance.SecurityOpts.PacketOpts.MinimumPing;
-            var configurableErrorMarginFactor = Options.Instance.SecurityOpts.PacketOpts.ErrorMarginFactor;
-            var configurableNaturalLowerMargin = Options.Instance.SecurityOpts.PacketOpts.NaturalLowerMargin;
-            var configurableNaturalUpperMargin = Options.Instance.SecurityOpts.PacketOpts.NaturalUpperMargin;
-            var configurableAllowedSpikePackets = Options.Instance.SecurityOpts.PacketOpts.AllowedSpikePackets;
-            var configurableBaseDesyncForgiveness = Options.Instance.SecurityOpts.PacketOpts.BaseDesyncForegiveness;
+            var configurableMininumPing = Options.Instance.Security.Packets.MinimumPing;
+            var configurableErrorMarginFactor = Options.Instance.Security.Packets.ErrorMarginFactor;
+            var configurableNaturalLowerMargin = Options.Instance.Security.Packets.NaturalLowerMargin;
+            var configurableNaturalUpperMargin = Options.Instance.Security.Packets.NaturalUpperMargin;
+            var configurableAllowedSpikePackets = Options.Instance.Security.Packets.AllowedSpikePackets;
+            var configurableBaseDesyncForgiveness = Options.Instance.Security.Packets.BaseDesyncForegiveness;
             var configurablePingDesyncForgivenessFactor =
-                Options.Instance.SecurityOpts.PacketOpts.DesyncForgivenessFactor;
+                Options.Instance.Security.Packets.DesyncForgivenessFactor;
 
             var configurablePacketDesyncForgivenessInternal =
-                Options.Instance.SecurityOpts.PacketOpts.DesyncForgivenessInterval;
+                Options.Instance.Security.Packets.DesyncForgivenessInterval;
 
             var errorMargin = Math.Max(ping, configurableMininumPing) * configurableErrorMarginFactor;
             var errorRangeMinimum = ping - errorMargin;
@@ -343,7 +344,7 @@ internal sealed partial class PacketHandler
 
             if (logDiagnostics)
             {
-                Log.Debug(
+                ApplicationContext.Context.Value?.Logger.LogDebug(
                     "\n\t" +
                     $"Ping[Connection={ping}, Error={Math.Abs(ping)}]\n\t" +
                     $"Error[G={Math.Abs(localAdjustedMs - remoteAdjustedMs)}, R={Math.Abs(localUtcMs - remoteUtcMs)}, O={Math.Abs(localOffsetMs - remoteOffsetMs)}]\n\t" +
@@ -365,7 +366,7 @@ internal sealed partial class PacketHandler
                 {
                     //if (!(packet is PingPacket))
                     //{
-                    //    Log.Warn(
+                    //    ApplicationContext.Context.Value?.Logger.LogWarning(
                     //        "Dropping Packet. Time desync? Debug Info:\n\t" +
                     //        $"Ping[Connection={ping}, NetConnection={ncPing}, Error={Math.Abs(ncPing - ping)}]\n\t" +
                     //        $"Server Time[Ticks={Timing.Global.Ticks}, AdjustedMs={localAdjustedMs}, TicksUTC={Timing.Global.TicksUTC}, Offset={Timing.Global.TicksOffset}]\n\t" +
@@ -384,7 +385,7 @@ internal sealed partial class PacketHandler
                     }
                     catch (Exception exception)
                     {
-                        Log.Debug(
+                        ApplicationContext.Context.Value?.Logger.LogDebug(
                             exception,
                             $"Exception thrown dropping packet ({packet.GetType().Name}/{client.Ip}/{client.Name ?? ""}/{client.Entity?.Name ?? ""})"
                         );
@@ -434,7 +435,7 @@ internal sealed partial class PacketHandler
     {
         if (!Registry.TryGetHandler(packet, out HandlePacketGeneric handler))
         {
-            Logger.Error($"No registered handler for {packet.GetType().FullName}!");
+            Logger.LogError($"No registered handler for {packet.GetType().FullName}!");
 
             return false;
         }
@@ -453,7 +454,7 @@ internal sealed partial class PacketHandler
             if (!preHooks.All(hook => hook.Handle(client, packet)))
             {
                 // Hooks should not fail, if they do that's an error
-                Logger.Error($"PreHook handler failed for {packet.GetType().FullName}.");
+                Logger.LogError($"PreHook handler failed for {packet.GetType().FullName}.");
                 return false;
             }
         }
@@ -468,7 +469,7 @@ internal sealed partial class PacketHandler
             if (!postHooks.All(hook => hook.Handle(client, packet)))
             {
                 // Hooks should not fail, if they do that's an error
-                Logger.Error($"PostHook handler failed for {packet.GetType().FullName}.");
+                Logger.LogError($"PostHook handler failed for {packet.GetType().FullName}.");
                 return false;
             }
         }
@@ -514,14 +515,15 @@ internal sealed partial class PacketHandler
         client.ResetTimeout();
 
         // Are we at capacity yet, or can this user still log in?
-        if (Globals.OnlineList.Count >= Options.MaxLoggedinUsers)
+        if (Globals.OnlineList.Count >= Options.Instance.MaximumLoggedInUsers)
         {
             PacketSender.SendError(client, Strings.Networking.ServerFull, Strings.General.NoticeError);
 
             return;
         }
 
-        if (!User.TryLogin(packet.Username, packet.Password, out var user, out var failureReason))
+        var username = packet.Username;
+        if (!User.TryLogin(username, packet.Password, out var user, out var failureReason))
         {
             UserActivityHistory.LogActivity(
                 Guid.Empty,
@@ -529,7 +531,7 @@ internal sealed partial class PacketHandler
                 client?.Ip,
                 UserActivityHistory.PeerType.Client,
                 UserActivityHistory.UserAction.FailedLogin,
-                $"{packet.Username},{failureReason.Type}"
+                $"{username},{failureReason.Type}"
             );
 
             if (failureReason.Type == LoginFailureType.InvalidCredentials)
@@ -545,26 +547,77 @@ internal sealed partial class PacketHandler
             return;
         }
 
+        List<TaskCompletionSource> logoutCompletionSources = [];
+
+        var disconnectedClients = false;
         lock (Globals.ClientLock)
         {
-            foreach (var cli in Globals.Clients.ToArray())
+            foreach (var otherClient in Globals.Clients.ToArray())
             {
-                if (cli == client)
+                if (otherClient == null)
                 {
                     continue;
                 }
 
-                if (cli?.IsEditor ?? false)
+                if (otherClient == client)
                 {
                     continue;
                 }
 
-                if (!string.Equals(cli?.Name, packet.Username, StringComparison.InvariantCultureIgnoreCase))
+                if (otherClient.IsEditor)
                 {
                     continue;
                 }
 
-                cli?.Disconnect();
+                if (!string.Equals(otherClient.Name, username, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    continue;
+                }
+
+                TaskCompletionSource logoutCompletionSource = new();
+                otherClient.Disconnect(logoutCompletionSource: logoutCompletionSource);
+                logoutCompletionSources.Add(logoutCompletionSource);
+
+                disconnectedClients = true;
+            }
+        }
+
+        if (disconnectedClients)
+        {
+            var disconnectionCount = logoutCompletionSources.Count;
+            ApplicationContext.Context.Value?.Logger.LogInformation($"Login of {username} waiting on {disconnectionCount} clients before continuing...");
+
+            Task.WaitAll(logoutCompletionSources.Select(source => source.Task).ToArray());
+
+            ApplicationContext.Context.Value?.Logger.LogInformation($"Continuing login of {username}...");
+
+            if (!User.TryLogin(
+                    username,
+                    packet.Password,
+                    out user,
+                    out failureReason
+                ))
+            {
+                UserActivityHistory.LogActivity(
+                    Guid.Empty,
+                    Guid.Empty,
+                    client?.Ip,
+                    UserActivityHistory.PeerType.Client,
+                    UserActivityHistory.UserAction.FailedLogin,
+                    $"{username},{failureReason.Type}"
+                );
+
+                if (failureReason.Type == LoginFailureType.InvalidCredentials)
+                {
+                    client.FailedAttempt();
+                    PacketSender.SendError(client, Strings.Account.BadLogin, Strings.General.NoticeError);
+                }
+                else
+                {
+                    PacketSender.SendError(client, Strings.Account.UnknownServerErrorRetryLogin, Strings.General.NoticeError);
+                }
+
+                return;
             }
         }
 
@@ -573,11 +626,11 @@ internal sealed partial class PacketHandler
         if (client.User != null)
         {
             //Logged In
-            client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.PlayerThreshholds;
+            client.PacketFloodingThresholds = Options.Instance.Security.Packets.PlayerThreshholds;
 
             if (client.User.Power.IsAdmin || client.User.Power.IsModerator)
             {
-                client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.ModAdminThreshholds;
+                client.PacketFloodingThresholds = Options.Instance.Security.Packets.ModAdminThreshholds;
             }
         }
 
@@ -593,7 +646,7 @@ internal sealed partial class PacketHandler
         }
 
         //Check that server is in admin only mode
-        if (Options.AdminOnly)
+        if (Options.Instance.AdminOnly)
         {
             if (client.Power == UserRights.None)
             {
@@ -632,7 +685,7 @@ internal sealed partial class PacketHandler
         }
 
         // Show character select menu or login right away by following configuration preferences.
-        if (Options.MaxCharacters > 1 || !Options.Instance.PlayerOpts.SkipCharacterSelect)
+        if (Options.Instance.Player.MaxCharacters > 1 || !Options.Instance.Player.SkipCharacterSelect)
         {
             PacketSender.SendPlayerCharacters(client);
         }
@@ -664,9 +717,9 @@ internal sealed partial class PacketHandler
                 : UserActivityHistory.UserAction.DisconnectLogout, $"{client.Name},{client.Entity?.Name}");
 
         if (packet.ReturningToCharSelect &&
-            (Options.MaxCharacters > 1 || !Options.Instance.PlayerOpts.SkipCharacterSelect))
+            (Options.Instance.Player.MaxCharacters > 1 || !Options.Instance.Player.SkipCharacterSelect))
         {
-            Log.Debug($"[{nameof(LogoutPacket)}] Returning to character select from player {client.Entity?.Id} ({client.User?.Id})");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"[{nameof(LogoutPacket)}] Returning to character select from player {client.Entity?.Id} ({client.User?.Id})");
             client.Entity?.TryLogout(false, true);
             client.Entity = default;
             PacketSender.SendPlayerCharacters(client, skipLoadingRelationships: true);
@@ -750,7 +803,7 @@ internal sealed partial class PacketHandler
 
         var clientTime = packet.Adjusted / TimeSpan.TicksPerMillisecond;
         if (player.ClientMoveTimer <= clientTime &&
-            (Options.Instance.PlayerOpts.AllowCombatMovement || player.ClientAttackTimer <= clientTime))
+            (Options.Instance.Player.AllowCombatMovement || player.ClientAttackTimer <= clientTime))
         {
             if (
                 (player.CanMoveInDirection(packet.Dir, out var blockerType, out _) || blockerType == MovementBlockerType.Slide)
@@ -814,18 +867,18 @@ internal sealed partial class PacketHandler
         if (player.LastChatTime > Timing.Global.MillisecondsUtc)
         {
             PacketSender.SendChatMsg(player, Strings.Chat.TooFast, ChatMessageType.Notice);
-            player.LastChatTime = Timing.Global.MillisecondsUtc + Options.MinChatInterval;
+            player.LastChatTime = Timing.Global.MillisecondsUtc + Options.Instance.Chat.MinIntervalBetweenChats;
 
             return;
         }
 
-        if (packet.Message.Length > Options.MaxChatLength)
+        if (packet.Message.Length > Options.Instance.Chat.MaxChatLength)
         {
             return;
         }
 
         //If no /command, then use the designated channel.
-        var cmd = "";
+        var cmd = string.Empty;
         if (!msg.StartsWith("/"))
         {
             switch (channel)
@@ -981,10 +1034,10 @@ internal sealed partial class PacketHandler
                 );
 
                 // Show an announcement banner if configured to do so as well!
-                if (Options.Chat.ShowAnnouncementBanners)
+                if (Options.Instance.Chat.ShowAnnouncementBanners)
                 {
                     // TODO: Make the duration configurable through chat?
-                    PacketSender.SendGameAnnouncement(msg, Options.Chat.AnnouncementDisplayDuration);
+                    PacketSender.SendGameAnnouncement(msg, Options.Instance.Chat.AnnouncementDisplayDuration);
                 }
 
                 ChatHistory.LogMessage(player, msg.Trim(), ChatMessageType.Notice, Guid.Empty);
@@ -1138,7 +1191,7 @@ internal sealed partial class PacketHandler
 
         var clientTime = packet.Adjusted / TimeSpan.TicksPerMillisecond;
         if (player.ClientAttackTimer > clientTime ||
-            (!Options.Instance.PlayerOpts.AllowCombatMovement && player.ClientMoveTimer > clientTime))
+            (!Options.Instance.Player.AllowCombatMovement && player.ClientMoveTimer > clientTime))
         {
             return;
         }
@@ -1150,7 +1203,7 @@ internal sealed partial class PacketHandler
 
         if (player.IsCasting)
         {
-            if (Options.Combat.EnableCombatChatMessages)
+            if (Options.Instance.Combat.EnableCombatChatMessages)
             {
                 PacketSender.SendChatMsg(player, Strings.Combat.ChannelingNoAttack, ChatMessageType.Combat);
             }
@@ -1166,7 +1219,7 @@ internal sealed partial class PacketHandler
         {
             if (status.Type == SpellEffect.Stun)
             {
-                if (Options.Combat.EnableCombatChatMessages)
+                if (Options.Instance.Combat.EnableCombatChatMessages)
                 {
                     PacketSender.SendChatMsg(player, Strings.Combat.StunAttacking, ChatMessageType.Combat);
                 }
@@ -1176,7 +1229,7 @@ internal sealed partial class PacketHandler
 
             if (status.Type == SpellEffect.Sleep)
             {
-                if (Options.Combat.EnableCombatChatMessages)
+                if (Options.Instance.Combat.EnableCombatChatMessages)
                 {
                     PacketSender.SendChatMsg(player, Strings.Combat.SleepAttacking, ChatMessageType.Combat);
                 }
@@ -1240,7 +1293,7 @@ internal sealed partial class PacketHandler
 
         //Fire projectile instead if weapon has it
 
-        if (player.TryGetEquippedItem(Options.WeaponIndex, out var equippedWeapon))
+        if (player.TryGetEquippedItem(Options.Instance.Equipment.WeaponSlot, out var equippedWeapon))
         {
             var weaponItem = equippedWeapon.Descriptor;
 
@@ -1406,7 +1459,11 @@ internal sealed partial class PacketHandler
     public void HandlePacket(Client client, EventInputVariablePacket packet)
     {
         client.Entity.RespondToEventInput(
-            packet.EventId, packet.Value, packet.StringValue, packet.Canceled
+            packet.EventId,
+            packet.BooleanValue,
+            packet.Value,
+            packet.StringValue,
+            packet.Canceled
         );
     }
 
@@ -1423,7 +1480,7 @@ internal sealed partial class PacketHandler
 
         client.ResetTimeout();
 
-        if (Options.BlockClientRegistrations)
+        if (Options.Instance.BlockClientRegistrations)
         {
             PacketSender.SendError(client, Strings.Account.RegistrationsBlocked, Strings.General.NoticeError);
 
@@ -1473,18 +1530,18 @@ internal sealed partial class PacketHandler
                 if (client.User != null)
                 {
                     //Logged In
-                    client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.PlayerThreshholds;
+                    client.PacketFloodingThresholds = Options.Instance.Security.Packets.PlayerThreshholds;
 
                     if (client.User.Power.IsAdmin || client.User.Power.IsModerator)
                     {
-                        client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.ModAdminThreshholds;
+                        client.PacketFloodingThresholds = Options.Instance.Security.Packets.ModAdminThreshholds;
                     }
                 }
 
                 // PacketSender.SendServerConfig(client); // TODO: We already send this when the client is initialized, why do we send it again here?
 
                 //Check that server is in admin only mode
-                if (Options.AdminOnly)
+                if (Options.Instance.AdminOnly)
                 {
                     if (client.Power == UserRights.None)
                     {
@@ -1537,7 +1594,7 @@ internal sealed partial class PacketHandler
         };
 
         newChar.ValidateLists();
-        for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+        for (var i = 0; i < Options.Instance.Equipment.Slots.Count; i++)
         {
             newChar.Equipment[i] = -1;
         }
@@ -1601,7 +1658,7 @@ internal sealed partial class PacketHandler
     public void HandlePacket(Client client, PickupItemPacket packet)
     {
         var player = client.Entity;
-        if (player == null || packet.TileIndex < 0 || packet.TileIndex >= Options.MapWidth * Options.MapHeight)
+        if (player == null || packet.TileIndex < 0 || packet.TileIndex >= Options.Instance.Map.MapWidth * Options.Instance.Map.MapHeight)
         {
             return;
         }
@@ -1614,12 +1671,12 @@ internal sealed partial class PacketHandler
         var playerMapController = playerMapInstance.GetController();
 
         var lootDistance = Math.Min(
-            Math.Min(Options.Instance.MapOpts.MapWidth, Options.Instance.MapOpts.MapHeight),
-            Options.Loot.MaximumLootWindowDistance
+            Math.Min(Options.Instance.Map.MapWidth, Options.Instance.Map.MapHeight),
+            Options.Instance.Loot.MaximumLootWindowDistance
         );
 
         // Is our user within range of the item they are trying to pick up?
-        if (player.GetDistanceTo(playerMapController, packet.TileIndex % Options.MapWidth, (int)Math.Floor(packet.TileIndex / (float)Options.MapWidth)) > lootDistance)
+        if (player.GetDistanceTo(playerMapController, packet.TileIndex % Options.Instance.Map.MapWidth, (int)Math.Floor(packet.TileIndex / (float)Options.Instance.Map.MapWidth)) > lootDistance)
         {
             return;
         }
@@ -1929,13 +1986,13 @@ internal sealed partial class PacketHandler
 
             if (!CraftBase.TryGet(packet.CraftId, out var craftDescriptor))
             {
-                Log.Warn($"Player {player.Id} tried to craft {packet.CraftId} which does not exist.");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Player {player.Id} tried to craft {packet.CraftId} which does not exist.");
                 return;
             }
 
             if (player.OpenCraftingTableId == default)
             {
-                Log.Warn($"Player {player.Id} tried to craft {packet.CraftId} without having opened a table yet.");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Player {player.Id} tried to craft {packet.CraftId} without having opened a table yet.");
                 return;
             }
 
@@ -2045,12 +2102,12 @@ internal sealed partial class PacketHandler
                 if (player.PartyRequests.ContainsKey(player.PartyRequester))
                 {
                     player.PartyRequests[player.PartyRequester] =
-                        Timing.Global.Milliseconds + Options.RequestTimeout;
+                        Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout;
                 }
                 else
                 {
                     player.PartyRequests.Add(
-                        player.PartyRequester, Timing.Global.Milliseconds + Options.RequestTimeout
+                        player.PartyRequester, Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout
                     );
                 }
             }
@@ -2125,9 +2182,9 @@ internal sealed partial class PacketHandler
 
         var target = Player.FindOnline(packet.TargetId);
 
-        if (target != null && target.Id != player.Id && player.InRangeOf(target, Options.TradeRange))
+        if (target != null && target.Id != player.Id && player.InRangeOf(target, Options.Instance.Player.TradeRange))
         {
-            if (player.InRangeOf(target, Options.TradeRange))
+            if (player.InRangeOf(target, Options.Instance.Player.TradeRange))
             {
                 target.InviteToTrade(player);
 
@@ -2158,7 +2215,7 @@ internal sealed partial class PacketHandler
                     if (player.Trading.Requester.Trading.Counterparty == null
                     ) //They could have accepted another trade since.
                     {
-                        if (player.InRangeOf(player.Trading.Requester, Options.TradeRange))
+                        if (player.InRangeOf(player.Trading.Requester, Options.Instance.Player.TradeRange))
                         {
                             //Check if still in range lolz
                             player.Trading.Requester.StartTrade(player);
@@ -2188,12 +2245,12 @@ internal sealed partial class PacketHandler
                     if (player.Trading.Requests.ContainsKey(player.Trading.Requester))
                     {
                         player.Trading.Requests[player.Trading.Requester] =
-                            Timing.Global.Milliseconds + Options.RequestTimeout;
+                            Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout;
                     }
                     else
                     {
                         player.Trading.Requests.Add(
-                            player.Trading.Requester, Timing.Global.Milliseconds + Options.RequestTimeout
+                            player.Trading.Requester, Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout
                         );
                     }
                 }
@@ -2479,12 +2536,12 @@ internal sealed partial class PacketHandler
                     if (player.FriendRequests.ContainsKey(player.FriendRequester))
                     {
                         player.FriendRequests[player.FriendRequester] =
-                            Timing.Global.Milliseconds + Options.RequestTimeout;
+                            Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout;
                     }
                     else
                     {
                         player.FriendRequests.Add(
-                            client.Entity.FriendRequester, Timing.Global.Milliseconds + Options.RequestTimeout
+                            client.Entity.FriendRequester, Timing.Global.Milliseconds + Options.Instance.Player.RequestTimeout
                         );
                     }
                 }
@@ -2508,18 +2565,41 @@ internal sealed partial class PacketHandler
             return;
         }
 
+        if (character.IsSaving)
+        {
+            PacketSender.SendError(
+                client,
+                Strings.Account.PlayerSavingTryAgainLater.ToString(character.Name),
+                Strings.General.NoticeError
+            );
+            return;
+        }
+
+        ObjectDisposedException.ThrowIf(character.IsDisposed, character);
+
         client.LoadCharacter(character);
 
-        UserActivityHistory.LogActivity(client.User?.Id ?? Guid.Empty, client?.Entity?.Id ?? Guid.Empty, client?.Ip, UserActivityHistory.PeerType.Client, UserActivityHistory.UserAction.SelectPlayer, $"{client?.Name},{client?.Entity?.Name}");
+        UserActivityHistory.LogActivity(
+            client.User?.Id ?? Guid.Empty,
+            client?.Entity?.Id ?? Guid.Empty,
+            client?.Ip,
+            UserActivityHistory.PeerType.Client,
+            UserActivityHistory.UserAction.SelectPlayer,
+            $"{client?.Name},{client?.Entity?.Name}"
+        );
 
         try
         {
             client.Entity?.SetOnline();
+
             PacketSender.SendJoinGame(client);
         }
         catch (Exception exception)
         {
-            Log.Warn(exception);
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                exception,
+                "Failed to set player as online or send JoinGame packet"
+            );
             PacketSender.SendError(client, Strings.Account.LoadFail, Strings.General.NoticeError);
             client.Logout();
         }
@@ -2571,7 +2651,7 @@ internal sealed partial class PacketHandler
     //NewCharacterPacket
     public void HandlePacket(Client client, NewCharacterPacket packet)
     {
-        if (client?.Characters?.Count < Options.MaxCharacters)
+        if (client?.Characters?.Count < Options.Instance.Player.MaxCharacters)
         {
             PacketSender.SendGameObjects(client, GameObjectType.Class);
             PacketSender.SendCreateCharacter(client);
@@ -2602,7 +2682,7 @@ internal sealed partial class PacketHandler
             if (user.PasswordResetCode.ToLower().Trim() == packet.ResetCode.ToLower().Trim() &&
                 user.PasswordResetTime > DateTime.UtcNow)
             {
-                user.PasswordResetCode = "";
+                user.PasswordResetCode = string.Empty;
                 user.PasswordResetTime = DateTime.MinValue;
                 DbInterface.ResetPass(user, packet.NewPassword);
                 success = true;
@@ -2665,20 +2745,40 @@ internal sealed partial class PacketHandler
                     return;
                 }
 
-                // Does our target player exist online?
-                var target = Player.FindOnline(packet.Name);
+                var target = Player.Find(packet.Name);
                 if (target != null)
                 {
                     // Are we already in a guild? or have a pending invite?
-                    if (target.Guild == null && target.GuildInvite == null)
+                    if (target.Guild == null && target.PendingGuildInvite == default)
                     {
                         // Thank god, we can FINALLY get started!
                         // Set our invite and send our players the relevant messages.
-                        target.GuildInvite = new Tuple<Player, Guild>(player, player.Guild);
+                        target.PendingGuildInvite = new GuildInvite
+                        {
+                            From = player,
+                            FromId = player.Id,
+                            To = guild,
+                            ToId = guild.Id,
+                        };
 
-                        PacketSender.SendChatMsg(player, Strings.Guilds.InviteSent.ToString(target.Name, player.Guild.Name), ChatMessageType.Guild, CustomColors.Alerts.Info);
+                        PacketSender.SendChatMsg(
+                            player,
+                            Strings.Guilds.InviteSent.ToString(target.Name, guild.Name),
+                            ChatMessageType.Guild,
+                            CustomColors.Alerts.Info
+                        );
 
-                        PacketSender.SendGuildInvite(target, player);
+                        if (target.Online)
+                        {
+                            PacketSender.SendGuildInvite(target, player);
+                        }
+                        else
+                        {
+                            ApplicationContext.Context.Value?.Logger.LogInformation(
+                                $"[Guild] Player {player.Id} sent an offline guild invite to guild {guild.Id} to player {target.Id}"
+                            );
+                            target.Save();
+                        }
                     }
                     else
                     {
@@ -2705,7 +2805,7 @@ internal sealed partial class PacketHandler
                         mem.StartCommonEventsWithTrigger(CommonEventTrigger.GuildMemberKicked, guild.Name, member.Name);
                     }
 
-                    guild.RemoveMember(packet.Id, default, player, GuildHistory.GuildActivityType.Kicked);
+                    guild.TryRemoveMember(packet.Id, default, player, GuildHistory.GuildActivityType.Kicked);
                 }
                 else
                 {
@@ -2799,39 +2899,77 @@ internal sealed partial class PacketHandler
             return;
         }
 
-        var invitor = player?.GuildInvite?.Item1;
-        var guild = player?.GuildInvite?.Item2;
-
         // Have we received an invite at all?
-        if (guild == null || player.GuildInvite == null)
+        if (player.PendingGuildInvite == default)
         {
-            PacketSender.SendChatMsg(player, Strings.Guilds.NotReceivedInvite, ChatMessageType.Guild, CustomColors.Alerts.Error);
+            PacketSender.SendChatMsg(
+                player,
+                Strings.Guilds.NotReceivedInvite,
+                ChatMessageType.Guild,
+                CustomColors.Alerts.Error
+            );
             return;
         }
 
-        if (Options.Instance.Guild.Ranks[Options.Instance.Guild.Ranks.Length - 1].Limit > -1 && guild.Members.Where(m => m.Value.Rank == Options.Instance.Guild.Ranks.Length - 1).Count() >= Options.Instance.Guild.Ranks[Options.Instance.Guild.Ranks.Length - 1].Limit)
+        if (Options.Instance.Guild is not { } guildOptions)
         {
-            // Inform the inviter that the guild is full
-            if (player.GuildInvite.Item1 != null)
-            {
-                var onlinePlayer = Player.FindOnline(player.GuildInvite.Item1.Id);
-                if (onlinePlayer != null)
-                {
-                    PacketSender.SendChatMsg(onlinePlayer, Strings.Guilds.RankLimitResponse.ToString(Options.Instance.Guild.Ranks[Options.Instance.Guild.Ranks.Length - 1].Title, player.Name), ChatMessageType.Guild, CustomColors.Alerts.Error);
-                }
-            }
-
-            //Inform the acceptor that they are actually not in the guild
-            PacketSender.SendChatMsg(player, Strings.Guilds.RankLimit.ToString(player.GuildInvite.Item2.Name), ChatMessageType.Guild, CustomColors.Alerts.Error);
-
-            player.GuildInvite = null;
-
+            PacketSender.SendChatMsg(
+                player,
+                Strings.Guilds.ErrorWhileAcceptingInvite,
+                ChatMessageType.Guild,
+                CustomColors.Alerts.Error
+            );
+            PacketSender.SendGuildInvite(player, player.PendingGuildInviteFrom);
             return;
+        }
+
+        var inviter = player.PendingGuildInviteFrom ?? Player.FindOnline(player.PendingGuildInviteFromId ?? default);
+        var guild = player.PendingGuildInviteTo ?? Guild.LoadGuild(player.PendingGuildInviteToId ?? default);
+
+        if (guildOptions.Ranks[^1].Limit > -1)
+        {
+            if (guildOptions.Ranks[^1].Limit <= guild.Members.Count(m => m.Value.Rank == guildOptions.Ranks.Length - 1))
+            {
+                // Inform the inviter that the guild is full
+                if (player.PendingGuildInvite.FromId is var inviterId)
+                {
+                    var onlinePlayer = Player.FindOnline(inviterId);
+                    if (onlinePlayer != null)
+                    {
+                        PacketSender.SendChatMsg(
+                            onlinePlayer,
+                            Strings.Guilds.RankLimitResponse.ToString(guildOptions.Ranks[^1].Title, player.Name),
+                            ChatMessageType.Guild,
+                            CustomColors.Alerts.Error
+                        );
+                    }
+                }
+
+                //Inform the acceptor that they are actually not in the guild
+                PacketSender.SendChatMsg(player, Strings.Guilds.RankLimit.ToString(guild.Name), ChatMessageType.Guild, CustomColors.Alerts.Error);
+
+                player.PendingGuildInvite = default;
+                player.Save();
+
+                return;
+            }
         }
 
         // Accept our invite!
-        guild.AddMember(player, Options.Instance.Guild.Ranks.Length - 1, invitor);
-        player.GuildInvite = null;
+        if (!guild.TryAddMember(player, guildOptions.Ranks.Length - 1, inviter))
+        {
+            PacketSender.SendChatMsg(
+                player,
+                Strings.Guilds.ErrorWhileAcceptingInvite,
+                ChatMessageType.Guild,
+                CustomColors.Alerts.Error
+            );
+            PacketSender.SendGuildInvite(player, inviter);
+            return;
+        }
+
+        player.PendingGuildInvite = default;
+        player.Save();
 
         // Start common events for all online guild members that this one left
         foreach (var member in guild.FindOnlineMembers())
@@ -2853,27 +2991,41 @@ internal sealed partial class PacketHandler
         }
 
         // Have we received an invite at all?
-        if (player.GuildInvite == null)
+        if (player.PendingGuildInvite == default)
         {
-            PacketSender.SendChatMsg(player, Strings.Guilds.NotReceivedInvite, ChatMessageType.Guild, CustomColors.Alerts.Error);
+            PacketSender.SendChatMsg(
+                player,
+                Strings.Guilds.NotReceivedInvite,
+                ChatMessageType.Guild,
+                CustomColors.Alerts.Error
+            );
             return;
         }
 
-        // Politely decline our invite.
-        if (player.GuildInvite.Item1 != null)
-        {
-            var onlinePlayer = Player.FindOnline(player.GuildInvite.Item1.Id);
-            if (onlinePlayer != null)
-            {
-                PacketSender.SendChatMsg(onlinePlayer, Strings.Guilds.InviteDeclinedResponse.ToString(player.Name, player.GuildInvite.Item2.Name), ChatMessageType.Guild, CustomColors.Alerts.Info);
-                PacketSender.SendChatMsg(player, Strings.Guilds.InviteDeclined.ToString(onlinePlayer.Name, player.GuildInvite.Item2.Name), ChatMessageType.Guild, CustomColors.Alerts.Info);
-            }
-            else
-            {
-                PacketSender.SendChatMsg(player, Strings.Guilds.InviteDeclined.ToString(player.GuildInvite.Item2.Name), ChatMessageType.Guild, CustomColors.Alerts.Info);
-            }
+        var inviter = player.PendingGuildInviteFrom ?? Player.FindOnline(player.PendingGuildInviteFromId ?? default);
+        var guild = player.PendingGuildInviteTo ?? Guild.LoadGuild(player.PendingGuildInviteToId ?? default);
 
-            player.GuildInvite = null;
+        player.PendingGuildInvite = default;
+
+        var messageToPlayer = guild == null
+            ? Strings.Guilds.InviteDeclinedMissingGuild.ToString()
+            : Strings.Guilds.InviteDeclined.ToString(guild.Name);
+
+        PacketSender.SendChatMsg(
+            player,
+            messageToPlayer,
+            ChatMessageType.Guild,
+            CustomColors.Alerts.Info
+        );
+
+        // Politely decline our invite if the inviter is still online
+        // ReSharper disable once InvertIf
+        if (inviter != null)
+        {
+            var messageToInviter = guild == null
+                ? Strings.Guilds.InviteDeclinedResponseMissingGuild.ToString(player.Name)
+                : Strings.Guilds.InviteDeclinedResponse.ToString(player.Name, guild.Name);
+            PacketSender.SendChatMsg(inviter, messageToInviter, ChatMessageType.Guild, CustomColors.Alerts.Info);
         }
     }
 
@@ -2907,7 +3059,7 @@ internal sealed partial class PacketHandler
             member.StartCommonEventsWithTrigger(CommonEventTrigger.GuildMemberLeft, guild.Name, player.Name);
         }
 
-        guild.RemoveMember(player.Id, player, null, GuildHistory.GuildActivityType.Left);
+        guild.TryRemoveMember(player.Id, player, null, GuildHistory.GuildActivityType.Left);
 
         // Send the newly updated player information to their surroundings.
         PacketSender.SendEntityDataToProximity(player);

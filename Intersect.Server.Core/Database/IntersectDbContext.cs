@@ -3,16 +3,19 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Text;
 using Intersect.Config;
+using Intersect.Core;
 using Intersect.Framework.Reflection;
-using Intersect.Logging;
-using Intersect.Reflection;
 using Intersect.Server.Core;
+#if DIAGNOSTIC
+using Intersect.Server.Database.PlayerData;
+#endif
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Server.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Server.Database;
 
@@ -91,7 +94,7 @@ public abstract partial class IntersectDbContext<TDbContext> : DbContext, IDbCon
 #if DIAGNOSTIC
         if (this is PlayerContext)
         {
-            loggerFactory ??= new IntersectLoggerFactory();
+            loggerFactory ??= new IntersectLoggerFactory(GetType().GetName(qualified: true));
         }
 #endif
 
@@ -211,13 +214,13 @@ public abstract partial class IntersectDbContext<TDbContext> : DbContext, IDbCon
         try
         {
 #if DEBUG
-            Log.Debug($"DBOP-A SaveChanges({acceptAllChangesOnSuccess}) #{currentExecutionId}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"DBOP-A SaveChanges({acceptAllChangesOnSuccess}) #{currentExecutionId}");
 #endif
 
             var rowsChanged = base.SaveChanges(acceptAllChangesOnSuccess);
 
 #if DEBUG
-            Log.Debug($"DBOP-B SaveChanges({acceptAllChangesOnSuccess}) #{currentExecutionId}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"DBOP-B SaveChanges({acceptAllChangesOnSuccess}) #{currentExecutionId}");
 #endif
 
             return rowsChanged;
@@ -281,11 +284,11 @@ public abstract partial class IntersectDbContext<TDbContext> : DbContext, IDbCon
 
             concurrencyErrors.AppendLine(Environment.StackTrace);
 
-            Log.Error(concurrencyException, $"Jackpot! Concurrency Bug For {string.Join(", ", entityTypeNames)} {suffix}");
-            Log.Error(concurrencyErrors.ToString());
+            ApplicationContext.Context.Value?.Logger.LogError(concurrencyException, $"Jackpot! Concurrency Bug For {string.Join(", ", entityTypeNames)} {suffix}");
+            ApplicationContext.Context.Value?.Logger.LogError(concurrencyErrors.ToString());
 
 #if DEBUG
-            Log.Debug($"DBOP-C SaveChanges({acceptAllChangesOnSuccess}) #{currentExecutionId}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"DBOP-C SaveChanges({acceptAllChangesOnSuccess}) #{currentExecutionId}");
 #endif
 
             if (ContextOptions.KillServerOnConcurrencyException)
@@ -296,7 +299,7 @@ public abstract partial class IntersectDbContext<TDbContext> : DbContext, IDbCon
             }
             else
             {
-                Log.Error($"{nameof(DbUpdateConcurrencyException)} occurred, please review the logs for more information.");
+                ApplicationContext.Context.Value?.Logger.LogError($"{nameof(DbUpdateConcurrencyException)} occurred, please review the logs for more information.");
             }
 
             return -1;

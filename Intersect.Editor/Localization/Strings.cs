@@ -1,11 +1,10 @@
 using System.Reflection;
-
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.Localization;
-using Intersect.Logging;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -67,26 +66,26 @@ public static partial class Strings
         if (condition.VariableType == VariableType.PlayerVariable)
         {
             return EventConditionDesc.playervariable.ToString(
-                PlayerVariableBase.GetName(condition.VariableId), pVar
+                PlayerVariableDescriptor.GetName(condition.VariableId), pVar
             );
         }
         else if (condition.VariableType == VariableType.ServerVariable)
         {
             return EventConditionDesc.globalvariable.ToString(
-                ServerVariableBase.GetName(condition.VariableId), pVar
+                ServerVariableDescriptor.GetName(condition.VariableId), pVar
             );
         }
         else if (condition.VariableType == VariableType.GuildVariable)
         {
             return EventConditionDesc.guildvariable.ToString(
-                GuildVariableBase.GetName(condition.VariableId), pVar
+                GuildVariableDescriptor.GetName(condition.VariableId), pVar
             );
         }
         else if (condition.VariableType == VariableType.UserVariable)
         {
             return EventConditionDesc.UserVariable.ToString(
                 Strings.GameObjectStrings.UserVariable,
-                UserVariableBase.GetName(condition.VariableId),
+                UserVariableDescriptor.GetName(condition.VariableId),
                 pVar
             );
         }
@@ -102,13 +101,13 @@ public static partial class Strings
             switch (condition.VariableType)
             {
                 case VariableType.PlayerVariable:
-                    amount = string.Format(@"({0}: {1})", EventConditional.playervariable, PlayerVariableBase.GetName(condition.VariableId));
+                    amount = string.Format(@"({0}: {1})", EventConditional.playervariable, PlayerVariableDescriptor.GetName(condition.VariableId));
                     break;
                 case VariableType.ServerVariable:
-                    amount = string.Format(@"({0}: {1})", EventConditional.globalvariable, ServerVariableBase.GetName(condition.VariableId));
+                    amount = string.Format(@"({0}: {1})", EventConditional.globalvariable, ServerVariableDescriptor.GetName(condition.VariableId));
                     break;
                 case VariableType.GuildVariable:
-                    amount = string.Format(@"({0}: {1})", EventConditional.guildvariable, GuildVariableBase.GetName(condition.VariableId));
+                    amount = string.Format(@"({0}: {1})", EventConditional.guildvariable, GuildVariableDescriptor.GetName(condition.VariableId));
                     break;
             }
 
@@ -137,7 +136,7 @@ public static partial class Strings
 
     public static string GetEventConditionalDesc(LevelOrStatCondition condition)
     {
-        var pLvl = "";
+        var pLvl = string.Empty;
         switch (condition.Comparator)
         {
             case VariableComparator.Equal:
@@ -166,7 +165,7 @@ public static partial class Strings
                 break;
         }
 
-        var lvlorstat = "";
+        var lvlorstat = string.Empty;
         if (condition.ComparingLevel)
         {
             lvlorstat = EventConditionDesc.level;
@@ -216,8 +215,8 @@ public static partial class Strings
             timeRanges.Add(addRange);
         }
 
-        var time1 = "";
-        var time2 = "";
+        var time1 = string.Empty;
+        var time2 = string.Empty;
         if (condition.Ranges[0] > -1 && condition.Ranges[0] < timeRanges.Count)
         {
             time1 = timeRanges[condition.Ranges[0]];
@@ -331,13 +330,13 @@ public static partial class Strings
             switch (condition.VariableType)
             {
                 case VariableType.PlayerVariable:
-                    amount = string.Format(@"({0}: {1})", EventConditional.playervariable, PlayerVariableBase.GetName(condition.VariableId));
+                    amount = string.Format(@"({0}: {1})", EventConditional.playervariable, PlayerVariableDescriptor.GetName(condition.VariableId));
                     break;
                 case VariableType.ServerVariable:
-                    amount = string.Format(@"({0}: {1})", EventConditional.globalvariable, ServerVariableBase.GetName(condition.VariableId));
+                    amount = string.Format(@"({0}: {1})", EventConditional.globalvariable, ServerVariableDescriptor.GetName(condition.VariableId));
                     break;
                 case VariableType.GuildVariable:
-                    amount = string.Format(@"({0}: {1})", EventConditional.guildvariable, GuildVariableBase.GetName(condition.VariableId));
+                    amount = string.Format(@"({0}: {1})", EventConditional.guildvariable, GuildVariableDescriptor.GetName(condition.VariableId));
                     break;
             }
 
@@ -366,8 +365,8 @@ public static partial class Strings
 
     public static string GetVariableComparisonString(BooleanVariableComparison comparison)
     {
-        var value = "";
-        var pVar = "";
+        var value = string.Empty;
+        var pVar = string.Empty;
 
         if (comparison.CompareVariableId == Guid.Empty)
         {
@@ -378,19 +377,19 @@ public static partial class Strings
             if (comparison.CompareVariableType == VariableType.PlayerVariable)
             {
                 value = EventConditionDesc.playervariablevalue.ToString(
-                    PlayerVariableBase.GetName(comparison.CompareVariableId)
+                    PlayerVariableDescriptor.GetName(comparison.CompareVariableId)
                 );
             }
             else if (comparison.CompareVariableType == VariableType.ServerVariable)
             {
                 value = EventConditionDesc.globalvariablevalue.ToString(
-                    ServerVariableBase.GetName(comparison.CompareVariableId)
+                    ServerVariableDescriptor.GetName(comparison.CompareVariableId)
                 );
             }
             else if (comparison.CompareVariableType == VariableType.GuildVariable)
             {
                 value = EventConditionDesc.guildvariablevalue.ToString(
-                    GuildVariableBase.GetName(comparison.CompareVariableId)
+                    GuildVariableDescriptor.GetName(comparison.CompareVariableId)
                 );
             }
         }
@@ -409,8 +408,8 @@ public static partial class Strings
 
     public static string GetVariableComparisonString(IntegerVariableComparison comparison)
     {
-        var value = "";
-        var pVar = "";
+        var value = string.Empty;
+        var pVar = string.Empty;
 
         if (comparison.CompareVariableId == Guid.Empty)
         {
@@ -426,19 +425,19 @@ public static partial class Strings
             if (comparison.CompareVariableType == VariableType.PlayerVariable)
             {
                 value = EventConditionDesc.playervariablevalue.ToString(
-                    PlayerVariableBase.GetName(comparison.CompareVariableId)
+                    PlayerVariableDescriptor.GetName(comparison.CompareVariableId)
                 );
             }
             else if (comparison.CompareVariableType == VariableType.ServerVariable)
             {
                 value = EventConditionDesc.globalvariablevalue.ToString(
-                    ServerVariableBase.GetName(comparison.CompareVariableId)
+                    ServerVariableDescriptor.GetName(comparison.CompareVariableId)
                 );
             }
             else if (comparison.CompareVariableType == VariableType.GuildVariable)
             {
                 value = EventConditionDesc.guildvariablevalue.ToString(
-                    GuildVariableBase.GetName(comparison.CompareVariableId)
+                    GuildVariableDescriptor.GetName(comparison.CompareVariableId)
                 );
             }
         }
@@ -549,7 +548,7 @@ public static partial class Strings
                             var jsonString = (string)serializedValue;
                             if (jsonString == default)
                             {
-                                Log.Warn($"{groupType.Name}.{fieldInfo.Name} is null.");
+                                Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning($"{groupType.Name}.{fieldInfo.Name} is null.");
                                 missingStrings.Add($"{groupType.Name}.{fieldInfo.Name} (string)");
                                 serializedGroup[fieldInfo.Name] = (string)localizedString;
                             }
@@ -572,7 +571,12 @@ public static partial class Strings
                                 var fieldType = fieldInfo.FieldType;
                                 if (!fieldType.IsGenericType || typeof(Dictionary<,>) != fieldType.GetGenericTypeDefinition())
                                 {
-                                    Log.Error(new NotSupportedException($"Unsupported localization type for {groupType.Name}.{fieldInfo.Name}: {fieldInfo.FieldType.FullName}"));
+                                    Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
+                                        new NotSupportedException(
+                                            $"Unsupported localization type for {groupType.Name}.{fieldInfo.Name}: {fieldInfo.FieldType.FullName}"
+                                        ),
+                                        $"Unsupported localization type for {groupType.Name}.{fieldInfo.Name}: {fieldInfo.FieldType.FullName}"
+                                    );
                                     break;
                                 }
 
@@ -580,7 +584,12 @@ public static partial class Strings
                                 var localizedParameterType = parameters.Last();
                                 if (localizedParameterType != typeof(LocalizedString))
                                 {
-                                    Log.Error(new NotSupportedException($"Unsupported localization dictionary value type for {groupType.Name}.{fieldInfo.Name}: {localizedParameterType.FullName}"));
+                                    Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
+                                        new NotSupportedException(
+                                            $"Unsupported localization dictionary value type for {groupType.Name}.{fieldInfo.Name}: {localizedParameterType.FullName}"
+                                        ),
+                                        $"Unsupported localization dictionary value type for {groupType.Name}.{fieldInfo.Name}: {localizedParameterType.FullName}"
+                                    );
                                     break;
                                 }
 
@@ -602,13 +611,13 @@ public static partial class Strings
 
             if (missingStrings.Count > 0)
             {
-                Log.Warn($"Missing strings, overwriting strings file:\n\t{string.Join(",\n\t", missingStrings)}");
+                Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning($"Missing strings, overwriting strings file:\n\t{string.Join(",\n\t", missingStrings)}");
                 SaveSerialized(serialized);
             }
         }
         catch (Exception exception)
         {
-            Log.Warn(exception);
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning(exception, "Load error");
             Save();
         }
 
@@ -1863,6 +1872,8 @@ Tick timer saved in server config.json.";
         public static LocalizedString title = @"Add Chatbox Text";
 
         public static LocalizedString ShowChatBubble = @"Show Chat Bubble";
+
+        public static LocalizedString ShowChatBubbleInProximity = @"Show Chat Bubble in Proximity";
 
     }
 
@@ -4454,7 +4465,9 @@ Tick timer saved in server config.json.";
 
         public static LocalizedString dropitem = @"Item:";
 
-        public static LocalizedString dropamount = @"Amount:";
+        public static LocalizedString DropMaxAmount = @"Max Amount:";
+
+        public static LocalizedString DropMinAmount = @"Min Amount:";
 
         public static LocalizedString dropchance = @"Chance (%):";
 
@@ -4462,7 +4475,7 @@ Tick timer saved in server config.json.";
 
         public static LocalizedString dropremove = @"Remove";
 
-        public static LocalizedString dropdisplay = @"{00} x{01} - {02}%";
+        public static LocalizedString dropdisplay = @"{00} x{01}-{02} | {03}%";
 
         public static LocalizedString enabled = @"Enabled?";
 
@@ -4929,7 +4942,9 @@ Tick timer saved in server config.json.";
 
         public static LocalizedString dropitem = @"Item:";
 
-        public static LocalizedString dropamount = @"Amount:";
+        public static LocalizedString DropMaxAmount = @"Max Amount:";
+
+        public static LocalizedString DropMinAmount = @"Min Amount:";
 
         public static LocalizedString dropchance = @"Chance (%):";
 
@@ -4937,7 +4952,7 @@ Tick timer saved in server config.json.";
 
         public static LocalizedString dropremove = @"Remove";
 
-        public static LocalizedString dropdisplay = @"{00} x{01} - {02}%";
+        public static LocalizedString dropdisplay = @"{00} x{01}-{02} | {03}%";
 
         public static LocalizedString exhaustedgraphic = @"Exhausted Graphic:";
 

@@ -1,7 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
-
 using Intersect.Models;
-
 using Newtonsoft.Json;
 
 namespace Intersect.GameObjects;
@@ -9,10 +7,10 @@ namespace Intersect.GameObjects;
 public partial class ShopBase : DatabaseObject<ShopBase>, IFolderable
 {
     [NotMapped]
-    public List<ShopItem> BuyingItems = new List<ShopItem>();
+    public List<ShopItem> BuyingItems { get; set; } = [];
 
     [NotMapped]
-    public List<ShopItem> SellingItems = new List<ShopItem>();
+    public List<ShopItem> SellingItems { get; set; } = [];
 
     [JsonConstructor]
     public ShopBase(Guid id) : base(id)
@@ -62,7 +60,7 @@ public partial class ShopBase : DatabaseObject<ShopBase>, IFolderable
     public string SellSound { get; set; } = null;
 
     /// <inheritdoc />
-    public string Folder { get; set; } = "";
+    public string Folder { get; set; } = string.Empty;
 }
 
 public partial class ShopItem

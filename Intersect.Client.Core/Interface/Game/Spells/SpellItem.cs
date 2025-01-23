@@ -42,7 +42,7 @@ public partial class SpellItem
     //Drag/Drop References
     private SpellsWindow mSpellWindow;
 
-    private string mTexLoaded = "";
+    private string mTexLoaded = string.Empty;
 
     private int mYindex;
 
@@ -193,7 +193,7 @@ public partial class SpellItem
                     Pnl.Texture = null;
                 }
 
-                mTexLoaded = "";
+                mTexLoaded = string.Empty;
             }
         }
 
@@ -236,7 +236,7 @@ public partial class SpellItem
                                     Pnl.LocalPosToCanvas(new Point(0, 0)).X + mMouseY, Pnl.Texture, Pnl.RenderColor
                                 );
 
-                                mTexLoaded = "";
+                                mTexLoaded = string.Empty;
                             }
                         }
                     }
@@ -263,7 +263,7 @@ public partial class SpellItem
                 //Check spell first.
                 if (mSpellWindow.RenderBounds().IntersectsWith(dragRect))
                 {
-                    for (var i = 0; i < Options.Instance.PlayerOpts.MaxSpells; i++)
+                    for (var i = 0; i < Options.Instance.Player.MaxSpells; i++)
                     {
                         if (i < mSpellWindow.Items.Count &&
                             mSpellWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
@@ -291,7 +291,7 @@ public partial class SpellItem
                 }
                 else if (Interface.GameUi.Hotbar.RenderBounds().IntersectsWith(dragRect))
                 {
-                    for (var i = 0; i < Options.Instance.PlayerOpts.HotbarSlotCount; i++)
+                    for (var i = 0; i < Options.Instance.Player.HotbarSlotCount; i++)
                     {
                         if (Interface.GameUi.Hotbar.Items[i].RenderBounds().IntersectsWith(dragRect))
                         {

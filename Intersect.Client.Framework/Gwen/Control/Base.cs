@@ -10,9 +10,10 @@ using Intersect.Client.Framework.Gwen.Input;
 #endif
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Intersect.Logging;
 using Intersect.Client.Framework.Gwen.Renderer;
+using Intersect.Core;
 using Intersect.Framework.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Framework.Gwen.Control;
 
@@ -896,13 +897,17 @@ public partial class Base : IDisposable
     {
         if (string.IsNullOrWhiteSpace(Name))
         {
-            GameContentManager.Current?.Logger.Warn($"Attempted to load layout for nameless {GetType().FullName}");
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                $"Attempted to load layout for nameless {GetType().FullName}"
+            );
             return;
         }
 
         if (string.IsNullOrWhiteSpace(resolution) || string.IsNullOrEmpty(resolution))
         {
-            GameContentManager.Current?.Logger.Warn($"Attempted to load layout for {Name} with no resolution");
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                $"Attempted to load layout for {Name} with no resolution"
+            );
             return;
         }
 
@@ -1203,7 +1208,7 @@ public partial class Base : IDisposable
 #if DIAGNOSTIC
     ~Base()
     {
-        Log.Debug($"IDisposable object finalized: {GetType()}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"IDisposable object finalized: {GetType()}");
     }
 #endif
 

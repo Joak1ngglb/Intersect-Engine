@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
+using Intersect.Core;
 using Intersect.Framework.Reflection;
-using Intersect.Logging;
 using Intersect.Memory;
 using Intersect.Network.Packets;
-using Intersect.Reflection;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Network.LiteNetLib;
 
@@ -36,7 +36,7 @@ public sealed class LiteNetLibConnection : AbstractConnection
         _peer = peer;
         _peer.Tag = Guid;
         _symmetric = SymmetricAlgorithm.PickForVersion(symmetricVersion, symmetricKey);
-        Log.Debug($"Created {_symmetric.GetFullishName()} for {_peer.EndPoint} ({Guid})");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"Created {_symmetric.GetFullishName()} for {_peer} ({Guid})");
     }
 
     internal LiteNetLibConnection(INetwork network, NetManager manager, RSA interfaceAsymmetric)
@@ -49,25 +49,25 @@ public sealed class LiteNetLibConnection : AbstractConnection
 
         var connectionData = NetDataWriter.FromBytes(hail.Data, false);
 
-        Log.Info($"Connecting to {network.Configuration.Host}:{network.Configuration.Port}...");
+        ApplicationContext.Context.Value?.Logger.LogInformation($"Connecting to {network.Configuration.Host}:{network.Configuration.Port}...");
 
 #if DIAGNOSTIC
         if (Debugger.IsAttached)
         {
-            Log.Info($"Connection packet data: {Convert.ToHexString(hail.Data)}");
-            Log.Info($"Connection packet data: {Convert.ToHexString(connectionData.Data)}");
+            ApplicationContext.Context.Value?.Logger.LogInformation($"Connection packet data: {Convert.ToHexString(hail.Data)}");
+            ApplicationContext.Context.Value?.Logger.LogInformation($"Connection packet data: {Convert.ToHexString(connectionData.Data)}");
         }
 #endif
 
         _peer = manager.Connect(network.Configuration.Host, network.Configuration.Port, connectionData);
         _peer.Tag = Guid;
         _symmetric = SymmetricAlgorithm.PickForPlatform();
-        Log.Debug($"Created {_symmetric.GetFullishName()} for {_peer.EndPoint} ({Guid})");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"Created {_symmetric.GetFullishName()} for {_peer} ({Guid})");
     }
 
-    public override string Ip => _peer.EndPoint.Address.ToString();
+    public override string Ip => _peer.Address.ToString();
 
-    public override int Port => _peer.EndPoint.Port;
+    public override int Port => _peer.Port;
 
     internal bool TryProcessApproval(
         NetPeer peer,
@@ -79,7 +79,7 @@ public sealed class LiteNetLibConnection : AbstractConnection
             return _symmetric.SetKey(approvalPacket.AesKey);
         }
 
-        Log.Error("Failed to decrypt approval response packet.");
+        ApplicationContext.Context.Value?.Logger.LogError("Failed to decrypt approval response packet.");
         return false;
     }
 
@@ -100,7 +100,7 @@ public sealed class LiteNetLibConnection : AbstractConnection
         }
 
 #if DIAGNOSTIC
-        Log.Debug($"TryProcessInboundMessage() cipherdata({cipherdata.Length})={Convert.ToHexString(cipherdata)}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"TryProcessInboundMessage() cipherdata({cipherdata.Length})={Convert.ToHexString(cipherdata)}");
 #endif
 
         var decryptionResult = _symmetric.TryDecrypt(cipherdata, out var plaindata);
@@ -115,7 +115,7 @@ public sealed class LiteNetLibConnection : AbstractConnection
             case EncryptionResult.EmptyInput:
             case EncryptionResult.SizeMismatch:
             case EncryptionResult.Error:
-                Log.Warn($"RIEP: {Guid} {decryptionResult}");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"RIEP: {Guid} {decryptionResult}");
                 return false;
             default:
                 throw new UnreachableException();
@@ -141,7 +141,7 @@ public sealed class LiteNetLibConnection : AbstractConnection
             case EncryptionResult.EmptyInput:
             case EncryptionResult.SizeMismatch:
             case EncryptionResult.Error:
-                Log.Warn($"RIEP: {Guid} {encryptionResult}");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"RIEP: {Guid} {encryptionResult}");
                 return false;
 
             default:
@@ -149,7 +149,7 @@ public sealed class LiteNetLibConnection : AbstractConnection
         }
 
 #if DIAGNOSTIC
-        Log.Debug($"Send({transmissionMode}) cipherdata({cipherdata.Length})={Convert.ToHexString(cipherdata)}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"Send({transmissionMode}) cipherdata({cipherdata.Length})={Convert.ToHexString(cipherdata)}");
 #endif
         NetDataWriter data = new(false, cipherdata.Length + sizeof(byte));
         data.Put((byte)1);
@@ -166,7 +166,7 @@ public sealed class LiteNetLibConnection : AbstractConnection
         }
         catch (Exception exception)
         {
-            Log.Verbose(exception);
+            ApplicationContext.Context.Value?.Logger.LogDebug(exception, "Failed to send data to {Endpoint}", _peer);
             return false;
         }
     }

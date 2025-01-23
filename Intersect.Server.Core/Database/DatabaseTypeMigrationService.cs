@@ -1,10 +1,11 @@
 ﻿using System.Reflection;
+using Intersect.Core;
 using Intersect.Extensions;
-using Intersect.Logging;
-using Intersect.Reflection;
+using Intersect.Framework.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Intersect.Server.Localization;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Server.Database;
 
@@ -31,11 +32,11 @@ public class DatabaseTypeMigrationService
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to migrate {ContextType}", typeof(TContext).GetName(qualified: true));
             return true;
         }
 
-        Log.Error(Strings.Migration.MySqlNotEmpty);
+        ApplicationContext.Context.Value?.Logger.LogError(Strings.Migration.MySqlNotEmpty);
         return true;
     }
 
@@ -52,8 +53,18 @@ public class DatabaseTypeMigrationService
 
         public Type Type => EntityType.ClrType;
 
-        public bool Includes(ModelGraphNode otherNode) =>
-            otherNode.Type == Type || Values.Any(childNode => childNode.Includes(otherNode));
+        public void AddSubgraphTypes(HashSet<IEntityType> knownTypes)
+        {
+            if (!knownTypes.Add(EntityType))
+            {
+                return;
+            }
+
+            foreach (var child in Values)
+            {
+                child.AddSubgraphTypes(knownTypes);
+            }
+        }
     }
 
     private static ModelGraphNode[] GetModelGraph<TContext>(DatabaseContextOptions databaseContextOptions)
@@ -86,16 +97,18 @@ public class DatabaseTypeMigrationService
             }
         }
 
-        List<ModelGraphNode> modelGraphRoots = new();
+        List<ModelGraphNode> modelGraphRoots = [];
+        HashSet<IEntityType> knownTypes = [];
 
         var missingNodes = modelGraphNodes.Values.OrderBy(node => node.IsRoot ? 0 : 1).ToList();
 
         while (missingNodes.Count > 0)
         {
             var currentNode = missingNodes[0];
-            if (!modelGraphRoots.Any(root => root.Includes(currentNode)))
+            if (!knownTypes.Contains(currentNode.EntityType))
             {
                 modelGraphRoots.Add(currentNode);
+                currentNode.AddSubgraphTypes(knownTypes);
             }
             missingNodes.RemoveAt(0);
         }
@@ -105,14 +118,18 @@ public class DatabaseTypeMigrationService
 
     private static Type[] Flatten(ModelGraphNode[] nodes)
     {
-        List<ModelGraphNode> added = new(nodes);
-        for (var index = 0; index < added.Count; ++index)
+        HashSet<ModelGraphNode> addedNodes = [..nodes];
+        List<ModelGraphNode> flattened = [..addedNodes];
+        for (var index = 0; index < flattened.Count; ++index)
         {
-            added.AddRange(added[index].Values);
+            foreach (var child in flattened[index].Values.Where(child => addedNodes.Add(child)))
+            {
+                flattened.Add(child);
+            }
         }
 
-        added = added.Distinct().ToList();
-        return added.Select(node => node.Type).ToArray();
+        flattened = flattened.Distinct().ToList();
+        return flattened.Select(node => node.Type).ToArray();
     }
 
     public async Task<bool> TryMigrate<TContext>(DatabaseContextOptions fromOptions, DatabaseContextOptions toOptions)
@@ -143,7 +160,7 @@ public class DatabaseTypeMigrationService
 
             foreach (var dbSetInfo in sortedDbSetInfos)
             {
-                Log.Info(Strings.Migration.MigratingDbSet.ToString(dbSetInfo.Name));
+                ApplicationContext.Context.Value?.Logger.LogInformation(Strings.Migration.MigratingDbSet.ToString(dbSetInfo.Name));
 
                 try
                 {
@@ -158,7 +175,12 @@ public class DatabaseTypeMigrationService
                 }
                 catch (Exception exception)
                 {
-                    Log.Error(exception);
+                    ApplicationContext.Context.Value?.Logger.LogError(
+                        exception,
+                        "Failed to migrate DBSet {DBSetName} in {ContextType}",
+                        dbSetInfo.Name,
+                        dbSetInfo.DeclaringType?.GetName(qualified: true)
+                    );
                     throw;
                 }
             }
@@ -167,7 +189,11 @@ public class DatabaseTypeMigrationService
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error migrating {ContextType}",
+                typeof(TContext).GetName(qualified: true)
+            );
             throw;
         }
     }
@@ -216,7 +242,12 @@ public class DatabaseTypeMigrationService
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error migrating DbSet<{T}> in {ContextType}",
+                typeof(T).GetName(qualified: true),
+                typeof(TContext).GetName(qualified: true)
+            );
             throw;
         }
     }

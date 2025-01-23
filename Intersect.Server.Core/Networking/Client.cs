@@ -1,8 +1,7 @@
 using System.Collections.Concurrent;
+using Intersect.Config;
 using Intersect.ErrorHandling;
-
 using Intersect.Core;
-using Intersect.Logging;
 using Intersect.Network;
 using Intersect.Network.Packets;
 using Intersect.Server.Database.Logging.Entities;
@@ -12,6 +11,7 @@ using Intersect.Server.Entities;
 using Intersect.Server.General;
 using Intersect.Server.Metrics;
 using Intersect.Utilities;
+using Microsoft.Extensions.Logging;
 using Strings = Intersect.Server.Localization.Strings;
 
 namespace Intersect.Server.Networking;
@@ -43,7 +43,7 @@ public partial class Client : IPacketSender
     public ConcurrentQueue<IPacket> RecentPackets = new ConcurrentQueue<IPacket>();
     public bool PacketHandlingQueued = false;
     public bool PacketSendingQueued = false;
-    public Config.FloodThreshholds PacketFloodingThreshholds { get; set; } = Options.Instance.SecurityOpts?.PacketOpts.Threshholds;
+    public FloodThresholdOptions PacketFloodingThresholds { get; set; } = Options.Instance.Security?.Packets.Threshholds;
     public long LastPing { get; set; } = -1;
 
     protected long mTimeout = 20000; //20 seconds
@@ -118,7 +118,7 @@ public partial class Client : IPacketSender
         }
     }
 
-    public User User { get; private set; }
+    public User? User { get; private set; }
 
     public List<Player> Characters => User?.Players;
 
@@ -166,22 +166,32 @@ public partial class Client : IPacketSender
         }
     }
 
-    public void Disconnect(string? reason = default, bool shutdown = false, bool loggingOut = false)
+    public void Disconnect(
+        string? reason = default,
+        bool shutdown = false,
+        bool loggingOut = false,
+        TaskCompletionSource? logoutCompletionSource = null
+    )
     {
         lock (Globals.ClientLock)
         {
             if (Connection == null)
             {
+                logoutCompletionSource?.TrySetResult();
                 return;
             }
 
             if (!loggingOut)
             {
-                Logout(shutdown);
+                Logout(force: shutdown, logoutCompletionSource: logoutCompletionSource);
+            }
+            else
+            {
+                logoutCompletionSource?.TrySetResult();
             }
 
             Globals.Clients.Remove(this);
-            Globals.ClientArray = Globals.Clients.ToArray();
+
             if (Connection != default)
             {
                 Globals.ClientLookup.Remove(Connection.Guid);
@@ -213,7 +223,7 @@ public partial class Client : IPacketSender
             }
             catch (Exception exception)
             {
-                Log.Warn(exception, $"Failed to get IP for user {User.Id}");
+                ApplicationContext.Logger.LogWarning(exception, $"Failed to get IP for user {User.Id}");
                 return default;
             }
         }
@@ -225,20 +235,25 @@ public partial class Client : IPacketSender
         lock (Globals.ClientLock)
         {
             Globals.Clients.Add(client);
-            Globals.ClientArray = Globals.Clients.ToArray();
             Globals.ClientLookup.Add(connection.Guid, client);
         }
 
         return client;
     }
 
-    public void Logout(bool force = false)
+    public void Logout(bool force = false, TaskCompletionSource? logoutCompletionSource = null)
     {
-        var entity = Entity;
-        entity?.TryLogout();
-        Entity = null;
+        if (Entity is { } entity)
+        {
+            entity.TryLogout(logoutCompletionSource: logoutCompletionSource);
+            Entity = null;
+        }
+        else
+        {
+            logoutCompletionSource?.TrySetResult();
+        }
 
-        if (User != null && User.LoginTime != null)
+        if (User is { LoginTime: not null })
         {
             User.PlayTimeSeconds += (ulong)(DateTime.UtcNow - (DateTime)User.LoginTime).TotalSeconds;
             User.LoginTime = null;
@@ -271,7 +286,7 @@ public partial class Client : IPacketSender
             return;
         }
 
-        Log.Debug(
+        Intersect.Core.ApplicationContext.Context.Value?.Logger.LogDebug(
             string.IsNullOrWhiteSpace(client.Name)
 
                 //? $"Client disconnected ({(client.IsEditor ? "[editor]" : "[client]")})"
@@ -341,15 +356,15 @@ public partial class Client : IPacketSender
                         $"Sending Packet Error! [Packet: {packetType} | User: {this.Name ?? ""} | Player: {this.Entity?.Name ?? ""} | IP {this.Ip}]";
 
                     // TODO: Re-combine these once we figure out how to prevent the OutOfMemoryException that happens occasionally
-                    Log.Error(packetMessage);
-                    Log.Error(new ExceptionInfo(exception));
+                    ApplicationContext.Logger.LogError(packetMessage);
+                    ApplicationContext.Logger.LogError(new ExceptionInfo(exception));
                     if (exception.InnerException != null)
                     {
-                        Log.Error(new ExceptionInfo(exception.InnerException));
+                        ApplicationContext.Logger.LogError(new ExceptionInfo(exception.InnerException));
                     }
 
                     // Make the call that triggered the OOME in the first place so that we know when it stops happening
-                    Log.Error(exception, packetMessage);
+                    ApplicationContext.Logger.LogError(exception, packetMessage);
 
 #if DIAGNOSTIC
                         this.Disconnect($"Error processing packet type '{packetType}'.");
@@ -382,7 +397,7 @@ public partial class Client : IPacketSender
                 {
                     banned = true;
                 }
-                if (!banned && !string.IsNullOrEmpty(Database.PlayerData.Ban.CheckBan(Connection.Ip.Trim())) && Options.Instance.SecurityOpts.CheckIp(Connection.Ip.Trim()))
+                if (!banned && !string.IsNullOrEmpty(Database.PlayerData.Ban.CheckBan(Connection.Ip.Trim())) && Options.Instance.Security.CheckIp(Connection.Ip.Trim()))
                 {
                     banned = true;
                 }
@@ -428,15 +443,15 @@ public partial class Client : IPacketSender
                         $"Client Packet Error! [Packet: {packetType} | User: {this.Name ?? ""} | Player: {this.Entity?.Name ?? ""} | IP {this.Ip}]";
 
                     // TODO: Re-combine these once we figure out how to prevent the OutOfMemoryException that happens occasionally
-                    Log.Error(packetMessage);
-                    Log.Error(new ExceptionInfo(exception));
+                    ApplicationContext.Logger.LogError(packetMessage);
+                    ApplicationContext.Logger.LogError(new ExceptionInfo(exception));
                     if (exception.InnerException != null)
                     {
-                        Log.Error(new ExceptionInfo(exception.InnerException));
+                        ApplicationContext.Logger.LogError(new ExceptionInfo(exception.InnerException));
                     }
 
                     // Make the call that triggered the OOME in the first place so that we know when it stops happening
-                    Log.Error(exception, packetMessage);
+                    ApplicationContext.Logger.LogError(exception, packetMessage);
 
 #if DIAGNOSTIC
                         this.Disconnect($"Error processing packet type '{packetType}'.");
@@ -470,7 +485,7 @@ public partial class Client : IPacketSender
         var message = history?.Id.ToString();
         if (message == default)
         {
-            Log.Error($"Failed to record crash for {User?.Id.ToString() ?? "N/A"}");
+            ApplicationContext.Logger.LogError($"Failed to record crash for {User?.Id.ToString() ?? "N/A"}");
         }
 
         Disconnect(message ?? Strings.Networking.ServerFull, loggingOut: true);

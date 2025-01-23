@@ -4,7 +4,6 @@ using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Gwen.Renderer;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
-using Intersect.Client.Interface.Game;
 using Intersect.Client.Localization;
 using Intersect.Client.MonoGame.File_Management;
 using Intersect.Client.MonoGame.Graphics;
@@ -12,7 +11,6 @@ using Intersect.Client.MonoGame.Input;
 using Intersect.Client.MonoGame.Network;
 using Intersect.Configuration;
 using Intersect.Updater;
-
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System.Diagnostics;
@@ -22,11 +20,11 @@ using Intersect.Client.Framework.Database;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.ThirdParty;
 using Intersect.Utilities;
-
 using MainMenu = Intersect.Client.Interface.Menu.MainMenu;
-using Intersect.Logging;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.MonoGame.NativeInterop;
+using Intersect.Core;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.MonoGame;
 
@@ -76,7 +74,7 @@ internal partial class IntersectGame : Game
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error occurred loading strings for client");
             throw;
         }
 
@@ -97,10 +95,10 @@ internal partial class IntersectGame : Game
 
         ClientConfiguration.LoadAndSave(ClientConfiguration.DefaultPath);
 
-        Content.RootDirectory = "";
+        Content.RootDirectory = string.Empty;
         IsMouseVisible = true;
-        Globals.ContentManager = new MonoContentManager(Log.Default);
-        Globals.Database = new JsonDatabase(Log.Default);
+        Globals.ContentManager = new MonoContentManager();
+        Globals.Database = new JsonDatabase();
 
         // Load configuration.
         Globals.Database.LoadPreferences();
@@ -335,7 +333,7 @@ internal partial class IntersectGame : Game
 
     protected override void OnExiting(object sender, EventArgs args)
     {
-        Log.Info("System window closing (due to user interaction most likely).");
+        ApplicationContext.Context.Value?.Logger.LogInformation("System window closing (due to user interaction most likely).");
 
         if (Globals.Me != null && Globals.Me.CombatTimer > Timing.Global?.Milliseconds)
         {
@@ -417,11 +415,11 @@ internal partial class IntersectGame : Game
             );
         }
 
-        var status = "";
+        var status = string.Empty;
         var progressPercent = 0f;
-        var progress = "";
-        var filesRemaining = "";
-        var sizeRemaining = "";
+        var progress = string.Empty;
+        var filesRemaining = string.Empty;
+        var sizeRemaining = string.Empty;
 
         switch (mUpdater.Status)
         {
@@ -571,7 +569,7 @@ internal partial class IntersectGame : Game
             }
             catch (Exception exception)
             {
-                Log.Warn(exception, "Error occurred when trying to apply Harmony patch, this is not a fatal error");
+                ApplicationContext.Context.Value?.Logger.LogWarning(exception, "Error occurred when trying to apply Harmony patch, this is not a fatal error");
             }
 
             using var game = new IntersectGame(context, postStartupAction);
@@ -587,7 +585,7 @@ internal partial class IntersectGame : Game
 
             if (!Sdl2.SDL_SetHint(Sdl2.SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, false))
             {
-                Log.Warn("Failed to set X11 Compositor hint");
+                ApplicationContext.Context.Value?.Logger.LogWarning("Failed to set X11 Compositor hint");
             }
         }
     }

@@ -2,7 +2,6 @@
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Input;
-
 using Newtonsoft.Json.Linq;
 
 namespace Intersect.Client.Framework.Gwen.ControlInternal;
@@ -315,9 +314,9 @@ public partial class Dragger : Base
 
     public void ClearSounds()
     {
-        mHoverSound = "";
-        mMouseDownSound = "";
-        mMouseUpSound = "";
+        mHoverSound = string.Empty;
+        mMouseDownSound = string.Empty;
+        mMouseUpSound = string.Empty;
     }
 
 }

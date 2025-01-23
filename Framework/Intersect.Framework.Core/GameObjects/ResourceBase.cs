@@ -1,11 +1,8 @@
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Intersect.GameObjects.Conditions;
 using Intersect.GameObjects.Events;
 using Intersect.Models;
-
 using Microsoft.EntityFrameworkCore;
-
 using Newtonsoft.Json;
 
 namespace Intersect.GameObjects;
@@ -31,12 +28,12 @@ public partial class ResourceState
 public partial class ResourceBase : DatabaseObject<ResourceBase>, IFolderable
 {
     [NotMapped]
-    public List<Drop> Drops = new List<Drop>();
+    public List<Drop> Drops { get; set; } = [];
 
     [NotMapped]
-    public ConditionLists HarvestingRequirements = new ConditionLists();
+    public ConditionLists HarvestingRequirements { get; set; } = new();
 
-    public string CannotHarvestMessage { get; set; } = "";
+    public string CannotHarvestMessage { get; set; } = string.Empty;
 
     [JsonConstructor]
     public ResourceBase(Guid id) : base(id)

@@ -3,11 +3,10 @@ using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
-
 using Intersect.Configuration;
+using Intersect.Core;
 using Intersect.Framework.Core.Serialization;
-using Intersect.Logging;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect.Updater;
@@ -181,7 +180,7 @@ public partial class Updater
                             }
 
                             //Otherwise let's compare hashes and potentially add it to the update list
-                            var md5Hash = "";
+                            var md5Hash = string.Empty;
                             using (var md5 = MD5.Create())
                             {
                                 using (var fs = File.OpenRead(file.Path))
@@ -443,7 +442,7 @@ public partial class Updater
             catch (Exception ex)
             {
                 //Errored
-                Log.Error("Failed to download streamed files, failure occured on ");
+                ApplicationContext.Context.Value?.Logger.LogError("Failed to download streamed files, failure occured on ");
                 return false;
             }
         }
@@ -563,7 +562,7 @@ public partial class Updater
         }
 
         //Check MD5
-        var md5Hash = "";
+        var md5Hash = string.Empty;
         using (var md5 = MD5.Create())
         {
             using (var stream = new MemoryStream(fileData))

@@ -1,8 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
-
 using Intersect.GameObjects.Crafting;
 using Intersect.Models;
-
 using Newtonsoft.Json;
 
 namespace Intersect.GameObjects;
@@ -10,7 +8,7 @@ namespace Intersect.GameObjects;
 public partial class CraftingTableBase : DatabaseObject<CraftingTableBase>, IFolderable
 {
     [NotMapped]
-    public DbList<CraftBase> Crafts = new DbList<CraftBase>();
+    public DbList<CraftBase> Crafts { get; set; } = [];
 
     [JsonConstructor]
     public CraftingTableBase(Guid id) : base(id)
@@ -33,5 +31,5 @@ public partial class CraftingTableBase : DatabaseObject<CraftingTableBase>, IFol
     }
 
     /// <inheritdoc />
-    public string Folder { get; set; } = "";
+    public string Folder { get; set; } = string.Empty;
 }

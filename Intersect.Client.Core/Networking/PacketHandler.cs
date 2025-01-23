@@ -16,7 +16,6 @@ using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Maps;
 using Intersect.GameObjects.Maps.MapList;
-using Intersect.Logging;
 using Intersect.Network;
 using Intersect.Network.Packets;
 using Intersect.Network.Packets.Server;
@@ -24,7 +23,7 @@ using Intersect.Utilities;
 using Intersect.Framework;
 using Intersect.Models;
 using Intersect.Client.Interface.Shared;
-using Intersect.Network.Packets.Client;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Networking;
 
@@ -106,7 +105,7 @@ internal sealed partial class PacketHandler
 
         if (!Registry.TryGetHandler(packet, out HandlePacketGeneric handler))
         {
-            Logger.Error($"No registered handler for {packet.GetType().FullName}!");
+            Logger.LogError($"No registered handler for {packet.GetType().FullName}!");
 
             return false;
         }
@@ -125,7 +124,7 @@ internal sealed partial class PacketHandler
             if (!preHooks.All(hook => hook.Handle(VirtualSender, packet)))
             {
                 // Hooks should not fail, if they do that's an error
-                Logger.Error($"PreHook handler failed for {packet.GetType().FullName}.");
+                Logger.LogError($"PreHook handler failed for {packet.GetType().FullName}.");
                 return false;
             }
         }
@@ -140,7 +139,7 @@ internal sealed partial class PacketHandler
             if (!postHooks.All(hook => hook.Handle(VirtualSender, packet)))
             {
                 // Hooks should not fail, if they do that's an error
-                Logger.Error($"PostHook handler failed for {packet.GetType().FullName}.");
+                Logger.LogError($"PostHook handler failed for {packet.GetType().FullName}.");
                 return false;
             }
         }
@@ -163,7 +162,7 @@ internal sealed partial class PacketHandler
     //ConfigPacket
     public void HandlePacket(IPacketSender packetSender, ConfigPacket packet)
     {
-        Log.Debug("Received configuration from server.");
+        ApplicationContext.Context.Value?.Logger.LogDebug("Received configuration from server.");
         Options.LoadFromServer(packet.Config);
         Globals.WaitingOnServer = false;
         MainMenu.HandleReceivedConfiguration();
@@ -173,7 +172,7 @@ internal sealed partial class PacketHandler
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error loading strings");
             throw;
         }
         Graphics.InitInGame();
@@ -217,7 +216,7 @@ internal sealed partial class PacketHandler
                     continue;
                 }
 
-                Log.Warn($"Failed to deserialized cached data for {cacheKey}, will fetch again");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Failed to deserialized cached data for {cacheKey}, will fetch again");
             }
 
             cacheKeys.Add(new ObjectCacheKey<MapBase>(new Id<MapBase>(mapId)));
@@ -247,7 +246,7 @@ internal sealed partial class PacketHandler
 
             if (!ObjectDataDiskCache<MapBase>.TrySave(cacheData))
             {
-                Log.Warn($"Failed to save cache for {cacheKey}");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Failed to save cache for {cacheKey}");
             }
         }
 
@@ -495,7 +494,7 @@ internal sealed partial class PacketHandler
 
         if (en == Globals.Me)
         {
-            Log.Debug($"received epp: {Timing.Global.Milliseconds}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"received epp: {Timing.Global.Milliseconds}");
         }
 
         if (en == Globals.Me &&
@@ -677,7 +676,7 @@ internal sealed partial class PacketHandler
             return;
         }
 
-        if (en is Player && Options.Combat.MovementCancelsCast)
+        if (en is Player && Options.Instance.Combat.MovementCancelsCast)
         {
             en.CastTime = 0;
         }
@@ -709,43 +708,43 @@ internal sealed partial class PacketHandler
             switch (en.Dir)
             {
                 case Direction.Up:
-                    en.OffsetY = Options.TileWidth;
+                    en.OffsetY = Options.Instance.Map.TileWidth;
                     en.OffsetX = 0;
 
                     break;
                 case Direction.Down:
-                    en.OffsetY = -Options.TileWidth;
+                    en.OffsetY = -Options.Instance.Map.TileWidth;
                     en.OffsetX = 0;
 
                     break;
                 case Direction.Left:
                     en.OffsetY = 0;
-                    en.OffsetX = Options.TileWidth;
+                    en.OffsetX = Options.Instance.Map.TileWidth;
 
                     break;
                 case Direction.Right:
                     en.OffsetY = 0;
-                    en.OffsetX = -Options.TileWidth;
+                    en.OffsetX = -Options.Instance.Map.TileWidth;
 
                     break;
                 case Direction.UpLeft:
-                    en.OffsetY = Options.TileHeight;
-                    en.OffsetX = Options.TileWidth;
+                    en.OffsetY = Options.Instance.Map.TileHeight;
+                    en.OffsetX = Options.Instance.Map.TileWidth;
 
                     break;
                 case Direction.UpRight:
-                    en.OffsetY = Options.TileHeight;
-                    en.OffsetX = -Options.TileWidth;
+                    en.OffsetY = Options.Instance.Map.TileHeight;
+                    en.OffsetX = -Options.Instance.Map.TileWidth;
 
                     break;
                 case Direction.DownLeft:
-                    en.OffsetY = -Options.TileHeight;
-                    en.OffsetX = Options.TileWidth;
+                    en.OffsetY = -Options.Instance.Map.TileHeight;
+                    en.OffsetX = Options.Instance.Map.TileWidth;
 
                     break;
                 case Direction.DownRight:
-                    en.OffsetY = -Options.TileHeight;
-                    en.OffsetX = -Options.TileWidth;
+                    en.OffsetY = -Options.Instance.Map.TileHeight;
+                    en.OffsetX = -Options.Instance.Map.TileWidth;
 
                     break;
             }
@@ -1164,23 +1163,12 @@ internal sealed partial class PacketHandler
     //InputVariablePacket
     public void HandlePacket(IPacketSender packetSender, InputVariablePacket packet)
     {
-        var type = InputBox.InputType.NumericInput;
-        switch (packet.Type)
+        var type = packet.Type switch
         {
-            case VariableDataType.String:
-                type = InputBox.InputType.TextInput;
-
-                break;
-            case VariableDataType.Integer:
-            case VariableDataType.Number:
-                type = InputBox.InputType.NumericInput;
-
-                break;
-            case VariableDataType.Boolean:
-                type = InputBox.InputType.YesNo;
-
-                break;
-        }
+            VariableDataType.String => InputBox.InputType.TextInput,
+            VariableDataType.Boolean => InputBox.InputType.YesNoCancel,
+            _ => InputBox.InputType.NumericInput,
+        };
 
         _ = new InputBox(
             title: packet.Title,
@@ -1343,18 +1331,18 @@ internal sealed partial class PacketHandler
     //HotbarPacket
     public void HandlePacket(IPacketSender packetSender, HotbarPacket packet)
     {
-        for (var i = 0; i < Options.Instance.PlayerOpts.HotbarSlotCount; i++)
+        for (var i = 0; i < Options.Instance.Player.HotbarSlotCount; i++)
         {
             if (Globals.Me == null)
             {
-                Log.Debug("Can't set hotbar, Globals.Me is null!");
+                ApplicationContext.Context.Value?.Logger.LogDebug("Can't set hotbar, Globals.Me is null!");
 
                 break;
             }
 
             if (Globals.Me.Hotbar == null)
             {
-                Log.Debug("Can't set hotbar, hotbar is null!");
+                ApplicationContext.Context.Value?.Logger.LogDebug("Can't set hotbar, hotbar is null!");
 
                 break;
             }
@@ -1681,10 +1669,10 @@ internal sealed partial class PacketHandler
     public void HandlePacket(IPacketSender packetSender, GameObjectPacket packet)
     {
         var type = packet.Type;
-        var id = packet.Id;
+        var objectId = packet.Id;
         var another = packet.AnotherFollowing;
         var deleted = packet.Deleted;
-        var json = "";
+        var json = string.Empty;
         if (!deleted)
         {
             json = packet.Data;
@@ -1696,9 +1684,9 @@ internal sealed partial class PacketHandler
                 //Handled in a different packet
                 break;
             case GameObjectType.Tileset:
-                var obj = new TilesetBase(id);
+                var obj = new TilesetBase(objectId);
                 obj.Load(json);
-                TilesetBase.Lookup.Set(id, obj);
+                TilesetBase.Lookup.Set(objectId, obj);
                 if (Globals.HasGameData && !another)
                 {
                     Globals.ContentManager.LoadTilesets(TilesetBase.GetNameList());
@@ -1710,15 +1698,18 @@ internal sealed partial class PacketHandler
                 break;
             default:
                 var lookup = type.GetLookup();
-                if (deleted)
+
+                _ = lookup.DeleteAt(objectId);
+                if (!deleted)
                 {
-                    lookup.Get(id)?.Delete();
+                    var objectType = type.GetObjectType();
+                    var databaseObject = lookup.AddNew(objectType, objectId);
+                    databaseObject.Load(json);
                 }
-                else
+
+                if (type == GameObjectType.Resource)
                 {
-                    lookup.DeleteAt(id);
-                    var item = lookup.AddNew(type.GetObjectType(), id);
-                    item.Load(json);
+
                 }
 
                 break;
@@ -1916,12 +1907,12 @@ internal sealed partial class PacketHandler
     {
         if (!string.IsNullOrEmpty(packet.TradePartner))
         {
-            Globals.Trade = new Item[2, Options.MaxInvItems];
+            Globals.Trade = new Item[2, Options.Instance.Player.MaxInventory];
 
             //Gotta initialize the trade values
             for (var x = 0; x < 2; x++)
             {
-                for (var y = 0; y < Options.MaxInvItems; y++)
+                for (var y = 0; y < Options.Instance.Player.MaxInventory; y++)
                 {
                     Globals.Trade[x, y] = new Item();
                 }
@@ -2199,12 +2190,19 @@ internal sealed partial class PacketHandler
     //GuildInvitePacket
     public void HandlePacket(IPacketSender packetSender, GuildInvitePacket packet)
     {
-        _ = new InputBox(
-            title: Strings.Guilds.InviteRequestTitle,
-            prompt: Strings.Guilds.InviteRequestPrompt.ToString(packet.Inviter, packet.GuildName),
-            inputType: InputBox.InputType.YesNo,
-            onSuccess: PacketSender.SendGuildInviteAccept,
-            onCancel: PacketSender.SendGuildInviteDecline
+        Interface.Interface.EnqueueInGame(
+            () =>
+            {
+                _ = new InputBox(
+                    title: Strings.Guilds.InviteRequestTitle,
+                    prompt: (string.IsNullOrWhiteSpace(packet.GuildName)
+                        ? Strings.Guilds.InviteRequestPromptMissingGuild
+                        : Strings.Guilds.InviteRequestPrompt).ToString(packet.Inviter, packet.GuildName),
+                    inputType: InputBox.InputType.YesNo,
+                    onSuccess: PacketSender.SendGuildInviteAccept,
+                    onCancel: PacketSender.SendGuildInviteDecline
+                );
+            }
         );
     }
 

@@ -1,9 +1,5 @@
-﻿using Intersect.Extensions;
-using Intersect.Utilities;
-
+﻿using Intersect.Utilities;
 using NUnit.Framework;
-
-using System;
 using System.Diagnostics;
 
 namespace Intersect.Tests.Server

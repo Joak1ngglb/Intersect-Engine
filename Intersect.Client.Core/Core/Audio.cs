@@ -4,14 +4,15 @@ using Intersect.Client.Framework.Core.Sounds;
 using Intersect.Client.Framework.Entities;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.General;
-using Intersect.Logging;
+using Intersect.Core;
 using Intersect.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Core;
 
 public static partial class Audio
 {
-    private static string sCurrentSong = "";
+    private static string sCurrentSong = string.Empty;
 
     private static int sFadeRate;
 
@@ -29,7 +30,7 @@ public static partial class Audio
     private static bool sQueuedLoop;
 
     //Music
-    private static string? sQueuedMusic = "";
+    private static string? sQueuedMusic = string.Empty;
 
     private static GameAudioInstance? sMyMusic { get; set; }
 
@@ -182,7 +183,7 @@ public static partial class Audio
 
         if (sMyMusic != null)
         {
-            Log.Warn($"Trying to start '{filename}' without properly closing '{sCurrentSong}'.");
+            ApplicationContext.Context.Value?.Logger.LogTrace($"Trying to start '{filename}' without properly closing '{sCurrentSong}'.");
         }
 
         sMyMusic = music.CreateInstance();
@@ -211,7 +212,7 @@ public static partial class Audio
             sMyMusic.State == GameAudioInstance.AudioInstanceState.Paused ||
             sMyMusic.GetVolume() == 0)
         {
-            sCurrentSong = "";
+            sCurrentSong = string.Empty;
             sMyMusic.Stop();
             sMyMusic.Dispose();
             sMyMusic = null;

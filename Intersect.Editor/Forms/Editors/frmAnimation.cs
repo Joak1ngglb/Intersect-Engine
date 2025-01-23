@@ -1,8 +1,6 @@
 using System.Media;
-
 using DarkUI.Controls;
 using DarkUI.Forms;
-
 using Intersect.Editor.Content;
 using Intersect.Editor.Core;
 using Intersect.Editor.General;
@@ -11,7 +9,6 @@ using Intersect.Editor.Networking;
 using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.Utilities;
-
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Intersect.Editor.Forms.Editors;
@@ -849,7 +846,7 @@ public partial class FrmAnimation : EditorForm
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.AnimationEditor.folderprompt, Strings.AnimationEditor.foldertitle, ref folderName,
             DarkDialogButton.OkCancel

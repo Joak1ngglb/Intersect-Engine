@@ -3,7 +3,6 @@ using Intersect.Collections.Slotting;
 using Intersect.Enums;
 using Intersect.Server.Entities;
 using Intersect.Utilities;
-
 using Newtonsoft.Json;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Local
@@ -28,6 +27,7 @@ public partial class HotbarSlot : ISlot, IPlayerOwned
     [DatabaseGenerated(DatabaseGeneratedOption.Identity), JsonIgnore]
     public Guid Id { get; private set; }
 
+    [JsonIgnore]
     public bool IsEmpty => ItemOrSpellId == default;
 
     public Guid ItemOrSpellId { get; set; } = Guid.Empty;

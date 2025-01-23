@@ -4,15 +4,15 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using Intersect.Core;
 using Intersect.Framework.Reflection;
-using Intersect.Logging;
 using Intersect.Memory;
 using Intersect.Network.Events;
 using Intersect.Network.Packets;
-using Intersect.Reflection;
 using Intersect.Utilities;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using Microsoft.Extensions.Logging;
 using NetPeer = LiteNetLib.NetPeer;
 
 namespace Intersect.Network.LiteNetLib;
@@ -53,7 +53,6 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
             UnsyncedEvents = true,
             UnsyncedDeliveryEvent = true,
             UnsyncedReceiveEvent = true,
-            UseSafeMtu = true,
         };
 
         _asymmetricServer = RSA.Create(asymmetricParameters);
@@ -101,7 +100,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
             return connection.Send(packet, transmissionMode);
         }
 
-        Log.Debug("No active connections.");
+        ApplicationContext.Context.Value?.Logger.LogDebug("No active connections.");
         return false;
     }
 
@@ -132,7 +131,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         {
             if (!_manager.Start())
             {
-                Log.Error("Failed to make the initial connection attempt.");
+                ApplicationContext.Context.Value?.Logger.LogError("Failed to make the initial connection attempt.");
             }
         } else if (!_manager.Start(_network.Configuration.Port))
         {
@@ -142,7 +141,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
 
     public void Stop(string reason = "stopping")
     {
-        Log.Verbose($"Stopping {nameof(LiteNetLibInterface)} (\"{reason}\")...");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"Stopping {nameof(LiteNetLibInterface)} (\"{reason}\")...");
         var reasonData = Encoding.UTF8.GetBytes(reason);
         _manager.DisconnectAll(reasonData, 0, reasonData.Length);
     }
@@ -166,7 +165,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
             return true;
         }
 
-        Log.Error("Failed to add connection to list.");
+        ApplicationContext.Context.Value?.Logger.LogError("Failed to add connection to list.");
         connection.Dispose();
 
         return false;
@@ -185,16 +184,16 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
 
     public void OnPeerConnected(NetPeer peer)
     {
-        Log.Debug($"CONN {peer.EndPoint}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"CONN {peer}");
         if (peer.Tag is not Guid guid)
         {
-            Log.Diagnostic("Peer tag is not a guid");
+            ApplicationContext.Context.Value?.Logger.LogTrace("Peer tag is not a guid");
             return;
         }
 
         if (!_connectionIdLookup.TryAdd(peer.Id, guid))
         {
-            Log.Diagnostic($"Failed to add connection ID {guid} for peer {peer.Id}");
+            ApplicationContext.Context.Value?.Logger.LogTrace($"Failed to add connection ID {guid} for peer {peer.Id}");
             return;
         }
 
@@ -209,7 +208,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
     {
         if (disconnectInfo.Reason == DisconnectReason.Reconnect)
         {
-            Log.Debug($"RECONNECT: {peer.EndPoint}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"RECONNECT: {peer}");
             return;
         }
 
@@ -222,31 +221,31 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
                 {
                     message = disconnectInfo.AdditionalData.GetString();
                 }
-                Log.Debug(
-                    $"DCON: {peer.EndPoint} \"{disconnectInfo.Reason}\" ({disconnectInfo.SocketErrorCode}): {message ?? "N/A"}"
+                ApplicationContext.Context.Value?.Logger.LogDebug(
+                    $"DCON: {peer} \"{disconnectInfo.Reason}\" ({disconnectInfo.SocketErrorCode}): {message ?? "N/A"}"
                 );
             }
             catch (Exception exception)
             {
-                Log.Debug($"DCON[ERR]: {peer.EndPoint} \"{disconnectInfo.Reason}\" ({disconnectInfo.SocketErrorCode}): {exception.Message}");
+                ApplicationContext.Context.Value?.Logger.LogDebug($"DCON[ERR]: {peer} \"{disconnectInfo.Reason}\" ({disconnectInfo.SocketErrorCode}): {exception.Message}");
             }
         }
 
         if (!_connectionIdLookup.TryRemove(peer.Id, out var connectionId))
         {
-            Log.Diagnostic($"No connection found for peer ID {peer.Id} ({_network.Connections.Count})");
+            ApplicationContext.Context.Value?.Logger.LogTrace($"No connection found for peer ID {peer.Id} ({_network.Connections.Count})");
             return;
         }
 
         if (_network.FindConnection(connectionId) is not LiteNetLibConnection connection)
         {
-            Log.Diagnostic($"No connection found for {connectionId} ({_network.Connections.Count})");
+            ApplicationContext.Context.Value?.Logger.LogTrace($"No connection found for {connectionId} ({_network.Connections.Count})");
             return;
         }
 
         if (!_network.RemoveConnection(connection))
         {
-            Log.Warn(
+            ApplicationContext.Context.Value?.Logger.LogWarning(
                 $"Failed to remove connection {connection.Guid}, was this already removed? ({_network.Connections.Count})"
             );
             return;
@@ -270,7 +269,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
 
     public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
     {
-        Log.Error($"NERR: {socketError} from {endPoint}");
+        ApplicationContext.Context.Value?.Logger.LogError($"NERR: {socketError} from {endPoint}");
     }
 
     public void OnNetworkReceive(
@@ -282,29 +281,29 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
     {
         if (!_connectionIdLookup.TryGetValue(peer.Id, out var connectionId))
         {
-            Log.Warn($"RNIP: {peer.EndPoint} ({channelNumber}, {deliveryMethod})");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"RNIP: {peer} ({channelNumber}, {deliveryMethod})");
             return;
         }
 
         var genericConnection = _network.FindConnection(connectionId);
         if (genericConnection is not LiteNetLibConnection connection)
         {
-            Log.Warn(
-                $"RNCP: {peer.EndPoint} ({channelNumber}, {deliveryMethod}) ({genericConnection?.Guid} / {genericConnection?.GetFullishName()}"
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                $"RNCP: {peer} ({channelNumber}, {deliveryMethod}) ({genericConnection?.Guid} / {genericConnection?.GetFullishName()}"
             );
             return;
         }
 
         if (!reader.TryGetByte(out var packetCode))
         {
-            Log.Warn($"No packet code from {peer.EndPoint} / {connection.Guid}");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"No packet code from {peer} / {connection.Guid}");
             return;
         }
 
         // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (packetCode > 1)
         {
-            Log.Warn($"Invalid packet code from {peer.EndPoint} / {connection.Guid}");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"Invalid packet code from {peer} / {connection.Guid}");
             return;
         }
 
@@ -325,7 +324,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
             }
             else
             {
-                Log.Warn($"Failed to process approval from {peer.EndPoint} / {connection.Guid}");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Failed to process approval from {peer} / {connection.Guid}");
             }
 
             return;
@@ -333,7 +332,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
 
         if (!connection.TryProcessInboundMessage(peer, reader, channelNumber, deliveryMethod, out var buffer))
         {
-            Log.Warn($"FPIM: {peer.EndPoint} / {connection.Guid}");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"FPIM: {peer} / {connection.Guid}");
             return;
         }
 
@@ -364,12 +363,12 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         var encryptedPacketData = encryptedPacket.EncryptedData;
         if (encryptedPacketData == default)
         {
-            Log.Debug($"Failed to encrypt data for {packet.GetFullishName()}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"Failed to encrypt data for {packet.GetFullishName()}");
             return false;
         }
 
 #if DIAGNOSTIC
-        Log.Debug($"{nameof(SendUnconnectedPacket)} {nameof(encryptedPacketData)}({encryptedPacketData.Length})={Convert.ToHexString(encryptedPacketData)}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"{nameof(SendUnconnectedPacket)} {nameof(encryptedPacketData)}({encryptedPacketData.Length})={Convert.ToHexString(encryptedPacketData)}");
 #endif
 
         NetDataWriter data = new(false, encryptedPacketData.Length + 1);
@@ -397,31 +396,31 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
             var innerPacket = encryptedPacket.InnerPacket;
             if (innerPacket == default)
             {
-                Log.Debug("Inner packet is null.");
+                ApplicationContext.Context.Value?.Logger.LogDebug("Inner packet is null.");
                 return;
             }
 
             if (innerPacket is not UnconnectedPacket unconnectedPacket)
             {
-                Log.Debug($"Inner packet is not of type {typeof(UnconnectedPacket)}: {innerPacket.GetFullishName()}");
+                ApplicationContext.Context.Value?.Logger.LogDebug($"Inner packet is not of type {typeof(UnconnectedPacket)}: {innerPacket.GetFullishName()}");
                 return;
             }
 
             if (!_network.Helper.HandlerRegistry.TryGetHandler(innerPacket, out var handlerInstance))
             {
-                Log.Warn($"No handler for {innerPacket.GetFullishName()}");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"No handler for {innerPacket.GetFullishName()}");
                 return;
             }
 
             var packetSender = new LiteNetLibUnconnectedPacketSender(this, remoteEndPoint, _network);
             if (!handlerInstance.Invoke(packetSender, unconnectedPacket))
             {
-                Log.Warn($"Packet handler failed for {innerPacket.GetFullishName()}");
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Packet handler failed for {innerPacket.GetFullishName()}");
             }
         }
         catch (Exception exception)
         {
-            Log.Debug(exception);
+            ApplicationContext.Context.Value?.Logger.LogDebug(exception, $"Failure in {nameof(HandleAsymmetricEncryptedUnconnectedPacket)}");
         }
     }
 
@@ -456,7 +455,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         }
         catch (Exception exception)
         {
-            Log.Debug(exception);
+            ApplicationContext.Context.Value?.Logger.LogDebug(exception, $"Failure in {nameof(OnNetworkReceiveUnconnected)}");
         }
     }
 
@@ -469,7 +468,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         }
 #endif
 
-        Log.Verbose($"LTNC {peer.EndPoint} {latency}ms");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"LTNC {peer} {latency}ms");
     }
 
     public void OnConnectionRequest(ConnectionRequest request)
@@ -480,7 +479,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         var deserializedBuffer = MessagePacker.Instance.Deserialize(inboundBuffer);
         if (deserializedBuffer is not HailPacket hail || !hail.Decrypt(_asymmetricServer))
         {
-            Log.Debug($"Rejecting (bad hail) {request.RemoteEndPoint}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"Rejecting (bad hail) {request.RemoteEndPoint}");
             response.Put((ushort)400);
             request.Reject(response);
             return;
@@ -490,20 +489,20 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         Debug.Assert(hail.VersionData != null, "hail.VersionData != null");
         if (!SharedConstants.VersionData.SequenceEqual(hail.VersionData))
         {
-            Log.Debug($"Rejecting (bad version) {request.RemoteEndPoint}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"Rejecting (bad version) {request.RemoteEndPoint}");
             response.Put((ushort)400);
             response.Put(NetworkStatus.VersionMismatch.ToString());
             request.Reject(response);
             return;
         }
 
-        Log.Debug($"hail Time={hail.Adjusted / TimeSpan.TicksPerMillisecond} Offset={hail.Offset / TimeSpan.TicksPerMillisecond} Real={hail.UTC / TimeSpan.TicksPerMillisecond}");
-        Log.Debug($"local Time={Timing.Global.Milliseconds} Offset={(long)Timing.Global.MillisecondsOffset} Real={Timing.Global.MillisecondsUtc}");
-        Log.Debug($"real delta={(Timing.Global.TicksUtc - hail.UTC) / TimeSpan.TicksPerMillisecond}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"hail Time={hail.Adjusted / TimeSpan.TicksPerMillisecond} Offset={hail.Offset / TimeSpan.TicksPerMillisecond} Real={hail.UTC / TimeSpan.TicksPerMillisecond}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"local Time={Timing.Global.Milliseconds} Offset={(long)Timing.Global.MillisecondsOffset} Real={Timing.Global.MillisecondsUtc}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"real delta={(Timing.Global.TicksUtc - hail.UTC) / TimeSpan.TicksPerMillisecond}");
 
         if (_network.ConnectionCount >= Options.Instance.MaxClientConnections)
         {
-            Log.Debug($"Rejecting (full) {request.RemoteEndPoint}");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"Rejecting (full) {request.RemoteEndPoint}");
             response.Put((ushort)503);
             response.Put(NetworkStatus.ServerFull.ToString());
             request.Reject(response);
@@ -511,14 +510,14 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         }
 
         var peer = request.Accept();
-        Log.Debug($"NCPing={peer.Ping}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"NCPing={peer.Ping}");
 
         var symmetricKey = RandomNumberGenerator.GetBytes(32);
         var connection = new LiteNetLibConnection(peer, hail.RsaParameters, hail.SymmetricVersion, symmetricKey);
 
         if (!(OnConnectionRequested?.Invoke(this, connection) ?? true))
         {
-            Log.Debug($"Rejecting (ban) {peer.EndPoint} ({connection.Guid})");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"Rejecting (ban) {peer} ({connection.Guid})");
             response.Put((ushort)403);
             response.Put(NetworkStatus.Failed.ToString());
             peer.Disconnect(response);
@@ -527,7 +526,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
 
         if (!_network.AddConnection(connection))
         {
-            Log.Debug($"Rejecting (error connection map) {peer.EndPoint} ({connection.Guid})");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"Rejecting (error connection map) {peer} ({connection.Guid})");
             response.Put((ushort)500);
             response.Put(NetworkStatus.Failed.ToString());
             peer.Disconnect(response);
@@ -536,7 +535,7 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
 
         if (!_connectionIdLookup.TryAdd(peer.Id, connection.Guid))
         {
-            Log.Debug($"Rejecting (error connection id lookup) {peer.EndPoint} ({connection.Guid})");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"Rejecting (error connection id lookup) {peer} ({connection.Guid})");
             response.Put((ushort)500);
             response.Put(NetworkStatus.Failed.ToString());
             peer.Disconnect(response);
@@ -551,8 +550,8 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         connectionData.Put((byte)0);
         connectionData.Put(approvalData);
 #if DIAGNOSTIC
-        Log.Debug($"OnConnectionRequest approvalData({approvalData.Length})={Convert.ToHexString(approvalData)}");
-        Log.Debug($"OnConnectionRequest connectionData({connectionData.Length})={Convert.ToHexString(connectionData.Data)}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"OnConnectionRequest approvalData({approvalData.Length})={Convert.ToHexString(approvalData)}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"OnConnectionRequest connectionData({connectionData.Length})={Convert.ToHexString(connectionData.Data)}");
 #endif
         peer.Send(connectionData, DeliveryMethod.ReliableOrdered);
 
@@ -571,6 +570,6 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
             }
         );
 
-        Log.Debug($"Approved {peer.EndPoint} ({connection.Guid})");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"Approved {peer} ({connection.Guid})");
     }
 }

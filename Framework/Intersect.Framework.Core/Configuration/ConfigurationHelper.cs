@@ -1,8 +1,8 @@
 ﻿using System.Text;
-
+using Intersect.Core;
+using Intersect.Framework.Reflection;
 using Intersect.IO.Files;
-using Intersect.Logging;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect.Configuration;
@@ -16,6 +16,11 @@ public static partial class ConfigurationHelper
     {
         if (!File.Exists(filePath))
         {
+            if (failQuietly)
+            {
+                return configuration;
+            }
+
             throw new FileNotFoundException("Missing configuration file.", filePath);
         }
 
@@ -29,7 +34,12 @@ public static partial class ConfigurationHelper
         }
         catch (Exception exception)
         {
-            LegacyLogging.Logger?.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error when reading {ConfigurationType} from {FilePath}",
+                typeof(T).GetName(qualified: true),
+                filePath
+            );
 
             throw;
         }
@@ -41,12 +51,12 @@ public static partial class ConfigurationHelper
         var directoryPath = Path.GetDirectoryName(filePath);
         if (directoryPath == null)
         {
-            throw new ArgumentNullException();
+            throw new ArgumentException($"'{filePath}' has no directory name", nameof(filePath));
         }
 
         if (!FileSystemHelper.EnsureDirectoryExists(directoryPath))
         {
-            throw new FileNotFoundException("Missing directory.", directoryPath);
+            throw new DirectoryNotFoundException($"Directory does not exist: {directoryPath}");
         }
 
         try
@@ -59,7 +69,12 @@ public static partial class ConfigurationHelper
         }
         catch (Exception exception)
         {
-            LegacyLogging.Logger?.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error when writing {ConfigurationType} to {FilePath}",
+                typeof(T).GetName(qualified: true),
+                filePath
+            );
 
             throw;
         }
@@ -79,7 +94,12 @@ public static partial class ConfigurationHelper
         }
         catch (Exception exception)
         {
-            LegacyLogging.Logger?.Warn(exception);
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                exception,
+                "Error when reading {ConfigurationType} to {FilePath}",
+                typeof(T).GetName(qualified: true),
+                filePath
+            );
         }
         finally
         {
@@ -89,7 +109,12 @@ public static partial class ConfigurationHelper
             }
             catch (Exception exception)
             {
-                LegacyLogging.Logger?.Error(exception);
+                ApplicationContext.Context.Value?.Logger.LogError(
+                    exception,
+                    "Error when writing {ConfigurationType} to {FilePath}",
+                    typeof(T).GetName(qualified: true),
+                    filePath
+                );
             }
         }
 

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Collections.Concurrent;
-using Intersect.Client.Classes.MonoGame.Graphics;
 using Intersect.Client.Core;
 using Intersect.Client.Entities;
 using Intersect.Client.Entities.Events;
@@ -14,14 +13,14 @@ using Intersect.Client.Framework.Maps;
 using Intersect.Client.General;
 using Intersect.Client.Localization;
 using Intersect.Compression;
+using Intersect.Core;
 using Intersect.Enums;
 using Intersect.Framework.Core.Serialization;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Maps;
-using Intersect.Logging;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect.Client.Maps;
@@ -186,7 +185,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
     public void LoadTileData(byte[] packet)
     {
         Layers = JsonConvert.DeserializeObject<Dictionary<string, Tile[,]>>(LZ4.UnPickleString(packet), mJsonSerializerSettings);
-        foreach (var layer in Options.Instance.MapOpts.Layers.All)
+        foreach (var layer in Options.Instance.Map.Layers.All)
         {
             if (!Layers.ContainsKey(layer))
             {
@@ -202,7 +201,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             return;
         }
 
-        foreach (var layer in Options.Instance.MapOpts.Layers.All)
+        foreach (var layer in Options.Instance.Map.Layers.All)
         {
             if (!Layers.TryGetValue(layer, out var layerTiles))
             {
@@ -399,7 +398,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             }
 
             //Along with edges we need to recalculate ALL cliffs :(
-            foreach (var layer in Options.Instance.MapOpts.Layers.All)
+            foreach (var layer in Options.Instance.Map.Layers.All)
             {
                 for (var x = 0; x < _width; x++)
                 {
@@ -427,7 +426,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
 
         var updated = new List<GameTileBuffer>();
         // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
-        foreach (var layer in Options.Instance.MapOpts.Layers.All)
+        foreach (var layer in Options.Instance.Map.Layers.All)
         {
             if (!Autotiles.UpdateAutoTile(
                     x,
@@ -750,7 +749,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             //     {
                     var startVbo = DateTime.UtcNow;
                     Dictionary<string, GameTileBuffer[][]> buffers = [];
-                    foreach (var layer in Options.Instance.MapOpts.Layers.All)
+                    foreach (var layer in Options.Instance.Map.Layers.All)
                     {
                         var layerBuffers = DrawMapLayer(layer, X, Y);
                         if (layerBuffers == default)
@@ -771,7 +770,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
 
                     var endVbo = DateTime.UtcNow;
                     var elapsedVbo = endVbo - startVbo;
-                    Log.Info($"Built VBO for map instance {Id} in {elapsedVbo.TotalMilliseconds}ms");
+                    ApplicationContext.Context.Value?.Logger.LogInformation($"Built VBO for map instance {Id} in {elapsedVbo.TotalMilliseconds}ms");
 
                     // lock (mTileBuffers)
                     // {
@@ -789,7 +788,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
 
     public void DestroyVBOs()
     {
-        foreach (var layer in Options.Instance.MapOpts.Layers.All)
+        foreach (var layer in Options.Instance.Map.Layers.All)
         {
             if (_tileBuffersPerTexturePerLayer.Remove(layer, out var tileBuffersPerTextureForLayer))
             {
@@ -835,9 +834,9 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
 
         var drawLayers = layer switch
         {
-            1 => Options.Instance.MapOpts.Layers.MiddleLayers,
-            > 1 => Options.Instance.MapOpts.Layers.UpperLayers,
-            < 1 => Options.Instance.MapOpts.Layers.LowerLayers,
+            1 => Options.Instance.Map.Layers.MiddleLayers,
+            > 1 => Options.Instance.Map.Layers.UpperLayers,
+            < 1 => Options.Instance.Map.Layers.LowerLayers,
         };
 
         foreach (var drawLayer in drawLayers)
@@ -863,8 +862,8 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
     public void DrawItemsAndLights()
     {
         // Calculate tile and map item dimensions.
-        var mapItemWidth = Options.Instance.MapOpts.MapItemWidth;
-        var mapItemHeight = Options.Instance.MapOpts.MapItemHeight;
+        var mapItemWidth = Options.Instance.Map.MapItemWidth;
+        var mapItemHeight = Options.Instance.Map.MapItemHeight;
 
         // Draw map items.
         foreach (var (key, tileItems) in MapItems)
@@ -975,12 +974,12 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
         }
     }
 
-    private readonly int _width = Options.Instance.MapOpts.MapWidth;
-    private readonly int _height = Options.Instance.MapOpts.MapHeight;
-    private readonly int _tileWidth = Options.Instance.MapOpts.TileWidth;
-    private readonly int _tileHeight = Options.Instance.MapOpts.TileHeight;
-    private readonly int _tileHalfWidth = Options.Instance.MapOpts.TileWidth / 2;
-    private readonly int _tileHalfHeight = Options.Instance.MapOpts.TileHeight / 2;
+    private readonly int _width = Options.Instance.Map.MapWidth;
+    private readonly int _height = Options.Instance.Map.MapHeight;
+    private readonly int _tileWidth = Options.Instance.Map.TileWidth;
+    private readonly int _tileHeight = Options.Instance.Map.TileHeight;
+    private readonly int _tileHalfWidth = Options.Instance.Map.TileWidth / 2;
+    private readonly int _tileHalfHeight = Options.Instance.Map.TileHeight / 2;
     private int _gridY;
     private int _gridX;
 
@@ -1238,10 +1237,10 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 var bufferForFrame = bufferGroup[animationFrameIndex];
                 // if (bufferForFrame is MonoTileBuffer monoTileBuffer)
                 // {
-                //     Log.Info($"[{Name}][{layerName}] Buffer for {monoTileBuffer._texture?.Name} frame {i} has {monoTileBuffer._addedTileCount.Count} unique tiles");
+                //     ApplicationContext.Context.Value?.Logger.LogInformation($"[{Name}][{layerName}] Buffer for {monoTileBuffer._texture?.Name} frame {i} has {monoTileBuffer._addedTileCount.Count} unique tiles");
                 //     foreach (var (key, value) in monoTileBuffer._addedTileCount.OrderByDescending(kvp => kvp.Value))
                 //     {
-                //         Log.Info($"[{Name}][{layerName}] {key} has {value} occurrences");
+                //         ApplicationContext.Context.Value?.Logger.LogInformation($"[{Name}][{layerName}] {key} has {value} occurrences");
                 //     }
                 // }
                 outputBuffers[animationFrameIndex][bufferIndex] = bufferForFrame;

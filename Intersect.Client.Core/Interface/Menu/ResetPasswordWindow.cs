@@ -1,6 +1,5 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
-
 using Intersect.Client.Core;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.Gwen.Control;
@@ -124,7 +123,7 @@ public partial class ResetPasswordWindow
     public bool IsHidden => mResetWindow.IsHidden;
 
     //The username or email of the acc we are resetting the pass for
-    public string Target { set; get; } = "";
+    public string Target { set; get; } = string.Empty;
 
     private void Textbox_Clicked(Base sender, ClickedEventArgs arguments)
     {
@@ -152,9 +151,9 @@ public partial class ResetPasswordWindow
     public void Show()
     {
         mResetWindow.IsHidden = false;
-        mCodeInputTextbox.Text = "";
-        mPasswordTextbox.Text = "";
-        mPasswordTextbox2.Text = "";
+        mCodeInputTextbox.Text = string.Empty;
+        mPasswordTextbox.Text = string.Empty;
+        mPasswordTextbox2.Text = string.Empty;
     }
 
     void BackBtn_Clicked(Base sender, ClickedEventArgs arguments)

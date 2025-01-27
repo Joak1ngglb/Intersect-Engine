@@ -47,15 +47,7 @@ namespace Intersect.Client.Interface.Game.Job
 
         public void Setup(string name)
         {
-            Pnl = new ImagePanel(Container, name);
-            if (Pnl == null)
-            {
-                PacketSender.SendChatMsg($"Error: Pnl not created for {name}", 5);
-            }
-            else
-            {
-                PacketSender.SendChatMsg($"Pnl created for {name}", 5);
-            }
+            Pnl = new ImagePanel(Container, name);        
             Pnl.HoverEnter += pnl_HoverEnter;
             Pnl.HoverLeave += pnl_HoverLeave;
         }
@@ -71,18 +63,15 @@ namespace Intersect.Client.Interface.Game.Job
                 {
                     Pnl.Texture = itemTex;
                     Pnl.RenderColor = item.Color;
-                    PacketSender.SendChatMsg($"Texture loaded for item: {item.Name}, Icon: {item.Icon}", 5);
                 }
                 else
                 {
-                    PacketSender.SendChatMsg($"Texture missing for item: {item.Name}, Icon: {item.Icon}", 5);
-                    Pnl.Texture = null;
+                      Pnl.Texture = null;
                 }
             }
             else
             {
-                PacketSender.SendChatMsg($"Item not found with ID: {mIngredient.ItemId}", 5);
-                Pnl.Texture = null;
+               Pnl.Texture = null;
             }
         }
 

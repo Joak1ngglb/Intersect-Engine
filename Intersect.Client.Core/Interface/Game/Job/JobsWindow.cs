@@ -202,20 +202,20 @@ namespace Intersect.Client.Interface.Game.Job
                 // Recipe panel
                 mRecipePanel = new ScrollControl(InfoPanel, "RecipePanel");
                 mRecipePanel.SetPosition(10, 220); // Ajusta según sea necesario
-                mRecipePanel.SetSize(260, 180); // Ajusta según sea necesario
+                mRecipePanel.SetSize(245, 180); // Ajusta según sea necesario
                 mRecipePanel.GetVerticalScrollBar();
                 mRecipePanel.EnableScroll(false, true); // Habilita barras de desplazamiento
 
                 // Crear un contenedor para la receta
                 recipeContainer = new ImagePanel(mRecipePanel, "RecipeContainer");
-                recipeContainer.SetSize(265, 80); // Ajusta el tamaño del contenedor según sea necesario
+                recipeContainer.SetSize(245, 80); // Ajusta el tamaño del contenedor según sea necesario
                 recipeContainer.Margin = new Margin(0, 0, 0, 10); // Añade un margen inferior para espacio entre recetas
                 mNameLabel = new Label(recipeContainer, "RecipeName", false);
-                mNameLabel.SetPosition(45, 10);
+                mNameLabel.SetPosition(45, 20);
                 mNameLabel.SetTextColor(Color.White, Label.ControlState.Normal);
 
                 mXpLabel = new Label(recipeContainer, "RecipeExp", false);
-                mXpLabel.SetPosition(200, 10);
+                mXpLabel.SetPosition(200, 20);
                 mXpLabel.SetTextColor(Color.White, Label.ControlState.Normal);
                 // Llenar el panel de recetas
 
@@ -306,7 +306,7 @@ namespace Intersect.Client.Interface.Game.Job
             }
             mRecipePanel = new ScrollControl(InfoPanel, "RecipePanel");
             mRecipePanel.SetPosition(10, 220); // Ajusta según sea necesario
-            mRecipePanel.SetSize(200, 180); // Ajusta según sea necesario
+            mRecipePanel.SetSize(250, 180); // Ajusta según sea necesario
             mRecipePanel.EnableScroll(false, true); // Habilita barras de desplazamiento
 
            // var fixedCraftingTable = CraftingTableBase.GetCraftsByJob(jobType).ToList();
@@ -387,7 +387,7 @@ namespace Intersect.Client.Interface.Game.Job
                 ingredientsPanel = new ScrollControl(recipeContainer, "IngredientsPanel");
                 ingredientsPanel.SetPosition(0, 40); // Ajusta la posición según sea necesario
                 ingredientsPanel.SetSize(260, 50);
-                //ingredientsPanel.EnableScroll(true, false);
+                ingredientsPanel.EnableScroll(false, false);
                 // ingredientsPanel.GetHorizontalScrollBar();
 
                 // Añadir los ingredientes

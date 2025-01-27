@@ -12,7 +12,9 @@ namespace Intersect.Framework.Core.Config
         /// </summary>
         public int MaxJobLevel { get; set; } = 100;
 
-   
+        /// <summary>
+        public string RecipesId = "2d6cffdb-2611-40e2-9085-8256dec204a2";
+
         /// <summary>
         /// Growth rate for job experience required per level.
         /// </summary>

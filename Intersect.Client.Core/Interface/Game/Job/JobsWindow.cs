@@ -311,7 +311,7 @@ namespace Intersect.Client.Interface.Game.Job
 
            // var fixedCraftingTable = CraftingTableBase.GetCraftsByJob(jobType).ToList();
             // Obtener la tabla de crafteo fija
-            var fixedCraftingTable = CraftingTableBase.Get(Globals.FixedCraftingTableId);
+            var fixedCraftingTable = CraftingTableBase.Get(Guid.Parse(Options.RecipesId));
             if (fixedCraftingTable == null)
             {
                 return;

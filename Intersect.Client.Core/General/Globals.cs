@@ -10,6 +10,7 @@ using Intersect.Client.Items;
 using Intersect.Client.Maps;
 using Intersect.Client.Plugins.Interfaces;
 using Intersect.Enums;
+
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
 
@@ -221,9 +222,7 @@ public static partial class Globals
         get => _waitingOnServer;
         set => _waitingOnServer = value;
     }
-    //Only need 1 table, and that is the one we see at a given moment in time.
-    public static Guid FixedCraftingTableId = new Guid("5e821b3a-c4fb-4d05-a4ce-f7c14b51ed76");
-
+ 
     public static Entity GetEntity(Guid id, EntityType type)
     {
         if (Entities.ContainsKey(id))

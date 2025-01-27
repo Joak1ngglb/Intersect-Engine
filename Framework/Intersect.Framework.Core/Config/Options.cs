@@ -213,7 +213,7 @@ public partial class Options
 
     public static PlayerOptions Player => Instance.PlayerOpts;
     public static JobOptions Jobs => Instance.JobOpts; // Propiedad estática para acceder fácilmente a JobOptions
-
+    public static string RecipesId => Instance.JobOpts.RecipesId; // Propiedad estática para acceder fácilmente al ID de las recetas
     public static int MaxJobLevel => Instance.JobOpts.MaxJobLevel; // Propiedad estática para el nivel máximo de los trabajos
     public static Dictionary<JobType, long> JobBaseExp => Instance.JobOpts.JobBaseExp;
 

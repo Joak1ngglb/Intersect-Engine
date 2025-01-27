@@ -2439,19 +2439,36 @@ public static partial class PacketSender
         // Depuración en el servidor
       //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
     }
-    public static void SendUpdateItemLevel(Player player, Guid itemId, int newEnchantmentLevel)
+    public static void SendUpdateItemLevel(Player player, int itemIndex, int newEnchantmentLevel)
     {
         if (player == null)
         {
             return;
         }
 
+        // Validar el índice del ítem
+        if (itemIndex < 0 || itemIndex >= player.Items.Count)
+        {
+            return; // Índice no válido
+        }
+
+        // Obtener el ítem en el índice especificado
+        var item = player.Items[itemIndex];
+        if (item == null)
+        {
+            return; // El ítem no existe en este índice
+        }
+
+        // Actualizar el nivel de encantamiento del ítem
+        item.EnchantmentLevel = newEnchantmentLevel;
+
         // Crear el paquete con los datos necesarios
-        var packet = new UpdateItemLevelPacket(itemId, newEnchantmentLevel);
+        var packet = new UpdateItemLevelPacket(itemIndex, newEnchantmentLevel);
 
         // Enviar el paquete al cliente
         player.SendPacket(packet, TransmissionMode.All);
     }
+
 
 
 }

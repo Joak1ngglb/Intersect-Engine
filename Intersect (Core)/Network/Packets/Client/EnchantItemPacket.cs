@@ -11,9 +11,9 @@ public partial class EnchantItemPacket : IntersectPacket
     }
 
     // Constructor para inicializar propiedades
-    public EnchantItemPacket(Guid itemId, int targetLevel, Guid currencyId, int currencyAmount, bool useAmulet)
+    public EnchantItemPacket(int itemId, int targetLevel, Guid currencyId, int currencyAmount, bool useAmulet)
     {
-        ItemId = itemId;
+        ItemIndex = itemId;
         TargetLevel = targetLevel;
         CurrencyId = currencyId;
         CurrencyAmount = currencyAmount;
@@ -21,7 +21,7 @@ public partial class EnchantItemPacket : IntersectPacket
     }
 
     [Key(0)]
-    public Guid ItemId { get; set; }
+    public int ItemIndex { get; set; }
 
     [Key(1)]
     public int TargetLevel { get; set; }

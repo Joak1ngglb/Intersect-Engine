@@ -2986,17 +2986,35 @@ internal sealed partial class PacketHandler
             return;
         }
 
-        var item = player.Items.FirstOrDefault(i => i?.ItemId == packet.ItemId);
+        // Buscar el ítem por índice
+        if (packet.ItemIndex < 0 || packet.ItemIndex >= player.Items.Count)
+        {
+            PacketSender.SendChatMsg(player, "Ítem no encontrado en el inventario.", ChatMessageType.Error);
+            return;
+        }
+
+        var item = player.Items[packet.ItemIndex];
         if (item == null)
         {
-            PacketSender.SendChatMsg(player, "El ítem no es válido.", ChatMessageType.Error);
+            PacketSender.SendChatMsg(player, "Ítem inválido.", ChatMessageType.Error);
+            return;
+        }
+
+        // Buscar la moneda por ItemId
+        var currency = player.Items.FirstOrDefault(i => i?.ItemId == packet.CurrencyId && i.Quantity >= packet.CurrencyAmount);
+        if (currency == null)
+        {
+            PacketSender.SendChatMsg(player, "No tienes suficiente moneda para encantar el ítem.", ChatMessageType.Error);
             return;
         }
 
         // Intentar encantar el ítem
-        player.TryUpgradeItem(packet.ItemId, packet.TargetLevel, packet.CurrencyId, packet.CurrencyAmount, packet.UseAmulet);
-        PacketSender.SendChatMsg(player, $"¡Encantamiento exitoso! Nivel actual: +{item.EnchantmentLevel}.", ChatMessageType.Experience);
-        PacketSender.SendInventoryItemUpdate(player, player.Items.IndexOf(item));
+        player.TryUpgradeItem(packet.ItemIndex, packet.TargetLevel, packet.CurrencyId, packet.CurrencyAmount, packet.UseAmulet);
+
+        // Actualizar el cliente
+        PacketSender.SendInventoryItemUpdate(player, packet.ItemIndex);
     }
+
+
 
 }

@@ -9,6 +9,7 @@ using Intersect.Client.Items;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Enums;
+using Intersect.Extensions;
 using Intersect.GameObjects;
 
 namespace Intersect.Client.Interface.Game.Enchanting
@@ -232,10 +233,18 @@ namespace Intersect.Client.Interface.Game.Enchanting
                 return;
             }
 
+            // Obtener el índice del ítem seleccionado
+            var itemIndex = Globals.Me.Inventory.IndexOf(mSelectedItem);
+
+            if (itemIndex < 0)
+            {
+                PacketSender.SendChatMsg("Error identifying selected item.", 4);
+                return;
+            }
+
             // Obtener datos necesarios
-            var itemId = mSelectedItem.ItemId;
+            var currencyId = mSelectedCurrency.ItemId; // Usar ItemId para la moneda
             var targetLevel = mSelectedItem.EnchantmentLevel + 1;
-            var currencyId = mSelectedCurrency.ItemId;
             var currencyAmount = mSelectedItem.Base.GetUpgradeCost(targetLevel);
             var useAmulet = mUseAmuletCheckbox.IsChecked;
 
@@ -246,9 +255,10 @@ namespace Intersect.Client.Interface.Game.Enchanting
                 return;
             }
 
-            // Enviar paquete al servidor
-            PacketSender.SendEnchantItem(itemId, targetLevel, currencyId, currencyAmount, useAmulet);
+            // Enviar paquete al servidor con el índice del ítem y el ItemId de la moneda
+            PacketSender.SendEnchantItem(itemIndex, targetLevel, currencyId, currencyAmount, useAmulet);
         }
+
 
 
         public void Show()

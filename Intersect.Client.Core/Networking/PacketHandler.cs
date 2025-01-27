@@ -2344,22 +2344,30 @@ internal sealed partial class PacketHandler
     }
     public void HandleUpdateItemLevelPacket(UpdateItemLevelPacket packet)
     {
-        // Buscar el ítem en el inventario del cliente
-        var inventoryItem = Globals.Me.Inventory.FirstOrDefault(i => i?.ItemId == packet.ItemId);
+        // Validar el índice del ítem
+        if (packet.ItemIndex < 0 || packet.ItemIndex >= Globals.Me.Inventory.Length)
+        {
+            Log.Error($"Índice de ítem inválido: {packet.ItemIndex}.");
+            return;
+        }
+
+        // Obtener el ítem del inventario utilizando el índice
+        var inventoryItem = Globals.Me.Inventory[packet.ItemIndex];
 
         if (inventoryItem != null)
         {
             // Actualizar nivel de encantamiento
             inventoryItem.ItemProperties.EnchantmentLevel = packet.NewEnchantmentLevel;
 
-           
-         
+            // Opcional: Actualizar la interfaz de usuario si es necesario
+            Log.Info($"Nivel de encantamiento del ítem en el índice {packet.ItemIndex} actualizado a {packet.NewEnchantmentLevel}.");
         }
         else
         {
-            Log.Error($"Ítem con ID {packet.ItemId} no encontrado en el inventario.");
+            Log.Error($"No se encontró ningún ítem en el índice {packet.ItemIndex}.");
         }
     }
+
 
 
 

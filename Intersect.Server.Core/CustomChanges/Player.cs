@@ -103,10 +103,17 @@ namespace Intersect.Server.Entities
             // Deducir el ítem del inventario
             return TryTakeItem(currencyId, amount, ItemHandling.Normal, sendUpdate: true);
         }
-        public void TryUpgradeItem(Guid itemId, int level, Guid currencyId, int currencyAmountRequired, bool useAmulet = false)
+        public void TryUpgradeItem(int itemIndex, int level, Guid currencyId, int currencyAmountRequired, bool useAmulet = false)
         {
-            // Buscar el ítem por su ID único
-            var item = Items.FirstOrDefault(i => i?.ItemId == itemId);
+            // Validar que el índice sea válido
+            if (itemIndex < 0 || itemIndex >= Items.Count)
+            {
+                PacketSender.SendChatMsg(this, "Índice de ítem no válido.", ChatMessageType.Error);
+                return;
+            }
+
+            // Obtener el ítem por su índice
+            var item = Items[itemIndex];
 
             // Validar si el ítem es válido para mejorar
             if (item == null || item.Descriptor?.ItemType != ItemType.Equipment || level <= item.EnchantmentLevel)
@@ -141,13 +148,13 @@ namespace Intersect.Server.Entities
                 // Guardar cambios en la base de datos
                 using (var playerContext = DbInterface.CreatePlayerContext(readOnly: false))
                 {
-                    playerContext.Players.Update(this); // 'this' hace referencia al jugador actual
-                    playerContext.Player_Items.Update(item); // Asegúrate de que Player_Items usa el ID único del ítem
+                    playerContext.Players.Update(this); // Actualizar al jugador
+                    playerContext.Player_Items.Update(item); // Actualizar el ítem en la base de datos
                     playerContext.SaveChanges();
                 }
 
                 // Notificar al cliente sobre la actualización del nivel del ítem
-                PacketSender.SendUpdateItemLevel(this, itemId, level);
+                PacketSender.SendUpdateItemLevel(this, itemIndex, level);
             }
             else if (!useAmulet)
             {
@@ -158,7 +165,7 @@ namespace Intersect.Server.Entities
                 PacketSender.SendChatMsg(this, "El encantamiento falló y el nivel del ítem ha disminuido.", ChatMessageType.Error);
 
                 // Notificar al cliente sobre la actualización del nivel y stats
-                PacketSender.SendUpdateItemLevel(this, item.ItemId, item.EnchantmentLevel);
+                PacketSender.SendUpdateItemLevel(this, itemIndex, item.EnchantmentLevel);
             }
             else
             {

@@ -6,16 +6,16 @@ namespace Intersect.Network.Packets.Server
     public class UpdateItemLevelPacket : IntersectPacket
     {
         [Key(0)]
-        public Guid ItemId { get; set; }
+        public int ItemIndex { get; set; }
 
         [Key(1)]
         public int NewEnchantmentLevel { get; set; }
 
         public UpdateItemLevelPacket() { }
 
-        public UpdateItemLevelPacket(Guid itemId, int newEnchantmentLevel)
+        public UpdateItemLevelPacket(int itemId, int newEnchantmentLevel)
         {
-            ItemId = itemId;
+            ItemIndex = itemId;
             NewEnchantmentLevel = newEnchantmentLevel;
         }
     }

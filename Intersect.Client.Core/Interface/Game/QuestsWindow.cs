@@ -3,6 +3,7 @@ using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.General;
+using Intersect.Client.Interface.Game.Quest;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
@@ -13,9 +14,10 @@ using Intersect.Utilities;
 namespace Intersect.Client.Interface.Game;
 
 
-public partial class QuestsWindow
+public partial class QuestsWindow:IQuestWindow
 {
-
+    public int X => mQuestsWindow.X;
+    public int Y => mQuestsWindow.Y;
     private Button mBackButton;
 
     private ScrollControl mQuestDescArea;
@@ -36,7 +38,9 @@ public partial class QuestsWindow
     private Button mQuitButton;
 
     private QuestBase mSelectedQuest;
-
+    private List<QuestRewardItem> RewardItems = new List<QuestRewardItem>();
+    private List<Label> mRewardValues = new List<Label>();
+    private ScrollControl mRewardItemsContainer;
     //Init
     public QuestsWindow(Canvas gameCanvas)
     {
@@ -65,6 +69,9 @@ public partial class QuestsWindow
         mQuitButton = new Button(mQuestsWindow, "AbandonQuestButton");
         mQuitButton.SetText(Strings.QuestLog.Abandon);
         mQuitButton.Clicked += _quitButton_Clicked;
+        mRewardItemsContainer = new ScrollControl(mQuestsWindow, "RewardItemsContainer");
+        mRewardItemsContainer.EnableScroll(false, true);
+        mRewardItemsContainer.IsHidden = true;
 
         mQuestsWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
     }
@@ -83,6 +90,8 @@ public partial class QuestsWindow
                     if (s is InputBox inputBox && inputBox.UserData is Guid questId)
                     {
                         PacketSender.SendAbandonQuest(questId);
+                        mSelectedQuest = null;
+                        ClearSelectedRewardItems();
                     }
                 }
             );
@@ -92,14 +101,23 @@ public partial class QuestsWindow
     void AbandonQuest(object sender, EventArgs e)
     {
         PacketSender.SendAbandonQuest((Guid) ((InputBox) sender).UserData);
+        ClearSelectedRewardItems();
     }
 
     private void _backButton_Clicked(Base sender, ClickedEventArgs arguments)
     {
         mSelectedQuest = null;
+        ClearSelectedRewardItems();
         UpdateSelectedQuest();
+      
     }
-
+    private void ClearSelectedRewardItems()
+    {
+        RewardItems.Clear();
+        mRewardValues.Clear();
+        mRewardItemsContainer.DeleteAll();
+        mRewardItemsContainer.IsHidden = true;
+    }
     //Methods
     public void Update(bool shouldUpdateList)
     {
@@ -405,7 +423,13 @@ public partial class QuestsWindow
                     mQuestDescLabel.AddText(mSelectedQuest.BeforeDescription, mQuestDescTemplateLabel);
                 }
             }
+            // Load and display reward items
+            LoadRewardItems(mSelectedQuest.Id);
 
+            foreach (var rewardItem in RewardItems)
+            {
+                rewardItem.Update();
+            }
             mQuestList.Hide();
             mQuestTitle.IsHidden = false;
             mQuestTitle.Text = mSelectedQuest.Name;
@@ -415,6 +439,61 @@ public partial class QuestsWindow
             mQuestStatus.Show();
             mBackButton.Show();
             mQuitButton.Show();
+        }
+    }
+
+    private void LoadRewardItems(Guid questId)
+    {
+        RewardItems.Clear();
+        mRewardValues.Clear();
+        mRewardItemsContainer.DeleteAll();
+
+        if (Globals.QuestRewards.ContainsKey(questId) && Globals.QuestRewards[questId].Count > 0)
+        {
+            var rewardItems = Globals.QuestRewards[questId];
+            int index = 0;
+            foreach (var rewardItem in rewardItems)
+            {
+                var itemId = rewardItem.Key;
+                var quantity = rewardItem.Value;
+
+                RewardItems.Add(new QuestRewardItem(this, itemId, quantity));
+                RewardItems[index].Container = new ImagePanel(mRewardItemsContainer, "RewardItem");
+                RewardItems[index].Setup();
+
+                // Add and configure the label for the item quantity
+                var quantityLabel = new Label(RewardItems[index].Container, "RewardItemValue");
+                quantityLabel.Text = Strings.FormatQuantityAbbreviated(quantity);
+                mRewardValues.Add(quantityLabel);
+
+                RewardItems[index].Container.LoadJsonUi(
+                   GameContentManager.UI.InGame,
+                   Graphics.Renderer.GetResolutionString()
+               );
+
+                var xPadding = RewardItems[index].Container.Margin.Left + RewardItems[index].Container.Margin.Right;
+                var yPadding = RewardItems[index].Container.Margin.Top + RewardItems[index].Container.Margin.Bottom;
+
+                // Ensure mRewardItemsContainer.Width is not zero
+                var containerWidth = mRewardItemsContainer.Width;
+                if (containerWidth > 0)
+                {
+                    RewardItems[index].Container.SetPosition(
+                        index % (containerWidth / (RewardItems[index].Container.Width + xPadding)) *
+                        (RewardItems[index].Container.Width + xPadding) + xPadding,
+                        index / (containerWidth / (RewardItems[index].Container.Width + xPadding)) *
+                        (RewardItems[index].Container.Height + yPadding) + yPadding
+                    );
+                }
+
+                index++;
+            }
+
+            mRewardItemsContainer.IsHidden = false;
+        }
+        else
+        {
+            mRewardItemsContainer.IsHidden = true;
         }
     }
 

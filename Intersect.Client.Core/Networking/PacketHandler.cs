@@ -1961,6 +1961,7 @@ internal sealed partial class PacketHandler
         {
             Globals.QuestOffers.Add(packet.QuestId);
         }
+        Globals.QuestRewards[packet.QuestId] = packet.RewardItems;
     }
 
     //QuestProgressPacket
@@ -1991,7 +1992,10 @@ internal sealed partial class PacketHandler
             }
 
             Globals.Me.HiddenQuests = packet.HiddenQuests;
-
+            foreach (var rewardItem in packet.QuestRewardItems)
+                          {
+                Globals.QuestRewards[rewardItem.Key] = rewardItem.Value;
+                            }
             if (Interface.Interface.GameUi != null)
             {
                 Interface.Interface.GameUi.NotifyQuestsUpdated();

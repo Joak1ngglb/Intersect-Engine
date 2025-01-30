@@ -1,9 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 
 using Intersect.Enums;
 using Intersect.Framework.Core.Serialization;
 using Intersect.GameObjects.Conditions;
 using Intersect.GameObjects.Events;
+using Intersect.GameObjects.Events.Commands;
 using Intersect.Localization;
 using Intersect.Models;
 
@@ -265,5 +266,34 @@ public partial class QuestBase : DatabaseObject<QuestBase>, IFolderable
 
             return taskString;
         }
+
+    }
+    public Dictionary<Guid, int> GetRewardItems()
+    {
+        var rewardItems = new Dictionary<Guid, int>();
+        if (EndEvent != null)
+        {
+            foreach (var page in EndEvent.Pages)
+            {
+                foreach (var commandList in page.CommandLists.Values)
+                {
+                    foreach (var command in commandList)
+                    {
+                        if (command is ChangeItemsCommand changeItemsCommand && changeItemsCommand.Add)
+                        {
+                            if (rewardItems.ContainsKey(changeItemsCommand.ItemId))
+                            {
+                                rewardItems[changeItemsCommand.ItemId] += changeItemsCommand.Quantity;
+                            }
+                            else
+                            {
+                                rewardItems[changeItemsCommand.ItemId] = changeItemsCommand.Quantity;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return rewardItems;
     }
 }

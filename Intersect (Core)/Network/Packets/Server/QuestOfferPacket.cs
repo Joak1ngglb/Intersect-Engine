@@ -1,4 +1,4 @@
-﻿using MessagePack;
+using MessagePack;
 
 namespace Intersect.Network.Packets.Server;
 
@@ -10,12 +10,15 @@ public partial class QuestOfferPacket : IntersectPacket
     {
     }
 
-    public QuestOfferPacket(Guid questId)
+    public QuestOfferPacket(Guid questId, Dictionary<Guid, int> rewardItems)
     {
         QuestId = questId;
+        RewardItems = rewardItems;
     }
 
     [Key(0)]
     public Guid QuestId { get; set; }
+    [Key(1)]
+    public Dictionary<Guid, int> RewardItems { get; set; }
 
 }

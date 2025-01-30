@@ -2071,18 +2071,24 @@ public static partial class PacketSender
     }
 
     //QuestOfferPacket
-    public static void SendQuestOffer(Player player, Guid questId)
+    public static void SendQuestOffer(Player player, Guid questId, Dictionary<Guid, int> questRewardItems)
     {
-        player.SendPacket(new QuestOfferPacket(questId));
+        player.SendPacket(new QuestOfferPacket(questId, questRewardItems));
     }
 
     //QuestProgressPacket
     public static void SendQuestsProgress(Player player)
     {
         var dict = new Dictionary<Guid, string>();
+        var questRewardItems = new Dictionary<Guid, Dictionary<Guid, int>>();
         foreach (var quest in player.Quests)
         {
             dict.Add(quest.QuestId, quest.Data());
+            var questBase = QuestBase.Get(quest.QuestId);
+            if (questBase != null)
+            {
+                questRewardItems.Add(quest.QuestId, questBase.GetRewardItems());
+            }
         }
 
         var hiddenQuests = new List<Guid>();
@@ -2095,7 +2101,7 @@ public static partial class PacketSender
             }
         }
 
-        player.SendPacket(new QuestProgressPacket(dict, hiddenQuests.ToArray()));
+        player.SendPacket(new QuestProgressPacket(dict, hiddenQuests.ToArray(), questRewardItems));
     }
 
     //TradePacket

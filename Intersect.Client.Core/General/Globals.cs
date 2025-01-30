@@ -206,6 +206,7 @@ public static partial class Globals
     public static ShowPicturePacket? Picture;
 
     public static List<Guid> QuestOffers = new List<Guid>();
+    public static Dictionary<Guid, Dictionary<Guid, int>> QuestRewards = new Dictionary<Guid, Dictionary<Guid, int>>();
 
     public static Random Random = new Random();
 

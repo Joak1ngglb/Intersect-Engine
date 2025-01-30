@@ -1,4 +1,4 @@
-﻿using MessagePack;
+using MessagePack;
 
 namespace Intersect.Network.Packets.Server;
 
@@ -10,10 +10,11 @@ public partial class QuestProgressPacket : IntersectPacket
     {
     }
 
-    public QuestProgressPacket(Dictionary<Guid, string> quests, Guid[] hiddenQuests)
+    public QuestProgressPacket(Dictionary<Guid, string> quests, Guid[] hiddenQuests, Dictionary<Guid, Dictionary<Guid, int>> questRewardItems)
     {
         Quests = quests;
         HiddenQuests = hiddenQuests;
+        QuestRewardItems = questRewardItems;
     }
 
     [Key(0)]
@@ -21,5 +22,7 @@ public partial class QuestProgressPacket : IntersectPacket
 
     [Key(1)]
     public Guid[] HiddenQuests { get; set; }
+    [Key(2)]
+    public Dictionary<Guid, Dictionary<Guid, int>> QuestRewardItems { get; set; }
 
 }

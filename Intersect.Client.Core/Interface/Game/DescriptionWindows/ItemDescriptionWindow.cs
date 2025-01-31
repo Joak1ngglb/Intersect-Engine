@@ -98,23 +98,32 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
 
     protected void SetupHeader()
     {
-        // Create our header, but do not load our layout yet since we're adding components manually.
+        // Crear el encabezado de la descripción
         var header = AddHeader();
 
-        // Set up the icon, if we can load it.
+        // Configurar el icono del ítem si está disponible
         var tex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, mItem.Icon);
         if (tex != null)
         {
             header.SetIcon(tex, mItem.Color);
         }
 
-        // Set up the header as the item name.
-        CustomColors.Items.Rarities.TryGetValue(mItem.Rarity, out var rarityColor);
+        // Obtener el color de rareza del ítem
+        if (CustomColors.Items.Rarities.TryGetValue(mItem.Rarity, out var rarityColor))
+        {
+            // Aplicar el color de fondo al encabezado de la descripción
+            header.SetBackgroundColor(rarityColor);
+        }
+        else
+        {
+            header.SetBackgroundColor(Color.White); // Color por defecto si no hay rareza
+        }
+
+        // Establecer el título con el color de la rareza
         var name = !string.IsNullOrWhiteSpace(mTitleOverride) ? mTitleOverride : mItem.Name;
         header.SetTitle(name, rarityColor ?? Color.White);
 
-        // Set up the description telling us what type of item this is.
-        // if equipment, also list what kind.
+        // Configurar la descripción del tipo de ítem
         Strings.ItemDescription.ItemTypes.TryGetValue((int)mItem.ItemType, out var typeDesc);
         if (mItem.ItemType == ItemType.Equipment)
         {
@@ -131,7 +140,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
             header.SetSubtitle(typeDesc, Color.White);
         }
 
-        // Set up the item rarity label.
+        // Configurar la etiqueta de rareza en la descripción
         try
         {
             if (Options.Instance.Items.TryGetRarityName(mItem.Rarity, out var rarityName))

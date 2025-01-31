@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
@@ -126,6 +127,18 @@ public partial class EquipmentItem
             mCurrentItemId = currentItemId;
             mItemProperties = itemProperties;
             var item = ItemBase.Get(mCurrentItemId);
+            if (item != null)
+            {
+                // Obtener el color de la rareza del ítem
+                if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+                {
+                    ContentPanel.RenderColor = rarityColor; // Aplicar color al contenedor
+                }
+                else
+                {
+                    ContentPanel.RenderColor = Color.White; // Color por defecto
+                }
+            }
             if (item != null)
             {
                 var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);

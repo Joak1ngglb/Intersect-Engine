@@ -80,6 +80,17 @@ public partial class ShopItem
         var item = ItemBase.Get(Globals.GameShop.SellingItems[mMySlot].ItemId);
         if (item != null)
         {
+            if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+            {
+                Container.RenderColor = rarityColor;
+            }
+            else
+            {
+                Container.RenderColor = Color.White;
+            }
+        }
+        if (item != null)
+        {
             var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);
             if (itemTex != null)
             {
@@ -122,6 +133,7 @@ public partial class ShopItem
         }
 
         var item = ItemBase.Get(Globals.GameShop.SellingItems[mMySlot].CostItemId);
+
         if (item != null && Globals.GameShop.SellingItems[mMySlot].Item != null)
         {
             ItemProperties itemProperty = new ItemProperties()

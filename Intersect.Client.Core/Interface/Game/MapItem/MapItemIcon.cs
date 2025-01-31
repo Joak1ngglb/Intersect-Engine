@@ -112,6 +112,17 @@ public partial class MapItemIcon
         var item = ItemBase.Get(MyItem.ItemId);
         if (item != null)
         {
+            if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+            {
+                Container.RenderColor = rarityColor; // Aplicar color al contenedor
+            }
+            else
+            {
+                Container.RenderColor = Color.White; // Color por defecto
+            }
+        }
+        if (item != null)
+        {
             var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);
             if (itemTex != null)
             {

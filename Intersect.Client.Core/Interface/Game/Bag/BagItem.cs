@@ -155,6 +155,18 @@ public partial class BagItem
             var item = ItemBase.Get(Globals.Bag[mMySlot].ItemId);
             if (item != null)
             {
+                // Obtener el color de la rareza del ítem
+                if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+                {
+                    Container.RenderColor = rarityColor; // Aplicar color al contenedor
+                }
+                else
+                {
+                    Container.RenderColor = Color.White; // Color por defecto
+                }
+            }
+            if (item != null)
+            {
                 var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);
                 if (itemTex != null)
                 {

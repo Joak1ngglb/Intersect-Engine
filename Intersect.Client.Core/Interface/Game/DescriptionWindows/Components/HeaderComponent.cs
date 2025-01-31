@@ -1,4 +1,4 @@
-﻿using Intersect.Client.Framework.Gwen;
+using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Framework.Gwen.Control;
 
@@ -76,5 +76,10 @@ public partial class HeaderComponent : ComponentBase
     {
         mDescription.SetText(description);
         mDescription.SetTextColor(color, Label.ControlState.Normal);
+    }
+
+    public void SetBackgroundColor(Color rarityColor)
+    {
+        mContainer.RenderColor = rarityColor;
     }
 }

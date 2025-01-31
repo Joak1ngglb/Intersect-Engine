@@ -287,6 +287,19 @@ public partial class InventoryItem
         }
 
         var item = ItemBase.Get(Globals.Me.Inventory[mMySlot].ItemId);
+
+        if (item != null)
+        {
+            // Obtener el color de la rareza del ítem
+            if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+            {
+                Container.RenderColor = rarityColor; // Aplicar color al contenedor
+            }
+            else
+            {
+                Container.RenderColor = Color.White; // Color por defecto si no se encuentra la rareza
+            }
+        }
         if (Globals.Me.Inventory[mMySlot].ItemId != mCurrentItemId ||
             Globals.Me.Inventory[mMySlot].Quantity != mCurrentAmt ||
             equipped != mIsEquipped ||
@@ -540,6 +553,24 @@ public partial class InventoryItem
                 mDragIcon.Dispose();
             }
         }
+    }
+    public static int GetItemRarity(ItemBase item)
+    {
+        if (item == null)
+        {
+            return 0; // Rarity None
+        }
+
+        return Math.Max(0, Math.Min(item.Rarity, Options.Instance.Items.RarityTiers.Count - 1));
+    }
+    public static Color GetRarityColor(int rarity)
+    {
+        if (CustomColors.Items.Rarities.TryGetValue(rarity, out Color rarityColor))
+        {
+            return rarityColor;
+        }
+
+        return Color.White; // Color por defecto si no se encuentra la rareza
     }
 
 }

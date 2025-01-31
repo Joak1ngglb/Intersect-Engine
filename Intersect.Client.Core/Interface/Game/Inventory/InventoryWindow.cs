@@ -1,4 +1,5 @@
-﻿using Intersect.Client.Core;
+using System.ComponentModel;
+using Intersect.Client.Core;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
@@ -213,6 +214,18 @@ public partial class InventoryWindow
             if (item != null)
             {
                 Items[i].Pnl.IsHidden = false;
+
+                // Aplicar color de rareza
+                if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+                {
+                    Items[i].Container.RenderColor = rarityColor;
+
+                }
+                else
+                {
+                    Items[i].Container.RenderColor = Color.White;
+                }
+
                 if (item.IsStackable)
                 {
                     mValues[i].IsHidden = Globals.Me.Inventory[i].Quantity <= 1;

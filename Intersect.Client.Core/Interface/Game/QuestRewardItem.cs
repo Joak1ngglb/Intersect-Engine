@@ -82,6 +82,17 @@ public partial class QuestRewardItem
         if (item != null)
         {
             var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);
+            if (item != null)
+            {
+                if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+                {
+                    Container.RenderColor = rarityColor; // Aplicar color al contenedor
+                }
+                else
+                {
+                    Container.RenderColor = Color.White; // Color por defecto
+                }
+            }
             if (itemTex != null)
             {
                 Pnl.Texture = itemTex;

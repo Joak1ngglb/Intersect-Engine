@@ -67,7 +67,17 @@ public partial class RecipeItem
     public void LoadItem()
     {
         var item = ItemBase.Get(mIngredient.ItemId);
-
+        if (item != null)
+        {
+            if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+            {
+                Container.RenderColor = rarityColor;
+            }
+            else
+            {
+                Container.RenderColor = Color.White;
+            }
+        }
         if (item != null)
         {
             var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);

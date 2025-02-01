@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
 using Intersect.Enums;
+using Intersect.Framework.Core.Config;
 using Intersect.Framework.Core.Serialization;
 using Intersect.GameObjects.Conditions;
 using Intersect.GameObjects.Events;
@@ -296,4 +297,47 @@ public partial class QuestBase : DatabaseObject<QuestBase>, IFolderable
         }
         return rewardItems;
     }
+    public Tuple<long, Dictionary<JobType, long>> GetRewardExperience()
+    {
+        long rewardExperience = 0; // Experiencia global
+        var rewardJobExperience = new Dictionary<JobType, long>(); // Experiencia de trabajos
+
+        if (EndEvent != null)
+        {
+            foreach (var page in EndEvent.Pages)
+            {
+                foreach (var commandList in page.CommandLists.Values)
+                {
+                    foreach (var command in commandList)
+                    {
+                        // Comando de experiencia global
+                        if (command is GiveExperienceCommand giveExpCommand)
+                        {
+                            rewardExperience += giveExpCommand.Exp;
+                        }
+
+                        // Comando de experiencia por trabajo
+                        if (command is GiveJobExperienceCommand giveJobExpCommand)
+                        {
+                            foreach (var jobExp in giveJobExpCommand.JobExp)
+                            {
+                                if (rewardJobExperience.ContainsKey(jobExp.Key))
+                                {
+                                    rewardJobExperience[jobExp.Key] += jobExp.Value;
+                                }
+                                else
+                                {
+                                    rewardJobExperience[jobExp.Key] = jobExp.Value;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return new Tuple<long, Dictionary<JobType, long>>(rewardExperience, rewardJobExperience);
+    }
+
+
 }

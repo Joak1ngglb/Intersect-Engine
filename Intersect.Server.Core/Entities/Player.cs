@@ -6131,7 +6131,7 @@ public partial class Player : Entity
         if (CanStartQuest(quest))
         {
             QuestOffers.Add(quest.Id);
-            PacketSender.SendQuestOffer(this, quest.Id, quest.GetRewardItems());
+            PacketSender.SendQuestOffer(this, quest.Id, quest.GetRewardItems(),quest.GetRewardExperience());
         }
     }
 

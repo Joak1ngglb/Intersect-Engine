@@ -10,7 +10,7 @@ using Intersect.Client.Items;
 using Intersect.Client.Maps;
 using Intersect.Client.Plugins.Interfaces;
 using Intersect.Enums;
-
+using Intersect.Framework.Core.Config;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
 
@@ -207,6 +207,9 @@ public static partial class Globals
 
     public static List<Guid> QuestOffers = new List<Guid>();
     public static Dictionary<Guid, Dictionary<Guid, int>> QuestRewards = new Dictionary<Guid, Dictionary<Guid, int>>();
+    public static Dictionary<Guid, long> QuestExperience = new Dictionary<Guid, long>();
+    public static Dictionary<Guid, Dictionary<JobType, long>> QuestJobExperience = new Dictionary<Guid, Dictionary<JobType, long>>();
+
 
     public static Random Random = new Random();
 

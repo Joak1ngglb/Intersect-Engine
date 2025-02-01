@@ -1961,8 +1961,12 @@ internal sealed partial class PacketHandler
         {
             Globals.QuestOffers.Add(packet.QuestId);
         }
+
         Globals.QuestRewards[packet.QuestId] = packet.RewardItems;
+        Globals.QuestExperience[packet.QuestId] = packet.RewardExperience;
+        Globals.QuestJobExperience[packet.QuestId] = packet.RewardJobExperience;
     }
+
 
     //QuestProgressPacket
     public void HandlePacket(IPacketSender packetSender, QuestProgressPacket packet)
@@ -1973,35 +1977,38 @@ internal sealed partial class PacketHandler
             {
                 if (quest.Value == null)
                 {
-                    if (Globals.Me.QuestProgress.ContainsKey(quest.Key))
-                    {
-                        Globals.Me.QuestProgress.Remove(quest.Key);
-                    }
+                    Globals.Me.QuestProgress.Remove(quest.Key);
                 }
                 else
                 {
-                    if (Globals.Me.QuestProgress.ContainsKey(quest.Key))
-                    {
-                        Globals.Me.QuestProgress[quest.Key] = new QuestProgress(quest.Value);
-                    }
-                    else
-                    {
-                        Globals.Me.QuestProgress.Add(quest.Key, new QuestProgress(quest.Value));
-                    }
+                    Globals.Me.QuestProgress[quest.Key] = new QuestProgress(quest.Value);
                 }
             }
 
             Globals.Me.HiddenQuests = packet.HiddenQuests;
+
             foreach (var rewardItem in packet.QuestRewardItems)
-                          {
+            {
                 Globals.QuestRewards[rewardItem.Key] = rewardItem.Value;
-                            }
+            }
+
+            foreach (var expReward in packet.QuestRewardExperience)
+            {
+                Globals.QuestExperience[expReward.Key] = expReward.Value;
+            }
+
+            foreach (var jobExpReward in packet.QuestRewardJobExperience)
+            {
+                Globals.QuestJobExperience[jobExpReward.Key] = jobExpReward.Value;
+            }
+
             if (Interface.Interface.GameUi != null)
             {
                 Interface.Interface.GameUi.NotifyQuestsUpdated();
             }
         }
     }
+
 
     //TradePacket
     public void HandlePacket(IPacketSender packetSender, TradePacket packet)

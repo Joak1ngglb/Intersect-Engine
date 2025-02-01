@@ -8,6 +8,7 @@ using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Quest;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
+using Intersect.Framework.Core.Config;
 using Intersect.GameObjects;
 
 namespace Intersect.Client.Interface.Game;
@@ -39,6 +40,11 @@ public partial class QuestOfferWindow : IQuestWindow
     private List<QuestRewardItem> RewardItems = new List<QuestRewardItem>();
     private List<Label> mRewardValues = new List<Label>();
     private Guid mQuestId = Guid.Empty;
+    // Nuevo contenedor de experiencia
+    private List<QuestRewardExp> RewardExp = new List<QuestRewardExp>();
+
+    private ScrollControl mRewardContainer;
+    public ScrollControl mRewardExpContainer;
 
     public int X => mQuestOfferWindow.X;
     public int Y => mQuestOfferWindow.Y;
@@ -61,9 +67,24 @@ public partial class QuestOfferWindow : IQuestWindow
         mAcceptButton = new Button(mQuestOfferWindow, "AcceptButton");
         mAcceptButton.SetText(Strings.QuestOffer.Accept);
         mAcceptButton.Clicked += _acceptButton_Clicked;
-        mRewardItemsContainer = new ScrollControl(mQuestOfferWindow, "RewardItemsContainer");
-        mRewardItemsContainer.EnableScroll(true, false);
+        // Contenedor Principal de Recompensas
+        mRewardContainer = new ScrollControl(mQuestOfferWindow, "RewardContainer");
+        mRewardContainer.SetPosition(10, 250);
+        mRewardContainer.SetSize(400, 120);
+        mRewardContainer.IsHidden = true;
+
+        // Contenedor de experiencia
+        mRewardExpContainer = new ScrollControl(mRewardContainer, "RewardExpContainer");
+        mRewardExpContainer.SetSize(380, 40);
+        mRewardExpContainer.SetPosition(10, 10); // Ubicado en la parte superior
+        mRewardExpContainer.IsHidden = true;
+
+        // Contenedor de ítems de recompensa
+        mRewardItemsContainer = new ScrollControl(mRewardContainer, "RewardItemsContainer");
+        mRewardItemsContainer.SetSize(380, 50);
+        mRewardItemsContainer.SetPosition(10, mRewardExpContainer.IsHidden ? 10 : mRewardExpContainer.Height + 15);
         mRewardItemsContainer.IsHidden = true;
+
         //Decline Button
         mDeclineButton = new Button(mQuestOfferWindow, "DeclineButton");
         mDeclineButton.SetText(Strings.QuestOffer.Decline);
@@ -117,7 +138,7 @@ public partial class QuestOfferWindow : IQuestWindow
             if (mQuestId != quest.Id || !mRewardItemsLoaded || RewardsChanged(quest.Id))
             {
                 mQuestId = quest.Id;
-                LoadRewardItems();
+                LoadRewardItems(quest.Id);
             }
 
             foreach (var rewardItem in RewardItems)
@@ -150,51 +171,124 @@ public partial class QuestOfferWindow : IQuestWindow
 
         return false;
     }
-
-    private void LoadRewardItems()
+    private void LoadRewardItems(Guid questId)
     {
         RewardItems.Clear();
+        mRewardValues.Clear();
         mRewardItemsContainer.DeleteAll();
+        mRewardExpContainer.DeleteAll();
 
-        if (Globals.QuestRewards.ContainsKey(mQuestId) && Globals.QuestRewards[mQuestId].Count > 0)
-        {
-            var rewardItems = Globals.QuestRewards[mQuestId];
-            int index = 0;
-            foreach (var rewardItem in rewardItems)
-            {
-                var itemId = rewardItem.Key;
-                var quantity = rewardItem.Value;
+        // Cargar EXP
+        LoadRewardExperience(questId);
 
-                RewardItems.Add(new QuestRewardItem(this, itemId, quantity));
-                RewardItems[index].Container = new ImagePanel(mRewardItemsContainer, "RewardItem");
-                RewardItems[index].Setup();
+        // Cargar Ítems
+        LoadRewardItemsList(questId, mRewardItemsContainer);
 
-                // Add and configure the label for the item quantity
-                var quantityLabel = new Label(RewardItems[index].Container, "RewardItemValue");
-                quantityLabel.Text = Strings.FormatQuantityAbbreviated(quantity);
-                mRewardValues.Add(quantityLabel);
+        // Ajustar el tamaño del contenedor de recompensas si es necesario
+        mRewardExpContainer.IsHidden = RewardExp.Count == 0;
+        mRewardItemsContainer.IsHidden = RewardItems.Count == 0;
+        mRewardContainer.IsHidden = (RewardExp.Count == 0 && RewardItems.Count == 0);
 
-                RewardItems[index].Container.LoadJsonUi(
-                GameContentManager.UI.InGame,
-                Graphics.Renderer.GetResolutionString()
-                                );
-
-                var xPadding = RewardItems[index].Container.Margin.Left + RewardItems[index].Container.Margin.Right;
-                var yPadding = RewardItems[index].Container.Margin.Top + RewardItems[index].Container.Margin.Bottom;
-                RewardItems[index].Container.SetPosition(
-                index % (mRewardItemsContainer.Width / (RewardItems[index].Container.Width + xPadding)) *
-                (RewardItems[index].Container.Width + xPadding) + xPadding,
-                index / (mRewardItemsContainer.Width / (RewardItems[index].Container.Width + xPadding)) *
-                (RewardItems[index].Container.Height + yPadding) + yPadding
-                               );
-
-                index++;
-            }
-
-            mRewardItemsLoaded = true;
-        }
+        // Ajustar posición del contenedor de ítems según la cantidad de recompensas
+        mRewardItemsContainer.SetPosition(10, mRewardExpContainer.IsHidden ? 10 : mRewardExpContainer.Height + 15);
     }
 
+    private void LoadRewardExperience(Guid questId)
+    {
+        int expIndex = 0; // Controla la posición horizontal de las recompensas
+
+        long rewardExp = Globals.QuestExperience.ContainsKey(questId) ? Globals.QuestExperience[questId] : 0;
+        var rewardJobExp = Globals.QuestJobExperience.ContainsKey(questId) ? Globals.QuestJobExperience[questId] : new Dictionary<JobType, long>();
+
+        RewardExp.Clear();
+        mRewardExpContainer.DeleteAll(); // Limpiar antes de cargar nueva info
+
+        int rewardWidth = 100; // Tamaño fijo de cada contenedor de experiencia
+        int spacing = 5; // Espaciado entre cada recompensa
+
+        if (rewardExp > 0)
+        {
+            var expReward = new QuestRewardExp(this, rewardExp);
+            RewardExp.Add(expReward);
+            expReward.Setup();
+            expReward.Container.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+
+            // Colocar en fila
+            expReward.Container.SetPosition(expIndex * (rewardWidth + spacing), 0);
+            expIndex++;
+        }
+
+        foreach (var jobExp in rewardJobExp)
+        {
+            if (jobExp.Value > 0)
+            {
+                var jobExpReward = new QuestRewardExp(this, jobExp.Value, true, jobExp.Key);
+                RewardExp.Add(jobExpReward);
+                jobExpReward.Setup();
+                jobExpReward.Container.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+
+                // Colocar en fila
+                jobExpReward.Container.SetPosition(expIndex * (rewardWidth + spacing), 0);
+                expIndex++;
+            }
+        }
+
+        // Ajustar ancho del contenedor de experiencia en base a la cantidad de recompensas
+        int totalWidth = expIndex * (rewardWidth + spacing) - spacing;
+        mRewardExpContainer.SetSize(RewardExp.Count > 0 ? totalWidth : 0, mRewardExpContainer.Height);
+
+        // Ocultar si no hay recompensas
+        mRewardExpContainer.IsHidden = RewardExp.Count == 0;
+    }
+
+    private int LoadRewardItemsList(Guid questId, Base container)
+    {
+        if (!Globals.QuestRewards.ContainsKey(questId) || Globals.QuestRewards[questId].Count == 0)
+        {
+            return 0;
+        }
+
+        var rewardItems = Globals.QuestRewards[questId];
+        int index = 0;
+
+        foreach (var rewardItem in rewardItems)
+        {
+            var itemId = rewardItem.Key;
+            var quantity = rewardItem.Value;
+
+            var questRewardItem = new QuestRewardItem(this, itemId, quantity);
+            RewardItems.Add(questRewardItem);
+
+            questRewardItem.Container = new ImagePanel(container, "RewardItem");
+            questRewardItem.Setup();
+
+            // Agregar el label con la cantidad del ítem
+            var quantityLabel = new Label(questRewardItem.Container, "RewardItemValue");
+            quantityLabel.Text = Strings.FormatQuantityAbbreviated(quantity);
+            mRewardValues.Add(quantityLabel);
+
+            questRewardItem.Container.LoadJsonUi(
+                GameContentManager.UI.InGame,
+                Graphics.Renderer.GetResolutionString()
+            );
+
+            var xPadding = questRewardItem.Container.Margin.Left + questRewardItem.Container.Margin.Right;
+            var yPadding = questRewardItem.Container.Margin.Top + questRewardItem.Container.Margin.Bottom;
+
+            int containerWidth = Math.Max(container.Width, 1);
+            int itemWidth = Math.Max(questRewardItem.Container.Width + xPadding, 1);
+            int itemsPerRow = Math.Max(containerWidth / itemWidth, 1); // Evita división por 0
+
+            questRewardItem.Container.SetPosition(
+                (index % itemsPerRow) * itemWidth + xPadding,
+                (index / itemsPerRow) * (questRewardItem.Container.Height + yPadding) + yPadding
+            );
+
+            index++;
+        }
+
+        return index * 40; // Devolver la altura ocupada
+    }
 
     public void Show()
     {

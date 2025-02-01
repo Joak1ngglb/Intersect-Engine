@@ -2070,24 +2070,45 @@ public static partial class PacketSender
         player.SendPacket(new ChatBubblePacket(entityId, type, mapId, text));
     }
 
-    //QuestOfferPacket
-    public static void SendQuestOffer(Player player, Guid questId, Dictionary<Guid, int> questRewardItems)
+    public static void SendQuestOffer(Player player, Guid questId, Dictionary<Guid, int> questRewardItems, Tuple<long, Dictionary<JobType, long>> tuple)
     {
-        player.SendPacket(new QuestOfferPacket(questId, questRewardItems));
+        var questBase = QuestBase.Get(questId);
+        if (questBase == null)
+        {
+            return;
+        }
+
+        // Si la tupla tiene datos, usarlos; si no, obtener de la misión
+        long rewardExp = tuple?.Item1 ?? questBase.GetRewardExperience().Item1;
+        Dictionary<JobType, long> rewardJobExp = tuple?.Item2 ?? questBase.GetRewardExperience().Item2;
+
+        // Verificar si `questRewardItems` es nulo y asignar un diccionario vacío si lo es
+        questRewardItems ??= new Dictionary<Guid, int>();
+
+        // Enviar el paquete con la información correcta
+        player.SendPacket(new QuestOfferPacket(questId, questRewardItems, rewardExp, rewardJobExp));
     }
 
-    //QuestProgressPacket
     public static void SendQuestsProgress(Player player)
     {
         var dict = new Dictionary<Guid, string>();
         var questRewardItems = new Dictionary<Guid, Dictionary<Guid, int>>();
+        var questRewardExperience = new Dictionary<Guid, long>();
+        var questRewardJobExperience = new Dictionary<Guid, Dictionary<JobType, long>>();
+
         foreach (var quest in player.Quests)
         {
             dict.Add(quest.QuestId, quest.Data());
+
             var questBase = QuestBase.Get(quest.QuestId);
             if (questBase != null)
             {
-                questRewardItems.Add(quest.QuestId, questBase.GetRewardItems());
+                questRewardItems[quest.QuestId] = questBase.GetRewardItems();
+
+                // Obtener experiencia y JobEXP
+                var expRewards = questBase.GetRewardExperience();
+                questRewardExperience[quest.QuestId] = expRewards.Item1;
+                questRewardJobExperience[quest.QuestId] = expRewards.Item2;
             }
         }
 
@@ -2101,7 +2122,7 @@ public static partial class PacketSender
             }
         }
 
-        player.SendPacket(new QuestProgressPacket(dict, hiddenQuests.ToArray(), questRewardItems));
+        player.SendPacket(new QuestProgressPacket(dict, hiddenQuests.ToArray(), questRewardItems, questRewardExperience, questRewardJobExperience));
     }
 
     //TradePacket

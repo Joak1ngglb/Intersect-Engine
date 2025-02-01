@@ -14,8 +14,8 @@ public class QuestRewardExp
     private QuestsWindow mQuestWindow;
     private QuestOfferWindow mQuestOfferWindow;
     private long mExpAmount;
-    private bool mIsJobExp;
-    private JobType? mJobType;
+ public bool mIsJobExp;
+   public JobType? mJobType;
 
     // Constructor para QuestOfferWindow
     public QuestRewardExp(QuestOfferWindow questOfferWindow, long expAmount, bool isJobExp = false, JobType? jobType = null)

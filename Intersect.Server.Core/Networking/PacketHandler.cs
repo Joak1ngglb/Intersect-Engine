@@ -485,15 +485,7 @@ internal sealed partial class PacketHandler
         }
         player.CloseMailBox();
     }
-    public void HandlePacket(Client client, MailBoxOpenPacket packet)
-    {
-        var player = client?.Entity;
-        if (player == null)
-        {
-            return;
-        }
-        player.OpenMailBox();
-    }
+   
     public void HandlePacket(Client client, MailBoxSendPacket packet)
     {
         // Validar que el remitente es válido

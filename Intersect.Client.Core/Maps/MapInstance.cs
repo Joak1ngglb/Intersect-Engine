@@ -252,7 +252,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             HideActiveAnimations();
             return;
         }
-
+        UpdatePets(); // Actualizamos las mascotas
         _lastUpdateTime = nowMilliseconds + 10000;
         UpdateMapAttributes();
         if (BackgroundSound == null && !string.IsNullOrWhiteSpace(Sound))

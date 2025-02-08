@@ -2977,4 +2977,123 @@ internal sealed partial class PacketHandler
     }
 
     #endregion
+
+    // Manejar el paquete de reproducción de mascotas
+    public void HandlePacket(Client client, BreedPetPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var pet1 = player.Pets.FirstOrDefault(p => p.Id == packet.PetId1);
+        var pet2 = player.Pets.FirstOrDefault(p => p.Id == packet.PetId2);
+
+        if (pet1 == null || pet2 == null)
+        {
+            PacketSender.SendChatMsg(player, "No tienes ambas mascotas para reproducir.", ChatMessageType.Notice);
+            return;
+        }
+
+        try
+        {
+            var newPet = pet1.Breed(pet2);
+            player.Pets.Add(newPet);
+            PacketSender.SendChatMsg(player, "¡Tus mascotas se han reproducido exitosamente y tienes una nueva mascota!", ChatMessageType.Notice);
+        }
+        catch (InvalidOperationException ex)
+        {
+            PacketSender.SendChatMsg(player, ex.Message, ChatMessageType.Notice);
+        }
+    }
+
+    // Manejar el paquete de liberar mascota
+    public void HandlePacket(Client client, ReleasePetPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var pet = player.Pets.FirstOrDefault(p => p.Id == packet.PetId);
+        if (pet == null)
+        {
+            PacketSender.SendChatMsg(player, "No tienes esta mascota en tu posesión.", ChatMessageType.Notice);
+            return;
+        }
+
+        player.Pets.Remove(pet);
+        PacketSender.SendChatMsg(player, $"{pet.Name} ha sido liberado.", ChatMessageType.Notice);
+    }
+
+    // Manejar el paquete de jugar con la mascota
+    public void HandlePacket(Client client, PlayWithPetPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var pet = player.Pets.FirstOrDefault(p => p.Id == packet.PetId);
+        if (pet == null)
+        {
+            PacketSender.SendChatMsg(player, "No tienes esta mascota en tu posesión.", ChatMessageType.Notice);
+            return;
+        }
+
+        pet.Play();
+        PacketSender.SendChatMsg(player, $"{pet.Name} está jugando y su humor ha mejorado.", ChatMessageType.Notice);
+    }
+
+    // Manejar el paquete de alimentar a la mascota
+    public void HandlePacket(Client client, FeedPetPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var pet = player.Pets.FirstOrDefault(p => p.Id == packet.PetId);
+        if (pet == null)
+        {
+            PacketSender.SendChatMsg(player, "No tienes esta mascota en tu posesión.", ChatMessageType.Notice);
+            return;
+        }
+
+        pet.Feed(20); // Alimentar con un valor base
+        PacketSender.SendChatMsg(player, $"{pet.Name} ha sido alimentado y ha recuperado energía.", ChatMessageType.Notice);
+    }
+
+    // Manejar el paquete de invocar/guardar la mascota
+    public void HandlePacket(Client client, TogglePetSummonPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var pet = player.Pets.FirstOrDefault(p => p.Id == packet.PetId);
+        if (pet == null)
+        {
+            PacketSender.SendChatMsg(player, "No tienes esta mascota en tu posesión.", ChatMessageType.Notice);
+            return;
+        }
+
+        if (pet.IsSummoned)
+        {
+            pet.Despawn();
+            PacketSender.SendChatMsg(player, $"{pet.Name} ha sido guardado.", ChatMessageType.Notice);
+        }
+        else
+        {
+            pet.Summon();
+            PacketSender.SendChatMsg(player, $"Has invocado a {pet.Name}!", ChatMessageType.Notice);
+        }
+    }
+
 }

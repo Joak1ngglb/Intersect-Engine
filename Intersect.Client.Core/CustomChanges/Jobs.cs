@@ -34,7 +34,7 @@ public partial class Player
     public Dictionary<JobType, int> JobLevel { get; set; } = [];
     public Dictionary<JobType, long> JobExp { get; set; } = [];
     public Dictionary<JobType, long> JobExpToNextLevel { get; set; } = [];
-
+ 
     public void UpdateJobsFromPacket(Dictionary<JobType, JobData> jobData)
     {
         if (jobData == null)

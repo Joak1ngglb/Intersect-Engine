@@ -13,4 +13,6 @@ public enum EntityType
     Event = 4,
 
     Resurrection = 5,
+
+    Pet = 6,
 }

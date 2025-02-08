@@ -49,6 +49,7 @@ public abstract partial class PlayerContext : IntersectDbContext<PlayerContext>,
 
     public DbSet<UserVariable> User_Variables { get; set; }
 
+    public DbSet<PlayerPet> Player_Pets { get; set; }
     internal async ValueTask Commit(
         bool commit = false,
         CancellationToken cancellationToken = default(CancellationToken)
@@ -113,6 +114,17 @@ public abstract partial class PlayerContext : IntersectDbContext<PlayerContext>,
 
         modelBuilder.Entity<User>().HasMany(b => b.Variables).WithOne(p => p.User);
         modelBuilder.Entity<UserVariable>().HasIndex(p => new { p.VariableId, p.UserId }).IsUnique();
+
+        // Relación de mascotas con el jugador
+        modelBuilder.Entity<Player>()
+            .HasMany(b => b.Pets)
+            .WithOne(p => p.Owner)
+            .HasForeignKey(p => p.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Definir la clave primaria para PlayerPet
+        modelBuilder.Entity<PlayerPet>()
+            .HasKey(p => p.PetId);
     }
 
     public void Seed()

@@ -2352,7 +2352,60 @@ internal sealed partial class PacketHandler
             //PacketSender.SendChatMsg($"[DEBUG] Trabajo {job.Key}: Nivel {jobData.Level}, Exp {jobData.Experience}/{jobData.ExperienceToNextLevel}", 5);
         }
     }
-  
+
+    public void HandlePacket(IPacketSender packetSender, PetActionResponsePacket packet)
+    {
+        if (Globals.Me == null)
+        {
+            PacketSender.SendChatMsg("Error: El jugador no está inicializado.", 5);
+            return;
+        }
+
+        if (packet.PetId == Guid.Empty)
+        {
+            PacketSender.SendChatMsg("Error: El paquete de acción de mascota no contiene un ID válido.", 5);
+            return;
+        }
+
+        // Mensaje de confirmación
+        PacketSender.SendChatMsg(packet.Message, 5);
+
+        // Si la acción fue exitosa, actualizar la UI del jugador
+        if (packet.Success)
+        {
+            switch (packet.Action)
+            {
+                case "Summon":
+                    Globals.Me.EquippedPet.IsSummoned = true;
+                    break;
+
+                case "Despawn":
+                    Globals.Me.EquippedPet.IsSummoned = false;
+                    break;
+
+                case "Feed":
+                    Globals.Me.EquippedPet.Hunger += 20; // Simulación de actualización de energía
+                    break;
+
+                case "Play":
+                    Globals.Me.EquippedPet.Mood += 10; // Simulación de mejora en el humor
+                    break;
+
+                case "Breed":
+                    PacketSender.SendChatMsg("Tu mascota ha sido registrada para reproducción.", 5);
+                    break;
+
+                case "Release":
+                    Globals.Me.Pets.Remove(packet.PetId);
+                    PacketSender.SendChatMsg("Mascota liberada correctamente.", 5);
+                    break;
+
+                default:
+                    PacketSender.SendChatMsg($"Acción de mascota desconocida: {packet.Action}", 5);
+                    break;
+            }
+        }
+    }
 
 
 

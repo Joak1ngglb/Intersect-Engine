@@ -426,7 +426,14 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
         }
         effectToEdit.Percentage = value;
     }
+    [Column("PetBaseId")]
+    public Guid PetBaseId { get; set; } = Guid.Empty;
 
+    public bool IsPet => ItemType == ItemType.Pet;
+
+    public bool IsEquipable => ItemType == ItemType.Pet || ItemType == ItemType.Equipment;
+
+  
     /// <inheritdoc />
     public string Folder { get; set; } = "";
 
@@ -469,6 +476,14 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
             {
                 EquipmentProperties.DescriptorId = default;
             }
+        }
+        if (ItemType == ItemType.Pet)
+        {
+            CanDrop = true; // No se puede dropear una mascota
+            CanTrade = true; // No se pueden intercambiar
+            CanSell = true;  // No se pueden vender
+            CanBank = true;   // Se pueden almacenar en banco
+            Stackable = false; // No deben ser acumulables
         }
     }
 

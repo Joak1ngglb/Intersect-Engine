@@ -2465,5 +2465,11 @@ public static partial class PacketSender
       //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
     }
 
+    public static void SendPetActionResponse(Player player, Guid petId, string action, bool success, string message)
+    {
+        if (player?.Client == null) return;
 
+        var packet = new PetActionResponsePacket(petId, action, success, message);
+        player.SendPacket(packet);
+    }
 }

@@ -521,4 +521,28 @@ public static partial class PacketSender
         Network.SendPacket(new TargetPacket(targetId));
     }
 
+  public static void SendBreedPet()
+    {
+        Network.SendPacket(new BreedPetPacket());
+    }
+
+    public static void SendReleasePet()
+    {
+        Network.SendPacket(new ReleasePetPacket());
+    }
+
+    public static void SendPlayWithPet()
+    {
+        Network.SendPacket(new PlayWithPetPacket());
+    }
+
+    public static void SendFeedPet()
+    {
+        Network.SendPacket(new FeedPetPacket());
+    }
+
+    public static void SendTogglePetSummon()
+    {
+        Network.SendPacket(new TogglePetSummonPacket());
+    }
 }

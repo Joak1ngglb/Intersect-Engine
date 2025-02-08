@@ -1,3 +1,4 @@
+using Intersect.Core;
 using Intersect.Extensions;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Crafting;
@@ -64,4 +65,7 @@ public enum GameObjectType
 
     [GameObjectInfo(typeof(UserVariableBase), "user_variables")]
     UserVariable,
+
+    [GameObjectInfo(typeof(PetBase), "Pets")]
+    Pet,
 }

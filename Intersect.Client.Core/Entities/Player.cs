@@ -34,6 +34,8 @@ public partial class Player : Entity, IPlayer
     public delegate void InventoryUpdated();
 
     private Guid _class;
+    public Pet EquippedPet { get; set; }
+    public Dictionary<Guid, Pet> Pets { get; private set; } = new();
 
     public Guid Class
     {
@@ -2878,4 +2880,6 @@ public partial class Player : Entity, IPlayer
         // En otros casos, usar la lógica normal de Entity
         return base.IsInFrontOf(other);
     }
+
+
 }

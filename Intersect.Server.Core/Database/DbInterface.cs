@@ -734,6 +734,9 @@ public static partial class DbInterface
                 UserVariableBase.Lookup.Clear();
 
                 break;
+            case GameObjectType.Pet:
+                PetBase.Lookup.Clear();
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
@@ -884,6 +887,12 @@ public static partial class DbInterface
                         }
 
                         break;
+                    case GameObjectType.Pet:
+                        foreach (var psw in context.Pets)
+                        {
+                             PetBase.Lookup.Set(psw.Id,psw);
+                        }
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(gameObjectType), gameObjectType, null);
                 }
@@ -991,6 +1000,9 @@ public static partial class DbInterface
             case GameObjectType.UserVariable:
                 dbObj = new UserVariableBase(predefinedid);
 
+                break;
+            case GameObjectType.Pet:
+                dbObj = new PetBase(predefinedid);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(gameObjectType), gameObjectType, null);
@@ -1117,7 +1129,10 @@ public static partial class DbInterface
                         UserVariableBase.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
-
+                    case GameObjectType.Pet:
+                        context.Pets.Add((PetBase)dbObj);
+                        PetBase.Lookup.Set(dbObj.Id, dbObj);
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(gameObjectType), gameObjectType, null);
                 }
@@ -1252,6 +1267,9 @@ public static partial class DbInterface
                     case GameObjectType.UserVariable:
                         context.UserVariables.Remove((UserVariableBase)gameObject);
 
+                        break;
+                    case GameObjectType.Pet:
+                        context.Pets.Remove((PetBase)gameObject);
                         break;
                 }
 
@@ -1401,6 +1419,9 @@ public static partial class DbInterface
                     case GameObjectType.UserVariable:
                         context.UserVariables.Update((UserVariableBase)gameObject);
 
+                        break;
+                    case GameObjectType.Pet:
+                        context.Pets.Update((PetBase)gameObject);
                         break;
                 }
 

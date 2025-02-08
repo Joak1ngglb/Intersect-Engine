@@ -75,6 +75,8 @@ public abstract partial class GameContext : IntersectDbContext<GameContext>, IGa
     //Time
     public DbSet<TimeBase> Time { get; set; }
 
+    public DbSet<PetBase> Pets { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<EquipmentProperties>()

@@ -15,6 +15,7 @@ using Intersect.Server.Core.MapInstancing;
 using Intersect.Server.Framework.Items;
 using Intersect.Server.Framework.Maps;
 using Intersect.Server.Plugins.Helpers;
+using static Intersect.Server.Database.Logging.RequestLog;
 
 namespace Intersect.Server.Maps;
 
@@ -98,6 +99,7 @@ public partial class MapInstance : IMapInstance
     /// </remarks>
     /// </summary>
     public long LastRequestedUpdateTime;
+    public ConcurrentDictionary<Guid, Pet> MapPets { get; } = new ConcurrentDictionary<Guid, Pet>();
 
     /// <summary>
     /// When the <see cref="Core.LogicService.LogicThread"/> started processing this instance.
@@ -1227,6 +1229,51 @@ public partial class MapInstance : IMapInstance
     }
     #endregion
 
+    #region Pets
+    public void SpawnPet(Pet pet)
+    {
+        if (pet == null || pet.Owner == null)
+        {
+            return;
+        }
+
+        pet.MapId = mMapController.Id;
+        pet.MapInstanceId = MapInstanceId;
+
+        if (!MapPets.ContainsKey(pet.Id))
+        {
+            MapPets.TryAdd(pet.Id, pet);
+            AddEntity(pet);
+            PacketSender.SendEntityDataToProximity(pet);
+        }
+    }
+
+    /// <summary>
+    /// Elimina una mascota del mapa.
+    /// </summary>
+    public void DespawnPet(Pet pet)
+    {
+        if (pet == null || !MapPets.ContainsKey(pet.Id))
+        {
+            return;
+        }
+
+        MapPets.TryRemove(pet.Id, out _);
+        RemoveEntity(pet);
+        PacketSender.SendEntityLeave(pet);
+    }
+
+    /// <summary>
+    /// Procesa la actualización de mascotas en el mapa.
+    /// </summary>
+    private void UpdatePets(long timeMs)
+    {
+        foreach (var pet in MapPets.Values)
+        {
+            pet.Update(timeMs);
+        }
+    }
+    #endregion
     #region Updates
     private void UpdateEntities(long timeMs)
     {
@@ -1302,6 +1349,8 @@ public partial class MapInstance : IMapInstance
         {
             PacketSender.SendMapEntityStatusUpdate(mMapController, statusUpdates.ToArray(), MapInstanceId);
         }
+        UpdatePets(timeMs); // Llamamos a la actualización de mascotas
+
     }
 
     private void ProcessNpcRespawns()

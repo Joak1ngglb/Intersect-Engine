@@ -7586,6 +7586,12 @@ public partial class Player : Entity
 
         return false;
     }
+    public bool IsUnderAttack()
+    {
+        // Implementación básica para determinar si el jugador está bajo ataque.
+        // Esto puede ser más complejo dependiendo de la lógica del juego.
+        return CombatTimer > 0;
+    }
 
     //TODO: Clean all of this stuff up
 

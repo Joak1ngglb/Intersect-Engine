@@ -27,6 +27,7 @@ using LoginPacket = Intersect.Network.Packets.Client.LoginPacket;
 using PartyInvitePacket = Intersect.Network.Packets.Client.PartyInvitePacket;
 using PingPacket = Intersect.Network.Packets.Client.PingPacket;
 using TradeRequestPacket = Intersect.Network.Packets.Client.TradeRequestPacket;
+using Microsoft.EntityFrameworkCore;
 
 namespace Intersect.Server.Networking;
 
@@ -484,10 +485,20 @@ internal sealed partial class PacketHandler
         }
         player.CloseMailBox();
     }
-    public void HandlePacket(Client client, MailBoxSendPacket packet)
+    public void HandlePacket(Client client, MailBoxOpenPacket packet)
     {
         var player = client?.Entity;
         if (player == null)
+        {
+            return;
+        }
+        player.OpenMailBox();
+    }
+    public void HandlePacket(Client client, MailBoxSendPacket packet)
+    {
+        // Validar que el remitente es válido
+        var sender = client?.Entity;
+        if (sender == null)
         {
             return;
         }
@@ -496,7 +507,7 @@ internal sealed partial class PacketHandler
         var attachments = new List<MailAttachment>();
         foreach (var attachment in packet.Attachments)
         {
-            if (player.TryTakeItem(attachment.ItemId, attachment.Quantity))
+            if (sender.TryTakeItem(attachment.ItemId, attachment.Quantity))
             {
                 attachments.Add(new MailAttachment
                 {
@@ -507,17 +518,70 @@ internal sealed partial class PacketHandler
             }
             else
             {
-                PacketSender.SendChatMsg(player, Strings.Mails.invaliditem, ChatMessageType.Error, CustomColors.Alerts.Info);
-                player.CloseMailBox();
+                PacketSender.SendChatMsg(sender, Strings.Mails.invaliditem, ChatMessageType.Error, CustomColors.Alerts.Info);
+                sender.CloseMailBox();
                 return;
             }
         }
 
-        // Delegar la lógica de envío a PacketSender.SendMail
-        PacketSender.SendMail(player, packet.To, packet.Title, packet.Message, attachments);
+        using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+        {
+            // Buscar al destinatario en la base de datos asegurando que esté referenciado correctamente
+            var recipient = context.Players.Include(p => p.MailBoxs).SingleOrDefault(p => p.Name == packet.To);
+            if (recipient == null)
+            {
+                PacketSender.SendChatMsg(sender, $"{Strings.Mails.playernotfound} ({packet.To})", ChatMessageType.Error, CustomColors.Alerts.Info);
+                sender.CloseMailBox();
+                return;
+            }
 
-        // Cerrar la ventana de correos del remitente
-        player.CloseMailBox();
+            // Asegurar que el objeto `recipient` está correctamente referenciado en el contexto
+            context.Attach(recipient);
+            context.Attach(sender);
+
+            // Crear el correo y asegurarse de que se registre correctamente
+            var mail = new MailBox(sender, recipient, packet.Title, packet.Message, attachments);
+
+            // Agregarlo a la lista de correos del destinatario
+            recipient.MailBoxs.Add(mail);
+            context.Entry(mail).State = EntityState.Added;
+
+            var onlineRecipient = Player.FindOnline(packet.To);
+            if (onlineRecipient != null)
+            {
+                onlineRecipient.MailBoxs.Add(mail);
+                PacketSender.SendChatMsg(onlineRecipient, Strings.Mails.newmail, ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+                PacketSender.SendOpenMailBox(onlineRecipient);
+            }
+            else
+            {
+                // Intentar guardar hasta 3 veces si hay conflictos de concurrencia
+                int retries = 3;
+                while (retries > 0)
+                {
+                    try
+                    {
+                        context.SaveChanges();
+                        break; // Si se guarda correctamente, salir del loop
+                    }
+                    catch (DbUpdateException ex)
+                    {
+                        Log.Error($"Error de concurrencia al guardar el correo. Intentos restantes: {retries - 1}", ex);
+                        retries--;
+
+                        if (retries == 0)
+                        {
+                            PacketSender.SendChatMsg(sender, "Error al enviar el correo debido a un conflicto.", ChatMessageType.Error, CustomColors.Alerts.Info);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Confirmar al remitente
+        PacketSender.SendChatMsg(sender, "Correo enviado con éxito.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+        sender.CloseMailBox();
     }
 
     public void HandlePacket(Client client, TakeMailPacket packet)
@@ -535,6 +599,11 @@ internal sealed partial class PacketHandler
             return;
         }
 
+        // Lista para almacenar los ítems entregados y los que no se pudieron entregar
+        var receivedItems = new List<MailAttachment>();
+        var pendingItems = new List<MailAttachment>();
+
+        // Verificar si el jugador puede recibir todos los ítems
         foreach (var attachment in mail.Attachments)
         {
             var item = new Item(attachment.ItemId, attachment.Quantity)
@@ -542,27 +611,58 @@ internal sealed partial class PacketHandler
                 Properties = attachment.Properties
             };
 
-            if (!player.TryGiveItem(item, -1))
+            if (player.TryGiveItem(item, -1))
             {
-                PacketSender.SendChatMsg(player, Strings.Mails.inventoryfull, ChatMessageType.Error, CustomColors.Alerts.Declined);
-                return;
+                receivedItems.Add(attachment); // Se guarda en la lista de entregados
+            }
+            else
+            {
+                pendingItems.Add(attachment); // Se guarda en la lista de pendientes
+            }
+        }
+
+        // Si se entregaron ítems, actualizar el correo en la base de datos
+        if (receivedItems.Any())
+        {
+            using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+            {
+                var dbMail = context.Player_MailBox.FirstOrDefault(m => m.Id == mail.Id);
+                if (dbMail != null)
+                {
+                    dbMail.Attachments = pendingItems; // Solo se guardan los ítems pendientes
+                    context.SaveChanges();
+                }
             }
 
-            PacketSender.SendChatMsg(player, $"{Strings.Mails.receiveitem} {ItemBase.Get(attachment.ItemId)?.Name}!", ChatMessageType.Bank, CustomColors.Chat.PartyChat);
+            // Notificar al jugador sobre los ítems recibidos
+            foreach (var receivedItem in receivedItems)
+            {
+                PacketSender.SendChatMsg(player, $"{Strings.Mails.receiveitem} {ItemBase.Get(receivedItem.ItemId)?.Name}!", ChatMessageType.Bank, CustomColors.Chat.PartyChat);
+            }
+
+            // Actualizar inventario después de recibir los ítems
+            PacketSender.SendInventory(player);
         }
 
-        // Actualizar inventario después de recibir ítems
-        PacketSender.SendInventory(player);
-
-        using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+        // Si no quedan ítems pendientes, eliminar el correo
+        if (!pendingItems.Any())
         {
-            context.Player_MailBox.Remove(mail); // Eliminar el correo de la base de datos
-            context.SaveChanges();
-        }
+            using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+            {
+                var dbMail = context.Player_MailBox.FirstOrDefault(m => m.Id == mail.Id);
+                if (dbMail != null)
+                {
+                    context.Player_MailBox.Remove(dbMail);
+                    context.SaveChanges();
+                }
+            }
 
-        player.MailBoxs.Remove(mail); // Eliminar el correo en memoria
-        PacketSender.SendOpenMailBox(player);
+            // Eliminar el correo en memoria
+            player.MailBoxs.Remove(mail);
+            PacketSender.SendOpenMailBox(player);
+        }
     }
+
 
     #region "Client Packets"
 

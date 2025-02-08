@@ -9,6 +9,7 @@ using Intersect.GameObjects.Maps.MapList;
 using Intersect.Logging;
 using Intersect.Models;
 using Intersect.Network;
+
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Database;
 using Intersect.Server.Database.Logging.Entities;
@@ -2496,51 +2497,10 @@ public static partial class PacketSender
         SendInventory(player);
 
         // Enviar paquete para abrir la ventana de envío de correos
+        
         player.SendPacket(new MailBoxPacket(true, true));
     }
-    public static void SendMail(Player sender, string recipientName, string title, string message, List<MailAttachment> attachments)
-    {
-        using var context = DbInterface.CreatePlayerContext(readOnly: false);
-
-        var recipient = context.Players
-            .AsNoTracking()
-            .SingleOrDefault(p => p.Name == recipientName);
-
-        if (recipient == null)
-        {
-            PacketSender.SendChatMsg(sender, $"El jugador {recipientName} no existe.", ChatMessageType.Error, CustomColors.Alerts.Info);
-            return;
-        }
-
-        var mail = new MailBox(sender, recipient, title, message, attachments);
-
-        var onlineRecipient = Player.FindOnline(recipientName);
-        if (onlineRecipient != null)
-        {
-            onlineRecipient.MailBoxs.Add(mail);
-            PacketSender.SendChatMsg(onlineRecipient, "Has recibido un nuevo correo.", ChatMessageType.Notice, CustomColors.Alerts.Info);
-            PacketSender.SendOpenMailBox(onlineRecipient);
-        }
-        else
-        {
-            context.Entry(recipient).State = EntityState.Detached; // Desvincular si está siendo rastreado
-            context.Entry(mail.Player).State = EntityState.Detached;
-            context.Entry(mail.Sender).State = EntityState.Detached;
-            context.Player_MailBox.Add(mail);
-
-            try
-            {
-                context.SaveChanges();
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                Log.Error("Conflicto de concurrencia detectado al guardar correo.", ex);
-            }
-        }
-
-        PacketSender.SendChatMsg(sender, "Correo enviado con éxito.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
-    }
-
+   
     public static void NotifyPlayerOnLogin(Player player)
     {
         // Cargar correos pendientes desde la base de datos
@@ -2549,8 +2509,8 @@ public static partial class PacketSender
         // Verificar si hay correos con adjuntos pendientes
         if (player.MailBoxs.Any(mail => mail.Attachments != null && mail.Attachments.Count > 0))
         {
-            PacketSender.SendChatMsg(player, "Tienes nuevos correos en tu bandeja de entrada.", ChatMessageType.Notice, CustomColors.Alerts.Info);
-            PacketSender.SendOpenMailBox(player);
+            SendChatMsg(player, "Tienes nuevos correos en tu bandeja de entrada.", ChatMessageType.Notice, CustomColors.Alerts.Info);
+            SendOpenMailBox(player);
         }
     }
 

@@ -112,7 +112,7 @@ public partial class CharacterWindow
         mCharacterWindow.DisableResizing();
 
         mCharacterName = new Label(mCharacterWindow, "CharacterNameLabel");
-        mCharacterName.SetTextColor(Color.White, Label.ControlState.Normal);
+        mCharacterName.SetTextColor(Color.White, ComponentState.Normal);
 
         mCharacterLevelAndClass = new Label(mCharacterWindow, "ChatacterInfoLabel");
         mCharacterLevelAndClass.SetText("");
@@ -183,27 +183,27 @@ public partial class CharacterWindow
     }
 
     //Update Button Event Handlers
-    void _addMagicResistBtn_Clicked(Base sender, ClickedEventArgs arguments)
+    void _addMagicResistBtn_Clicked(Base sender, MouseButtonState arguments)
     {
         PacketSender.SendUpgradeStat((int) Stat.MagicResist);
     }
 
-    void _addAbilityPwrBtn_Clicked(Base sender, ClickedEventArgs arguments)
+    void _addAbilityPwrBtn_Clicked(Base sender, MouseButtonState arguments)
     {
         PacketSender.SendUpgradeStat((int) Stat.AbilityPower);
     }
 
-    void _addSpeedBtn_Clicked(Base sender, ClickedEventArgs arguments)
+    void _addSpeedBtn_Clicked(Base sender, MouseButtonState arguments)
     {
         PacketSender.SendUpgradeStat((int) Stat.Speed);
     }
 
-    void _addDefenseBtn_Clicked(Base sender, ClickedEventArgs arguments)
+    void _addDefenseBtn_Clicked(Base sender, MouseButtonState arguments)
     {
         PacketSender.SendUpgradeStat((int) Stat.Defense);
     }
 
-    void _addAttackBtn_Clicked(Base sender, ClickedEventArgs arguments)
+    void _addAttackBtn_Clicked(Base sender, MouseButtonState arguments)
     {
         PacketSender.SendUpgradeStat((int) Stat.Attack);
     }
@@ -323,23 +323,38 @@ public partial class CharacterWindow
         }
 
         mAttackLabel.SetText(
-            Strings.Character.Stat0.ToString(Strings.Combat.Stat0, Globals.Me.Stat[(int) Stat.Attack])
-        );
-
-        mDefenseLabel.SetText(
-            Strings.Character.Stat2.ToString(Strings.Combat.Stat2, Globals.Me.Stat[(int) Stat.Defense])
-        );
-
-        mSpeedLabel.SetText(
-            Strings.Character.Stat4.ToString(Strings.Combat.Stat4, Globals.Me.Stat[(int) Stat.Speed])
+            Strings.Character.StatLabelValue.ToString(
+                Strings.Combat.Stats[Stat.Attack],
+                Globals.Me.Stat[(int)Stat.Attack]
+            )
         );
 
         mAbilityPwrLabel.SetText(
-            Strings.Character.Stat1.ToString(Strings.Combat.Stat1, Globals.Me.Stat[(int) Stat.AbilityPower])
+            Strings.Character.StatLabelValue.ToString(
+                Strings.Combat.Stats[Stat.AbilityPower],
+                Globals.Me.Stat[(int)Stat.AbilityPower]
+            )
+        );
+
+        mDefenseLabel.SetText(
+            Strings.Character.StatLabelValue.ToString(
+                Strings.Combat.Stats[Stat.Defense],
+                Globals.Me.Stat[(int)Stat.Defense]
+            )
         );
 
         mMagicRstLabel.SetText(
-            Strings.Character.Stat3.ToString(Strings.Combat.Stat3, Globals.Me.Stat[(int) Stat.MagicResist])
+            Strings.Character.StatLabelValue.ToString(
+                Strings.Combat.Stats[Stat.MagicResist],
+                Globals.Me.Stat[(int)Stat.MagicResist]
+            )
+        );
+
+        mSpeedLabel.SetText(
+            Strings.Character.StatLabelValue.ToString(
+                Strings.Combat.Stats[Stat.Speed],
+                Globals.Me.Stat[(int)Stat.Speed]
+            )
         );
 
         mPointsLabel.SetText(Strings.Character.Points.ToString(Globals.Me.StatPoints));

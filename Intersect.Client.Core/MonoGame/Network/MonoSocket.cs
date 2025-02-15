@@ -12,6 +12,7 @@ using Intersect.Utilities;
 using Intersect.Client.Core;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Menu;
+using Intersect.Client.Interface.Shared;
 using Intersect.Client.Localization;
 using Intersect.Core;
 using Intersect.Network.Packets.Unconnected.Client;
@@ -96,8 +97,6 @@ internal partial class MonoSocket : GameSocket
     private IPEndPoint? _lastEndpoint;
     private volatile bool _resolvingHost;
 
-    private static readonly HashSet<string> UnresolvableHostNames = new();
-
     public static MonoSocket Instance { get; private set; } = default!;
 
     internal MonoSocket(IClientContext context)
@@ -113,7 +112,7 @@ internal partial class MonoSocket : GameSocket
     private bool TryResolveEndPoint([NotNullWhen(true)] out IPEndPoint? endPoint)
     {
         var currentHost = ClientConfiguration.Instance.Host;
-        if (UnresolvableHostNames.Contains(currentHost))
+        if (ClientNetwork.UnresolvableHostNames.Contains(currentHost))
         {
             endPoint = default;
             return false;
@@ -165,8 +164,8 @@ internal partial class MonoSocket : GameSocket
                 throw;
             }
 
-            UnresolvableHostNames.Add(_lastHost);
-            Interface.Interface.ShowError(Strings.Errors.HostNotFound);
+            ClientNetwork.UnresolvableHostNames.Add(_lastHost);
+            Interface.Interface.ShowAlert(Strings.Errors.HostNotFound, alertType: AlertType.Error);
             ApplicationContext.Context.Value?.Logger.LogError(socketException, $"Failed to resolve host: '{_lastHost}'");
             endPoint = default;
             return false;
@@ -237,7 +236,7 @@ internal partial class MonoSocket : GameSocket
                                         network.SendUnconnected(serverEndpoint, new ServerStatusRequestPacket());
                                     }
                                 }
-                                else if (!UnresolvableHostNames.Contains(_lastHost))
+                                else if (!ClientNetwork.UnresolvableHostNames.Contains(_lastHost))
                                 {
                                     ApplicationContext.Context.Value?.Logger.LogInformation($"Unable to resolve '{_lastHost}:{_lastPort}'");
                                 }

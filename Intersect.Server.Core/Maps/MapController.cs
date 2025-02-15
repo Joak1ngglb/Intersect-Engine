@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using Intersect.Compression;
 using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Maps;
 using Intersect.Network.Packets.Server;
@@ -34,22 +35,137 @@ namespace Intersect.Server.Maps;
 /// </summary>
 public partial class MapController : MapBase
 {
-    private ConcurrentDictionary<Guid, MapInstance> mInstances = new ConcurrentDictionary<Guid, MapInstance>();
+    public static void DespawnInstancesOf(ResourceBase resource)
+    {
+        var allMapControllers = Lookup.Values.OfType<MapController>().ToArray();
+        foreach (var map in allMapControllers)
+        {
+            map?.DespawnResourceAcrossInstances(resource);
+        }
+    }
+
+    public static void DespawnInstancesOf(NpcBase npc)
+    {
+        var allMapControllers = Lookup.Values.OfType<MapController>().ToArray();
+        foreach (var map in allMapControllers)
+        {
+            map?.DespawnNpcAcrossInstances(npc);
+        }
+    }
+
+    public static void DespawnInstancesOf(ProjectileBase projectile)
+    {
+        var allMapControllers = Lookup.Values.OfType<MapController>().ToArray();
+        foreach (var map in allMapControllers)
+        {
+            map?.DespawnProjectileAcrossInstances(projectile);
+        }
+    }
+
+    public static void DespawnInstancesOf(ItemBase item)
+    {
+        var allMapControllers = Lookup.Values.OfType<MapController>().ToArray();
+        foreach (var map in allMapControllers)
+        {
+            map?.DespawnItemAcrossInstances(item);
+        }
+    }
+
+    private readonly ConcurrentDictionary<Guid, MapInstance> mInstances = [];
 
     private static MapControllers sLookup;
 
     //Location of Map in the current grid
-    [JsonIgnore] [NotMapped] public int MapGrid;
+    [JsonIgnore]
+    [NotMapped]
+    public int MapGrid
+    {
+        get => _mapGridId;
+        set
+        {
+            if (value == _mapGridId)
+            {
+                return;
+            }
 
-    [JsonIgnore] [NotMapped] public int MapGridX = -1;
+            _mapGridId = value;
+            CachedMapClientPacket = null;
+        }
+    }
 
-    [JsonIgnore] [NotMapped] public int MapGridY = -1;
+    [JsonIgnore]
+    [NotMapped]
+    public int MapGridX
+    {
+        get => _mapGridX;
+        set
+        {
+            if (value == _mapGridX)
+            {
+                return;
+            }
+
+            _mapGridX = value;
+            CachedMapClientPacket = null;
+        }
+    }
+
+    [JsonIgnore]
+    [NotMapped]
+    public int MapGridY
+    {
+        get => _mapGridY;
+        set
+        {
+            if (value == _mapGridY)
+            {
+                return;
+            }
+
+            _mapGridY = value;
+            CachedMapClientPacket = null;
+        }
+    }
+
+    public bool[]? GetCameraHolds()
+    {
+        switch (Options.Instance.Map.GameBorderStyle)
+        {
+            case GameBorderStyle.Seamed:
+                return [true, true, true, true];
+
+            case GameBorderStyle.Seamless:
+                var grid = DbInterface.GetGrid(MapGrid);
+                if (grid != null)
+                {
+                    return
+                    [
+                        0 == MapGridY,
+                        grid.YMax - 1 == MapGridY,
+                        0 == MapGridX,
+                        grid.XMax - 1 == MapGridX,
+                    ];
+                }
+                break;
+
+            case GameBorderStyle.SeamlessUnbounded:
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        return null;
+    }
 
     //Temporary Values
     private Guid[] mSurroundingMapIds = new Guid[0];
     private Guid[] mSurroundingMapsIdsWithSelf = new Guid[0];
     private MapController[] mSurroundingMaps = new MapController[0];
     private MapController[] mSurroundingMapsWithSelf = new MapController[0];
+    private int _mapGridId;
+    private int _mapGridX = -1;
+    private int _mapGridY = -1;
 
     [NotMapped, JsonIgnore] public MapPacket? CachedMapClientPacket { get; set; }
 
@@ -528,7 +644,7 @@ public partial class MapController : MapBase
             }
             TileData = LZ4.PickleString(JsonConvert.SerializeObject(Layers, Formatting.None, mJsonSerializerSettings));
             Layers = null;
-            
+
         }
     }
 
@@ -571,7 +687,7 @@ public partial class MapController : MapBase
                     var oldMap = currentMap;
                     if (currentMap.Left != Guid.Empty)
                     {
-                        currentMap = MapController.Get(currentMap.Left);
+                        currentMap = Get(currentMap.Left);
                         if (currentMap == null)
                         {
                             currentMap = oldMap;
@@ -588,7 +704,7 @@ public partial class MapController : MapBase
                     var oldMap = currentMap;
                     if (currentMap.Right != Guid.Empty)
                     {
-                        currentMap = MapController.Get(currentMap.Right);
+                        currentMap = Get(currentMap.Right);
                         if (currentMap == null)
                         {
                             currentMap = oldMap;
@@ -605,7 +721,7 @@ public partial class MapController : MapBase
                     var oldMap = currentMap;
                     if (currentMap.Up != Guid.Empty)
                     {
-                        currentMap = MapController.Get(currentMap.Up);
+                        currentMap = Get(currentMap.Up);
                         if (currentMap == null)
                         {
                             currentMap = oldMap;
@@ -622,7 +738,7 @@ public partial class MapController : MapBase
                     var oldMap = currentMap;
                     if (currentMap.Down != Guid.Empty)
                     {
-                        currentMap = MapController.Get(currentMap.Down);
+                        currentMap = Get(currentMap.Down);
                         if (currentMap == null)
                         {
                             currentMap = oldMap;

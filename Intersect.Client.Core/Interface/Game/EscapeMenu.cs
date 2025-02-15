@@ -11,12 +11,15 @@ namespace Intersect.Client.Interface.Game;
 
 public partial class EscapeMenu : ImagePanel
 {
-    private readonly SettingsWindow _settingsWindow;
+    private readonly Func<SettingsWindow> _settingsWindowProvider;
     private readonly Button _buttonCharacterSelect;
+    private readonly Panel _versionPanel;
 
-    public EscapeMenu(Canvas gameCanvas) : base(gameCanvas, nameof(EscapeMenu))
+    public EscapeMenu(Canvas gameCanvas, Func<SettingsWindow> settingsWindowProvider) : base(gameCanvas, nameof(EscapeMenu))
     {
-        Interface.InputBlockingElements?.Add(this);
+        _settingsWindowProvider = settingsWindowProvider;
+
+        Interface.InputBlockingComponents?.Add(this);
 
         Width = gameCanvas.Width;
         Height = gameCanvas.Height;
@@ -29,9 +32,6 @@ public partial class EscapeMenu : ImagePanel
         {
             Text = Strings.EscapeMenu.Title,
         };
-
-        // Settings Window and Button
-        _settingsWindow = new SettingsWindow(gameCanvas, null, this);
 
         var buttonSettings = new Button(container, "SettingsButton")
         {
@@ -73,6 +73,8 @@ public partial class EscapeMenu : ImagePanel
         {
             _buttonCharacterSelect.IsDisabled = true;
         }
+
+        _versionPanel = new VersionPanel(this, name: nameof(_versionPanel));
     }
 
     public override void Invalidate()
@@ -96,7 +98,8 @@ public partial class EscapeMenu : ImagePanel
     /// <inheritdoc />
     public override void ToggleHidden()
     {
-        if (!_settingsWindow.IsHidden)
+        var settingsWindow = _settingsWindowProvider();
+        if (settingsWindow.IsVisible)
         {
             return;
         }
@@ -116,22 +119,17 @@ public partial class EscapeMenu : ImagePanel
 
     public void OpenSettingsWindow(bool returnToMenu = false)
     {
-        _settingsWindow.Show(returnToMenu);
-        Interface.GameUi?.EscapeMenu?.Hide();
+        var settingsWindow = _settingsWindowProvider();
+        settingsWindow.Show(returnToMenu ? this : null);
+        Hide();
     }
 
-    private void _buttonCharacterSelect_Clicked(Base sender, ClickedEventArgs arguments)
+    private void _buttonCharacterSelect_Clicked(Base sender, MouseButtonState arguments)
     {
         ToggleHidden();
         if (Globals.Me?.CombatTimer > Timing.Global.Milliseconds)
         {
-            //Show Logout in Combat Warning
-            _ = new InputBox(
-                title: Strings.Combat.WarningTitle,
-                prompt: Strings.Combat.WarningCharacterSelect,
-                inputType: InputBox.InputType.YesNo,
-                onSuccess: LogoutToCharacterSelect
-            );
+            ShowCombatWarning();
         }
         else
         {
@@ -149,18 +147,12 @@ public partial class EscapeMenu : ImagePanel
         Main.Logout(true);
     }
 
-    private void buttonLogout_Clicked(Base sender, ClickedEventArgs arguments)
+    private void buttonLogout_Clicked(Base sender, MouseButtonState arguments)
     {
         ToggleHidden();
         if (Globals.Me?.CombatTimer > Timing.Global.Milliseconds)
         {
-            //Show Logout in Combat Warning
-            _ = new InputBox(
-                title: Strings.Combat.WarningTitle,
-                prompt: Strings.Combat.WarningLogout,
-                inputType: InputBox.InputType.YesNo,
-                onSuccess: LogoutToMainMenu
-            );
+            ShowCombatWarning();
         }
         else
         {
@@ -178,23 +170,28 @@ public partial class EscapeMenu : ImagePanel
         Main.Logout(false);
     }
 
-    private void buttonQuit_Clicked(Base sender, ClickedEventArgs arguments)
+    private void buttonQuit_Clicked(Base sender, MouseButtonState arguments)
     {
         ToggleHidden();
         if (Globals.Me?.CombatTimer > Timing.Global.Milliseconds)
         {
-            //Show Logout in Combat Warning
-            _ = new InputBox(
-                title: Strings.Combat.WarningTitle,
-                prompt: Strings.Combat.WarningExitDesktop,
-                inputType: InputBox.InputType.YesNo,
-                onSuccess: ExitToDesktop
-            );
+            ShowCombatWarning();
         }
         else
         {
             ExitToDesktop(null, null);
         }
+    }
+
+    private void ShowCombatWarning()
+    {
+        AlertWindow.Open(
+            Strings.Combat.WarningCharacterSelect,
+            Strings.Combat.WarningTitle,
+            AlertType.Warning,
+            handleSubmit: LogoutToCharacterSelect,
+            inputType: InputType.YesNo
+        );
     }
 
     private void ExitToDesktop(object? sender, EventArgs? e)

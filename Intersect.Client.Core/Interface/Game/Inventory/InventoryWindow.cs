@@ -4,7 +4,9 @@ using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.General;
 using Intersect.Client.Localization;
+using Intersect.Core;
 using Intersect.GameObjects;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Interface.Game.Inventory;
 
@@ -108,7 +110,7 @@ public partial class InventoryWindow
                 {
                     mUseItemContextItem.SetText(Strings.ItemContextMenu.Equip.ToString(item.Name));
                 }
-                
+
                 break;
         }
 
@@ -152,13 +154,13 @@ public partial class InventoryWindow
         }
     }
 
-    private void MUseItemContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.ClickedEventArgs arguments)
+    private void MUseItemContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.MouseButtonState arguments)
     {
         var slot = (int)sender.Parent.UserData;
         Globals.Me.TryUseItem(slot);
     }
 
-    private void MActionItemContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.ClickedEventArgs arguments)
+    private void MActionItemContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.MouseButtonState arguments)
     {
         var slot = (int)sender.Parent.UserData;
         if (Globals.GameShop != null)
@@ -167,19 +169,19 @@ public partial class InventoryWindow
         }
         else if (Globals.InBank)
         {
-            Globals.Me.TryDepositItem(slot);
+            Globals.Me.TryStoreItemInBank(slot);
         }
         else if (Globals.InBag)
         {
-            Globals.Me.TryStoreBagItem(slot, -1);
+            Globals.Me.TryStoreItemInBag(slot, -1);
         }
         else if (Globals.InTrade)
         {
-            Globals.Me.TryTradeItem(slot);
+            Globals.Me.TryOfferItemToTrade(slot);
         }
     }
 
-    private void MDropItemContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.ClickedEventArgs arguments)
+    private void MDropItemContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.MouseButtonState arguments)
     {
         var slot = (int) sender.Parent.UserData;
         Globals.Me.TryDropItem(slot);
@@ -207,35 +209,70 @@ public partial class InventoryWindow
 
         mInventoryWindow.IsClosable = Globals.CanCloseInventory;
 
-        for (var i = 0; i < Options.Instance.Player.MaxInventory; i++)
+        if (Globals.Me?.Inventory is not { } inventory)
         {
-            var item = ItemBase.Get(Globals.Me.Inventory[i].ItemId);
-            if (item != null)
+            return;
+        }
+
+        var slotCount = Math.Min(Options.Instance.Player.MaxInventory, Items.Count);
+        for (var slotIndex = 0; slotIndex < slotCount; slotIndex++)
+        {
+            var slotComponent = Items[slotIndex];
+            var slotLabel = mValues[slotIndex];
+
+            var inventorySlot = inventory[slotIndex];
+            if (!ItemBase.TryGet(inventorySlot.ItemId, out var itemDescriptor))
             {
-                Items[i].Pnl.IsHidden = false;
-                if (item.IsStackable)
+                if (inventorySlot.ItemId != default)
                 {
-                    mValues[i].IsHidden = Globals.Me.Inventory[i].Quantity <= 1;
-                    mValues[i].Text = Strings.FormatQuantityAbbreviated(Globals.Me.Inventory[i].Quantity);
-                }
-                else
-                {
-                    mValues[i].IsHidden = true;
+                    ApplicationContext.CurrentContext.Logger.LogWarning(
+                        "Inventory slot {SlotIndex} refers to missing Item descriptor {DescriptorId}",
+                        slotIndex,
+                        inventorySlot.ItemId
+                    );
                 }
 
-                if (Items[i].IsDragging)
+                if (slotComponent.Pnl.IsVisible)
                 {
-                    Items[i].Pnl.IsHidden = true;
-                    mValues[i].IsHidden = true;
+                    slotComponent.Pnl.IsHidden = true;
                 }
 
-                Items[i].Update();
+                if (slotLabel.IsVisible)
+                {
+                    slotLabel.IsHidden = true;
+                }
+                continue;
+            }
+
+            if (slotComponent.Pnl.IsHidden)
+            {
+                slotComponent.Pnl.IsVisible = true;
+            }
+
+            var shouldHideLabel = !itemDescriptor.IsStackable || inventorySlot.Quantity <= 1;
+            if (shouldHideLabel)
+            {
+                if (slotLabel.IsVisible)
+                {
+                    slotLabel.IsVisible = false;
+                }
             }
             else
             {
-                Items[i].Pnl.IsHidden = true;
-                mValues[i].IsHidden = true;
+                if (slotLabel.IsHidden)
+                {
+                    slotLabel.IsVisible = true;
+                }
+                slotLabel.Text = Strings.FormatQuantityAbbreviated(inventorySlot.Quantity);
             }
+
+            if (slotComponent.IsDragging)
+            {
+                slotComponent.Pnl.IsHidden = true;
+                slotLabel.IsHidden = true;
+            }
+
+            slotComponent.Update();
         }
     }
 
@@ -298,9 +335,9 @@ public partial class InventoryWindow
     {
         var rect = new FloatRect()
         {
-            X = mInventoryWindow.LocalPosToCanvas(new Point(0, 0)).X -
+            X = mInventoryWindow.ToCanvas(new Point(0, 0)).X -
                 (Items[0].Container.Padding.Left + Items[0].Container.Padding.Right) / 2,
-            Y = mInventoryWindow.LocalPosToCanvas(new Point(0, 0)).Y -
+            Y = mInventoryWindow.ToCanvas(new Point(0, 0)).Y -
                 (Items[0].Container.Padding.Top + Items[0].Container.Padding.Bottom) / 2,
             Width = mInventoryWindow.Width + Items[0].Container.Padding.Left + Items[0].Container.Padding.Right,
             Height = mInventoryWindow.Height + Items[0].Container.Padding.Top + Items[0].Container.Padding.Bottom

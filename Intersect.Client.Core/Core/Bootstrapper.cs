@@ -1,14 +1,17 @@
 using System.Diagnostics;
 using System.Reflection;
 using CommandLine;
+using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Factories;
+using Intersect.Framework.Logging;
 using Intersect.Network;
 using Intersect.Plugins;
 using Intersect.Plugins.Contexts;
 using Intersect.Plugins.Helpers;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
 
@@ -37,26 +40,15 @@ internal static partial class Bootstrapper
         var commandLineOptions = parser.ParseArguments<ClientCommandLineOptions>(args)
             .MapResult(HandleParsedArguments, HandleParserErrors);
 
-        var executableName = Path.GetFileNameWithoutExtension(
-            Process.GetCurrentProcess().MainModule?.FileName ?? Assembly.GetExecutingAssembly().GetName().Name
-        );
-        var loggerConfiguration = new LoggerConfiguration().MinimumLevel
-            .Is(Debugger.IsAttached ? LogEventLevel.Debug : LogEventLevel.Information).Enrich.FromLogContext().WriteTo
-            .Console().WriteTo.File(
-                Path.Combine(
-                    "logs",
-                    $"{executableName}-{Process.GetCurrentProcess().StartTime:yyyy_MM_dd-HH_mm_ss_fff}.log"
-                ),
-                rollOnFileSizeLimit: true,
-                retainedFileTimeLimit: TimeSpan.FromDays(30)
-            ).WriteTo.File(
-                Path.Combine("logs", $"errors-{executableName}.log"),
-                restrictedToMinimumLevel: LogEventLevel.Error,
-                rollOnFileSizeLimit: true,
-                retainedFileTimeLimit: TimeSpan.FromDays(30)
-            );
+        LoggingLevelSwitch loggingLevelSwitch =
+            new(Debugger.IsAttached ? LogEventLevel.Debug : LogEventLevel.Information);
 
-        var logger = new SerilogLoggerFactory(loggerConfiguration.CreateLogger()).CreateLogger("Client");
+        var executingAssembly = Assembly.GetExecutingAssembly();
+        var (_, logger) = new LoggerConfiguration().CreateLoggerForIntersect(
+            executingAssembly,
+            "Client",
+            loggingLevelSwitch
+        );
 
         var packetTypeRegistry = new PacketTypeRegistry(logger, typeof(SharedConstants).Assembly);
         if (!packetTypeRegistry.TryRegisterBuiltIn())
@@ -83,8 +75,31 @@ internal static partial class Bootstrapper
             }
         }
 
-        var context = new ClientContext(commandLineOptions, logger, packetHelper);
-        ApplicationContext.Context.Value = context;
+        var clientConfiguration = ClientConfiguration.LoadAndSave();
+        loggingLevelSwitch.MinimumLevel = LevelConvert.ToSerilogLevel(clientConfiguration.LogLevel);
+
+        if (commandLineOptions.Server is { } server)
+        {
+            var serverParts = server.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var host = serverParts.First();
+
+            var portPart = serverParts.Skip(1).FirstOrDefault();
+            if (string.IsNullOrEmpty(portPart))
+            {
+                portPart = "5400";
+            }
+            var port = ushort.Parse(portPart);
+
+            clientConfiguration.Host = host;
+            clientConfiguration.Port = port;
+        }
+
+        commandLineOptions = commandLineOptions with
+        {
+            Server = $"{clientConfiguration.Host}:{clientConfiguration.Port}",
+        };
+
+        ClientContext context = new(commandLineOptions, clientConfiguration, logger, packetHelper);
         context.Start();
     }
 

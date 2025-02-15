@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Intersect.Admin.Actions;
 using Intersect.Client.Core.Controls;
 using Intersect.Client.Entities;
@@ -15,6 +16,8 @@ using Intersect.Enums;
 using Intersect.Utilities;
 
 namespace Intersect.Client.Core;
+
+public delegate bool MouseButtonEventInterceptor(Keys modifier, MouseButton mouseButton);
 
 public static partial class Input
 {
@@ -39,18 +42,18 @@ public static partial class Input
     private static void HandleZoomOut()
     {
         Globals.Database.WorldZoom /= 2;
-        if (Globals.Database.WorldZoom < Graphics.BaseWorldScale)
+        if (Globals.Database.WorldZoom < Graphics.MinimumWorldScale)
         {
-            Globals.Database.WorldZoom = Graphics.BaseWorldScale * 4;
+            Globals.Database.WorldZoom = Graphics.MaximumWorldScale;
         }
     }
 
     private static void HandleZoomIn()
     {
         Globals.Database.WorldZoom *= 2;
-        if (Globals.Database.WorldZoom > Graphics.BaseWorldScale * 4)
+        if (Globals.Database.WorldZoom > Graphics.MaximumWorldScale)
         {
-            Globals.Database.WorldZoom = Graphics.BaseWorldScale;
+            Globals.Database.WorldZoom = Graphics.MinimumWorldScale;
         }
     }
 
@@ -61,14 +64,16 @@ public static partial class Input
             return;
         }
 
+        var currentGameState = Globals.GameState;
         var consumeKey = false;
         bool canFocusChat = true;
 
         KeyDown?.Invoke(modifier, key);
+
         switch (key)
         {
             case Keys.Escape:
-                if (Globals.GameState != GameStates.Intro)
+                if (currentGameState != GameStates.Intro)
                 {
                     break;
                 }
@@ -79,12 +84,13 @@ public static partial class Input
                 return;
 
             case Keys.Enter:
-
-                for (int i = Interface.Interface.InputBlockingElements.Count - 1; i >= 0; i--)
+                var components = Interface.Interface.InputBlockingComponents.ToArray();
+                for (int i = components.Length - 1; i >= 0; i--)
                 {
+                    var inputBlockingComponent = components[i];
                     try
                     {
-                        if (Interface.Interface.InputBlockingElements[i] is InputBox inputBox && !inputBox.IsHidden)
+                        if (inputBlockingComponent is InputBox { IsHidden: false } inputBox)
                         {
                             inputBox.SubmitInput();
                             canFocusChat = false;
@@ -95,8 +101,7 @@ public static partial class Input
 
                     try
                     {
-                        var eventWindow = (EventWindow)Interface.Interface.InputBlockingElements[i];
-                        if (eventWindow != null && !eventWindow.IsHidden && Globals.EventDialogs.Count > 0)
+                        if (inputBlockingComponent is EventWindow { IsHidden: false } eventWindow && Globals.EventDialogs.Count > 0)
                         {
                             eventWindow.CloseEventResponse(EventResponseType.OneOption);
                             canFocusChat = false;
@@ -106,13 +111,12 @@ public static partial class Input
                     }
                     catch { }
                 }
-
                 break;
         }
 
         if (Controls.Controls.ControlHasKey(Control.OpenMenu, modifier, key))
         {
-            if (Globals.GameState != GameStates.InGame)
+            if (currentGameState != GameStates.InGame)
             {
                 return;
             }
@@ -132,7 +136,7 @@ public static partial class Input
             {
                 // We've closed our windows, don't do anything else. :)
             }
-            else if (Globals.Me is {} me && me.TargetIndex != default && me.Status.All(s => s.Type != SpellEffect.Taunt))
+            else if (Globals.Me is {} me && me.TargetId != default && me.Status.All(s => s.Type != SpellEffect.Taunt))
             {
                 _ = me.ClearTarget();
             }
@@ -163,211 +167,171 @@ public static partial class Input
             return;
         }
 
-        Controls.Controls.GetControlsFor(modifier, key)
-            ?.ForEach(
-                control =>
-                {
-                    if (consumeKey)
+        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+        foreach (var control in Controls.Controls.GetControlsFor(modifier, key))
+        {
+            if (consumeKey)
+            {
+                continue;
+            }
+
+            switch (control)
+            {
+                case Control.Screenshot:
+                    Graphics.Renderer?.RequestScreenshot();
+                    break;
+
+                case Control.ToggleGui:
+                    if (currentGameState == GameStates.InGame)
                     {
-                        return;
+                        Interface.Interface.HideUi = !Interface.Interface.HideUi;
+                    }
+                    break;
+
+                case Control.HoldToZoomIn:
+                case Control.ToggleZoomIn:
+                {
+                    HandleZoomIn();
+                    break;
+                }
+
+                case Control.HoldToZoomOut:
+                case Control.ToggleZoomOut:
+                {
+                    HandleZoomOut();
+                    break;
+                }
+
+                case Control.ToggleFullscreen:
+                {
+                    if (Graphics.Renderer == default)
+                    {
+                        break;
                     }
 
-                    if (IsModifier(key))
-                    {
-                        return;
-                    }
+                    Globals.Database.FullScreen = !Globals.Database.FullScreen;
+                    Globals.Database.SavePreferences();
+                    Graphics.Renderer.OverrideResolution = Resolution.Empty;
+                    Graphics.Renderer.Init();
+                    break;
+                }
+
+                case Control.OpenDebugger:
+                    _ = MutableInterface.ToggleDebug();
+                    break;
+            }
+
+            switch (currentGameState)
+            {
+                case GameStates.Intro:
+                    break;
+
+                case GameStates.Menu:
+                    var selectCharacterWindow = Interface.Interface.MenuUi.MainMenu.SelectCharacterWindow;
 
                     switch (control)
                     {
-                        case Control.Screenshot:
-                            Graphics.Renderer?.RequestScreenshot();
-
-                            break;
-
-                        case Control.ToggleGui:
-                            if (Globals.GameState == GameStates.InGame)
+                        case Control.Enter:
+                            if (selectCharacterWindow is { IsHidden: false, CharacterSelectionPreviews: { } previews })
                             {
-                                Interface.Interface.HideUi = !Interface.Interface.HideUi;
+                                var selectedPreviewIndex = selectCharacterWindow._selectedCharacterIndex;
+                                if (previews.Length > selectedPreviewIndex && previews[selectedPreviewIndex] != default)
+                                {
+                                    selectCharacterWindow.ButtonPlay_Clicked(null, null);
+                                    consumeKey = true;
+                                }
                             }
-
-                            break;
-
-                        case Control.HoldToZoomIn:
-                        case Control.ToggleZoomIn:
-                        {
-                            HandleZoomIn();
-                            break;
-                        }
-
-                        case Control.HoldToZoomOut:
-                        case Control.ToggleZoomOut:
-                        {
-                            HandleZoomOut();
-                            break;
-                        }
-
-                        case Control.ToggleFullscreen:
-                        {
-                            if (Graphics.Renderer == default)
-                            {
-                                break;
-                            }
-
-                            Globals.Database.FullScreen = !Globals.Database.FullScreen;
-                            Globals.Database.SavePreferences();
-                            Graphics.Renderer.OverrideResolution = Resolution.Empty;
-                            Graphics.Renderer.Init();
-                            break;
-                        }
-
-                        case Control.OpenDebugger:
-                            _ = MutableInterface.ToggleDebug();
                             break;
                     }
+                    break;
 
-                    switch (Globals.GameState)
+                case GameStates.InGame:
+                    switch (control)
                     {
-                        case GameStates.Intro:
+                        case Control.Block:
+                            _ = (Globals.Me?.TryBlock());
                             break;
 
-                        case GameStates.Menu:
-                            var selectCharacterWindow = Interface.Interface.MenuUi.MainMenu.SelectCharacterWindow;
+                        case Control.AutoTarget:
+                            Globals.Me?.AutoTarget();
+                            break;
 
-                            switch (control)
+                        case Control.HoldToSoftRetargetOnSelfCast:
+                            Globals.HoldToSoftRetargetOnSelfCast = true;
+                            break;
+
+                        case Control.ToggleAutoSoftRetargetOnSelfCast:
+                            Globals.Database.AutoSoftRetargetOnSelfCast = !Globals.Database.AutoSoftRetargetOnSelfCast;
+                            break;
+
+                        case Control.PickUp:
+                            if (Globals.Me != default && Globals.Me.MapInstance != default)
                             {
-                                case Control.Enter:
-                                    if (!selectCharacterWindow.IsHidden && selectCharacterWindow.Characters[selectCharacterWindow.mSelectedChar] != null)
-                                    {
-                                        selectCharacterWindow.ButtonPlay_Clicked(null, null);
-                                        consumeKey = true;
-                                    }
-
-                                    break;
+                                _ = Player.TryPickupItem(
+                                    Globals.Me.MapInstance.Id,
+                                    Globals.Me.Y * Options.Instance.Map.MapWidth + Globals.Me.X
+                                );
                             }
-
                             break;
 
-                        case GameStates.InGame:
-                            switch (control)
+                        case Control.Enter:
+                            if (canFocusChat && Interface.Interface.GameUi != default)
                             {
-                                case Control.MoveUp:
-                                    break;
-
-                                case Control.MoveLeft:
-                                    break;
-
-                                case Control.MoveDown:
-                                    break;
-
-                                case Control.MoveRight:
-                                    break;
-
-                                case Control.AttackInteract:
-                                    break;
-
-                                case Control.Block:
-                                    _ = (Globals.Me?.TryBlock());
-
-                                    break;
-
-                                case Control.AutoTarget:
-                                    Globals.Me?.AutoTarget();
-
-                                    break;
-
-                                case Control.PickUp:
-                                    if (Globals.Me != default && Globals.Me.MapInstance != default)
-                                    {
-                                        _ = Player.TryPickupItem(
-                                                Globals.Me.MapInstance.Id,
-                                                Globals.Me.Y * Options.Instance.Map.MapWidth + Globals.Me.X
-                                            );
-                                    }
-
-                                    break;
-
-                                case Control.Enter:
-                                    if (canFocusChat && Interface.Interface.GameUi != default)
-                                    {
-                                        Interface.Interface.GameUi.FocusChat = true;
-                                        consumeKey = true;
-                                    }
-
-                                    return;
-
-                                case Control.Hotkey1:
-                                case Control.Hotkey2:
-                                case Control.Hotkey3:
-                                case Control.Hotkey4:
-                                case Control.Hotkey5:
-                                case Control.Hotkey6:
-                                case Control.Hotkey7:
-                                case Control.Hotkey8:
-                                case Control.Hotkey9:
-                                case Control.Hotkey0:
-                                    break;
-
-                                case Control.OpenInventory:
-                                    Interface.Interface.GameUi?.GameMenu?.ToggleInventoryWindow();
-
-                                    break;
-
-                                case Control.OpenQuests:
-                                    Interface.Interface.GameUi?.GameMenu?.ToggleQuestsWindow();
-
-                                    break;
-
-                                case Control.OpenCharacterInfo:
-                                    Interface.Interface.GameUi?.GameMenu?.ToggleCharacterWindow();
-
-                                    break;
-
-                                case Control.OpenParties:
-                                    Interface.Interface.GameUi?.GameMenu?.TogglePartyWindow();
-
-                                    break;
-
-                                case Control.OpenSpells:
-                                    Interface.Interface.GameUi?.GameMenu?.ToggleSpellsWindow();
-
-                                    break;
-
-                                case Control.OpenFriends:
-                                    _ = (Interface.Interface.GameUi?.GameMenu?.ToggleFriendsWindow());
-
-                                    break;
-
-                                case Control.OpenSettings:
-                                    Interface.Interface.GameUi?.EscapeMenu?.OpenSettingsWindow();
-
-                                    break;
-
-                                case Control.OpenAdminPanel:
-                                    PacketSender.SendOpenAdminWindow();
-
-                                    break;
-
-                                case Control.OpenGuild:
-                                    _ = (Interface.Interface.GameUi?.GameMenu.ToggleGuildWindow());
-
-                                    break;
+                                Interface.Interface.GameUi.FocusChat = true;
+                                consumeKey = true;
                             }
+                            continue;
 
+                        case Control.OpenInventory:
+                            Interface.Interface.GameUi?.GameMenu?.ToggleInventoryWindow();
                             break;
 
-                        case GameStates.Loading:
+                        case Control.OpenQuests:
+                            Interface.Interface.GameUi?.GameMenu?.ToggleQuestsWindow();
                             break;
 
-                        case GameStates.Error:
+                        case Control.OpenCharacterInfo:
+                            Interface.Interface.GameUi?.GameMenu?.ToggleCharacterWindow();
                             break;
 
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(Globals.GameState), Globals.GameState, null
-                            );
+                        case Control.OpenParties:
+                            Interface.Interface.GameUi?.GameMenu?.TogglePartyWindow();
+                            break;
+
+                        case Control.OpenSpells:
+                            Interface.Interface.GameUi?.GameMenu?.ToggleSpellsWindow();
+                            break;
+
+                        case Control.OpenFriends:
+                            _ = (Interface.Interface.GameUi?.GameMenu?.ToggleFriendsWindow());
+                            break;
+
+                        case Control.OpenSettings:
+                            Interface.Interface.GameUi?.EscapeMenu?.OpenSettingsWindow();
+                            break;
+
+                        case Control.OpenAdminPanel:
+                            PacketSender.SendOpenAdminWindow();
+                            break;
+
+                        case Control.OpenGuild:
+                            _ = Interface.Interface.GameUi?.GameMenu?.ToggleGuildWindow();
+                            break;
                     }
-                }
-            );
+                    break;
+
+                case GameStates.Loading:
+                    break;
+
+                case GameStates.Error:
+                    break;
+
+                default:
+                    throw new NotImplementedException(
+                        $"{nameof(GameStates)} '{currentGameState}' not yet implemented"
+                    );
+            }
+        }
     }
 
     public static void OnKeyReleased(Keys modifier, Keys key)
@@ -388,36 +352,62 @@ public static partial class Input
             HandleZoomIn();
         }
 
+        if (Controls.Controls.ControlHasKey(Control.HoldToSoftRetargetOnSelfCast, modifier, key))
+        {
+            Globals.HoldToSoftRetargetOnSelfCast = false;
+        }
+
         if (Globals.Me == null)
         {
             return;
         }
     }
 
-    public static void OnMouseDown(Keys modifier, MouseButtons btn)
+    public static event MouseButtonEventInterceptor? MouseDownIntercept;
+
+    public static event MouseButtonEventInterceptor? MouseUpIntercept;
+
+    private static bool InvokeMouseButtonInterceptors(
+        MulticastDelegate? multicastDelegate,
+        Keys modifier,
+        MouseButton mouseButton
+    )
+    {
+        var rawInvocationList = multicastDelegate?.GetInvocationList() ?? [];
+        var invocationList = rawInvocationList.OfType<MouseButtonEventInterceptor>().ToArray();
+        return invocationList.Any(interceptor => interceptor(modifier, mouseButton));
+    }
+
+    public static bool TestInterceptMouse(Keys modifier, MouseButton mouseButton, bool down)
+    {
+        return modifier != Keys.Alt &&
+               InvokeMouseButtonInterceptors(down ? MouseDownIntercept : MouseUpIntercept, modifier, mouseButton);
+    }
+
+    public static void OnMouseDown(Keys modifier, MouseButton mouseButton)
     {
         var key = Keys.None;
-        switch (btn)
+        switch (mouseButton)
         {
-            case MouseButtons.Left:
+            case MouseButton.Left:
                 key = Keys.LButton;
 
                 break;
 
-            case MouseButtons.Right:
+            case MouseButton.Right:
                 key = Keys.RButton;
 
                 break;
 
-            case MouseButtons.Middle:
+            case MouseButton.Middle:
                 key = Keys.MButton;
 
                 break;
-            case MouseButtons.X1:
+            case MouseButton.X1:
                 key = Keys.XButton1;
 
                 break;
-            case MouseButtons.X2:
+            case MouseButton.X2:
                 key = Keys.XButton2;
 
                 break;
@@ -444,7 +434,7 @@ public static partial class Input
             return;
         }
 
-        if (modifier == Keys.None && btn == MouseButtons.Left && Globals.Me.TryTarget())
+        if (modifier == Keys.None && mouseButton == MouseButton.Left && Globals.Me.TryTarget())
         {
             return;
         }
@@ -478,25 +468,25 @@ public static partial class Input
         }
     }
 
-    public static void OnMouseUp(Keys modifier, MouseButtons btn)
+    public static void OnMouseUp(Keys modifier, MouseButton mouseButton)
     {
         var key = Keys.LButton;
-        switch (btn)
+        switch (mouseButton)
         {
-            case MouseButtons.Right:
+            case MouseButton.Right:
                 key = Keys.RButton;
 
                 break;
 
-            case MouseButtons.Middle:
+            case MouseButton.Middle:
                 key = Keys.MButton;
 
                 break;
-            case MouseButtons.X1:
+            case MouseButton.X1:
                 key = Keys.XButton1;
 
                 break;
-            case MouseButtons.X2:
+            case MouseButton.X2:
                 key = Keys.XButton2;
 
                 break;
@@ -523,12 +513,12 @@ public static partial class Input
             return;
         }
 
-        if (btn != MouseButtons.Right)
+        if (mouseButton != MouseButton.Right)
         {
             return;
         }
 
-        if (Globals.InputManager.KeyDown(Keys.Shift) != true)
+        if (Globals.InputManager.IsKeyDown(Keys.Shift) != true)
         {
             return;
         }

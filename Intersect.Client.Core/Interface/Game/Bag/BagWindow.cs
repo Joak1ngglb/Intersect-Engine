@@ -35,7 +35,7 @@ public partial class BagWindow
     {
         mBagWindow = new WindowControl(gameCanvas, Strings.Bags.Title, false, "BagWindow");
         mBagWindow.DisableResizing();
-        Interface.InputBlockingElements.Add(mBagWindow);
+        Interface.InputBlockingComponents.Add(mBagWindow);
 
         mItemContainer = new ScrollControl(mBagWindow, "ItemContainer");
         mItemContainer.EnableScroll(false, true);
@@ -74,12 +74,12 @@ public partial class BagWindow
         mContextMenu.Open(Framework.Gwen.Pos.None);
     }
 
-    private void MWithdrawContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.ClickedEventArgs arguments)
+    private void MWithdrawContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.MouseButtonState arguments)
     {
         if (Globals.InBag)
         {
             var slot = (int) sender.Parent.UserData;
-            Globals.Me.TryRetreiveBagItem(slot, -1);
+            Globals.Me.TryRetrieveItemFromBag(slot, -1);
         }
     }
 
@@ -180,8 +180,8 @@ public partial class BagWindow
     {
         var rect = new FloatRect()
         {
-            X = mBagWindow.LocalPosToCanvas(new Point(0, 0)).X - sItemXPadding / 2,
-            Y = mBagWindow.LocalPosToCanvas(new Point(0, 0)).Y - sItemYPadding / 2,
+            X = mBagWindow.ToCanvas(new Point(0, 0)).X - sItemXPadding / 2,
+            Y = mBagWindow.ToCanvas(new Point(0, 0)).Y - sItemYPadding / 2,
             Width = mBagWindow.Width + sItemXPadding,
             Height = mBagWindow.Height + sItemYPadding
         };

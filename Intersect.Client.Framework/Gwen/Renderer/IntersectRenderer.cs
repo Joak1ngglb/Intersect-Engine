@@ -19,7 +19,7 @@ public partial class IntersectRenderer : Base, ICacheToTexture
 
     private GameRenderer mRenderer;
 
-    private GameRenderTexture mRenderTarget;
+    private GameRenderTexture? mRenderTarget;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="UnityGwenRenderer" /> class.
@@ -69,14 +69,15 @@ public partial class IntersectRenderer : Base, ICacheToTexture
     /// </summary>
     /// <param name="font">Font to use.</param>
     /// <param name="text">Text to measure.</param>
+    /// <param name="scale"></param>
     /// <returns>
     ///     Width and height of the rendered text.
     /// </returns>
-    public override Point MeasureText(GameFont font, string text, float scale = 1f)
+    public override Point MeasureText(GameFont? font, string? text, float scale = 1f)
     {
-        if (font == null)
+        if (font == null || string.IsNullOrEmpty(text))
         {
-            return Point.Empty;
+            return default;
         }
 
         var size = mRenderer.MeasureText(text, font, scale * Scale);
@@ -98,7 +99,9 @@ public partial class IntersectRenderer : Base, ICacheToTexture
     public override void DrawFilledRect(Rectangle targetRect)
     {
         var rect = new FloatRect(
-            Translate(targetRect).X, Translate(targetRect).Y, Translate(targetRect).Width,
+            Translate(targetRect).X,
+            Translate(targetRect).Y,
+            Translate(targetRect).Width,
             Translate(targetRect).Height
         );
 
@@ -153,21 +156,47 @@ public partial class IntersectRenderer : Base, ICacheToTexture
         if (mRenderTarget == null)
         {
             mRenderer.DrawTexture(
-                mRenderer.GetWhiteTexture(), 0, 0, 1, 1, rect.X, rect.Y, rect.Width, rect.Height, mColor,
-                mRenderTarget, GameBlendModes.None, null, 0f, true
+                mRenderer.GetWhiteTexture(),
+                0,
+                0,
+                1,
+                1,
+                rect.X,
+                rect.Y,
+                rect.Width,
+                rect.Height,
+                mColor,
+                mRenderTarget,
+                GameBlendModes.None,
+                null,
+                0f,
+                true
             );
         }
         else
         {
             mRenderer.DrawTexture(
-                mRenderer.GetWhiteTexture(), 0, 0, 1, 1, rect.X, rect.Y, rect.Width, rect.Height, mColor,
-                mRenderTarget, GameBlendModes.None, null, 0f, true
+                mRenderer.GetWhiteTexture(),
+                0,
+                0,
+                1,
+                1,
+                rect.X,
+                rect.Y,
+                rect.Width,
+                rect.Height,
+                mColor,
+                mRenderTarget,
+                GameBlendModes.None,
+                null,
+                0f,
+                true
             );
         }
     }
 
     public override void DrawTexturedRect(
-        GameTexture tex,
+        GameTexture? tex,
         Rectangle targetRect,
         Color clr,
         float u1 = 0,
@@ -176,16 +205,19 @@ public partial class IntersectRenderer : Base, ICacheToTexture
         float v2 = 1
     )
     {
-        var rect = new FloatRect(
-            Translate(targetRect).X, Translate(targetRect).Y, Translate(targetRect).Width,
-            Translate(targetRect).Height
-        );
-
         if (null == tex)
         {
             //DrawMissingImage(targetRect);
             return;
         }
+
+        var translatedTarget = Translate(targetRect);
+        var rect = new FloatRect(
+            translatedTarget.X,
+            translatedTarget.Y,
+            translatedTarget.Width,
+            translatedTarget.Height
+        );
 
         u1 *= tex.Width;
         v1 *= tex.Height;
@@ -340,8 +372,8 @@ public partial class IntersectRenderer : Base, ICacheToTexture
         m_Stack.Push(mRenderTarget); // save current RT
         if (!m_RT.ContainsKey(control))
         {
-            var keys = m_RT.Keys.Select(key => key.CanonicalName);
-            ApplicationContext.Context.Value?.Logger.LogError($"{control.CanonicalName} not found in the list of render targets: {string.Join(", ", keys)}");
+            var keys = m_RT.Keys.Select(key => key.ParentQualifiedName);
+            ApplicationContext.Context.Value?.Logger.LogError($"{control.ParentQualifiedName} not found in the list of render targets: {string.Join(", ", keys)}");
         }
         mRenderTarget = m_RT[control]; // make cache current RT
         mRenderTarget.Begin();

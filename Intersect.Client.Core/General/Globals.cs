@@ -146,7 +146,7 @@ public static partial class Globals
         }
     }
 
-    public static List<Guid> GridMaps = new List<Guid>();
+    public static Dictionary<Guid, Point> GridMaps = [];
 
     public static bool HasGameData = false;
 
@@ -190,6 +190,11 @@ public static partial class Globals
     //Local player information
     public static Player? Me;
 
+    public static bool HoldToSoftRetargetOnSelfCast { get; set; }
+
+    public static bool ShouldSoftRetargetOnSelfCast =>
+        HoldToSoftRetargetOnSelfCast || Database.AutoSoftRetargetOnSelfCast;
+
     public static bool MoveRouteActive = false;
 
     public static bool NeedsMaps = true;
@@ -225,7 +230,7 @@ public static partial class Globals
         {
             var entity = Entities[id];
 
-            if (!entity.IsDisposed() && entity.Type == type)
+            if (!entity.IsDisposed && entity.Type == type)
             {
                 EntitiesToDispose.Remove(entity.Id);
 

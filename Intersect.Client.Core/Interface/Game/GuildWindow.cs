@@ -2,15 +2,18 @@ using Intersect.Client.Core;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
+using Intersect.Client.Framework.Gwen.Control.EventArguments.InputSubmissionEvent;
+using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Network.Packets.Server;
+using Intersect.Utilities;
 
 namespace Intersect.Client.Interface.Game;
 
-partial class GuildWindow : WindowControl
+partial class GuildWindow : Window
 {
     private readonly ImagePanel _textboxContainer;
     private readonly TextBox _textboxSearch;
@@ -31,12 +34,12 @@ partial class GuildWindow : WindowControl
 
     public GuildWindow(Canvas gameCanvas) : base(gameCanvas, Globals.Me?.Guild, false, nameof(GuildWindow))
     {
-        DisableResizing();
+        IsResizable = false;
 
         // Textbox Search
         _textboxContainer = new ImagePanel(this, "SearchContainer");
         _textboxSearch = new TextBox(_textboxContainer, "SearchTextbox");
-        Interface.FocusElements.Add(_textboxSearch);
+        Interface.FocusComponents.Add(_textboxSearch);
 
         // List of Guild Members
         _listGuildMembers = new ListBox(this, "GuildMembers");
@@ -66,8 +69,8 @@ partial class GuildWindow : WindowControl
             _ = new InputBox(
                 title: Strings.Guilds.LeaveTitle,
                 prompt: Strings.Guilds.LeavePrompt.ToString(Globals.Me?.Guild),
-                inputType: InputBox.InputType.YesNo,
-                onSuccess: (s, e) => PacketSender.SendLeaveGuild()
+                inputType: InputType.YesNo,
+                onSubmit: (s, e) => PacketSender.SendLeaveGuild()
             );
         };
 
@@ -82,13 +85,26 @@ partial class GuildWindow : WindowControl
             new InputBox(
                 title: Strings.Guilds.InviteMemberTitle,
                 prompt: Strings.Guilds.InviteMemberPrompt.ToString(Globals.Me?.Guild),
-                inputType: InputBox.InputType.TextInput,
-                onSuccess: (s, e) =>
+                inputType: InputType.TextInput,
+                onSubmit: (sender, args) =>
                 {
-                    if (s is InputBox inputBox && inputBox.TextValue.Trim().Length >= 3)
+                    if (sender is not InputBox)
                     {
-                        PacketSender.SendInviteGuild(inputBox.TextValue);
+                        return;
                     }
+
+                    if (args.Value is not StringSubmissionValue submissionValue)
+                    {
+                        return;
+                    }
+
+                    var value = submissionValue.Value?.Trim();
+                    if (value is not { Length: >= 3 })
+                    {
+                        return;
+                    }
+
+                    PacketSender.SendInviteGuild(value);
                 }
             ).Focus();
         };
@@ -146,13 +162,16 @@ partial class GuildWindow : WindowControl
 
         #endregion
 
+        _addButtonUsed = !_buttonAdd.IsHidden;
+        _addPopupButtonUsed = !_buttonAddPopup.IsHidden;
+    }
+
+    protected override void EnsureInitialized()
+    {
         UpdateList();
 
         _contextMenu.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer?.GetResolutionString());
         LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer?.GetResolutionString());
-
-        _addButtonUsed = !_buttonAdd.IsHidden;
-        _addPopupButtonUsed = !_buttonAddPopup.IsHidden;
     }
 
     //Methods
@@ -192,7 +211,6 @@ partial class GuildWindow : WindowControl
             row.SetToolTipText(Strings.Guilds.Tooltip.ToString(member.Level, member.ClassName));
             row.UserData = member;
             row.Clicked += member_Clicked;
-            row.RightClicked += member_RightClicked;
 
             //Row Render color (red = offline, green = online)
             if (member.Online == true)
@@ -216,8 +234,19 @@ partial class GuildWindow : WindowControl
         _buttonLeave.IsHidden = Globals.Me != null && Globals.Me.Rank == 0;
     }
 
-    private void member_Clicked(Base sender, ClickedEventArgs arguments)
+    private void member_Clicked(Base sender, MouseButtonState arguments)
     {
+        if (arguments.MouseButton == MouseButton.Right)
+        {
+            member_RightClicked(sender, arguments);
+            return;
+        }
+
+        if (arguments.MouseButton != MouseButton.Left)
+        {
+            return;
+        }
+
         if (sender is ListBoxRow { UserData: GuildMember { Online: true } member } &&
             member.Id != Globals.Me?.Id
            )
@@ -226,7 +255,7 @@ partial class GuildWindow : WindowControl
         }
     }
 
-    private void member_RightClicked(Base sender, ClickedEventArgs arguments)
+    private void member_RightClicked(Base sender, MouseButtonState arguments)
     {
         if (sender is not ListBoxRow row || row.UserData is not GuildMember member)
         {
@@ -304,7 +333,7 @@ partial class GuildWindow : WindowControl
 
     #region Guild Actions
 
-    private void promoteOption_Clicked(Base sender, ClickedEventArgs arguments)
+    private void promoteOption_Clicked(Base sender, MouseButtonState arguments)
     {
         if (Globals.Me == default || Globals.Me.GuildRank == default || _selectedMember == default)
         {
@@ -324,9 +353,9 @@ partial class GuildWindow : WindowControl
         _ = new InputBox(
             Strings.Guilds.PromoteTitle,
             Strings.Guilds.PromotePrompt.ToString(_selectedMember.Name, Options.Instance.Guild.Ranks[newRank].Title),
-            InputBox.InputType.YesNo,
+            InputType.YesNo,
             userData: new Tuple<GuildMember, int>(_selectedMember, newRank),
-            onSuccess: (s, e) =>
+            onSubmit: (s, e) =>
             {
                 if (s is InputBox inputBox && inputBox.UserData is Tuple<GuildMember, int> memberRankPair)
                 {
@@ -337,7 +366,7 @@ partial class GuildWindow : WindowControl
         );
     }
 
-    private void demoteOption_Clicked(Base sender, ClickedEventArgs arguments)
+    private void demoteOption_Clicked(Base sender, MouseButtonState arguments)
     {
         if (Globals.Me == default || Globals.Me.GuildRank == default || _selectedMember == default)
         {
@@ -357,9 +386,9 @@ partial class GuildWindow : WindowControl
         _ = new InputBox(
             Strings.Guilds.DemoteTitle,
             Strings.Guilds.DemotePrompt.ToString(_selectedMember.Name, Options.Instance.Guild.Ranks[newRank].Title),
-            InputBox.InputType.YesNo,
+            InputType.YesNo,
             userData: new Tuple<GuildMember, int>(_selectedMember, newRank),
-            onSuccess: (s, e) =>
+            onSubmit: (s, e) =>
             {
                 if (s is InputBox inputBox && inputBox.UserData is Tuple<GuildMember, int> memberRankPair)
                 {
@@ -370,7 +399,7 @@ partial class GuildWindow : WindowControl
         );
     }
 
-    private void kickOption_Clicked(Base sender, ClickedEventArgs arguments)
+    private void kickOption_Clicked(Base sender, MouseButtonState arguments)
     {
         if (Globals.Me == default || Globals.Me.GuildRank == default || _selectedMember == default)
         {
@@ -389,9 +418,9 @@ partial class GuildWindow : WindowControl
         _ = new InputBox(
             Strings.Guilds.KickTitle,
             Strings.Guilds.KickPrompt.ToString(_selectedMember?.Name),
-            InputBox.InputType.YesNo,
+            InputType.YesNo,
             userData: _selectedMember,
-            onSuccess: (s, e) =>
+            onSubmit: (s, e) =>
             {
                 if (s is InputBox inputBox && inputBox.UserData is GuildMember member)
                 {
@@ -401,7 +430,7 @@ partial class GuildWindow : WindowControl
         );
     }
 
-    private void transferOption_Clicked(Base sender, ClickedEventArgs arguments)
+    private void transferOption_Clicked(Base sender, MouseButtonState arguments)
     {
         if (Globals.Me == default || Globals.Me.GuildRank == default || _selectedMember == default)
         {
@@ -420,14 +449,32 @@ partial class GuildWindow : WindowControl
         _ = new InputBox(
             Strings.Guilds.TransferTitle,
             Strings.Guilds.TransferPrompt.ToString(_selectedMember?.Name, rank.Title, Globals.Me?.Guild),
-            InputBox.InputType.TextInput,
+            InputType.TextInput,
             userData: _selectedMember,
-            onSuccess: (s, e) =>
+            onSubmit: (sender, args) =>
             {
-                if (s is InputBox inputBox && inputBox.TextValue == Globals.Me?.Guild && inputBox.UserData is GuildMember member)
+                if (sender is not InputBox inputBox)
                 {
-                    PacketSender.SendTransferGuild(member.Id);
+                    return;
                 }
+
+                if (args.Value is not StringSubmissionValue submissionValue)
+                {
+                    return;
+                }
+
+                var value = submissionValue.Value?.Trim();
+                if (value != Globals.Me?.Guild)
+                {
+                    return;
+                }
+
+                if (inputBox.UserData is not GuildMember guildMember || guildMember.Id == default)
+                {
+                    return;
+                }
+
+                PacketSender.SendTransferGuild(guildMember.Id);
             }
         );
     }

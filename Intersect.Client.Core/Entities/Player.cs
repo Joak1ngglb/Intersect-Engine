@@ -4,6 +4,9 @@ using Intersect.Client.Entities.Events;
 using Intersect.Client.Entities.Projectiles;
 using Intersect.Client.Framework.Entities;
 using Intersect.Client.Framework.GenericClasses;
+using Intersect.Client.Framework.Gwen.Control;
+using Intersect.Client.Framework.Gwen.Control.EventArguments;
+using Intersect.Client.Framework.Gwen.Control.EventArguments.InputSubmissionEvent;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.Framework.Items;
 using Intersect.Client.General;
@@ -19,6 +22,7 @@ using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Enums;
 using Intersect.Extensions;
+using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Maps;
 using Intersect.Network.Packets.Server;
@@ -29,7 +33,7 @@ namespace Intersect.Client.Entities;
 
 public partial class Player : Entity, IPlayer
 {
-    public delegate void InventoryUpdated();
+    public delegate void InventoryUpdatedEventHandler(Player player, int slotIndex);
 
     private Guid _class;
 
@@ -62,7 +66,19 @@ public partial class Player : Entity, IPlayer
 
     public HotbarInstance[] Hotbar { get; set; } = new HotbarInstance[Options.Instance.Player.HotbarSlotCount];
 
-    public InventoryUpdated? InventoryUpdatedDelegate { get; set; }
+    public event InventoryUpdatedEventHandler? InventoryUpdated;
+
+    public void UpdateInventory(
+        int slotIndex,
+        Guid descriptorId,
+        int quantity,
+        Guid? bagId,
+        ItemProperties itemProperties
+    )
+    {
+        Inventory[slotIndex].Load(id: descriptorId, quantity: quantity, bagId: bagId, itemProperties: itemProperties);
+        InventoryUpdated?.Invoke(this, slotIndex);
+    }
 
     IReadOnlyDictionary<Guid, long> IPlayer.ItemCooldowns => ItemCooldowns;
 
@@ -97,7 +113,7 @@ public partial class Player : Entity, IPlayer
 
     public PlayerStatusWindow? StatusWindow { get; set; }
 
-    public Guid TargetIndex { get; set; }
+    public Guid TargetId { get; set; }
 
     TargetType IPlayer.TargetType => (TargetType)TargetType;
 
@@ -250,7 +266,7 @@ public partial class Player : Entity, IPlayer
                 ProcessDirectionalInput();
             }
 
-            if (Controls.KeyDown(Control.AttackInteract))
+            if (Controls.IsControlPressed(Control.AttackInteract))
             {
                 if (IsCasting)
                 {
@@ -272,7 +288,7 @@ public partial class Player : Entity, IPlayer
             }
 
             //Holding block button for "auto blocking"
-            if (Controls.KeyDown(Control.Block))
+            if (Controls.IsControlPressed(Control.Block))
             {
                 _ = TryBlock();
             }
@@ -284,11 +300,11 @@ public partial class Player : Entity, IPlayer
             TargetBox = new EntityBox(Interface.Interface.GameUi.GameCanvas, EntityType.Player, null);
             TargetBox.Hide();
         }
-        else if (TargetIndex != default)
+        else if (TargetId != default)
         {
-            if (!Globals.Entities.TryGetValue(TargetIndex, out var foundEntity))
+            if (!Globals.Entities.TryGetValue(TargetId, out var foundEntity))
             {
-                foundEntity = TargetBox?.MyEntity?.MapInstance?.Entities.FirstOrDefault(entity => entity.Id == TargetIndex) as Entity;
+                foundEntity = TargetBox?.MyEntity?.MapInstance?.Entities.FirstOrDefault(entity => entity.Id == TargetId) as Entity;
             }
 
             if (foundEntity == default || foundEntity.IsHidden || foundEntity.IsStealthed)
@@ -395,23 +411,28 @@ public partial class Player : Entity, IPlayer
 
         var quantity = inventorySlot.Quantity;
         var canDropMultiple = quantity > 1;
-        var inputType = canDropMultiple ? InputBox.InputType.NumericSliderInput : InputBox.InputType.YesNo;
+        var inputType = canDropMultiple ? InputType.NumericSliderInput : InputType.YesNo;
         var prompt = canDropMultiple ? Strings.Inventory.DropItemPrompt : Strings.Inventory.DropPrompt;
         _ = new InputBox(
             title: Strings.Inventory.DropItemTitle,
             prompt: prompt.ToString(itemDescriptor.Name),
             inputType: inputType,
             quantity: quantity,
-            maxQuantity: GetQuantityOfItemInInventory(itemDescriptor.Id),
+            maximumQuantity: GetQuantityOfItemInInventory(itemDescriptor.Id),
             userData: inventorySlotIndex,
-            onSuccess: (s, e) =>
+            onSubmit: (sender, args) =>
             {
-                if (s is not InputBox inputBox || inputBox.UserData is not int invSlot)
+                if (sender is not InputBox { UserData: int slotIndex })
                 {
                     return;
                 }
 
-                var value = (int)Math.Round(inputBox.Value);
+                if (args.Value is not NumericalSubmissionValue submissionValue)
+                {
+                    return;
+                }
+
+                var value = (int)Math.Round(submissionValue.Value);
 
                 if (value <= 0)
                 {
@@ -421,7 +442,7 @@ public partial class Player : Entity, IPlayer
                 // Check if the item can be dropped in multiple quantities or if value is less than or equal to the quantity in the initial slot
                 if (!canDropMultiple || value <= quantity)
                 {
-                    PacketSender.SendDropItem(invSlot, !canDropMultiple ? 1 : value);
+                    PacketSender.SendDropItem(slotIndex, !canDropMultiple ? 1 : value);
                     return;
                 }
 
@@ -429,7 +450,7 @@ public partial class Player : Entity, IPlayer
                 var itemSlots = Inventory.Where(s => s.ItemId == itemDescriptor.Id).ToList();
 
                 // Send the drop item packet for the initial slot.
-                PacketSender.SendDropItem(invSlot, quantity);
+                PacketSender.SendDropItem(slotIndex, quantity);
                 value -= quantity;
                 _ = itemSlots.Remove(inventorySlot); // Remove the initial slot from the list of item slots
 
@@ -487,7 +508,7 @@ public partial class Player : Entity, IPlayer
         if (!IsItemOnCooldown(index) &&
             index >= 0 && index < Globals.Me?.Inventory.Length && Globals.Me.Inventory[index]?.Quantity > 0)
         {
-            PacketSender.SendUseItem(index, TargetIndex);
+            PacketSender.SendUseItem(index, TargetId);
         }
     }
 
@@ -681,13 +702,15 @@ public partial class Player : Entity, IPlayer
             || shop?.BuyingWhitelist == false && !shop.BuyingItems.Any(buyingItem => buyingItem.ItemId == itemDescriptor.Id);
 
         var prompt = Strings.Shop.SellPrompt;
-        var inputType = InputBox.InputType.YesNo;
-        EventHandler? onSuccess = (s, e) =>
+        var inputType = InputType.YesNo;
+        Base.GwenEventHandler<InputSubmissionEventArgs>? onSuccess = (sender, args) =>
         {
-            if (s is InputBox inputBox && inputBox.UserData is int invSlot)
+            if (sender is not InputBox { UserData: int slotIndex })
             {
-                PacketSender.SendSellItem(invSlot, 1);
+                return;
             }
+
+            PacketSender.SendSellItem(slotIndex, 1);
         };
         var userData = inventorySlotIndex;
         var slotQuantity = inventorySlot.Quantity;
@@ -696,7 +719,7 @@ public partial class Player : Entity, IPlayer
         if (!shopCanBuyItem)
         {
             prompt = Strings.Shop.CannotSell;
-            inputType = InputBox.InputType.OkayOnly;
+            inputType = InputType.Okay;
             onSuccess = null;
             userData = -1;
         }
@@ -707,18 +730,8 @@ public partial class Player : Entity, IPlayer
             {
                 maxQuantity = inventoryQuantity;
                 prompt = Strings.Shop.SellItemPrompt;
-                inputType = InputBox.InputType.NumericSliderInput;
-                onSuccess = (s, e) =>
-                {
-                    if (s is InputBox inputBox && inputBox.UserData is int invSlot)
-                    {
-                        var value = (int)Math.Round(inputBox.Value);
-                        if (value > 0)
-                        {
-                            PacketSender.SendSellItem(invSlot, value);
-                        }
-                    }
-                };
+                inputType = InputType.NumericSliderInput;
+                onSuccess = TrySellItemOnSubmit;
                 userData = inventorySlotIndex;
             }
         }
@@ -728,10 +741,29 @@ public partial class Player : Entity, IPlayer
             prompt: prompt.ToString(itemDescriptor.Name),
             inputType: inputType,
             quantity: slotQuantity,
-            maxQuantity: maxQuantity,
+            maximumQuantity: maxQuantity,
             userData: userData,
-            onSuccess: onSuccess
+            onSubmit: onSuccess
         );
+    }
+
+    private static void TrySellItemOnSubmit(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: int slotIndex })
+        {
+            return;
+        }
+
+        if (args.Value is not NumericalSubmissionValue submissionValue)
+        {
+            return;
+        }
+
+        var value = (int)Math.Round(submissionValue.Value);
+        if (value > 0)
+        {
+            PacketSender.SendSellItem(slotIndex, value);
+        }
     }
 
     public void TryBuyItem(int shopSlotIndex)
@@ -770,22 +802,31 @@ public partial class Player : Entity, IPlayer
         _ = new InputBox(
             title: Strings.Shop.BuyItem,
             prompt: Strings.Shop.BuyItemPrompt.ToString(itemDescriptor.Name),
-            inputType: InputBox.InputType.NumericSliderInput,
+            inputType: InputType.NumericSliderInput,
             quantity: maxBuyAmount,
-            maxQuantity: maxBuyAmount,
+            maximumQuantity: maxBuyAmount,
             userData: shopSlotIndex,
-            onSuccess: (s, e) =>
-            {
-                if (s is InputBox inputBox && inputBox.UserData is int shopSlot)
-                {
-                    var value = (int)Math.Round(inputBox.Value);
-                    if (value > 0)
-                    {
-                        PacketSender.SendBuyItem(shopSlot, value);
-                    }
-                }
-            }
+            onSubmit: TryBuyItemOnSubmit
         );
+    }
+
+    private static void TryBuyItemOnSubmit(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: int slotIndex })
+        {
+            return;
+        }
+
+        if (args.Value is not NumericalSubmissionValue submissionValue)
+        {
+            return;
+        }
+
+        var value = (int)Math.Round(submissionValue.Value);
+        if (value > 0)
+        {
+            PacketSender.SendBuyItem(slotIndex, value);
+        }
     }
 
     /// <summary>
@@ -797,7 +838,7 @@ public partial class Player : Entity, IPlayer
     /// <param name="quantityHint"></param>
     /// <param name="skipPrompt"></param>
     /// <returns></returns>
-    public bool TryDepositItem(
+    public bool TryStoreItemInBank(
         int inventorySlotIndex,
         IItem? slot = null,
         int bankSlotIndex = -1,
@@ -880,25 +921,33 @@ public partial class Player : Entity, IPlayer
         _ = new InputBox(
             title: Strings.Bank.DepositItem,
             prompt: Strings.Bank.DepositItemPrompt.ToString(itemDescriptor.Name),
-            inputType: InputBox.InputType.NumericSliderInput,
+            inputType: InputType.NumericSliderInput,
             quantity: movableQuantity,
-            maxQuantity: maximumQuantity,
+            maximumQuantity: maximumQuantity,
             userData: new Tuple<int, int>(inventorySlotIndex, bankSlotIndex),
-            onSuccess: (s, e) =>
-            {
-                if (s is InputBox inputBox && inputBox.UserData is Tuple<int, int> bankData)
-                {
-                    var value = (int)Math.Round(inputBox.Value);
-                    if (value > 0)
-                    {
-                        var (invSlot, bankSlot) = bankData;
-                        PacketSender.SendDepositItem(invSlot, value, bankSlot);
-                    }
-                }
-            }
+            onSubmit: TryDepositItemOnSubmitted
         );
 
         return true;
+    }
+
+    private static void TryDepositItemOnSubmitted(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: (int inventorySlotIndex, int bankSlotIndex) })
+        {
+            return;
+        }
+
+        if (args.Value is not NumericalSubmissionValue submissionValue)
+        {
+            return;
+        }
+
+        var value = (int)Math.Round(submissionValue.Value);
+        if (value > 0)
+        {
+            PacketSender.SendDepositItem(inventorySlotIndex, value, bankSlotIndex);
+        }
     }
 
     private static bool IsGuildBankDepositAllowed()
@@ -916,7 +965,7 @@ public partial class Player : Entity, IPlayer
     /// <param name="quantityHint"></param>
     /// <param name="skipPrompt"></param>
     /// <returns></returns>
-    public bool TryWithdrawItem(
+    public bool TryRetrieveItemFromBank(
         int bankSlotIndex,
         IItem? slot = null,
         int inventorySlotIndex = -1,
@@ -998,25 +1047,33 @@ public partial class Player : Entity, IPlayer
         _ = new InputBox(
             title: Strings.Bank.WithdrawItem,
             prompt: Strings.Bank.WithdrawItemPrompt.ToString(itemDescriptor.Name),
-            inputType: InputBox.InputType.NumericSliderInput,
+            inputType: InputType.NumericSliderInput,
             quantity: movableQuantity,
-            maxQuantity: maximumQuantity,
+            maximumQuantity: maximumQuantity,
             userData: new Tuple<int, int>(bankSlotIndex, inventorySlotIndex),
-            onSuccess: (s, e) =>
-            {
-                if (s is InputBox inputBox && inputBox.UserData is Tuple<int, int> bankData)
-                {
-                    var value = (int)Math.Round(inputBox.Value);
-                    if (value > 0)
-                    {
-                        var (bankSlot, invSlot) = bankData;
-                        PacketSender.SendWithdrawItem(bankSlot, value, invSlot);
-                    }
-                }
-            }
+            onSubmit: TryWithdrawItemOnSubmitted
         );
 
         return true;
+    }
+
+    private static void TryWithdrawItemOnSubmitted(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: (int bankSlotIndex, int inventorySlotIndex) })
+        {
+            return;
+        }
+
+        if (args.Value is not NumericalSubmissionValue submissionValue)
+        {
+            return;
+        }
+
+        var value = (int)Math.Round(submissionValue.Value);
+        if (value > 0)
+        {
+            PacketSender.SendWithdrawItem(bankSlotIndex, value, inventorySlotIndex);
+        }
     }
 
     private static bool IsGuildBankWithdrawAllowed()
@@ -1026,7 +1083,7 @@ public partial class Player : Entity, IPlayer
     }
 
     //Bag
-    public void TryStoreBagItem(int inventorySlotIndex, int bagSlotIndex)
+    public void TryStoreItemInBag(int inventorySlotIndex, int bagSlotIndex)
     {
         var inventorySlot = Inventory[inventorySlotIndex];
         if (!ItemBase.TryGet(inventorySlot.ItemId, out var itemDescriptor))
@@ -1046,26 +1103,34 @@ public partial class Player : Entity, IPlayer
         _ = new InputBox(
             title: Strings.Bags.StoreItem,
             prompt: Strings.Bags.StoreItemPrompt.ToString(itemDescriptor.Name),
-            inputType: InputBox.InputType.NumericSliderInput,
+            inputType: InputType.NumericSliderInput,
             quantity: quantity,
-            maxQuantity: maxQuantity,
+            maximumQuantity: maxQuantity,
             userData: new Tuple<int, int>(inventorySlotIndex, bagSlotIndex),
-            onSuccess: (s, e) =>
-            {
-                if (s is InputBox inputBox && inputBox.UserData is Tuple<int, int> bagData)
-                {
-                    var value = (int)Math.Round(inputBox.Value);
-                    if (value > 0)
-                    {
-                        var (invSlot, bagSlot) = bagData;
-                        PacketSender.SendStoreBagItem(invSlot, value, bagSlot);
-                    }
-                }
-            }
+            onSubmit: TryStoreItemInBagOnSubmit
         );
     }
 
-    public void TryRetreiveBagItem(int bagSlotIndex, int inventorySlotIndex)
+    private static void TryStoreItemInBagOnSubmit(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: (int inventorySlotIndex, int bagSlotIndex) })
+        {
+            return;
+        }
+
+        if (args.Value is not NumericalSubmissionValue submissionValue)
+        {
+            return;
+        }
+
+        var value = (int)Math.Round(submissionValue.Value);
+        if (value > 0)
+        {
+            PacketSender.SendStoreBagItem(inventorySlotIndex, value, bagSlotIndex);
+        }
+    }
+
+    public void TryRetrieveItemFromBag(int bagSlotIndex, int inventorySlotIndex)
     {
         var bagSlot = Globals.Bag[bagSlotIndex];
         if (bagSlot == default)
@@ -1090,27 +1155,35 @@ public partial class Player : Entity, IPlayer
         _ = new InputBox(
             title: Strings.Bags.RetrieveItem,
             prompt: Strings.Bags.RetrieveItemPrompt.ToString(itemDescriptor.Name),
-            inputType: InputBox.InputType.NumericSliderInput,
+            inputType: InputType.NumericSliderInput,
             quantity: quantity,
-            maxQuantity: maxQuantity,
+            maximumQuantity: maxQuantity,
             userData: new Tuple<int, int>(bagSlotIndex, inventorySlotIndex),
-            onSuccess: (s, e) =>
-            {
-                if (s is InputBox inputBox && inputBox.UserData is Tuple<int, int> bagData)
-                {
-                    var value = (int)Math.Round(inputBox.Value);
-                    if (value > 0)
-                    {
-                        var (bagSlot, invSlot) = bagData;
-                        PacketSender.SendRetrieveBagItem(bagSlot, value, invSlot);
-                    }
-                }
-            }
+            onSubmit: TryRetrieveItemFromBagOnSubmit
         );
     }
 
+    private static void TryRetrieveItemFromBagOnSubmit(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: (int bagSlotIndex, int inventorySlotIndex) })
+        {
+            return;
+        }
+
+        if (args.Value is not NumericalSubmissionValue submissionValue)
+        {
+            return;
+        }
+
+        var value = (int)Math.Round(submissionValue.Value);
+        if (value > 0)
+        {
+            PacketSender.SendRetrieveBagItem(bagSlotIndex, value, inventorySlotIndex);
+        }
+    }
+
     //Trade
-    public void TryTradeItem(int index)
+    public void TryOfferItemToTrade(int index)
     {
         var slot = Inventory[index];
         var quantity = slot.Quantity;
@@ -1129,25 +1202,34 @@ public partial class Player : Entity, IPlayer
         _ = new InputBox(
             title: Strings.Trading.OfferItem,
             prompt: Strings.Trading.OfferItemPrompt.ToString(tradingItem.Name),
-            inputType: InputBox.InputType.NumericSliderInput,
+            inputType: InputType.NumericSliderInput,
             quantity: quantity,
-            maxQuantity: quantity,
+            maximumQuantity: quantity,
             userData: index,
-            onSuccess: (s, e) =>
-            {
-                if (s is InputBox inputBox && inputBox.UserData is int slotIndex)
-                {
-                    var value = (int)Math.Round(inputBox.Value);
-                    if (value > 0)
-                    {
-                        PacketSender.SendOfferTradeItem(slotIndex, value);
-                    }
-                }
-            }
+            onSubmit: TryOfferItemToTradeOnSubmit
         );
     }
 
-    public void TryRevokeItem(int index)
+    private static void TryOfferItemToTradeOnSubmit(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: int slotIndex })
+        {
+            return;
+        }
+
+        if (args.Value is not NumericalSubmissionValue submissionValue)
+        {
+            return;
+        }
+
+        var value = (int)Math.Round(submissionValue.Value);
+        if (value > 0)
+        {
+            PacketSender.SendOfferTradeItem(slotIndex, value);
+        }
+    }
+
+    public void TryCancelOfferToTradeItem(int index)
     {
         var slot = Globals.Trade[0, index];
         var quantity = slot.Quantity;
@@ -1166,22 +1248,31 @@ public partial class Player : Entity, IPlayer
         _ = new InputBox(
             title: Strings.Trading.RevokeItem,
             prompt: Strings.Trading.RevokeItemPrompt.ToString(revokedItem.Name),
-            inputType: InputBox.InputType.NumericSliderInput,
+            inputType: InputType.NumericSliderInput,
             quantity: quantity,
-            maxQuantity: quantity,
+            maximumQuantity: quantity,
             userData: index,
-            onSuccess: (s, e) =>
-            {
-                if (s is InputBox inputBox && inputBox.UserData is int slotIndex)
-                {
-                    var value = (int)Math.Round(inputBox.Value);
-                    if (value > 0)
-                    {
-                        PacketSender.SendRevokeTradeItem(slotIndex, value);
-                    }
-                }
-            }
+            onSubmit: TryCancelOfferToTradeItemOnSubmit
         );
+    }
+
+    private static void TryCancelOfferToTradeItemOnSubmit(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: int slotIndex })
+        {
+            return;
+        }
+
+        if (args.Value is not NumericalSubmissionValue submissionValue)
+        {
+            return;
+        }
+
+        var value = (int)Math.Round(submissionValue.Value);
+        if (value > 0)
+        {
+            PacketSender.SendRevokeTradeItem(slotIndex, value);
+        }
     }
 
     //Spell Processing
@@ -1199,33 +1290,55 @@ public partial class Player : Entity, IPlayer
             _ = new InputBox(
                 title: Strings.Spells.ForgetSpell,
                 prompt: Strings.Spells.ForgetSpellPrompt.ToString(spellDescriptor.Name),
-                inputType: InputBox.InputType.YesNo,
+                inputType: InputType.YesNo,
                 userData: spellIndex,
-                onSuccess: (s, e) =>
-                {
-                    if (s is InputBox inputBox && inputBox.UserData != default)
-                    {
-                        PacketSender.SendForgetSpell((int)inputBox.UserData);
-                    }
-                }
+                onSubmit: TryForgetSpellOnSubmit
             );
         }
     }
 
+    private static void TryForgetSpellOnSubmit(Base sender, InputSubmissionEventArgs args)
+    {
+        if (sender is not InputBox { UserData: int slotIndex })
+        {
+            return;
+        }
+
+        PacketSender.SendForgetSpell(slotIndex);
+    }
+
     public void TryUseSpell(int index)
     {
-        if (Spells[index].Id != Guid.Empty &&
-            (GetSpellRemainingCooldown(index) < Timing.Global.Milliseconds))
+        if (index < 0 || Spells.Length <= index)
         {
-            var spellBase = SpellBase.Get(Spells[index].Id);
+            return;
+        }
 
-            if (spellBase.CastDuration > 0 && (Options.Instance.Combat.MovementCancelsCast && Globals.Me?.IsMoving == true))
+        var spell = Spells[index];
+        if (spell.Id == default)
+        {
+            return;
+        }
+
+        if (GetSpellRemainingCooldown(index) > Timing.Global.Milliseconds)
+        {
+            return;
+        }
+
+        if (!SpellBase.TryGet(spell.Id, out var spellDescriptor))
+        {
+            return;
+        }
+
+        if (spellDescriptor.CastDuration > 0)
+        {
+            if (Options.Instance.Combat.MovementCancelsCast && Globals.Me?.IsMoving == true)
             {
                 return;
             }
-
-            PacketSender.SendUseSpell(index, TargetIndex);
         }
+
+        PacketSender.SendUseSpell(index, TargetId);
     }
 
     public long GetSpellCooldown(Guid id)
@@ -1354,22 +1467,22 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        if (Controls.KeyDown(Control.MoveUp))
+        if (Controls.IsControlPressed(Control.MoveUp))
         {
             inputY += 1;
         }
 
-        if (Controls.KeyDown(Control.MoveDown))
+        if (Controls.IsControlPressed(Control.MoveDown))
         {
             inputY -= 1;
         }
 
-        if (Controls.KeyDown(Control.MoveLeft))
+        if (Controls.IsControlPressed(Control.MoveLeft))
         {
             inputX -= 1;
         }
 
-        if (Controls.KeyDown(Control.MoveRight))
+        if (Controls.IsControlPressed(Control.MoveRight))
         {
             inputX += 1;
         }
@@ -1432,26 +1545,44 @@ public partial class Player : Entity, IPlayer
         TurnAround();
 
         var castInput = -1;
-        for (var barSlot = 0; barSlot < Options.Instance.Player.HotbarSlotCount; barSlot++)
-        {
-            if (!mLastHotbarUseTime.ContainsKey(barSlot))
-            {
-                mLastHotbarUseTime.Add(barSlot, 0);
-            }
 
-            if (Controls.KeyDown((Control)barSlot + (int)Control.Hotkey1))
-            {
-                castInput = barSlot;
-            }
+        // Yes we unfortunately need to do all of this extra logic because multiple hotbar slots could get triggered
+        // because one has no modifier (e.g. 1) but another has the same key but a different modifier (e.g. Alt + 1)
+        // - Select -> finds out if a hotbar slot is pressed or not
+        // - Where -> filters out hotbar slots that are not pressed
+        // - OrderByDescending -> prioritizes hotbar slots with modifiers over those without (e.g. Alt + 1 over 1)
+        // - GroupBy -> groups hotbar slots that have a colliding key, maintaining the order (e.g. Alt + 1 and 1 will be grouped)
+        var activeHotbarSlotIndicesGroupedByKey = Enumerable.Range(0, Options.Instance.Player.HotbarSlotCount)
+            .Select(
+                slotIndex => Controls.IsControlPressed(
+                    Control.HotkeyOffset + slotIndex + 1,
+                    out _,
+                    out var activeBinding
+                )
+                    ? (slotIndex, activeBinding)
+                    : default
+            )
+            .Where(controlHit => controlHit != default)
+            .OrderByDescending(controlHit => controlHit.activeBinding.Modifier)
+            .GroupBy(controlHit => controlHit.activeBinding.Key)
+            .ToArray();
+
+        // This grabs the first active slot per key group, so if slot 11 is mapped to Alt + 1 and slot 1 is mapped to 1,
+        // then slot 11 will be returned here instead of both slot 1 and 11
+        var activeHotbarSlotIndices =
+            activeHotbarSlotIndicesGroupedByKey.Select(group => group.FirstOrDefault().slotIndex).ToArray();
+
+        foreach (var slotIndex in activeHotbarSlotIndices)
+        {
+            mLastHotbarUseTime.TryAdd(slotIndex, 0);
+            castInput = slotIndex;
         }
 
-        if (castInput != -1)
+        // ReSharper disable once InvertIf
+        if (0 <= castInput && castInput < Interface.Interface.GameUi?.Hotbar?.Items?.Count && mLastHotbarUseTime[castInput] < Timing.Global.Milliseconds)
         {
-            if (0 <= castInput && castInput < Interface.Interface.GameUi?.Hotbar?.Items?.Count && mLastHotbarUseTime[castInput] < Timing.Global.Milliseconds)
-            {
-                Interface.Interface.GameUi?.Hotbar?.Items?[castInput]?.Activate();
-                mLastHotbarUseTime[castInput] = Timing.Global.Milliseconds + mHotbarUseDelay;
-            }
+            Interface.Interface.GameUi?.Hotbar?.Items?[castInput]?.Activate();
+            mLastHotbarUseTime[castInput] = Timing.Global.Milliseconds + mHotbarUseDelay;
         }
     }
 
@@ -1639,39 +1770,43 @@ public partial class Player : Entity, IPlayer
 
         mLastEntitySelected = targetedEntity;
 
-        if (TargetIndex != targetedEntity.Id)
+        if (TargetId != targetedEntity.Id)
         {
-            SetTargetBox(targetedEntity);
-            TargetIndex = targetedEntity.Id;
-            TargetType = 0;
+            Target = targetedEntity;
         }
     }
 
-    private void SetTargetBox(Entity? en)
+    private void SetTargetBox(IEntity? targetEntity)
     {
-        if (en == null)
+        switch (targetEntity)
         {
-            TargetBox?.SetEntity(null);
-            TargetBox?.Hide();
-            PacketSender.SendTarget(Guid.Empty);
-            return;
-        }
+            case null:
+            {
+                // ReSharper disable once InvertIf
+                if (TargetBox is { } targetBox)
+                {
+                    TargetBox.SetEntity(null);
+                    if (targetBox.IsVisible)
+                    {
+                        TargetBox.Hide();
+                    }
+                }
+                return;
+            }
 
-        if (en is Player)
-        {
-            TargetBox?.SetEntity(en, EntityType.Player);
-        }
-        else if (en is Event)
-        {
-            TargetBox?.SetEntity(en, EntityType.Event);
-        }
-        else
-        {
-            TargetBox?.SetEntity(en, EntityType.GlobalEntity);
+            case Player:
+                TargetBox?.SetEntity(targetEntity, EntityType.Player);
+                break;
+            case Event:
+                TargetBox?.SetEntity(targetEntity, EntityType.Event);
+                break;
+            default:
+                TargetBox?.SetEntity(targetEntity, EntityType.GlobalEntity);
+                break;
         }
 
         TargetBox?.Show();
-        PacketSender.SendTarget(en.Id);
+        PacketSender.SendTarget(targetEntity.Id);
     }
 
     private void AutoTurnToTarget(Entity en)
@@ -1691,7 +1826,7 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        if (Controls.KeyDown(Control.TurnAround))
+        if (Controls.IsControlPressed(Control.TurnAround))
         {
             return;
         }
@@ -1728,7 +1863,7 @@ public partial class Player : Entity, IPlayer
 
     private static void ToggleTargetContextMenu(Entity en)
     {
-        if (Globals.InputManager.MouseButtonDown(MouseButtons.Right))
+        if (Globals.InputManager.MouseButtonDown(MouseButton.Right))
         {
             Interface.Interface.GameUi.TargetContextMenu.ToggleHidden(en);
         }
@@ -1999,23 +2134,15 @@ public partial class Player : Entity, IPlayer
                             }
                         }
 
-                        if (bestMatch != null && bestMatch.Id != TargetIndex)
+                        if (bestMatch != null && bestMatch.Id != TargetId)
                         {
-                            var targetType = bestMatch is Event ? 1 : 0;
+                            Target = bestMatch;
 
-                            SetTargetBox(bestMatch as Entity);
-
-                            if (bestMatch is Player)
+                            if (bestMatch is Player && Interface.Interface.GameUi.IsAdminWindowOpen)
                             {
-                                //Select in admin window if open
-                                if (Interface.Interface.GameUi.IsAdminWindowOpen)
-                                {
-                                    Interface.Interface.GameUi.AdminWindowSelectName(bestMatch.Name);
-                                }
+                                // Select in admin window if open
+                                Interface.Interface.GameUi.AdminWindowSelectName(bestMatch.Name);
                             }
-
-                            TargetType = targetType;
-                            TargetIndex = bestMatch.Id;
 
                             return true;
                         }
@@ -2068,27 +2195,60 @@ public partial class Player : Entity, IPlayer
             }
         }
 
-        if (TargetIndex != entity.Id)
+        if (TargetId != entity.Id)
         {
-            SetTargetBox(entity as Entity);
-            TargetType = targetType;
-            TargetIndex = entity.Id;
+            Target = entity;
         }
 
         return true;
 
     }
 
+    private IEntity? _target;
+
+    public IEntity? Target
+    {
+        get => _target;
+        set
+        {
+            if (value == _target)
+            {
+                return;
+            }
+
+            _target = value;
+
+            if (value == null)
+            {
+                TargetId = default;
+                TargetType = 0;
+            }
+            else
+            {
+                TargetId = value.Id;
+                TargetType = value is Event ? 1 : 0;
+            }
+
+            SetTargetBox(value as Entity);
+        }
+    }
+
     public bool ClearTarget()
     {
-        SetTargetBox(null);
+        _target = null;
 
-        if (TargetIndex == default && TargetType == -1)
+        if (TargetId == default && TargetType == -1)
         {
             return false;
         }
 
-        TargetIndex = Guid.Empty;
+        if (TargetId != default)
+        {
+            PacketSender.SendTarget(default);
+            SetTargetBox(null);
+        }
+
+        TargetId = default;
         TargetType = -1;
         return true;
     }
@@ -2629,7 +2789,7 @@ public partial class Player : Entity, IPlayer
                 continue;
             }
 
-            if (TargetType != 0 || TargetIndex != en.Value.Id)
+            if (TargetType != 0 || TargetId != en.Value.Id)
             {
                 continue;
             }
@@ -2668,7 +2828,7 @@ public partial class Player : Entity, IPlayer
                     continue;
                 }
 
-                if (TargetType != 1 || TargetIndex != en.Value.Id)
+                if (TargetType != 1 || TargetId != en.Value.Id)
                 {
                     continue;
                 }
@@ -2706,7 +2866,7 @@ public partial class Player : Entity, IPlayer
                             {
                                 if (en.Value is not (Projectile or Resource))
                                 {
-                                    if (TargetType != 0 || TargetIndex != en.Value.Id)
+                                    if (TargetType != 0 || TargetId != en.Value.Id)
                                     {
                                         en.Value.DrawTarget((int)Enums.TargetType.Hover);
                                         ToggleTargetContextMenu(en.Value);
@@ -2731,7 +2891,7 @@ public partial class Player : Entity, IPlayer
                                      en.Value is Player player && Globals.Me?.IsInMyParty(player) == true) &&
                                     en.Value.WorldPos.Contains(mouseInWorld.X, mouseInWorld.Y))
                                 {
-                                    if (TargetType != 1 || TargetIndex != en.Value.Id)
+                                    if (TargetType != 1 || TargetId != en.Value.Id)
                                     {
                                         en.Value.DrawTarget((int)Enums.TargetType.Hover);
                                         ToggleTargetContextMenu(en.Value);
@@ -2764,7 +2924,7 @@ public partial class Player : Entity, IPlayer
         // If players hold the 'TurnAround' Control Key and tap to any direction, they will turn on their own axis.
         for (var direction = 0; direction < Options.Instance.Map.MovementDirections; direction++)
         {
-            if (!Controls.KeyDown(Control.TurnAround) || direction != (int)Globals.Me.MoveDir || IsTurnAroundWhileCastingDisabled)
+            if (!Controls.IsControlPressed(Control.TurnAround) || direction != (int)Globals.Me.MoveDir || IsTurnAroundWhileCastingDisabled)
             {
                 continue;
             }

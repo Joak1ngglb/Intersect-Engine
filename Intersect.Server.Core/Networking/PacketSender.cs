@@ -3,6 +3,7 @@ using Intersect.Core;
 using Intersect.Enums;
 using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
+using Intersect.GameObjects.Animations;
 using Intersect.GameObjects.Crafting;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Maps.MapList;
@@ -203,26 +204,7 @@ public static partial class PacketSender
         }
         else
         {
-            switch (Options.Instance.Map.GameBorderStyle)
-            {
-                case 1:
-                    mapPacket.CameraHolds = new bool[4] { true, true, true, true };
-
-                    break;
-
-                case 0:
-                    var grid = DbInterface.GetGrid(map.MapGrid);
-                    if (grid != null)
-                    {
-                        mapPacket.CameraHolds = new bool[4]
-                        {
-                            0 == map.MapGridY, grid.YMax - 1 == map.MapGridY,
-                            0 == map.MapGridX, grid.XMax - 1 == map.MapGridX
-                        };
-                    }
-
-                    break;
-            }
+            mapPacket.CameraHolds = map.GetCameraHolds();
         }
 
         if (client.IsEditor)
@@ -847,7 +829,7 @@ public static partial class PacketSender
     /// <param name="target">The sender of this message, should we decide to respond from the client.</param>
     public static void SendAdminMsg(string message, Color color, string target = "")
     {
-        foreach (var player in Globals.OnlineList)
+        foreach (var player in Player.OnlinePlayers)
         {
             if (player != null)
             {
@@ -1321,9 +1303,9 @@ public static partial class PacketSender
     }
 
     //CreateCharacterPacket
-    public static void SendCreateCharacter(Client client)
+    public static void SendCreateCharacter(Client client, bool force = false)
     {
-        client.Send(new CharacterCreationPacket());
+        client.Send(new CharacterCreationPacket(force: force));
     }
 
     //CharactersPacket
@@ -1461,7 +1443,7 @@ public static partial class PacketSender
     public static void SendMapGridToAll(MapGrid grid)
     {
         if (grid == null) return;
-        var clients = Globals.Clients.ToArray();
+        var clients = Client.Instances.ToArray();
         foreach (var client in clients)
         {
             if (client == default)
@@ -1599,19 +1581,24 @@ public static partial class PacketSender
         int x,
         int y,
         Direction direction,
-        Guid mapInstanceId
+        Guid mapInstanceId,
+        AnimationSourceType animationSourceType = AnimationSourceType.Any,
+        Guid animationSourceId = default
     )
     {
-        if (MapController.TryGetInstanceFromMap(mapId, mapInstanceId, out var mapInstance))
+        if (!MapController.TryGetInstanceFromMap(mapId, mapInstanceId, out var mapInstance))
         {
-            if (Options.Instance.Packets.BatchAnimationPackets)
-            {
-                mapInstance.AddBatchedAnimation(new PlayAnimationPacket(animId, targetType, entityId, mapId, x, y, direction));
-            }
-            else
-            {
-                SendDataToProximityOnMapInstance(mapId, mapInstanceId, new PlayAnimationPacket(animId, targetType, entityId, mapId, x, y, direction), null, TransmissionMode.Any);
-            }
+            return;
+        }
+
+        PlayAnimationPacket playAnimationPacket = new(animId, targetType, entityId, mapId, x, y, direction, animationSourceType, animationSourceId);
+        if (Options.Instance.Packets.BatchAnimationPackets)
+        {
+            mapInstance.AddBatchedAnimation(playAnimationPacket);
+        }
+        else
+        {
+            SendDataToProximityOnMapInstance(mapId, mapInstanceId, playAnimationPacket, null, TransmissionMode.Any);
         }
     }
 
@@ -1922,7 +1909,7 @@ public static partial class PacketSender
     //GameObjectPacket
     public static void SendGameObjectToAll(IDatabaseObject obj, bool deleted = false, bool another = false)
     {
-        foreach (var client in Globals.Clients)
+        foreach (var client in Client.Instances)
         {
             SendGameObject(client, obj, deleted, another);
         }
@@ -1935,9 +1922,29 @@ public static partial class PacketSender
     }
 
     //EntityDashPacket
-    public static void SendEntityDash(Entity en, Guid endMapId, byte endX, byte endY, int dashTime, Direction direction)
+    public static void SendEntityDash(
+        Entity en,
+        Guid endMapId,
+        int endX,
+        int endY,
+        long dashEndMilliseconds,
+        int dashLengthMilliseconds,
+        Direction direction
+    )
     {
-        SendDataToProximityOnMapInstance(en.MapId, en.MapInstanceId, new EntityDashPacket(en.Id, endMapId, endX, endY, dashTime, direction));
+        SendDataToProximityOnMapInstance(
+            en.MapId,
+            en.MapInstanceId,
+            new EntityDashPacket(
+                en.Id,
+                endMapId,
+                endX,
+                endY,
+                dashEndMilliseconds,
+                dashLengthMilliseconds,
+                direction
+            )
+        );
     }
 
     /// <summary>
@@ -2359,9 +2366,9 @@ public static partial class PacketSender
 
     public static void SendDataToEditors(IPacket packet)
     {
-        lock (Globals.ClientLock)
+        lock (Client.GlobalLock)
         {
-            foreach (var client in Globals.Clients)
+            foreach (var client in Client.Instances)
             {
                 if (client.IsEditor)
                 {
@@ -2373,9 +2380,9 @@ public static partial class PacketSender
 
     public static void SendDataToAllPlayers(IPacket packet, TransmissionMode mode = TransmissionMode.All)
     {
-        lock (Globals.ClientLock)
+        lock (Client.GlobalLock)
         {
-            foreach (var client in Globals.Clients)
+            foreach (var client in Client.Instances)
             {
                 if (client?.Entity != null)
                 {
@@ -2387,9 +2394,9 @@ public static partial class PacketSender
 
     public static void SendDataToAll(IPacket packet, TransmissionMode mode = TransmissionMode.All)
     {
-        lock (Globals.ClientLock)
+        lock (Client.GlobalLock)
         {
-            foreach (var client in Globals.Clients)
+            foreach (var client in Client.Instances)
             {
                 if ((client?.IsEditor ?? false) || client?.Entity != null)
                 {

@@ -1,8 +1,12 @@
 using System.Runtime.CompilerServices;
+using Intersect.Client.Framework.Content;
 using Intersect.Client.Framework.File_Management;
+using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.Framework.Gwen.ControlInternal;
+using Intersect.Core;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Intersect.Client.Framework.Gwen.Control;
@@ -13,71 +17,202 @@ namespace Intersect.Client.Framework.Gwen.Control;
 /// </summary>
 public partial class Label : Base, ILabel
 {
-
-    public enum ControlState
-    {
-
-        Normal = 0,
-
-        Hovered,
-
-        Clicked,
-
-        Disabled,
-
-    }
-
     protected readonly Text _textElement;
 
-    private string fontInfo;
+    private string? _fontInfo;
 
-    private Pos mAlign;
+    private Pos _textAlign;
 
-    private bool mAutoSizeToContents;
+    private bool _autoSizeToContents;
 
-    private string mBackgroundTemplateFilename;
+    private string? mBackgroundTemplateFilename;
 
-    private GameTexture mBackgroundTemplateTex;
+    private GameTexture? mBackgroundTemplateTex;
 
-    protected Color mClickedTextColor;
+    protected Color? mClickedTextColor;
 
-    protected Color mDisabledTextColor;
+    protected Color? mDisabledTextColor;
 
-    protected Color mHoverTextColor;
+    protected Color? mHoverTextColor;
 
-    protected Color mNormalTextColor;
+    protected Color? mNormalTextColor;
 
-    private Padding mTextPadding;
+    private Padding _textPadding;
+
+    private bool _textDisabled;
+    private string? _displayedText;
+    private string? _text;
+    private string? _formatString;
+    private Range _replacementRange;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="Label" /> class.
     /// </summary>
     /// <param name="parent">Parent control.</param>
-    public Label(Base parent, string name = default, bool disableText = false) : base(parent, name)
+    /// <param name="name"></param>
+    /// <param name="disableText"></param>
+    public Label(Base parent, string? name = default, bool disableText = false) : base(parent, name)
     {
+        _autoSizeToContents = true;
+        _textDisabled = disableText;
         _textElement = new Text(this)
         {
-            IsHidden = disableText,
+            IsHidden = _textDisabled,
         };
 
-        //m_Text.Font = Skin.DefaultFont;
-
         MouseInputEnabled = false;
-        SetSize(100, 10);
-        Alignment = Pos.Left | Pos.Top;
-
-        mAutoSizeToContents = true;
+        Size = new Point(100, 10);
+        TextAlign = Pos.Left | Pos.Top;
     }
 
-    public GameTexture ToolTipBackground { get; set; }
+    public string? FormatString
+    {
+        get => _formatString;
+        set
+        {
+            if (string.Equals(value, _formatString, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _replacementRange = GetRangeForFormatArgument(value, 0);
+            _formatString = value;
+        }
+    }
+
+    private static Range GetRangeForFormatArgument(string? format, int argumentIndex)
+    {
+        const char charStartArgument = '{';
+        const char charEndArgument = '}';
+
+        if (argumentIndex < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(argumentIndex), argumentIndex, "Must be non-negative");
+        }
+
+        if (string.IsNullOrEmpty(format))
+        {
+            return default;
+        }
+
+        var minimumDigits = argumentIndex < 10 ? 1 : (int)Math.Floor(Math.Log10(argumentIndex));
+        if (format.Length < 2 + minimumDigits)
+        {
+            return default;
+        }
+
+        char searchChar = charStartArgument;
+        int? formatSplit = null;
+        Range argumentIndexCharacterRange = default;
+        for (var characterIndex = 0; characterIndex < format.Length; ++characterIndex)
+        {
+            var currentChar = format[characterIndex];
+            switch (currentChar)
+            {
+                case charStartArgument:
+                    searchChar = charEndArgument;
+                    formatSplit = null;
+                    argumentIndexCharacterRange = new Range(characterIndex + 1, characterIndex + 1);
+                    continue;
+
+                case charEndArgument:
+                {
+                    if (searchChar == charStartArgument)
+                    {
+                        continue;
+                    }
+
+                    searchChar = charStartArgument;
+                    formatSplit = null;
+                    argumentIndexCharacterRange = new Range(
+                        argumentIndexCharacterRange.Start,
+                        (formatSplit ?? characterIndex)
+                    );
+
+                    if (IsArgument(format, argumentIndexCharacterRange, argumentIndex))
+                    {
+                        return new Range(
+                            argumentIndexCharacterRange.Start.Value - 1,
+                            ^(format.Length - (argumentIndexCharacterRange.End.Value + 1))
+                        );
+                    }
+
+                    argumentIndexCharacterRange = default;
+
+                    continue;
+                }
+
+                case ':':
+                    formatSplit = characterIndex;
+
+                    Range offsetRange = new(argumentIndexCharacterRange.Start, characterIndex);
+                    if (IsArgument(format, offsetRange, argumentIndex))
+                    {
+                        continue;
+                    }
+
+                    searchChar = charStartArgument;
+                    formatSplit = null;
+                    continue;
+
+                default:
+                    if (formatSplit == null && !char.IsAsciiDigit(currentChar))
+                    {
+                        searchChar = charStartArgument;
+                    }
+
+                    break;
+            }
+        }
+
+        return argumentIndexCharacterRange;
+    }
+
+    private static bool IsArgument(string format, Range range, int argumentIndex) =>
+        int.TryParse(format[range], out var index) && index == argumentIndex;
+
+    public WrappingBehavior WrappingBehavior
+    {
+        get => _wrappingBehavior;
+        set
+        {
+            if (value == _wrappingBehavior)
+            {
+                return;
+            }
+
+            _wrappingBehavior = value;
+            _textElement.WrappingBehavior = value;
+        }
+    }
+
+    public GameTexture? ToolTipBackground
+    {
+        get => _tooltipBackground;
+        set
+        {
+            if (value == _tooltipBackground)
+            {
+                return;
+            }
+
+            _tooltipBackground = value;
+        }
+    }
+
+    public bool IsTextDisabled
+    {
+        get => _textElement.IsHidden;
+        set => _textElement.IsHidden = value;
+    }
 
     /// <summary>
     ///     Text alignment.
     /// </summary>
-    public Pos Alignment
+    public Pos TextAlign
     {
-        get => mAlign;
-        set => SetAndDoIfChanged(ref mAlign, value, Invalidate);
+        get => _textAlign;
+        set => SetAndDoIfChanged(ref _textAlign, value, Invalidate);
     }
 
     public override void Invalidate()
@@ -85,32 +220,21 @@ public partial class Label : Base, ILabel
         base.Invalidate();
     }
 
-    private string? _text;
-
     /// <summary>
     ///     Text.
     /// </summary>
-    public virtual string Text
+    public virtual string? Text
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _text ?? string.Empty;
+        get => _text;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set
-        {
-            if (string.Equals(value, _text, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            _text = value;
-            _textElement.DisplayedText = _text;
-        }
+        set => SetText(value, doEvents: true);
     }
 
     /// <summary>
     ///     Font.
     /// </summary>
-    public GameFont? Font
+    public virtual GameFont? Font
     {
         get => _textElement.Font;
         set
@@ -120,24 +244,46 @@ public partial class Label : Base, ILabel
                 return;
             }
 
-            _textElement.Font = value;
-            fontInfo = $"{value?.GetName()},{value?.GetSize()}";
+            var oldValue = _textElement.Font;
+            if (value is not null)
+            {
+                _textElement.Font = value;
+                _fontInfo = $"{value.GetName()},{value.GetSize()}";
+            }
+            else
+            {
+                _fontInfo = null;
+            }
 
-            if (mAutoSizeToContents)
+            OnFontChanged(this, oldValue, value);
+
+            if (_autoSizeToContents)
             {
                 SizeToContents();
             }
 
             Invalidate();
+
+            FontChanged?.Invoke(this, new ValueChangedEventArgs<GameFont?>
+            {
+                OldValue = oldValue,
+                Value = value,
+            });
         }
+    }
+
+    public event GwenEventHandler<ValueChangedEventArgs<GameFont?>>? FontChanged;
+
+    protected virtual void OnFontChanged(Base sender, GameFont? oldFont, GameFont? newFont)
+    {
     }
 
     /// <summary>
     /// Font Name
     /// </summary>
-    public string FontName
+    public string? FontName
     {
-        get => _textElement.Font.GetName();
+        get => _textElement.Font?.GetName();
         set => Font = GameContentManager.Current?.GetFont(value, FontSize);
     }
 
@@ -156,7 +302,15 @@ public partial class Label : Base, ILabel
     public Color? TextColor
     {
         get => _textElement.Color ?? Color.White;
-        set => _textElement.Color = value;
+        set
+        {
+            if (value == _textElement.Color)
+            {
+                return;
+            }
+
+            _textElement.Color = value;
+        }
     }
 
     /// <summary>
@@ -169,6 +323,8 @@ public partial class Label : Base, ILabel
     }
 
     private string? _textOverride;
+    private WrappingBehavior _wrappingBehavior;
+    private GameTexture? _tooltipBackground;
 
     /// <summary>
     ///     Text override - used to display different string.
@@ -205,7 +361,7 @@ public partial class Label : Base, ILabel
     /// <summary>
     ///     Text length (in characters).
     /// </summary>
-    public int TextLength => _textElement.Length;
+    public int TextLength => _text?.Length ?? 0;
 
     public int TextRight => _textElement.Right;
 
@@ -214,48 +370,40 @@ public partial class Label : Base, ILabel
     /// </summary>
     public bool AutoSizeToContents
     {
-        get => mAutoSizeToContents;
+        get => _autoSizeToContents;
         set
         {
-            mAutoSizeToContents = value;
+            _autoSizeToContents = value;
             Invalidate();
             InvalidateParent();
         }
     }
 
-    /// <summary>
-    ///     Text padding.
-    /// </summary>
-    public Padding TextPadding
-    {
-        get => mTextPadding;
-        set
-        {
-            mTextPadding = value;
-            Invalidate();
-            InvalidateParent();
-        }
-    }
+    public Color? TextPaddingDebugColor { get; set; }
 
-    public override JObject GetJson(bool isRoot = default)
+    public override JObject? GetJson(bool isRoot = false, bool onlySerializeIfNotEmpty = false)
     {
-        var obj = base.GetJson(isRoot);
+        var serializedProperties = base.GetJson(isRoot, onlySerializeIfNotEmpty);
+        if (serializedProperties is null)
+        {
+            return null;
+        }
+
         if (typeof(Label) == GetType())
         {
-            obj.Add("BackgroundTemplate", mBackgroundTemplateFilename);
+            serializedProperties.Add("BackgroundTemplate", mBackgroundTemplateFilename);
         }
 
-        obj.Add("TextColor", Color.ToString(TextColor));
-        obj.Add("HoveredTextColor", Color.ToString(mHoverTextColor));
-        obj.Add("ClickedTextColor", Color.ToString(mClickedTextColor));
-        obj.Add("DisabledTextColor", Color.ToString(mDisabledTextColor));
-        obj.Add("TextAlign", mAlign.ToString());
-        obj.Add("TextPadding", Padding.ToString(mTextPadding));
-        obj.Add("AutoSizeToContents", mAutoSizeToContents);
-        obj.Add("Font", fontInfo);
-        obj.Add("TextScale", _textElement.GetScale());
+        serializedProperties.Add(nameof(TextColor), mNormalTextColor?.ToString());
+        serializedProperties.Add("HoveredTextColor", mHoverTextColor?.ToString());
+        serializedProperties.Add("ClickedTextColor", mClickedTextColor?.ToString());
+        serializedProperties.Add("DisabledTextColor", mDisabledTextColor?.ToString());
+        serializedProperties.Add(nameof(TextAlign), TextAlign.ToString());
+        serializedProperties.Add(nameof(AutoSizeToContents), _autoSizeToContents);
+        serializedProperties.Add(nameof(Font), _fontInfo);
+        serializedProperties.Add("TextScale", _textElement.GetScale());
 
-        return base.FixJson(obj);
+        return base.FixJson(serializedProperties);
     }
 
     public override void LoadJson(JToken obj, bool isRoot = default)
@@ -265,17 +413,16 @@ public partial class Label : Base, ILabel
         {
             SetBackgroundTemplate(
                 GameContentManager.Current.GetTexture(
-                    Framework.Content.TextureType.Gui, (string)obj["BackgroundTemplate"]
+                    TextureType.Gui, (string)obj["BackgroundTemplate"]
                 ), (string)obj["BackgroundTemplate"]
             );
         }
 
         if (obj["TextColor"] != null)
         {
-            TextColor = Color.FromString((string)obj["TextColor"]);
+            mNormalTextColor = Color.FromString((string)obj["TextColor"]);
         }
 
-        mNormalTextColor = TextColor;
         if (obj["HoveredTextColor"] != null)
         {
             mHoverTextColor = Color.FromString((string)obj["HoveredTextColor"]);
@@ -286,20 +433,19 @@ public partial class Label : Base, ILabel
             mClickedTextColor = Color.FromString((string)obj["ClickedTextColor"]);
         }
 
-        mDisabledTextColor = Color.FromString((string)obj["DisabledTextColor"], new Color(255, 90, 90, 90));
-        if (obj["TextAlign"] != null)
+        if (obj["DisabledTextColor"] != null)
         {
-            mAlign = (Pos)Enum.Parse(typeof(Pos), (string)obj["TextAlign"]);
+            mDisabledTextColor = Color.FromString((string)obj["DisabledTextColor"]);
         }
 
-        if (obj["TextPadding"] != null)
+        if (obj["TextAlign"] != null)
         {
-            TextPadding = Padding.FromString((string)obj["TextPadding"]);
+            TextAlign = (Pos)Enum.Parse(typeof(Pos), (string)obj["TextAlign"]);
         }
 
         if (obj["AutoSizeToContents"] != null)
         {
-            mAutoSizeToContents = (bool)obj["AutoSizeToContents"];
+            _autoSizeToContents = (bool)obj["AutoSizeToContents"];
         }
 
         var tokenFont = obj["Font"];
@@ -314,7 +460,7 @@ public partial class Label : Base, ILabel
                 );
                 if (fontArr.Length > 1)
                 {
-                    fontInfo = stringFont;
+                    _fontInfo = stringFont;
                     try
                     {
                         Font = GameContentManager.Current.GetFont(fontArr[0], int.Parse(fontArr[1]));
@@ -338,11 +484,29 @@ public partial class Label : Base, ILabel
         return mBackgroundTemplateTex;
     }
 
+    public string? BackgroundTemplateName
+    {
+        get => mBackgroundTemplateFilename;
+        set
+        {
+            var newFileName = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            if (newFileName == mBackgroundTemplateFilename?.Trim())
+            {
+                return;
+            }
+
+            mBackgroundTemplateFilename = newFileName;
+            mBackgroundTemplateTex = newFileName == null
+                ? null
+                : GameContentManager.Current?.GetTexture(TextureType.Gui, newFileName);
+        }
+    }
+
     public void SetBackgroundTemplate(GameTexture texture, string fileName)
     {
         if (texture == null && !string.IsNullOrWhiteSpace(fileName))
         {
-            texture = GameContentManager.Current?.GetTexture(Framework.Content.TextureType.Gui, fileName);
+            texture = GameContentManager.Current?.GetTexture(TextureType.Gui, fileName);
         }
 
         mBackgroundTemplateFilename = fileName;
@@ -351,25 +515,25 @@ public partial class Label : Base, ILabel
 
     public virtual void MakeColorNormal()
     {
-        TextColor = Skin.Colors.Label.Default;
+        TextColor = Skin.Colors.Label.Normal;
     }
 
     public virtual void MakeColorBright()
     {
-        TextColor = Skin.Colors.Label.Bright;
+        TextColor = Skin.Colors.Label.Hover;
     }
 
     public virtual void MakeColorDark()
     {
-        TextColor = Skin.Colors.Label.Dark;
+        TextColor = Skin.Colors.Label.Disabled;
     }
 
     public virtual void MakeColorHighlight()
     {
-        TextColor = Skin.Colors.Label.Highlight;
+        TextColor = Skin.Colors.Label.Active;
     }
 
-    public override event Base.GwenEventHandler<ClickedEventArgs> Clicked
+    public override event GwenEventHandler<MouseButtonState> Clicked
     {
         add
         {
@@ -383,7 +547,7 @@ public partial class Label : Base, ILabel
         }
     }
 
-    public override event Base.GwenEventHandler<ClickedEventArgs> DoubleClicked
+    public override event GwenEventHandler<MouseButtonState> DoubleClicked
     {
         add
         {
@@ -397,43 +561,40 @@ public partial class Label : Base, ILabel
         }
     }
 
-    public override event Base.GwenEventHandler<ClickedEventArgs> RightClicked
-    {
-        add
-        {
-            base.RightClicked += value;
-            MouseInputEnabled = ClickEventAssigned;
-        }
-        remove
-        {
-            base.RightClicked -= value;
-            MouseInputEnabled = ClickEventAssigned;
-        }
-    }
-
-    public override event Base.GwenEventHandler<ClickedEventArgs> DoubleRightClicked
-    {
-        add
-        {
-            base.DoubleRightClicked += value;
-            MouseInputEnabled = ClickEventAssigned;
-        }
-        remove
-        {
-            base.DoubleRightClicked -= value;
-            MouseInputEnabled = ClickEventAssigned;
-        }
-    }
-
     /// <summary>
     ///     Returns index of the character closest to specified point (in canvas coordinates).
     /// </summary>
     /// <param name="x"></param>
     /// <param name="y"></param>
     /// <returns></returns>
-    protected virtual Point GetClosestCharacter(int x, int y)
+    protected virtual Point GetClosestCharacter(int x, int y) => GetClosestCharacter(new Point(x, y));
+
+    protected Point GetClosestCharacter(Point point)
     {
-        return new Point(_textElement.GetClosestCharacter(_textElement.CanvasPosToLocal(new Point(x, y))), 0);
+        point = _textElement.CanvasPosToLocal(point);
+        var closestCharacterIndex = _textElement.GetClosestCharacter(point);
+        Point closestCharacterPoint = new(closestCharacterIndex, 0);
+
+        var replacementRange = _replacementRange;
+        if (_textOverride != null || _displayedText is not { } displayedText || replacementRange.Equals(default))
+        {
+            return closestCharacterPoint;
+        }
+
+        var startIndex = replacementRange.Start.Value;
+        var endIndex = replacementRange.End.Value;
+        if (replacementRange.End.IsFromEnd)
+        {
+            endIndex = displayedText.Length - endIndex;
+        }
+
+        closestCharacterPoint.X = Math.Clamp(
+            closestCharacterPoint.X,
+            startIndex,
+            endIndex
+        );
+
+        return closestCharacterPoint;
     }
 
     /// <summary>
@@ -461,49 +622,52 @@ public partial class Label : Base, ILabel
     {
         base.Layout(skin);
 
-        var align = mAlign;
-
-        if (mAutoSizeToContents)
+        if (_autoSizeToContents)
         {
             SizeToContents();
         }
 
-        var x = mTextPadding.Left + Padding.Left;
-        var y = mTextPadding.Top + Padding.Top;
+        AlignTextElement(_textElement);
+    }
 
-        if (0 != (align & Pos.Right))
+    protected void AlignTextElement(Text textElement)
+    {
+        if (_textDisabled && textElement == _textElement && textElement.IsHidden)
         {
-            x = Width - _textElement.Width - mTextPadding.Right - Padding.Right;
+            return;
         }
 
-        if (0 != (align & Pos.CenterH))
+        var align = TextAlign;
+        var textOuterWidth = textElement.OuterWidth;
+        var textOuterHeight = textElement.OuterHeight;
+        var textPadding = Padding;
+
+        var availableWidth = Width - (textPadding.Left + textPadding.Right);
+        var availableHeight = Height - (textPadding.Top + textPadding.Bottom);
+        Rectangle contentBounds = new Rectangle(textPadding.Left, textPadding.Top, availableWidth, availableHeight);
+
+        var x = textPadding.Left;
+        var y = textPadding.Top;
+
+        if (align.HasFlag(Pos.CenterH))
         {
-            x = (int)(mTextPadding.Left +
-                       Padding.Left +
-                       (Width -
-                        _textElement.Width -
-                        mTextPadding.Left -
-                        Padding.Left -
-                        mTextPadding.Right -
-                        Padding.Right) *
-                       0.5f);
+            x = textPadding.Left + (int)((contentBounds.Width - textOuterWidth) / 2f);
+        }
+        else if (align.HasFlag(Pos.Right))
+        {
+            x = contentBounds.Right - textOuterWidth;
         }
 
-        if (0 != (align & Pos.CenterV))
+        if (align.HasFlag(Pos.CenterV))
         {
-            y = (int)(mTextPadding.Top +
-                       Padding.Top +
-                       (Height - _textElement.Height) * 0.5f -
-                       mTextPadding.Bottom -
-                       Padding.Bottom);
+            y = textPadding.Top + (int)((contentBounds.Height - textOuterHeight) / 2f);
+        }
+        else if (align.HasFlag(Pos.Bottom))
+        {
+            y = contentBounds.Bottom - textOuterHeight;
         }
 
-        if (0 != (align & Pos.Bottom))
-        {
-            y = Height - _textElement.Height - mTextPadding.Bottom - Padding.Bottom;
-        }
-
-        _textElement.SetPosition(x, y);
+        textElement.SetPosition(x, y);
     }
 
     /// <summary>
@@ -511,7 +675,7 @@ public partial class Label : Base, ILabel
     /// </summary>
     /// <param name="text">Text to set.</param>
     /// <param name="doEvents">Determines whether to invoke "text changed" event.</param>
-    public virtual void SetText(string text, bool doEvents = true)
+    public virtual void SetText(string? text, bool doEvents = true)
     {
         if (string.Equals(_text, text, StringComparison.Ordinal))
         {
@@ -519,15 +683,15 @@ public partial class Label : Base, ILabel
         }
 
         _text = text;
-        _textElement.DisplayedText = text;
+        _displayedText = string.IsNullOrWhiteSpace(_formatString) ? _text : string.Format(_formatString, _text);
+        _textElement.DisplayedText = _displayedText;
 
-        if (mAutoSizeToContents)
+        var sizeChanged = _autoSizeToContents && SizeToContents();
+        if (sizeChanged)
         {
-            SizeToContents();
+            Invalidate();
+            InvalidateParent();
         }
-
-        Invalidate();
-        InvalidateParent();
 
         if (doEvents)
         {
@@ -535,10 +699,41 @@ public partial class Label : Base, ILabel
         }
     }
 
+    protected override void OnChildBoundsChanged(Base child, Rectangle oldChildBounds, Rectangle newChildBounds)
+    {
+        base.OnChildBoundsChanged(child, oldChildBounds, newChildBounds);
+
+        if (oldChildBounds.Size != newChildBounds.Size)
+        {
+            if (_autoSizeToContents)
+            {
+                Invalidate();
+            }
+            else
+            {
+                if (child is Text)
+                {
+                    var textSize = newChildBounds.Size;
+                    var ownSize = Size;
+                    if (textSize.X > ownSize.X || textSize.Y > ownSize.Y)
+                    {
+                        OnTextExceedsSize(ownSize, textSize);
+                    }
+                }
+
+                AlignTextElement(_textElement);
+            }
+        }
+    }
+
+    protected virtual void OnTextExceedsSize(Point ownSize, Point textSize)
+    {
+    }
+
     public virtual void SetTextScale(float scale)
     {
         _textElement.SetScale(scale);
-        if (mAutoSizeToContents)
+        if (_autoSizeToContents)
         {
             SizeToContents();
         }
@@ -547,20 +742,67 @@ public partial class Label : Base, ILabel
         InvalidateParent();
     }
 
-    public virtual void SizeToContents()
+    protected virtual Point GetContentSize()
     {
-        _textElement.SetPosition(mTextPadding.Left + Padding.Left, mTextPadding.Top + Padding.Top);
+        return _textElement.Size;
+    }
 
-        if (!SetSize(
-                _textElement.Width + Padding.Left + Padding.Right + mTextPadding.Left + mTextPadding.Right,
-                _textElement.Height + Padding.Top + Padding.Bottom + mTextPadding.Top + mTextPadding.Bottom
-            ))
+    protected virtual Padding GetContentPadding() => Padding + _textPadding;
+
+    protected override void OnBoundsChanged(Rectangle oldBounds, Rectangle newBounds)
+    {
+        base.OnBoundsChanged(oldBounds, newBounds);
+
+        if (RestrictToParent)
         {
-            return;
+            _textElement.MaximumSize = _textElement.MaximumSize with { X = InnerWidth };
+        }
+    }
+
+    public bool SizeToContents() => SizeToContents(out _);
+
+    public virtual bool SizeToContents(out Point contentSize)
+    {
+        _textElement.SizeToChildren();
+
+        contentSize = MeasureShrinkToContents();
+
+        var oldSize = Size;
+        if (!SetSize(contentSize))
+        {
+            return false;
         }
 
         ProcessAlignments();
         InvalidateParent();
+
+        SizedToContents?.Invoke(
+            this,
+            new ValueChangedEventArgs<Point>
+            {
+                Value = contentSize,
+                OldValue = oldSize,
+            }
+        );
+
+        return true;
+    }
+
+    public GwenEventHandler<ValueChangedEventArgs<Point>>? SizedToContents;
+
+    public virtual Point MeasureShrinkToContents()
+    {
+        var contentPadding = GetContentPadding();
+
+        var contentSize = GetContentSize();
+
+        var newWidth = contentSize.X + contentPadding.Left + contentPadding.Right;
+        newWidth = Math.Max(newWidth, MinimumSize.X);
+
+        var newHeight = contentSize.Y + contentPadding.Top + contentPadding.Bottom;
+        newHeight = Math.Max(newHeight, MinimumSize.Y);
+
+        return new Point(newWidth, newHeight);
     }
 
     /// <summary>
@@ -589,57 +831,54 @@ public partial class Label : Base, ILabel
     /// </summary>
     public override void UpdateColors()
     {
-        var textColor = GetTextColor(ControlState.Normal);
-        if (IsDisabled && GetTextColor(ControlState.Disabled) != null)
+        var textColor = GetTextColor(ComponentState.Normal) ?? Skin.Colors.Label.Normal;
+        if (IsDisabledByTree)
         {
-            textColor = GetTextColor(ControlState.Disabled);
+            textColor = GetTextColor(ComponentState.Disabled) ?? Skin.Colors.Label.Disabled;
         }
-        else if (IsHovered && GetTextColor(ControlState.Hovered) != null)
+        else if (IsActive)
         {
-            textColor = GetTextColor(ControlState.Hovered);
+            textColor = GetTextColor(ComponentState.Active) ?? Skin.Colors.Label.Active;
         }
-
-        if (textColor != null)
+        else if (IsHovered)
         {
-            TextColor = textColor;
-
-            return;
+            textColor = GetTextColor(ComponentState.Hovered) ?? Skin.Colors.Label.Hover;
         }
 
-        if (IsDisabled)
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (textColor == null)
         {
-            TextColor = Skin.Colors.Button.Disabled;
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "Text color for the current control state of '{ComponentName}' is somehow null IsDisabled={IsDisabled} IsActive={IsActive} IsHovered={IsHovered}",
+                ParentQualifiedName,
+                IsDisabled,
+                IsActive,
+                IsHovered
+            );
 
-            return;
+            textColor = new Color(r: 255, g: 0, b: 255);
         }
 
-        if (IsHovered && ClickEventAssigned)
-        {
-            TextColor = Skin.Colors.Button.Hover;
-
-            return;
-        }
-
-        TextColor = Skin.Colors.Button.Normal;
+        TextColor = textColor;
     }
 
-    public virtual void SetTextColor(Color clr, ControlState state)
+    public virtual void SetTextColor(Color clr, ComponentState state)
     {
         switch (state)
         {
-            case ControlState.Normal:
+            case ComponentState.Normal:
                 mNormalTextColor = clr;
 
                 break;
-            case ControlState.Hovered:
+            case ComponentState.Hovered:
                 mHoverTextColor = clr;
 
                 break;
-            case ControlState.Clicked:
+            case ComponentState.Active:
                 mClickedTextColor = clr;
 
                 break;
-            case ControlState.Disabled:
+            case ComponentState.Disabled:
                 mDisabledTextColor = clr;
 
                 break;
@@ -650,21 +889,25 @@ public partial class Label : Base, ILabel
         UpdateColors();
     }
 
-    public virtual Color? GetTextColor(ControlState state)
+    public virtual Color? GetTextColor(ComponentState state)
     {
         switch (state)
         {
-            case ControlState.Normal:
+            case ComponentState.Normal:
                 return mNormalTextColor;
-            case ControlState.Hovered:
+            case ComponentState.Hovered:
                 return mHoverTextColor;
-            case ControlState.Clicked:
+            case ComponentState.Active:
                 return mClickedTextColor;
-            case ControlState.Disabled:
+            case ComponentState.Disabled:
                 return mDisabledTextColor;
             default:
                 return null;
         }
     }
 
+    public override string ToString()
+    {
+        return $"Label (Text='{Text}')";
+    }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Framework.Gwen.ControlInternal;
@@ -33,16 +34,16 @@ public partial class Menu : ScrollControl
     ///     Initializes a new instance of the <see cref="Menu" /> class.
     /// </summary>
     /// <param name="parent">Parent control.</param>
-    public Menu(Base parent, string name = default) : base(parent, name)
+    /// <param name="name"></param>
+    public Menu(Base parent, string? name = default) : base(parent, name)
     {
-        SetBounds(0, 0, 10, 10);
+        _scrollPanel.Padding = default;
+
+        Size = new Point(10, 10);
         Padding = Padding.Two;
         IconMarginDisabled = false;
 
-        AutoHideBars = true;
-        EnableScroll(false, true);
         DeleteOnClose = false;
-        Name = name;
     }
 
     internal override bool IsMenuComponent => true;
@@ -66,6 +67,8 @@ public partial class Menu : ScrollControl
     ///     Determines whether the menu should open on mouse hover.
     /// </summary>
     protected virtual bool ShouldHoverOpenMenu => true;
+
+    public MenuItem[] MenuItems => Children.OfType<MenuItem>().ToArray();
 
     /// <summary>C:\Users\JC Snider\Desktop\AGD\Intersect-Engine\Intersect.Client.Framework\Gwen\Control\Button.cs
     ///     Renders the control using specified skin.
@@ -119,19 +122,25 @@ public partial class Menu : ScrollControl
     {
         var childrenHeight = Children.Sum(child => child != null ? child.Height : 0);
 
-        if (childrenHeight > InnerPanel.MaximumSize.Y)
+        if (InnerPanel.MaximumSize.Y > 0 && childrenHeight > InnerPanel.MaximumSize.Y)
         {
             InnerPanel.MaximumSize = new Point(InnerPanel.MaximumSize.X, childrenHeight);
         }
 
-        if (Y + childrenHeight > GetCanvas().Height)
+        var canvasHeight = Canvas?.Height ?? Y + childrenHeight;
+        if (Y + childrenHeight > canvasHeight)
         {
-            childrenHeight = GetCanvas().Height - Y;
+            childrenHeight = canvasHeight - Y;
         }
 
         SetSize(Width, childrenHeight);
 
         base.Layout(skin);
+    }
+
+    public override void Invalidate()
+    {
+        base.Invalidate();
     }
 
     /// <summary>
@@ -148,52 +157,46 @@ public partial class Menu : ScrollControl
     ///     Adds a new menu item.
     /// </summary>
     /// <param name="text">Item text.</param>
-    /// <param name="iconName">Icon texture.</param>
+    /// <param name="iconTexture"></param>
+    /// <param name="textureFilename"></param>
     /// <param name="accelerator">Accelerator for this item.</param>
+    /// <param name="font"></param>
     /// <returns>Newly created control.</returns>
     public virtual MenuItem AddItem(
         string text,
-        GameTexture iconTexture,
-        string textureFilename = "",
-        string accelerator = "",
-        GameFont font = null
+        GameTexture? iconTexture,
+        string? textureFilename = default,
+        string? accelerator = default,
+        GameFont? font = default
     )
     {
-        var item = new MenuItem(this);
-        item.Padding = Padding.Four;
-        item.SetText(text);
-        item.SetImage(iconTexture, textureFilename, Button.ControlState.Normal);
-        item.SetAccelerator(accelerator);
-        if (font != null)
+        var newMenuItem = new MenuItem(this)
         {
-            item.Font = font;
-        }
+            Font = font,
+            Text = text,
+            Padding = new Padding(8),
+        };
+        newMenuItem.SetStateTexture(iconTexture, textureFilename, ComponentState.Normal);
+        newMenuItem.SetAccelerator(accelerator);
 
-        OnAddItem(item);
+        OnAddItem(newMenuItem);
 
-        return item;
+        return newMenuItem;
     }
 
     /// <summary>
     ///     Add item handler.
     /// </summary>
-    /// <param name="item">Item added.</param>
-    protected virtual void OnAddItem(MenuItem item)
+    /// <param name="menuItem">Item added.</param>
+    protected virtual void OnAddItem(MenuItem menuItem)
     {
-        item.TextPadding = new Padding(IconMarginDisabled ? 0 : 24, 0, 16, 0);
-        item.Dock = Pos.Top;
-        item.SizeToContents();
-        item.Alignment = Pos.CenterV | Pos.Left;
-        item.HoverEnter += OnHoverItem;
+        menuItem.Padding = new Padding(IconMarginDisabled ? 8 : 32, 4, 8, 4);
+        menuItem.Dock = Pos.Top;
+        menuItem.SizeToContents();
+        menuItem.TextAlign = Pos.CenterV | Pos.Left;
+        menuItem.HoverEnter += OnHoverItem;
 
-        // Do this here - after Top Docking these values mean nothing in layout
-        var w = item.Width + 10 + 32;
-        if (w < Width)
-        {
-            w = Width;
-        }
-
-        SetSize(w, Height);
+        Width = Math.Max(Width, menuItem.Width + 10 + 32);
 
         UpdateItemStyles();
     }
@@ -203,16 +206,10 @@ public partial class Menu : ScrollControl
     /// </summary>
     public virtual void CloseAll()
     {
-        //System.Diagnostics.//debug.print("Menu.CloseAll: {0}", this);
-        Children.ForEach(
-            child =>
-            {
-                if (child is MenuItem)
-                {
-                    (child as MenuItem).CloseMenu();
-                }
-            }
-        );
+        foreach (var menuItem in Children.OfType<MenuItem>())
+        {
+            menuItem.CloseMenu();
+        }
     }
 
     /// <summary>
@@ -265,7 +262,11 @@ public partial class Menu : ScrollControl
     /// </summary>
     public virtual void Close()
     {
-        //System.Diagnostics.//debug.print("Menu.Close: {0}", this);
+        if (IsHidden)
+        {
+            return;
+        }
+
         IsHidden = true;
         if (DeleteOnClose)
         {
@@ -278,7 +279,6 @@ public partial class Menu : ScrollControl
     /// </summary>
     public override void CloseMenus()
     {
-        //System.Diagnostics.//debug.print("Menu.CloseMenus: {0}", this);
         base.CloseMenus();
         CloseAll();
         Close();
@@ -294,10 +294,10 @@ public partial class Menu : ScrollControl
         divider.Margin = new Margin(IconMarginDisabled ? 0 : 24, 0, 4, 0);
     }
 
-    public override bool SizeToChildren(bool width = true, bool height = true)
+    public override bool SizeToChildren(bool resizeX = true, bool resizeY = true, bool recursive = false)
     {
-        base.SizeToChildren(width, height);
-        if (width)
+        base.SizeToChildren(resizeX: resizeX, resizeY: resizeY, recursive: recursive);
+        if (resizeX)
         {
             var maxWidth = 0;
             foreach (var child in Children)
@@ -314,18 +314,20 @@ public partial class Menu : ScrollControl
         return true;
     }
 
-    public override JObject GetJson(bool isRoot = default)
+    public override JObject? GetJson(bool isRoot = false, bool onlySerializeIfNotEmpty = false)
     {
-        var obj = base.GetJson(isRoot);
-        if (!(this is CheckBox))
+        var serializedProperties = base.GetJson(isRoot, onlySerializeIfNotEmpty);
+        if (serializedProperties is null)
         {
-            obj.Add("BackgroundTemplate", mBackgroundTemplateFilename);
-            obj.Add("ItemTextColor", Color.ToString(mItemNormalTextColor));
-            obj.Add("ItemHoveredTextColor", Color.ToString(mItemHoverTextColor));
-            obj.Add("ItemFont", mItemFontInfo);
+            return null;
         }
 
-        return base.FixJson(obj);
+        serializedProperties.Add("BackgroundTemplate", mBackgroundTemplateFilename);
+        serializedProperties.Add("ItemTextColor", Color.ToString(mItemNormalTextColor));
+        serializedProperties.Add("ItemHoveredTextColor", Color.ToString(mItemHoverTextColor));
+        serializedProperties.Add("ItemFont", mItemFontInfo);
+
+        return base.FixJson(serializedProperties);
     }
 
     public override void LoadJson(JToken obj, bool isRoot = default)
@@ -335,7 +337,7 @@ public partial class Menu : ScrollControl
         {
             SetBackgroundTemplate(
                 GameContentManager.Current.GetTexture(
-                    Framework.Content.TextureType.Gui, (string)obj["BackgroundTemplate"]
+                    Content.TextureType.Gui, (string)obj["BackgroundTemplate"]
                 ), (string)obj["BackgroundTemplate"]
             );
         }
@@ -371,8 +373,8 @@ public partial class Menu : ScrollControl
                 itm.Font = mItemFont;
             }
 
-            itm.SetTextColor(mItemNormalTextColor, Label.ControlState.Normal);
-            itm.SetTextColor(mItemHoverTextColor, Label.ControlState.Hovered);
+            itm.SetTextColor(mItemNormalTextColor, ComponentState.Normal);
+            itm.SetTextColor(mItemHoverTextColor, ComponentState.Hovered);
         }
     }
 
@@ -385,7 +387,7 @@ public partial class Menu : ScrollControl
     {
         if (texture == null && !string.IsNullOrWhiteSpace(fileName))
         {
-            texture = GameContentManager.Current?.GetTexture(Framework.Content.TextureType.Gui, fileName);
+            texture = GameContentManager.Current?.GetTexture(Content.TextureType.Gui, fileName);
         }
 
         mBackgroundTemplateFilename = fileName;

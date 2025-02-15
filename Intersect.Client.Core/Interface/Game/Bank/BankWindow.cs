@@ -49,7 +49,7 @@ public partial class BankWindow
 
         // Disable resizing and add to the list of input-blocking elements.
         mBankWindow.DisableResizing();
-        Interface.InputBlockingElements.Add(mBankWindow);
+        Interface.InputBlockingComponents.Add(mBankWindow);
 
         // Create a new scroll control for the items in the bank.
         mItemContainer = new ScrollControl(mBankWindow, "ItemContainer");
@@ -93,10 +93,10 @@ public partial class BankWindow
         mContextMenu.Open(Framework.Gwen.Pos.None);
     }
 
-    private void MWithdrawContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.ClickedEventArgs arguments)
+    private void MWithdrawContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.MouseButtonState arguments)
     {
         var slot = (int)sender.Parent.UserData;
-        Globals.Me.TryWithdrawItem(slot);
+        Globals.Me.TryRetrieveItemFromBank(slot);
     }
 
     public void Close()
@@ -240,8 +240,8 @@ public partial class BankWindow
     {
         var rect = new FloatRect()
         {
-            X = mBankWindow.LocalPosToCanvas(new Point(0, 0)).X - sItemXPadding / 2,
-            Y = mBankWindow.LocalPosToCanvas(new Point(0, 0)).Y - sItemYPadding / 2,
+            X = mBankWindow.ToCanvas(new Point(0, 0)).X - sItemXPadding / 2,
+            Y = mBankWindow.ToCanvas(new Point(0, 0)).Y - sItemYPadding / 2,
             Width = mBankWindow.Width + sItemXPadding,
             Height = mBankWindow.Height + sItemYPadding
         };

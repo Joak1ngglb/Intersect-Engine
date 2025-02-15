@@ -69,16 +69,16 @@ public partial class QuestsWindow
         mQuestsWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
     }
 
-    private void _quitButton_Clicked(Base sender, ClickedEventArgs arguments)
+    private void _quitButton_Clicked(Base sender, MouseButtonState arguments)
     {
         if (mSelectedQuest != null)
         {
             _ = new InputBox(
                 title: Strings.QuestLog.AbandonTitle.ToString(mSelectedQuest.Name),
                 prompt: Strings.QuestLog.AbandonPrompt.ToString(mSelectedQuest.Name),
-                inputType: InputBox.InputType.YesNo,
+                inputType: InputType.YesNo,
                 userData: mSelectedQuest.Id,
-                onSuccess: (s, e) =>
+                onSubmit: (s, e) =>
                 {
                     if (s is InputBox inputBox && inputBox.UserData is Guid questId)
                     {
@@ -94,14 +94,26 @@ public partial class QuestsWindow
         PacketSender.SendAbandonQuest((Guid) ((InputBox) sender).UserData);
     }
 
-    private void _backButton_Clicked(Base sender, ClickedEventArgs arguments)
+    private void _backButton_Clicked(Base sender, MouseButtonState arguments)
     {
         mSelectedQuest = null;
         UpdateSelectedQuest();
     }
 
-    //Methods
+    private bool _shouldUpdateList;
+
     public void Update(bool shouldUpdateList)
+    {
+        if (!mQuestsWindow.IsVisible)
+        {
+            _shouldUpdateList |= shouldUpdateList;
+            return;
+        }
+
+        UpdateInternal(shouldUpdateList);
+    }
+
+    private void UpdateInternal(bool shouldUpdateList)
     {
         if (shouldUpdateList)
         {
@@ -281,7 +293,7 @@ public partial class QuestsWindow
         mQuestList.UnselectAll();
     }
 
-    private void QuestListItem_Clicked(Base sender, ClickedEventArgs arguments)
+    private void QuestListItem_Clicked(Base sender, MouseButtonState arguments)
     {
         var questNum = (Guid) ((ListBoxRow) sender).UserData;
         var quest = QuestBase.Get(questNum);
@@ -318,11 +330,11 @@ public partial class QuestsWindow
                 {
                     //In Progress
                     mQuestStatus.SetText(Strings.QuestLog.InProgress);
-                    mQuestStatus.SetTextColor(CustomColors.QuestWindow.InProgress, Label.ControlState.Normal);
-                    mQuestDescTemplateLabel.SetTextColor(CustomColors.QuestWindow.QuestDesc, Label.ControlState.Normal);
-                    
+                    mQuestStatus.SetTextColor(CustomColors.QuestWindow.InProgress, ComponentState.Normal);
+                    mQuestDescTemplateLabel.SetTextColor(CustomColors.QuestWindow.QuestDesc, ComponentState.Normal);
+
                     if (mSelectedQuest.InProgressDescription.Length > 0)
-                    {    
+                    {
                         mQuestDescLabel.AddText(mSelectedQuest.InProgressDescription, mQuestDescTemplateLabel);
 
                         mQuestDescLabel.AddLineBreak();
@@ -377,7 +389,7 @@ public partial class QuestsWindow
                         if (mSelectedQuest.LogAfterComplete)
                         {
                             mQuestStatus.SetText(Strings.QuestLog.Completed);
-                            mQuestStatus.SetTextColor(CustomColors.QuestWindow.Completed, Label.ControlState.Normal);
+                            mQuestStatus.SetTextColor(CustomColors.QuestWindow.Completed, ComponentState.Normal);
                             mQuestDescLabel.AddText(mSelectedQuest.EndDescription, mQuestDescTemplateLabel);
                         }
                     }
@@ -387,7 +399,7 @@ public partial class QuestsWindow
                         if (mSelectedQuest.LogBeforeOffer)
                         {
                             mQuestStatus.SetText(Strings.QuestLog.NotStarted);
-                            mQuestStatus.SetTextColor(CustomColors.QuestWindow.NotStarted, Label.ControlState.Normal);
+                            mQuestStatus.SetTextColor(CustomColors.QuestWindow.NotStarted, ComponentState.Normal);
                             mQuestDescLabel.AddText(mSelectedQuest.BeforeDescription, mQuestDescTemplateLabel);
 
                             mQuitButton?.Hide();
@@ -401,7 +413,7 @@ public partial class QuestsWindow
                 if (mSelectedQuest.LogBeforeOffer)
                 {
                     mQuestStatus.SetText(Strings.QuestLog.NotStarted);
-                    mQuestStatus.SetTextColor(CustomColors.QuestWindow.NotStarted, Label.ControlState.Normal);
+                    mQuestStatus.SetTextColor(CustomColors.QuestWindow.NotStarted, ComponentState.Normal);
                     mQuestDescLabel.AddText(mSelectedQuest.BeforeDescription, mQuestDescTemplateLabel);
                 }
             }
@@ -410,7 +422,7 @@ public partial class QuestsWindow
             mQuestTitle.IsHidden = false;
             mQuestTitle.Text = mSelectedQuest.Name;
             mQuestDescArea.IsHidden = false;
-            mQuestDescLabel.Width = mQuestDescArea.Width - mQuestDescArea.GetVerticalScrollBar().Width;
+            mQuestDescLabel.Width = mQuestDescArea.Width - mQuestDescArea.VerticalScrollBar.Width;
             mQuestDescLabel.SizeToChildren(false, true);
             mQuestStatus.Show();
             mBackButton.Show();
@@ -420,6 +432,12 @@ public partial class QuestsWindow
 
     public void Show()
     {
+        if (_shouldUpdateList)
+        {
+            UpdateInternal(_shouldUpdateList);
+            _shouldUpdateList = false;
+        }
+
         mQuestsWindow.IsHidden = false;
     }
 

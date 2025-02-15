@@ -117,13 +117,18 @@ public partial class Guild
             return null;
         }
 
+
         using var context = DbInterface.CreatePlayerContext(readOnly: false);
+
+        creator.Save(context);
+
         var guild = new Guild
         {
             Name = name,
             FoundingDate = DateTime.UtcNow,
             GuildInstanceId = Guid.NewGuid(),
         };
+        context.Guilds.Add(guild);
 
         SlotHelper.ValidateSlotList(guild.Bank, Options.Instance.Guild.InitialBankSlots);
 
@@ -660,13 +665,13 @@ public partial class Guild
         // Send our new guild list to everyone that's online.
         UpdateMemberList();
 
-        if (newOwner.Online)
+        if (newOwner.IsOnline)
         {
             // Send our entity data to nearby players.
             PacketSender.SendEntityDataToProximity(newOwner);
         }
 
-        if (oldOwner?.Online ?? false)
+        if (oldOwner?.IsOnline ?? false)
         {
             // Send our entity data to nearby players.
             PacketSender.SendEntityDataToProximity(oldOwner);

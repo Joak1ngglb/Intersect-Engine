@@ -1,18 +1,24 @@
 using Intersect.Client.Framework.GenericClasses;
+using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.Framework.Gwen.ControlInternal;
+using Intersect.Client.Framework.Input;
+using Intersect.Core;
+using Intersect.Framework.Reflection;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Intersect.Client.Framework.Gwen.Control;
-
 
 /// <summary>
 ///     ComboBox control.
 /// </summary>
 public partial class ComboBox : Button
 {
+    private readonly Base _arrowIcon;
+    private readonly Menu _menu;
 
-    private readonly Base mButton;
+    private Point _itemMaximumSize;
 
     private string mCloseMenuSound;
 
@@ -20,14 +26,12 @@ public partial class ComboBox : Button
 
     private string mHoverMenuSound;
 
-    private Menu mMenu;
-
-    private bool mMenuAbove;
+    private bool _positionMenuAbove;
 
     //Sound Effects
     private string mOpenMenuSound;
 
-    private MenuItem mSelectedItem;
+    private MenuItem? mSelectedItem;
 
     private string mSelectItemSound;
 
@@ -36,23 +40,26 @@ public partial class ComboBox : Button
     /// </summary>
     /// <param name="parent">Parent control.</param>
     /// <param name="name"></param>
-    public ComboBox(Base parent, string name = default) : base(parent, name)
+    public ComboBox(Base parent, string? name = default) : base(parent, name)
     {
-        SetSize(100, 20);
-        mMenu = new Menu(this)
+        Size = new Point(100, 20);
+        _menu = new Menu(this, name: nameof(_menu))
         {
             IsHidden = true,
             IconMarginDisabled = true,
-            IsTabable = false
+            IsTabable = false,
+            MaximumSize = new Point(100, 200),
         };
 
-        var arrow = new DownArrow(this);
-        mButton = arrow;
+        _arrowIcon = new DownArrow(this, name: nameof(_arrowIcon))
+        {
+            Margin = new Margin(4, 0, 0, 0),
+        };
 
-        Alignment = Pos.Left | Pos.CenterV;
+        TextAlign = Pos.Left | Pos.CenterV;
         Text = string.Empty;
-        Margin = new Margin(3, 0, 0, 0);
 
+        AutoSizeToContents = true;
         IsTabable = true;
         KeyboardInputEnabled = true;
     }
@@ -60,24 +67,45 @@ public partial class ComboBox : Button
     /// <summary>
     ///     Indicates whether the combo menu is open.
     /// </summary>
-    public bool IsOpen => mMenu != null && !mMenu.IsHidden;
+    public bool IsOpen => _menu.IsVisible;
 
     /// <summary>
     ///     Selected item.
     /// </summary>
     /// <remarks>Not just String property, because items also have internal names.</remarks>
-    public MenuItem SelectedItem
+    public MenuItem? SelectedItem
     {
         get => mSelectedItem;
         set
         {
-            if (value == null || value.Parent != mMenu)
+            if (value == mSelectedItem)
             {
                 return;
             }
 
-            mSelectedItem = value;
-            OnItemSelected(mSelectedItem, new ItemSelectedEventArgs(value, true));
+            if (value == null)
+            {
+                mSelectedItem = null;
+                // TODO: Event?
+                return;
+            }
+
+            if (value.Parent == _menu)
+            {
+                mSelectedItem = value;
+                OnItemSelected(mSelectedItem, new ItemSelectedEventArgs(value, true, mSelectedItem.UserData));
+                return;
+            }
+
+            ApplicationContext.CurrentContext.Logger.LogWarning(
+                "Tried to set selected item of {ComponentTypeName} '{ComponentName}' to '{SelectionName}' ({SelectionType})",
+                GetType().GetName(qualified: true),
+                ParentQualifiedName,
+                value.Name,
+                value.GetType().GetName(qualified: true)
+            );
+
+            mSelectedItem = null;
         }
     }
 
@@ -86,32 +114,34 @@ public partial class ComboBox : Button
     /// <summary>
     ///     Invoked when the selected item has changed.
     /// </summary>
-    public event GwenEventHandler<ItemSelectedEventArgs> ItemSelected;
+    public event GwenEventHandler<ItemSelectedEventArgs>? ItemSelected;
 
-    public void SetMenuAbove()
+    public bool OpenMenuAbove
     {
-        mMenuAbove = true;
-        if (IsOpen)
-        {
-            Open();
-        }
+        get => _positionMenuAbove;
+        set => SetAndDoIfChanged(ref _positionMenuAbove, value, UpdatePositionIfOpen);
     }
 
-    public void SetMenuBelow()
+    private void UpdatePositionIfOpen()
     {
-        mMenuAbove = false;
-        if (IsOpen)
+        if (!IsOpen)
         {
-            Open();
+            return;
         }
+
+        Open();
     }
 
-    public override JObject GetJson(bool isRoot = default)
+    public override JObject? GetJson(bool isRoot = false, bool onlySerializeIfNotEmpty = false)
     {
-        var obj = base.GetJson(isRoot);
-        obj.Add("MenuAbove", mMenuAbove);
-        obj.Add("Menu", mMenu.GetJson());
-        obj.Add("DropDownButton", mButton.GetJson());
+        var obj = base.GetJson(isRoot, onlySerializeIfNotEmpty);
+        if (obj is null)
+        {
+            return null;
+        }
+
+        obj.Add("MenuAbove", _positionMenuAbove);
+        obj.Add("DropDownButton", _arrowIcon.GetJson());
         obj.Add("OpenMenuSound", mOpenMenuSound);
         obj.Add("CloseMenuSound", mCloseMenuSound);
         obj.Add("HoverMenuSound", mHoverMenuSound);
@@ -126,17 +156,17 @@ public partial class ComboBox : Button
         base.LoadJson(obj);
         if (obj["MenuAbove"] != null)
         {
-            mMenuAbove = (bool)obj["MenuAbove"];
+            _positionMenuAbove = (bool)obj["MenuAbove"];
         }
 
         if (obj["Menu"] != null)
         {
-            mMenu.LoadJson(obj["Menu"]);
+            _menu.LoadJson(obj["Menu"]);
         }
 
         if (obj["DropDownButton"] != null)
         {
-            mButton.LoadJson(obj["DropDownButton"]);
+            _arrowIcon.LoadJson(obj["DropDownButton"]);
         }
 
         if (obj["OpenMenuSound"] != null)
@@ -172,7 +202,7 @@ public partial class ComboBox : Button
                 {
                     if (menuChild is MenuItem menuItem)
                     {
-                        menuItem.SetHoverSound(mHoverItemSound);
+                        menuItem.SetSound(ButtonSoundState.Hover, mHoverItemSound);
                     }
                 }
             }
@@ -185,63 +215,75 @@ public partial class ComboBox : Button
     /// <param name="label">Item label (displayed).</param>
     /// <param name="name">Item name.</param>
     /// <returns>Newly created control.</returns>
-    public virtual MenuItem AddItem(string label, string name = "", object userData = null)
+    public virtual MenuItem AddItem(string label, string? name = default, object? userData = default)
     {
-        var item = mMenu.AddItem(label, null, "", "", this.Font);
-        item.Name = name;
+        var item = _menu.AddItem(label, null, "", "", Font);
+        item.Name = name!;
         item.Selected += OnItemSelected;
         item.UserData = userData;
-        item.SetTextColor(GetTextColor(Label.ControlState.Normal), Label.ControlState.Normal);
-        item.SetTextColor(GetTextColor(Label.ControlState.Hovered), Label.ControlState.Hovered);
-        item.SetTextColor(GetTextColor(Label.ControlState.Clicked), Label.ControlState.Clicked);
-        item.SetTextColor(GetTextColor(Label.ControlState.Disabled), Label.ControlState.Disabled);
-        item.SetHoverSound(mHoverItemSound);
+        item.SetTextColor(GetTextColor(ComponentState.Normal), ComponentState.Normal);
+        item.SetTextColor(GetTextColor(ComponentState.Hovered), ComponentState.Hovered);
+        item.SetTextColor(GetTextColor(ComponentState.Active), ComponentState.Active);
+        item.SetTextColor(GetTextColor(ComponentState.Disabled), ComponentState.Disabled);
+        item.SetSound(ButtonSoundState.Hover, mHoverItemSound);
 
+        UpdateItemMaximumSize(label);
+
+        // ReSharper disable once InvertIf
         if (mSelectedItem == null)
         {
-            OnItemSelected(item, new ItemSelectedEventArgs(null, true));
+            var itemSelectedEventArgs = new ItemSelectedEventArgs(item, true, selectedUserData: item.UserData);
+            OnItemSelected(item, itemSelectedEventArgs);
         }
 
         return item;
     }
 
-    /// <summary>
-    ///     Renders the control using specified skin.
-    /// </summary>
-    /// <param name="skin">Skin to use.</param>
-    protected override void Render(Skin.Base skin)
+    private void UpdateItemMaximumSize(string item)
     {
-        skin.DrawComboBox(this, IsDepressed, IsOpen);
+        var itemSize = Skin.Renderer.MeasureText(Font, item);
+        _itemMaximumSize.X = Math.Max(_itemMaximumSize.X, itemSize.X);
+        _itemMaximumSize.Y = Math.Max(_itemMaximumSize.Y, itemSize.Y);
+    }
+
+    protected override void OnFontChanged(Base sender, GameFont? oldFont, GameFont? newFont)
+    {
+        _itemMaximumSize = default;
+        foreach (var item in _menu.MenuItems)
+        {
+            UpdateItemMaximumSize(item.Text ?? string.Empty);
+        }
     }
 
     public override void Disable()
     {
         base.Disable();
-        GetCanvas().CloseMenus();
+        Canvas?.CloseMenus();
     }
 
     /// <summary>
     ///     Internal Pressed implementation.
     /// </summary>
-    protected override void OnClicked(int x, int y)
+    protected override void OnMouseClicked(MouseButton mouseButton, Point mousePosition, bool userAction = true)
     {
+        var canvas = Canvas;
+
         if (IsOpen)
         {
-            GetCanvas().CloseMenus();
+            canvas?.CloseMenus();
 
             return;
         }
 
-        var wasMenuHidden = mMenu.IsHidden;
-
-        GetCanvas().CloseMenus();
+        var wasMenuHidden = _menu.IsHidden;
+        canvas?.CloseMenus();
 
         if (wasMenuHidden)
         {
             Open();
         }
 
-        base.OnClicked(x, y);
+        base.OnMouseClicked(mouseButton, mousePosition, userAction);
     }
 
     /// <summary>
@@ -249,10 +291,8 @@ public partial class ComboBox : Button
     /// </summary>
     public virtual void DeleteAll()
     {
-        if (mMenu != null)
-        {
-            mMenu.DeleteAll();
-        }
+        _itemMaximumSize = default;
+        _menu.DeleteAll();
     }
 
     /// <summary>
@@ -261,32 +301,30 @@ public partial class ComboBox : Button
     /// <param name="control">Event source.</param>
     protected virtual void OnItemSelected(Base control, ItemSelectedEventArgs args)
     {
-        if (!IsDisabled)
+        if (IsDisabledByTree)
         {
-            //Convert selected to a menu item
-            var item = control as MenuItem;
-            if (null == item)
-            {
-                return;
-            }
-
-            mSelectedItem = item;
-            Text = mSelectedItem.Text;
-            mMenu.IsHidden = true;
-
-            if (ItemSelected != null)
-            {
-                ItemSelected.Invoke(this, args);
-            }
-
-            if (!args.Automated)
-            {
-                base.PlaySound(mSelectItemSound);
-            }
-
-            Focus();
-            Invalidate();
+            return;
         }
+
+        //Convert selected to a menu item
+        if (control is not MenuItem item)
+        {
+            return;
+        }
+
+        mSelectedItem = item;
+        Text = mSelectedItem.Text;
+        _menu.IsHidden = true;
+
+        ItemSelected?.Invoke(this, args);
+
+        if (!args.Automated)
+        {
+            base.PlaySound(mSelectItemSound);
+        }
+
+        Focus();
+        Invalidate();
     }
 
     /// <summary>
@@ -295,8 +333,21 @@ public partial class ComboBox : Button
     /// <param name="skin">Skin to use.</param>
     protected override void Layout(Skin.Base skin)
     {
-        mButton.Position(Pos.Right | Pos.CenterV, 4, 0);
+        _arrowIcon.Position(Pos.Right | Pos.CenterV, 4, 0);
+
         base.Layout(skin);
+    }
+
+    /// <summary>
+    ///     Renders the control using specified skin.
+    /// </summary>
+    /// <param name="skin">Skin to use.</param>
+    protected override void Render(Skin.Base skin)
+    {
+        // skin.DrawRectFill(OuterBounds, Color.FromArgb(0x7f, 0xff, 0, 0));
+        // skin.DrawRectFill(Bounds with { X = 0, Y = 0 }, Color.FromArgb(0xff, 0, 0xff, 0));
+        // skin.DrawRectFill(InnerBounds, Color.FromArgb(0x7f, 0, 0, 0xff));
+        skin.DrawComboBox(this, IsActive, IsOpen);
     }
 
     /// <summary>
@@ -304,14 +355,14 @@ public partial class ComboBox : Button
     /// </summary>
     protected override void OnLostKeyboardFocus()
     {
-        if (GetTextColor(Label.ControlState.Normal) != null)
+        if (GetTextColor(ComponentState.Normal) != null)
         {
-            TextColor = GetTextColor(Label.ControlState.Normal);
+            TextColor = GetTextColor(ComponentState.Normal);
 
             return;
         }
 
-        TextColor = Color.Black;
+        UpdateColors();
     }
 
     /// <summary>
@@ -320,14 +371,14 @@ public partial class ComboBox : Button
     protected override void OnKeyboardFocus()
     {
         //Until we add the blue highlighting again
-        if (GetTextColor(Label.ControlState.Normal) != null)
+        if (GetTextColor(ComponentState.Normal) != null)
         {
-            TextColor = GetTextColor(Label.ControlState.Normal);
+            TextColor = GetTextColor(ComponentState.Normal);
 
             return;
         }
 
-        TextColor = Color.Black;
+        UpdateColors();
     }
 
     /// <summary>
@@ -335,32 +386,68 @@ public partial class ComboBox : Button
     /// </summary>
     public virtual void Open()
     {
-        if (!IsDisabled)
+        if (IsDisabledByTree)
         {
-            if (null == mMenu)
-            {
-                return;
-            }
-
-            mMenu.Parent = GetCanvas();
-            mMenu.IsHidden = false;
-            mMenu.BringToFront();
-
-            var p = LocalPosToCanvas(Point.Empty);
-            if (mMenuAbove)
-            {
-                mMenu.RestrictToParent = false;
-                mMenu.Height = mMenu.Children.Sum(child => child != null ? child.Height : 0);
-                mMenu.SetBounds(new Rectangle(p.X, p.Y - mMenu.Height, Width, mMenu.Height));
-                mMenu.RestrictToParent = true;
-            }
-            else
-            {
-                mMenu.SetBounds(new Rectangle(p.X, p.Y + Height, Width, mMenu.Height));
-            }
-
-            base.PlaySound(mOpenMenuSound);
+            return;
         }
+
+        _menu.Parent = Canvas;
+        _menu.IsHidden = false;
+        _menu.BringToFront();
+
+        var menuPadding = _menu.Padding;
+        var menuPaddingH = menuPadding.Left + menuPadding.Right;
+        var menuPaddingV = menuPadding.Top + menuPadding.Bottom;
+
+        var menuMargin = _menu.Margin;
+        var menuMarginV = menuMargin.Top + menuMargin.Bottom;
+
+        var width = Width;
+        var totalChildHeight = 0;
+        var menuItems = _menu.Children.OfType<MenuItem>().ToArray();
+        foreach (var menuItem in menuItems)
+        {
+            menuItem.SizeToContents();
+            totalChildHeight += menuItem.OuterHeight;
+            // TODO(2553): I thought this was the solution, it isn't. Results in menu growing each time it's opened.
+            // width = Math.Max(width, menuItem.OuterWidth + menuPaddingH);
+        }
+
+        var offset = ToCanvas(default);
+        _menu.MaximumSize = _menu.MaximumSize with { X = width };
+
+        var canvasBounds = Canvas?.Bounds ?? new Rectangle(0, 0, int.MaxValue, int.MinValue);
+
+        var expectedMenuHeight = totalChildHeight + menuPaddingV;
+        var maximumSize = _menu.MaximumSize;
+        if (maximumSize.Y > 0)
+        {
+            expectedMenuHeight = Math.Min(expectedMenuHeight, maximumSize.Y);
+        }
+
+        Rectangle newBounds = new(offset.X, offset.Y, width, expectedMenuHeight);
+        newBounds.X = Math.Clamp(newBounds.X, canvasBounds.Left, canvasBounds.Right - width);
+
+        var positionAbove = canvasBounds.Bottom < newBounds.Bottom;
+        if (!positionAbove)
+        {
+            positionAbove = _positionMenuAbove && canvasBounds.Top + newBounds.Height < newBounds.Top;
+        }
+
+        if (positionAbove)
+        {
+            newBounds.Y -= newBounds.Height;
+        }
+        else
+        {
+            newBounds.Y += Height;
+        }
+
+        _menu.RestrictToParent = false;
+        _menu.SetBounds(newBounds);
+        _menu.RestrictToParent = true;
+
+        base.PlaySound(mOpenMenuSound);
     }
 
     /// <summary>
@@ -368,12 +455,7 @@ public partial class ComboBox : Button
     /// </summary>
     public virtual void Close()
     {
-        if (mMenu == null)
-        {
-            return;
-        }
-
-        mMenu.Hide();
+        _menu.Hide();
 
         base.PlaySound(mCloseMenuSound);
     }
@@ -387,14 +469,19 @@ public partial class ComboBox : Button
     /// </returns>
     protected override bool OnKeyDown(bool down)
     {
-        if (down)
+        if (!down)
         {
-            var it = mMenu.Children.FindIndex(x => x == mSelectedItem);
-            if (it + 1 < mMenu.Children.Count)
-            {
-                OnItemSelected(this, new ItemSelectedEventArgs(mMenu.Children[it + 1]));
-            }
+            return true;
         }
+
+        var it = _menu.Children.FindIndex(x => x == mSelectedItem);
+        if (it + 1 >= _menu.Children.Count)
+        {
+            return true;
+        }
+
+        var selectedItem = _menu.Children[it + 1];
+        OnItemSelected(this, new ItemSelectedEventArgs(selectedItem, selectedUserData: selectedItem.UserData));
 
         return true;
     }
@@ -408,14 +495,19 @@ public partial class ComboBox : Button
     /// </returns>
     protected override bool OnKeyUp(bool down)
     {
-        if (down)
+        if (!down)
         {
-            var it = mMenu.Children.FindLastIndex(x => x == mSelectedItem);
-            if (it - 1 >= 0)
-            {
-                OnItemSelected(this, new ItemSelectedEventArgs(mMenu.Children[it - 1]));
-            }
+            return true;
         }
+
+        var it = _menu.Children.FindLastIndex(x => x == mSelectedItem);
+        if (it - 1 < 0)
+        {
+            return true;
+        }
+
+        var selectedItem = _menu.Children[it - 1];
+        OnItemSelected(this, new ItemSelectedEventArgs(selectedItem, selectedUserData: selectedItem.UserData));
 
         return true;
     }
@@ -433,17 +525,19 @@ public partial class ComboBox : Button
     ///     If a menu item can not be found that matches input, nothing happens.
     /// </summary>
     /// <param name="label">The label to look for, this is what is shown to the user.</param>
-    public void SelectByText(string text)
+    public bool SelectByText(string text)
     {
-        foreach (MenuItem item in mMenu.Children)
+        foreach (MenuItem item in _menu.Children)
         {
             if (item.Text == text)
             {
                 SelectedItem = item;
 
-                return;
+                return true;
             }
         }
+
+        return false;
     }
 
     /// <summary>
@@ -451,17 +545,19 @@ public partial class ComboBox : Button
     ///     If a menu item can not be found that matches input, nothing happens.
     /// </summary>
     /// <param name="name">The internal name to look for. To select by what is displayed to the user, use "SelectByText".</param>
-    public void SelectByName(string name)
+    public bool SelectByName(string name)
     {
-        foreach (MenuItem item in mMenu.Children)
+        foreach (MenuItem item in _menu.Children)
         {
             if (item.Name == name)
             {
                 SelectedItem = item;
 
-                return;
+                return true;
             }
         }
+
+        return false;
     }
 
     /// <summary>
@@ -472,9 +568,9 @@ public partial class ComboBox : Button
     ///     The UserData to look for. The equivalency check uses "param.Equals(item.UserData)".
     ///     If null is passed in, it will look for null/unset UserData.
     /// </param>
-    public void SelectByUserData(object userdata)
+    public virtual bool SelectByUserData(object? userdata)
     {
-        foreach (MenuItem item in mMenu.Children)
+        foreach (MenuItem item in _menu.Children)
         {
             if (userdata == null)
             {
@@ -482,40 +578,46 @@ public partial class ComboBox : Button
                 {
                     SelectedItem = item;
 
-                    return;
+                    return true;
                 }
             }
             else if (userdata.Equals(item.UserData))
             {
                 SelectedItem = item;
 
-                return;
+                return true;
             }
         }
+
+        return false;
     }
 
     public void SetMenuBackgroundColor(Color clr)
     {
-        mMenu.RenderColor = clr;
+        _menu.RenderColor = clr;
     }
 
     public void SetMenuMaxSize(int w, int h)
     {
-        mMenu.MaximumSize = new Point(w, h);
+        _menu.MaximumSize = new Point(w, h);
     }
 
-    public override void SetTextColor(Color clr, Label.ControlState state)
+    protected override Point GetContentSize() => _itemMaximumSize == default ? base.GetContentSize() : _itemMaximumSize + new Point(4, 0);
+
+    protected override Padding GetContentPadding()
+    {
+        var padding = base.GetContentPadding();
+        padding.Right += _arrowIcon.OuterWidth;
+        return padding;
+    }
+
+    public override void SetTextColor(Color clr, ComponentState state)
     {
         base.SetTextColor(clr, state);
-        foreach (MenuItem itm in mMenu.Children)
+        foreach (MenuItem itm in _menu.Children)
         {
             itm.SetTextColor(clr, state);
         }
-    }
-
-    public void SetMenu(Menu menu)
-    {
-        mMenu = menu;
     }
 
     protected override void OnMouseEntered()
@@ -529,4 +631,13 @@ public partial class ComboBox : Button
         }
     }
 
+    public void ClearItems()
+    {
+        mSelectedItem = null;
+        var items = Children.OfType<MenuItem>().ToArray();
+        foreach (var item in items)
+        {
+            RemoveChild(item, dispose: true);
+        }
+    }
 }

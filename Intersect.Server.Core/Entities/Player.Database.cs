@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using Intersect.Core;
 using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData;
-using Intersect.Server.General;
 using Intersect.Server.Networking;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Utilities;
@@ -83,12 +82,12 @@ public partial class Player
 
         if (lookupKey.IsId)
         {
-            client = Globals.Clients.Find(queryClient => lookupKey.Id == queryClient?.Entity?.Id);
+            client = Client.Instances.Find(queryClient => lookupKey.Id == queryClient?.Entity?.Id);
             player = client?.Entity ?? Find(lookupKey.Id);
             return player != default;
         }
 
-        client = Globals.Clients.Find(queryClient => CompareName(lookupKey.Name, queryClient?.Entity?.Name));
+        client = Client.Instances.Find(queryClient => CompareName(lookupKey.Name, queryClient?.Entity?.Name));
         player = client?.Entity ?? Find(lookupKey.Name, loadRelationships: loadRelationships, loadBags: loadBags);
         return player != default;
     }

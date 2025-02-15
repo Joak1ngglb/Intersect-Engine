@@ -6,6 +6,8 @@ using CommandLine;
 using Intersect.Config;
 using Intersect.Core;
 using Intersect.Factories;
+using Intersect.Framework.Logging;
+using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Maps;
@@ -64,27 +66,13 @@ internal static class Bootstrapper
 
         Console.WriteLine("Pre-context setup finished.");
 
-        var executableName = Path.GetFileNameWithoutExtension(
-            Process.GetCurrentProcess().MainModule?.FileName ?? Assembly.GetExecutingAssembly().GetName().Name
+        var executingAssembly = Assembly.GetExecutingAssembly();
+        var (_, logger) = new LoggerConfiguration().CreateLoggerForIntersect(
+            executingAssembly,
+            "Server",
+            LoggingOptions.LoggingLevelSwitch
         );
-        var loggerConfiguration = new LoggerConfiguration().MinimumLevel
-            .ControlledBy(LoggingOptions.LoggingLevelSwitch)
-            .Enrich.FromLogContext().WriteTo
-            .Console().WriteTo.File(
-                Path.Combine(
-                    "logs",
-                    $"{executableName}-{Process.GetCurrentProcess().StartTime:yyyy_MM_dd-HH_mm_ss_fff}.log"
-                ),
-                rollOnFileSizeLimit: true,
-                retainedFileTimeLimit: TimeSpan.FromDays(30)
-            ).WriteTo.File(
-                Path.Combine("logs", $"errors-{executableName}.log"),
-                restrictedToMinimumLevel: LogEventLevel.Error,
-                rollOnFileSizeLimit: true,
-                retainedFileTimeLimit: TimeSpan.FromDays(30)
-            );
 
-        var logger = new SerilogLoggerFactory(loggerConfiguration.CreateLogger()).CreateLogger("Client");
         var packetTypeRegistry = new PacketTypeRegistry(logger, typeof(SharedConstants).Assembly);
         if (!packetTypeRegistry.TryRegisterBuiltIn())
         {
@@ -232,7 +220,6 @@ internal static class Bootstrapper
             }
         }
 
-        DbInterface.InitializeDbLoggers();
         DbInterface.CheckDirectories();
 
         PrintIntroduction();

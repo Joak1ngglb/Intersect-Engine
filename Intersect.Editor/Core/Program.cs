@@ -2,8 +2,10 @@ using System.Diagnostics;
 using System.Reflection;
 using Intersect.Editor.Forms;
 using Intersect.Editor.General;
+using Intersect.Framework.Logging;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
 using ApplicationContext = Intersect.Core.ApplicationContext;
@@ -19,26 +21,16 @@ public static partial class Program
 
     static Program()
     {
-        var executableName = Path.GetFileNameWithoutExtension(
-            Process.GetCurrentProcess().MainModule?.FileName ?? Assembly.GetExecutingAssembly().GetName().Name
-        );
-        var loggerConfiguration = new LoggerConfiguration().MinimumLevel
-            .Is(Debugger.IsAttached ? LogEventLevel.Debug : LogEventLevel.Information).Enrich.FromLogContext().WriteTo
-            .Console().WriteTo.File(
-                Path.Combine(
-                    "logs",
-                    $"{executableName}-{Process.GetCurrentProcess().StartTime:yyyy_MM_dd-HH_mm_ss_fff}.log"
-                ),
-                rollOnFileSizeLimit: true,
-                retainedFileTimeLimit: TimeSpan.FromDays(30)
-            ).WriteTo.File(
-                Path.Combine("logs", $"errors-{executableName}.log"),
-                restrictedToMinimumLevel: LogEventLevel.Error,
-                rollOnFileSizeLimit: true,
-                retainedFileTimeLimit: TimeSpan.FromDays(30)
-            );
+        LoggingLevelSwitch loggingLevelSwitch =
+            new(Debugger.IsAttached ? LogEventLevel.Debug : LogEventLevel.Information);
 
-        var logger = new SerilogLoggerFactory(loggerConfiguration.CreateLogger()).CreateLogger("Client");
+        var executingAssembly = Assembly.GetExecutingAssembly();
+        var (_, logger) = new LoggerConfiguration().CreateLoggerForIntersect(
+            executingAssembly,
+            "Editor",
+            loggingLevelSwitch
+        );
+
         ApplicationContext.Context.Value =
             new FakeApplicationContextForThisGarbageWinFormsEditorThatIHateAndWishItWouldBurnInAFireContext(logger);
 

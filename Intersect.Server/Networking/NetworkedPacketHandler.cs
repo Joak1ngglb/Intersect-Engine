@@ -137,15 +137,15 @@ internal sealed partial class NetworkedPacketHandler
             if (client.IsEditor)
             {
                 //Is Editor
-                client.PacketFloodingThresholds = Options.Instance.Security.Packets.EditorThreshholds;
+                client.PacketFloodingThresholds = Options.Instance.Security.Packets.EditorThresholds;
             }
 
 
             client.SetUser(user);
 
-            lock (Globals.ClientLock)
+            lock (Client.GlobalLock)
             {
-                var clients = Globals.Clients.ToArray();
+                var clients = Client.Instances.ToArray();
                 foreach (var cli in clients)
                 {
                     if (cli.Name != null &&
@@ -964,18 +964,21 @@ internal sealed partial class NetworkedPacketHandler
 
             if (obj != null)
             {
-                //if Item or Resource, kill all global entities of that kind
-                if (type == GameObjectType.Item)
+                switch (obj)
                 {
-                    Globals.KillItemsOf((ItemBase) obj);
-                }
-                else if (type == GameObjectType.Resource)
-                {
-                    Globals.KillResourcesOf((ResourceBase) obj);
-                }
-                else if (type == GameObjectType.Npc)
-                {
-                    Globals.KillNpcsOf((NpcBase) obj);
+                    //if Item or Resource, kill all global entities of that kind
+                    case ItemBase itemDescriptor:
+                        MapController.DespawnInstancesOf(itemDescriptor);
+                        break;
+                    case NpcBase npcDescriptor:
+                        MapController.DespawnInstancesOf(npcDescriptor);
+                        break;
+                    case ProjectileBase projectileDescriptor:
+                        MapController.DespawnInstancesOf(projectileDescriptor);
+                        break;
+                    case ResourceBase resourceDescriptor:
+                        MapController.DespawnInstancesOf(resourceDescriptor);
+                        break;
                 }
 
                 DbInterface.DeleteGameObject(obj);
@@ -1101,16 +1104,16 @@ internal sealed partial class NetworkedPacketHandler
                     switch (obj)
                     {
                         case ItemBase itemDescriptor:
-                            Globals.KillItemsOf(itemDescriptor);
+                            MapController.DespawnInstancesOf(itemDescriptor);
                             break;
                         case NpcBase npcDescriptor:
-                            Globals.KillNpcsOf(npcDescriptor);
+                            MapController.DespawnInstancesOf(npcDescriptor);
                             break;
                         case ProjectileBase projectileDescriptor:
-                            Globals.KillProjectilesOf(projectileDescriptor);
+                            MapController.DespawnInstancesOf(projectileDescriptor);
                             break;
                         case ResourceBase resourceDescriptor:
-                            Globals.KillResourcesOf(resourceDescriptor);
+                            MapController.DespawnInstancesOf(resourceDescriptor);
                             break;
                     }
 
@@ -1174,7 +1177,7 @@ internal sealed partial class NetworkedPacketHandler
 
                 if (type == GameObjectType.Item)
                 {
-                    foreach (var player in Globals.OnlineList)
+                    foreach (var player in Player.OnlinePlayers)
                     {
                         player.CacheEquipmentTriggers();
                     }

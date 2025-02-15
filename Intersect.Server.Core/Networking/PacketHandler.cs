@@ -236,7 +236,7 @@ internal sealed partial class PacketHandler
         try
         {
             var sanitizedFields = packet.Sanitize();
-            if (sanitizedFields != null)
+            if (sanitizedFields is { Count: > 0 })
             {
                 var sanitizationBuilder = new StringBuilder(256, 8192);
                 sanitizationBuilder.Append("Received out-of-bounds values in '");
@@ -515,7 +515,7 @@ internal sealed partial class PacketHandler
         client.ResetTimeout();
 
         // Are we at capacity yet, or can this user still log in?
-        if (Globals.OnlineList.Count >= Options.Instance.MaximumLoggedInUsers)
+        if (Player.OnlinePlayers.Count >= Options.Instance.MaximumLoggedInUsers)
         {
             PacketSender.SendError(client, Strings.Networking.ServerFull, Strings.General.NoticeError);
 
@@ -550,9 +550,9 @@ internal sealed partial class PacketHandler
         List<TaskCompletionSource> logoutCompletionSources = [];
 
         var disconnectedClients = false;
-        lock (Globals.ClientLock)
+        lock (Client.GlobalLock)
         {
-            foreach (var otherClient in Globals.Clients.ToArray())
+            foreach (var otherClient in Client.Instances.ToArray())
             {
                 if (otherClient == null)
                 {
@@ -626,11 +626,11 @@ internal sealed partial class PacketHandler
         if (client.User != null)
         {
             //Logged In
-            client.PacketFloodingThresholds = Options.Instance.Security.Packets.PlayerThreshholds;
+            client.PacketFloodingThresholds = Options.Instance.Security.Packets.PlayerThresholds;
 
             if (client.User.Power.IsAdmin || client.User.Power.IsModerator)
             {
-                client.PacketFloodingThresholds = Options.Instance.Security.Packets.ModAdminThreshholds;
+                client.PacketFloodingThresholds = Options.Instance.Security.Packets.ModAdminThresholds;
             }
         }
 
@@ -680,7 +680,7 @@ internal sealed partial class PacketHandler
         if (client.Characters == default || client.Characters.Count < 1)
         {
             PacketSender.SendGameObjects(client, GameObjectType.Class);
-            PacketSender.SendCreateCharacter(client);
+            PacketSender.SendCreateCharacter(client, force: true);
             return;
         }
 
@@ -763,7 +763,13 @@ internal sealed partial class PacketHandler
                 continue;
             }
 
-            var version = MapPacket.ComputeCacheVersion(descriptor.Id, descriptor.Revision);
+            var version = MapPacket.ComputeCacheVersion(
+                descriptor.Id,
+                descriptor.Revision,
+                descriptor.MapGridX,
+                descriptor.MapGridY,
+                descriptor.GetCameraHolds()
+            );
 
             var checksumToCompare = string.Equals(cacheKey.Version, version, StringComparison.Ordinal)
                 ? cacheKey.Checksum
@@ -1530,11 +1536,11 @@ internal sealed partial class PacketHandler
                 if (client.User != null)
                 {
                     //Logged In
-                    client.PacketFloodingThresholds = Options.Instance.Security.Packets.PlayerThreshholds;
+                    client.PacketFloodingThresholds = Options.Instance.Security.Packets.PlayerThresholds;
 
                     if (client.User.Power.IsAdmin || client.User.Power.IsModerator)
                     {
-                        client.PacketFloodingThresholds = Options.Instance.Security.Packets.ModAdminThreshholds;
+                        client.PacketFloodingThresholds = Options.Instance.Security.Packets.ModAdminThresholds;
                     }
                 }
 
@@ -1553,7 +1559,7 @@ internal sealed partial class PacketHandler
 
                 //Start the character creation process for the newly created account.
                 PacketSender.SendGameObjects(client, GameObjectType.Class);
-                PacketSender.SendCreateCharacter(client);
+                PacketSender.SendCreateCharacter(client, force: true);
             }
         }
     }
@@ -1849,7 +1855,7 @@ internal sealed partial class PacketHandler
                 {
                     if (en.Id == packet.TargetId)
                     {
-                        player.UseSpell(packet.Slot, en);
+                        player.UseSpell(packet.Slot, en, packet.SoftRetargetOnSelfCast);
                         casted = true;
 
                         break;
@@ -1860,7 +1866,7 @@ internal sealed partial class PacketHandler
 
         if (!casted)
         {
-            player.UseSpell(packet.Slot, null);
+            player.UseSpell(packet.Slot, null, packet.SoftRetargetOnSelfCast);
         }
     }
 
@@ -2768,7 +2774,7 @@ internal sealed partial class PacketHandler
                             CustomColors.Alerts.Info
                         );
 
-                        if (target.Online)
+                        if (target.IsOnline)
                         {
                             PacketSender.SendGuildInvite(target, player);
                         }

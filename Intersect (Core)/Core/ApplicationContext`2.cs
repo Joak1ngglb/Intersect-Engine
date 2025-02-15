@@ -43,6 +43,8 @@ public abstract partial class ApplicationContext<TContext, TStartupOptions> : IA
         mDisposeLock = new object();
         mShutdownLock = new object();
 
+        ApplicationContext.Context.Value = this;
+
         mServices = new ConcurrentDictionary<Type, IApplicationService>();
 
         StartupOptions = startupOptions;

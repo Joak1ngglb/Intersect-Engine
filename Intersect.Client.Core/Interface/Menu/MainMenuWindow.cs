@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Intersect.Client.Core;
+using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.General;
@@ -28,19 +29,21 @@ public partial class MainMenuWindow : Window
     {
         _mainMenu = mainMenu;
 
-        _buttonCredits = new Button(this, nameof(_buttonCredits))
-        {
-            IsTabable = true,
-            Text = Strings.MainMenu.Credits,
-        };
-        _buttonCredits.Clicked += _buttonCredits_Clicked;
+        Alignment = [Alignments.Center];
 
-        _buttonExit = new Button(this, nameof(_buttonExit))
+        IsClosable = false;
+        IsResizable = false;
+        Padding = Padding.Zero;
+        InnerPanelPadding = new Padding(8);
+        Titlebar.MouseInputEnabled = false;
+
+        _buttonStart = new Button(this, nameof(_buttonStart))
         {
             IsTabable = true,
-            Text = Strings.MainMenu.Exit,
+            IsVisible = ClientContext.IsSinglePlayer,
+            Text = Strings.MainMenu.Start,
         };
-        _buttonExit.Clicked += _buttonExit_Clicked;
+        _buttonStart.Clicked += _buttonStart_Clicked;
 
         _buttonLogin = new Button(this, nameof(_buttonLogin))
         {
@@ -72,18 +75,24 @@ public partial class MainMenuWindow : Window
             _buttonSettings.SetToolTipText(Strings.MainMenu.SettingsTooltip);
         }
 
-        _buttonStart = new Button(this, nameof(_buttonStart))
+        _buttonCredits = new Button(this, nameof(_buttonCredits))
         {
             IsTabable = true,
-            IsVisible = ClientContext.IsSinglePlayer,
-            Text = Strings.MainMenu.Start,
+            Text = Strings.MainMenu.Credits,
         };
-        _buttonStart.Clicked += _buttonStart_Clicked;
+        _buttonCredits.Clicked += _buttonCredits_Clicked;
+
+        _buttonExit = new Button(this, nameof(_buttonExit))
+        {
+            IsTabable = true,
+            Text = Strings.MainMenu.Exit,
+        };
+        _buttonExit.Clicked += _buttonExit_Clicked;
     }
 
-    private void _buttonCredits_Clicked(Base sender, ClickedEventArgs arguments) => _mainMenu.SwitchToWindow<CreditsWindow>();
+    private void _buttonCredits_Clicked(Base sender, MouseButtonState arguments) => _mainMenu.SwitchToWindow<CreditsWindow>();
 
-    private static void _buttonExit_Clicked(Base sender, ClickedEventArgs arguments)
+    private static void _buttonExit_Clicked(Base sender, MouseButtonState arguments)
     {
         ApplicationContext.Context.Value?.Logger.LogInformation("User clicked exit button.");
         Globals.IsRunning = false;
@@ -91,7 +100,7 @@ public partial class MainMenuWindow : Window
 
     #region Login
 
-    private void _buttonLogin_Clicked(Base sender, ClickedEventArgs arguments)
+    private void _buttonLogin_Clicked(Base sender, MouseButtonState arguments)
     {
         if (Networking.Network.InterruptDisconnectsIfConnected())
         {
@@ -133,7 +142,7 @@ public partial class MainMenuWindow : Window
 
     #region Register
 
-    private void _buttonRegister_Clicked(Base sender, ClickedEventArgs arguments)
+    private void _buttonRegister_Clicked(Base sender, MouseButtonState arguments)
     {
         if (Networking.Network.InterruptDisconnectsIfConnected())
         {
@@ -173,9 +182,9 @@ public partial class MainMenuWindow : Window
 
     #endregion Register
 
-    private void _buttonSettings_Clicked(Base sender, ClickedEventArgs arguments) => _mainMenu.SettingsButton_Clicked();
+    private void _buttonSettings_Clicked(Base sender, MouseButtonState arguments) => _mainMenu.SettingsButton_Clicked();
 
-    private void _buttonStart_Clicked(Base sender, ClickedEventArgs arguments)
+    private void _buttonStart_Clicked(Base sender, MouseButtonState arguments)
     {
         Hide();
         Networking.Network.TryConnect();
@@ -192,11 +201,17 @@ public partial class MainMenuWindow : Window
             _buttonLogin.IsDisabled = Globals.WaitingOnServer;
             _buttonRegister.IsDisabled = Globals.WaitingOnServer;
         }
+        else
+        {
+            UpdateDisabled();
+        }
     }
+
 
     internal void UpdateDisabled()
     {
-        var isOffline = MainMenu.ActiveNetworkStatus != NetworkStatus.Online;
+        var networkStatus = MainMenu.ActiveNetworkStatus;
+        var isOffline = networkStatus != NetworkStatus.Online;
         _buttonLogin.IsDisabled = isOffline;
         _buttonRegister.IsDisabled = isOffline || (Options.IsLoaded && Options.Instance.BlockClientRegistrations);
     }

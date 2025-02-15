@@ -8,6 +8,8 @@ using Intersect.Client.General;
 using Intersect.Client.Maps;
 using Intersect.Configuration;
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.GameObjects;
 using Intersect.Utilities;
 
@@ -104,7 +106,9 @@ public static partial class Graphics
 
     public static GameFont? UIFont;
 
-    public static float BaseWorldScale => Options.Instance?.Map?.TileScale ?? 1;
+    public static float MinimumWorldScale => Options.Instance?.Map?.MinimumWorldScale ?? 1;
+
+    public static float MaximumWorldScale => Options.Instance?.Map?.MaximumWorldScale ?? 1;
 
     //Init Functions
     public static void InitGraphics()
@@ -525,7 +529,7 @@ public static partial class Graphics
     }
 
     //Game Rendering
-    public static void Render(TimeSpan deltaTime, TimeSpan _)
+    public static void Render(TimeSpan deltaTime, TimeSpan totalTime)
     {
         var takingScreenshot = false;
         if (Renderer?.ScreenshotRequests.Count > 0)
@@ -588,7 +592,7 @@ public static partial class Graphics
 
         Renderer.Scale = Globals.Database.UIScale;
 
-        Interface.Interface.DrawGui();
+        Interface.Interface.DrawGui(deltaTime, totalTime);
 
         DrawGameTexture(
             Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1), CurrentView,
@@ -1000,6 +1004,10 @@ public static partial class Graphics
                 newView.X = restrictView.Right - newView.Width;
             }
         }
+        else if (Options.Instance.Map.GameBorderStyle == GameBorderStyle.Seamed)
+        {
+            newView.X = restrictView.X - (newView.Width - restrictView.Width) / 2;
+        }
 
         if (restrictView.Height >= newView.Height)
         {
@@ -1012,6 +1020,10 @@ public static partial class Graphics
             {
                 newView.Y = restrictView.Bottom - newView.Height;
             }
+        }
+        else if (Options.Instance.Map.GameBorderStyle == GameBorderStyle.Seamed)
+        {
+            newView.Y = restrictView.Y - (newView.Height - restrictView.Height) / 2;
         }
 
         CurrentView = new FloatRect(

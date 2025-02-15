@@ -36,7 +36,7 @@ public partial class Event : Entity
             switch (Graphic.Type)
             {
                 case EventGraphicType.None:
-                    return Animations.Count == 0 ? Pointf.Empty : Pointf.UnitY * Options.Instance.Map.TileHeight / 2f;
+                    return HasAnimations ? Pointf.UnitY * Options.Instance.Map.TileHeight / 2f : Pointf.Empty;
 
                 case EventGraphicType.Sprite:
                     return base.CenterOffset;
@@ -110,7 +110,7 @@ public partial class Event : Entity
     public override void Draw()
     {
         WorldPos.Reset();
-        if (MapInstance == default || !Globals.GridMaps.Contains(MapId) || !TryEnsureTexture(out var texture))
+        if (MapInstance == default || !Globals.GridMaps.ContainsKey(MapId) || !TryEnsureTexture(out var texture))
         {
             return;
         }
@@ -264,7 +264,7 @@ public partial class Event : Entity
                 break;
 
             case EventGraphicType.None:
-                heightScale = Animations.Count > 0 ? 1 : 0.5f;
+                heightScale = HasAnimations ? 1 : 0.5f;
                 break;
 
             default:

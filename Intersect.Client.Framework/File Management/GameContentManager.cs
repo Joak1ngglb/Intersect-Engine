@@ -25,7 +25,11 @@ public abstract partial class GameContentManager : IContentManager
         Debug,
     }
 
-    public static GameContentManager Current { get; private set; }
+    public static GameContentManager Current
+    {
+        get => _current ?? throw new InvalidOperationException("Content manager not initialized");
+        private set => _current = value;
+    }
 
     protected readonly Dictionary<string, IAsset> mAnimationDict = [];
 
@@ -62,6 +66,25 @@ public abstract partial class GameContentManager : IContentManager
     protected readonly  Dictionary<string, IAsset> mTexturePackDict = [];
 
     protected readonly Dictionary<string, IAsset> mTilesetDict = [];
+    private static GameContentManager? _current;
+
+    public Dictionary<ContentType, ICollection<IAsset>> Content => Textures;
+
+    public Dictionary<ContentType, ICollection<IAsset>> Textures => new()
+    {
+        { ContentType.Animation, mAnimationDict.Values },
+        { ContentType.Entity, mEntityDict.Values },
+        { ContentType.Face, mFaceDict.Values },
+        { ContentType.Fog, mFogDict.Values },
+        { ContentType.Image, mImageDict.Values },
+        { ContentType.Interface, mGuiDict.Values },
+        { ContentType.Item, mItemDict.Values },
+        { ContentType.Miscellaneous, mMiscDict.Values },
+        { ContentType.Paperdoll, mPaperdollDict.Values },
+        { ContentType.Resource, mResourceDict.Values },
+        { ContentType.Spell, mSpellDict.Values },
+        { ContentType.Tileset, mTilesetDict.Values },
+    };
 
     /// <summary>
     /// Contains all indexed files and their caches from sound pack files.
@@ -302,7 +325,7 @@ public abstract partial class GameContentManager : IContentManager
         return mShaderDict?.GetValueOrDefault(name.ToLower());
     }
 
-    public virtual GameFont GetFont(string name, int size)
+    public virtual GameFont? GetFont(string? name, int size)
     {
         if (name == null)
         {
@@ -314,7 +337,7 @@ public abstract partial class GameContentManager : IContentManager
             .FirstOrDefault(t => t.GetSize() == size);
     }
 
-    public virtual GameAudioSource GetMusic(string name)
+    public virtual GameAudioSource? GetMusic(string name)
     {
         if (string.IsNullOrEmpty(name))
         {
@@ -329,7 +352,7 @@ public abstract partial class GameContentManager : IContentManager
         return mMusicDict.TryGetValue(name.ToLower(), out var music) ? music as GameAudioSource : default;
     }
 
-    public virtual GameAudioSource GetSound(string name)
+    public virtual GameAudioSource? GetSound(string name)
     {
         if (string.IsNullOrEmpty(name))
         {
@@ -445,7 +468,7 @@ public abstract partial class GameContentManager : IContentManager
         return GetLayout(stage, name, resolution, false, out cacheHit);
     }
 
-    public virtual void SaveUIJson(UI stage, string name, string json, string resolution)
+    public virtual void SaveUIJson(UI stage, string name, string json, string? resolution)
     {
         var stageName = stage.ToString().ToLowerInvariant();
         if (stage == UI.InGame)
@@ -455,10 +478,12 @@ public abstract partial class GameContentManager : IContentManager
 
         var stagePartialPath = Path.Combine("gui", "layouts", stageName);
 
+        resolution = resolution?.Trim();
+
         string resourceName;
-        if (resolution != null)
+        if (!string.IsNullOrWhiteSpace(resolution))
         {
-            resourceName = Path.Combine(stagePartialPath, $"{name}.{resolution}.json");
+            resourceName = Path.Combine(stagePartialPath, $"{name}.{resolution?.Trim()}.json");
             var resourcePath = Path.Combine(ClientConfiguration.ResourcesDirectory, resourceName);
             if (File.Exists(resourcePath))
             {
@@ -500,59 +525,59 @@ public abstract partial class GameContentManager : IContentManager
         });
     }
 
-    protected Dictionary<string, IAsset> GetAssetLookup(ContentTypes contentType)
+    protected Dictionary<string, IAsset> GetAssetLookup(ContentType contentType)
     {
         switch (contentType)
         {
-            case ContentTypes.Animation:
+            case ContentType.Animation:
                 return mAnimationDict;
 
-            case ContentTypes.Entity:
+            case ContentType.Entity:
                 return mEntityDict;
 
-            case ContentTypes.Face:
+            case ContentType.Face:
                 return mFaceDict;
 
-            case ContentTypes.Fog:
+            case ContentType.Fog:
                 return mFogDict;
 
-            case ContentTypes.Image:
+            case ContentType.Image:
                 return mImageDict;
 
-            case ContentTypes.Interface:
+            case ContentType.Interface:
                 return mGuiDict;
 
-            case ContentTypes.Item:
+            case ContentType.Item:
                 return mItemDict;
 
-            case ContentTypes.Miscellaneous:
+            case ContentType.Miscellaneous:
                 return mMiscDict;
 
-            case ContentTypes.Paperdoll:
+            case ContentType.Paperdoll:
                 return mPaperdollDict;
 
-            case ContentTypes.Resource:
+            case ContentType.Resource:
                 return mResourceDict;
 
-            case ContentTypes.Spell:
+            case ContentType.Spell:
                 return mSpellDict;
 
-            case ContentTypes.TexturePack:
+            case ContentType.TextureAtlas:
                 return mTexturePackDict;
 
-            case ContentTypes.TileSet:
+            case ContentType.Tileset:
                 return mTilesetDict;
 
-            case ContentTypes.Font:
+            case ContentType.Font:
                 throw new NotImplementedException();
 
-            case ContentTypes.Shader:
+            case ContentType.Shader:
                 throw new NotImplementedException();
 
-            case ContentTypes.Music:
+            case ContentType.Music:
                 return mMusicDict;
 
-            case ContentTypes.Sound:
+            case ContentType.Sound:
                 return mSoundDict;
 
             default:
@@ -562,13 +587,13 @@ public abstract partial class GameContentManager : IContentManager
 
     protected abstract TAsset Load<TAsset>(
         Dictionary<string, IAsset> lookup,
-        ContentTypes contentType,
+        ContentType contentType,
         string assetName,
         Func<Stream> createStream
     ) where TAsset : class, IAsset;
 
     /// <inheritdoc />
-    public TAsset Find<TAsset>(ContentTypes contentType, string assetName) where TAsset : class, IAsset
+    public TAsset Find<TAsset>(ContentType contentType, string assetName) where TAsset : class, IAsset
     {
         var assetLookup = GetAssetLookup(contentType);
 
@@ -581,7 +606,7 @@ public abstract partial class GameContentManager : IContentManager
     }
 
     /// <inheritdoc />
-    public TAsset Load<TAsset>(ContentTypes contentType, string assetPath, string assetAlias) where TAsset : class, IAsset
+    public TAsset Load<TAsset>(ContentType contentType, string assetPath, string assetAlias) where TAsset : class, IAsset
     {
         if (!File.Exists(assetPath))
         {
@@ -592,7 +617,7 @@ public abstract partial class GameContentManager : IContentManager
     }
 
     /// <inheritdoc />
-    public TAsset Load<TAsset>(ContentTypes contentType, string assetName, Func<Stream> createStream)
+    public TAsset Load<TAsset>(ContentType contentType, string assetName, Func<Stream> createStream)
         where TAsset : class, IAsset
     {
         var assetLookup = GetAssetLookup(contentType);
@@ -606,7 +631,7 @@ public abstract partial class GameContentManager : IContentManager
     }
 
     /// <inheritdoc />
-    public TAsset LoadEmbedded<TAsset>(IPluginContext context, ContentTypes contentType, string assetName)
+    public TAsset LoadEmbedded<TAsset>(IPluginContext context, ContentType contentType, string assetName)
         where TAsset : class, IAsset
     {
         var manifestResourceName = context.EmbeddedResources.Resolve(assetName);
@@ -614,7 +639,7 @@ public abstract partial class GameContentManager : IContentManager
     }
 
     /// <inheritdoc />
-    public TAsset LoadEmbedded<TAsset>(IPluginContext context, ContentTypes contentType, string assetName, string assetAlias)
+    public TAsset LoadEmbedded<TAsset>(IPluginContext context, ContentType contentType, string assetName, string assetAlias)
         where TAsset : class, IAsset
     {
         var manifestResourceName = context.EmbeddedResources.Resolve(assetName);

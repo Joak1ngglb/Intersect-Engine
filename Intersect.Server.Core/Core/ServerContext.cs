@@ -8,12 +8,10 @@ using System.Diagnostics;
 using Intersect.Factories;
 using Intersect.Plugins;
 using Intersect.Server.Plugins;
-using Intersect.Server.General;
 using Intersect.Plugins.Interfaces;
 using Intersect.Rsa;
 using Intersect.Server.Database.PlayerData.Players;
 using Microsoft.Extensions.Logging;
-
 
 namespace Intersect.Server.Core;
 
@@ -137,15 +135,17 @@ internal partial class ServerContext : ApplicationContext<ServerContext, ServerC
             ApplicationContext.Context.Value?.Logger.LogInformation("Online users/players saved." + $" ({stopwatch.ElapsedMilliseconds}ms)");
 
 
-            //Disconnect All Clients
-            //Will kill their packet handling threads so we have a clean shutdown
-            lock (Globals.ClientLock)
+            // Disconnect All Clients
+            // Will kill their packet handling threads so we have a clean shutdown
+            lock (Client.GlobalLock)
             {
-                var clients = Globals.Clients.ToArray();
+                var clients = Client.Instances.ToArray();
                 foreach (var client in clients)
                 {
                     client.Disconnect("Server Shutdown", true);
                 }
+
+                Client.Instances.Clear();
             }
 
             #endregion

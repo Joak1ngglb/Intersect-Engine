@@ -32,7 +32,7 @@ public partial class ShopWindow
     {
         mShopWindow = new WindowControl(gameCanvas, Globals.GameShop.Name, false, "ShopWindow");
         mShopWindow.DisableResizing();
-        Interface.InputBlockingElements.Add(mShopWindow);
+        Interface.InputBlockingComponents.Add(mShopWindow);
 
         mItemContainer = new ScrollControl(mShopWindow, "ItemContainer");
         mItemContainer.EnableScroll(false, true);
@@ -71,7 +71,7 @@ public partial class ShopWindow
         mContextMenu.Open(Framework.Gwen.Pos.None);
     }
 
-    private void MBuyContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.ClickedEventArgs arguments)
+    private void MBuyContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.MouseButtonState arguments)
     {
         var slot = (int) sender.Parent.UserData;
         Globals.Me.TryBuyItem(slot);

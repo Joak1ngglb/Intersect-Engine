@@ -1,6 +1,9 @@
 ﻿using Intersect.Client.Framework.File_Management;
+using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Framework.Gwen.ControlInternal;
+using Intersect.Core;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
 namespace Intersect.Client.Framework.Gwen.Control;
@@ -24,9 +27,9 @@ public partial class ScrollBar : Base
 
     protected bool mDepressed;
 
-    protected float mNudgeAmount;
+    protected float _nudgeAmount;
 
-    protected float mScrollAmount;
+    protected float _scrollAmount;
 
     protected float mViewableContentSize;
 
@@ -42,10 +45,12 @@ public partial class ScrollBar : Base
 
         mBar = new ScrollBarBar(this);
 
-        SetBounds(0, 0, 15, 15);
+        MinimumSize = new Point(15, 15);
+        Size = new Point(15, 15);
+
         mDepressed = false;
 
-        mScrollAmount = 0;
+        _scrollAmount = 0;
         mContentSize = 0;
         mViewableContentSize = 0;
 
@@ -67,13 +72,23 @@ public partial class ScrollBar : Base
     /// </summary>
     public virtual int ButtonSize => 0;
 
-    public virtual float NudgeAmount
+    public float BaseNudgeAmount
     {
-        get => mNudgeAmount / mContentSize;
-        set => mNudgeAmount = value;
+        get => _nudgeAmount;
+        set => _nudgeAmount = value;
     }
 
-    public float ScrollAmount => mScrollAmount;
+    public virtual float NudgeAmount
+    {
+        get => _nudgeAmount / mContentSize;
+        set => _nudgeAmount = value;
+    }
+
+    public float ScrollAmount
+    {
+        get => _scrollAmount;
+        set => SetScrollAmount(value);
+    }
 
     public float ContentSize
     {
@@ -113,15 +128,20 @@ public partial class ScrollBar : Base
     /// </summary>
     public event GwenEventHandler<EventArgs> BarMoved;
 
-    public override JObject GetJson(bool isRoot = default)
+    public override JObject? GetJson(bool isRoot = false, bool onlySerializeIfNotEmpty = false)
     {
-        var obj = base.GetJson(isRoot);
-        obj.Add("BackgroundTemplate", mBackgroundTemplateFilename);
-        obj.Add("UpOrLeftButton", mScrollButton[0].GetJson());
-        obj.Add("Bar", mBar.GetJson());
-        obj.Add("DownOrRightButton", mScrollButton[1].GetJson());
+        var serializedProperties = base.GetJson(isRoot, onlySerializeIfNotEmpty);
+        if (serializedProperties is null)
+        {
+            return null;
+        }
 
-        return base.FixJson(obj);
+        serializedProperties.Add("BackgroundTemplate", mBackgroundTemplateFilename);
+        serializedProperties.Add("UpOrLeftButton", mScrollButton[0].GetJson());
+        serializedProperties.Add("Bar", mBar.GetJson());
+        serializedProperties.Add("DownOrRightButton", mScrollButton[1].GetJson());
+
+        return base.FixJson(serializedProperties);
     }
 
     public override void LoadJson(JToken obj, bool isRoot = default)
@@ -131,7 +151,7 @@ public partial class ScrollBar : Base
         {
             SetBackgroundTemplate(
                 GameContentManager.Current.GetTexture(
-                    Framework.Content.TextureType.Gui, (string)obj["BackgroundTemplate"]
+                    Content.TextureType.Gui, (string)obj["BackgroundTemplate"]
                 ), (string)obj["BackgroundTemplate"]
             );
         }
@@ -161,7 +181,7 @@ public partial class ScrollBar : Base
     {
         if (texture == null && !string.IsNullOrWhiteSpace(fileName))
         {
-            texture = GameContentManager.Current?.GetTexture(Framework.Content.TextureType.Gui, fileName);
+            texture = GameContentManager.Current?.GetTexture(Content.TextureType.Gui, fileName);
         }
 
         mBackgroundTemplateFilename = fileName;
@@ -176,26 +196,17 @@ public partial class ScrollBar : Base
     /// <returns>True if control state changed.</returns>
     public virtual bool SetScrollAmount(float value, bool forceUpdate = false)
     {
-        if (mScrollAmount == value && !forceUpdate)
+        if (_scrollAmount == value && !forceUpdate)
         {
             return false;
         }
 
-        mScrollAmount = value;
+        var oldValue = _scrollAmount;
+        _scrollAmount = value;
         Invalidate();
         OnBarMoved(this, EventArgs.Empty);
 
         return true;
-    }
-
-    /// <summary>
-    ///     Handler invoked on mouse click (left) event.
-    /// </summary>
-    /// <param name="x">X coordinate.</param>
-    /// <param name="y">Y coordinate.</param>
-    /// <param name="down">If set to <c>true</c> mouse button is down.</param>
-    protected override void OnMouseClickedLeft(int x, int y, bool down, bool automated = false)
-    {
     }
 
     /// <summary>
@@ -213,9 +224,26 @@ public partial class ScrollBar : Base
     /// <param name="control">The control.</param>
     protected virtual void OnBarMoved(Base control, EventArgs args)
     {
-        if (BarMoved != null)
+        BarMoved?.Invoke(this, args);
+    }
+
+    protected override void Layout(Skin.Base skin)
+    {
+        base.Layout(skin);
+
+        var displayedScrollAmount = CalculateScrolledAmount();
+        var scrollAmount = _scrollAmount;
+        // ApplicationContext.CurrentContext.Logger.LogTrace(
+        //     "Scrollbar '{ScrollbarName}' at {DisplayedScrollAmount} but should be at {ActualScrollAmount} Size={Size}",
+        //     CanonicalName,
+        //     displayedScrollAmount,
+        //     scrollAmount,
+        //     mBar.Size
+        // );
+
+        if (!scrollAmount.Equals(displayedScrollAmount))
         {
-            BarMoved.Invoke(this, EventArgs.Empty);
+            SetScrollAmount(scrollAmount, forceUpdate: true);
         }
     }
 
@@ -249,7 +277,7 @@ public partial class ScrollBar : Base
     {
         for (var i = 0; i < mScrollButton.Length; i++)
         {
-            if (mScrollButton[i].GetDirection() == direction)
+            if (mScrollButton[i].Direction == direction)
             {
                 return mScrollButton[i];
             }
@@ -258,12 +286,12 @@ public partial class ScrollBar : Base
         return null;
     }
 
-    public void SetScrollBarImage(GameTexture texture, string fileName, Dragger.ControlState state)
+    public void SetScrollBarImage(GameTexture texture, string fileName, ComponentState state)
     {
         mBar.SetImage(texture, fileName, state);
     }
 
-    public GameTexture GetScrollBarImage(Dragger.ControlState state)
+    public GameTexture GetScrollBarImage(ComponentState state)
     {
         return mBar.GetImage(state);
     }

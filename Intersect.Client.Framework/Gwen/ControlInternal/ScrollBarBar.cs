@@ -1,4 +1,6 @@
-﻿using Intersect.Client.Framework.Gwen.Control;
+﻿using Intersect.Client.Framework.GenericClasses;
+using Intersect.Client.Framework.Gwen.Control;
+using Intersect.Client.Framework.Input;
 
 namespace Intersect.Client.Framework.Gwen.ControlInternal;
 
@@ -45,7 +47,7 @@ public partial class ScrollBarBar : Dragger
     /// <param name="skin">Skin to use.</param>
     protected override void Render(Skin.Base skin)
     {
-        skin.DrawScrollBarBar(this, mHeld, IsHovered, mHorizontal);
+        skin.DrawScrollBarBar(this);
         base.Render(skin);
     }
 
@@ -59,7 +61,7 @@ public partial class ScrollBarBar : Dragger
     protected override void OnMouseMoved(int x, int y, int dx, int dy)
     {
         base.OnMouseMoved(x, y, dx, dy);
-        if (!mHeld)
+        if (!IsActive)
         {
             return;
         }
@@ -67,16 +69,14 @@ public partial class ScrollBarBar : Dragger
         InvalidateParent();
     }
 
-    /// <summary>
-    ///     Handler invoked on mouse click (left) event.
-    /// </summary>
-    /// <param name="x">X coordinate.</param>
-    /// <param name="y">Y coordinate.</param>
-    /// <param name="down">If set to <c>true</c> mouse button is down.</param>
-    protected override void OnMouseClickedLeft(int x, int y, bool down, bool automated = false)
+    protected override void OnMouseClicked(MouseButton mouseButton, Point mousePosition, bool userAction = true)
     {
-        base.OnMouseClickedLeft(x, y, down);
-        InvalidateParent();
+        base.OnMouseClicked(mouseButton, mousePosition, userAction);
+
+        if (mouseButton == MouseButton.Left)
+        {
+            InvalidateParent();
+        }
     }
 
     /// <summary>
@@ -94,4 +94,10 @@ public partial class ScrollBarBar : Dragger
         MoveTo(X, Y);
     }
 
+    protected override void OnBoundsChanged(Rectangle oldBounds, Rectangle newBounds)
+    {
+        base.OnBoundsChanged(oldBounds, newBounds);
+
+        InvalidateParent();
+    }
 }

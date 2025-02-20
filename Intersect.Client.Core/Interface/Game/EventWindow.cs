@@ -10,9 +10,13 @@ using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Typewriting;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
+using Intersect.Client.Utilities;
 using Intersect.Configuration;
+using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
 using Intersect.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Interface.Game;
 
@@ -160,8 +164,15 @@ public partial class EventWindow : Panel
         SkipRender();
 
         _promptLabel.ClearText();
-        _promptLabel.AddText(_dialog.Prompt ?? string.Empty, _promptTemplateLabel);
+        var parsedText = TextColorParser.Parse(_dialog.Prompt ?? string.Empty, Color.White);
+
+        foreach (var segment in parsedText)
+        {
+            _promptLabel.AddText(segment.Text, segment.Color, Alignments.Left, _promptTemplateLabel.Font);
+        }
+
         _promptLabel.ForceImmediateRebuild();
+
         _ = _promptLabel.SizeToChildren();
 
         _typewriting = ClientConfiguration.Instance.TypewriterEnabled &&
@@ -169,9 +180,11 @@ public partial class EventWindow : Panel
         if (_typewriting)
         {
             _promptLabel.ClearText();
-            _writer = new Typewriter(_dialog.Prompt ?? string.Empty, text => _promptLabel.AppendText(text, _promptTemplateLabel));
+            _writer = new Typewriter(parsedText.ToArray(), (text, color) =>
+            {
+                _promptLabel.AppendText(text, color, Alignments.Left, _promptTemplateLabel.Font);
+            });
         }
-
         Defer(
             () =>
             {
@@ -184,6 +197,7 @@ public partial class EventWindow : Panel
         MakeModal(dim: true);
         BringToFront();
         Interface.InputBlockingComponents.Add(this);
+        ApplicationContext.CurrentContext.Logger.LogTrace("Event window opened");
 
         #endregion Configure and Display
     }
@@ -231,10 +245,10 @@ public partial class EventWindow : Panel
                 optionButton.IsDisabled = disableResponse;
             }
         }
-        else if (Controls.IsControlPressed(Control.AttackInteract))
+        else if (Controls.IsControlJustPressed(Control.AttackInteract))
         {
             SkipTypewriting();
-            _promptScroller.ScrollToBottom();
+            Defer(_promptScroller.ScrollToBottom);
         }
         else
         {
@@ -248,6 +262,7 @@ public partial class EventWindow : Panel
     {
         if (_instance is { } instance)
         {
+            // ApplicationContext.CurrentContext.Logger.LogTrace("Updating previous opened event window");
             instance.Update();
             return;
         }

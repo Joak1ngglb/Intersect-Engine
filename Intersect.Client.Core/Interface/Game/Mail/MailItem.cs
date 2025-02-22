@@ -33,10 +33,11 @@ namespace Intersect.Client.Interface.Game.Mail
             SlotPanel.HoverEnter += Pnl_HoverEnter;
             SlotPanel.HoverLeave += Pnl_HoverLeave;
             SlotPanel.RightClicked += Pnl_RightClicked;
+            SlotPanel.Clicked += Pnl_LeftClicked; // Fix for CS1061
         }
 
         public MailItem(MailBoxWindow parent, int index, ScrollControl container)
-        {   
+        {
             mMailWindow = parent;
             SlotIndex = index;
             SlotPanel = new ImagePanel(container, $"AttachmentSlot{index}");
@@ -59,7 +60,7 @@ namespace Intersect.Client.Interface.Game.Mail
                     SlotPanel.Texture = texture ?? null;
                 }
             }
-            
+
 
             else
             {
@@ -98,11 +99,12 @@ namespace Intersect.Client.Interface.Game.Mail
 
         private void Pnl_RightClicked(Base sender, ClickedEventArgs arguments)
         {
-            if (mSendMailWindow != null && CurrentSlot != null)
-            {
-                mSendMailWindow.RestoreItemsToInventory();
-                ClearItem();
-            }
+            
+        }
+
+        private void Pnl_LeftClicked(Base sender, ClickedEventArgs arguments) // Fix for CS0103
+        {
+         
         }
     }
 }

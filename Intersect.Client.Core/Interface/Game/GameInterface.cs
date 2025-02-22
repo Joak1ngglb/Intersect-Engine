@@ -153,7 +153,9 @@ public partial class GameInterface : MutableInterface
         }
 
         mSendMailBoxWindow.Show();
-        mSendMailBoxWindow.UpdateItemList();
+        mSendMailBoxWindow.InitializeAttachmentSlots();
+        mSendMailBoxWindow.Update(); 
+
     }
 
     public void OpenMailBox()

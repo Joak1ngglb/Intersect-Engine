@@ -1,3 +1,4 @@
+using System;
 using Intersect.Client.Core;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
@@ -6,6 +7,7 @@ using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.DescriptionWindows;
+using Intersect.Client.Interface.Game.Mail;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Configuration;
@@ -61,10 +63,18 @@ public partial class InventoryItem
     private string mTexLoaded = "";
 
     public ImagePanel Pnl;
+    private SendMailBoxWindow mSendMailBoxWindow;
+
 
     public InventoryItem(InventoryWindow inventoryWindow, int index)
     {
         mInventoryWindow = inventoryWindow;
+        mMySlot = index;
+    }
+
+    public InventoryItem(SendMailBoxWindow sendMailBoxWindow, int index)
+    {
+       mSendMailBoxWindow = sendMailBoxWindow;
         mMySlot = index;
     }
 
@@ -89,7 +99,11 @@ public partial class InventoryItem
 
     private void Pnl_DoubleClicked(Base sender, ClickedEventArgs arguments)
     {
-        if (Globals.GameShop != null)
+        if (mSendMailBoxWindow != null)
+        {
+            mSendMailBoxWindow.SelectItem(mSendMailBoxWindow.Items[mMySlot], mMySlot);
+        }
+        else if (Globals.GameShop != null)
         {
             Globals.Me.TrySellItem(mMySlot);
         }
@@ -184,10 +198,10 @@ public partial class InventoryItem
 
         mMouseOver = true;
         mCanDrag = true;
+
         if (Globals.InputManager.MouseButtonDown(MouseButtons.Left))
         {
             mCanDrag = false;
-
             return;
         }
 
@@ -197,13 +211,44 @@ public partial class InventoryItem
             mDescWindow = null;
         }
 
+        // 🔍 Nueva verificación: Si el ítem pertenece a SendMailBoxWindow
+        if (mSendMailBoxWindow != null)
+        {
+            var inventorySlot = Globals.Me.Inventory[mMySlot];
+            if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
+            {
+                return;
+            }
+
+            var itemBase = ItemBase.Get(inventorySlot.ItemId);
+            if (itemBase == null)
+            {
+                return;
+            }
+
+            // Mostrar descripción en la ventana de envío de correo
+            mDescWindow = new ItemDescriptionWindow(
+                itemBase,
+                inventorySlot.Quantity,
+                mSendMailBoxWindow.X,
+                mSendMailBoxWindow.Y,
+                inventorySlot.ItemProperties
+            );
+
+            return; // No continuar con la lógica de GameShop
+        }
+
+        // 🛒 Lógica normal para la tienda o inventario
         if (Globals.GameShop == null)
         {
             if (Globals.Me.Inventory[mMySlot]?.Base != null)
             {
                 mDescWindow = new ItemDescriptionWindow(
-                    Globals.Me.Inventory[mMySlot].Base, Globals.Me.Inventory[mMySlot].Quantity, mInventoryWindow.X,
-                    mInventoryWindow.Y, Globals.Me.Inventory[mMySlot].ItemProperties
+                    Globals.Me.Inventory[mMySlot].Base,
+                    Globals.Me.Inventory[mMySlot].Quantity,
+                    mInventoryWindow.X,
+                    mInventoryWindow.Y,
+                    Globals.Me.Inventory[mMySlot].ItemProperties
                 );
             }
         }
@@ -218,7 +263,6 @@ public partial class InventoryItem
                 if (invItem.ItemId == tmpShop.ItemId)
                 {
                     shopItem = tmpShop;
-
                     break;
                 }
             }
@@ -229,8 +273,12 @@ public partial class InventoryItem
                 if (hoveredItem != null && Globals.Me.Inventory[mMySlot]?.Base != null)
                 {
                     mDescWindow = new ItemDescriptionWindow(
-                        Globals.Me.Inventory[mMySlot].Base, Globals.Me.Inventory[mMySlot].Quantity,
-                        mInventoryWindow.X, mInventoryWindow.Y, Globals.Me.Inventory[mMySlot].ItemProperties, "",
+                        Globals.Me.Inventory[mMySlot].Base,
+                        Globals.Me.Inventory[mMySlot].Quantity,
+                        mInventoryWindow.X,
+                        mInventoryWindow.Y,
+                        Globals.Me.Inventory[mMySlot].ItemProperties,
+                        "",
                         Strings.Shop.SellsFor.ToString(shopItem.CostItemQuantity, hoveredItem.Name)
                     );
                 }
@@ -241,8 +289,12 @@ public partial class InventoryItem
                 if (invItem.Base != null && costItem != null && Globals.Me.Inventory[mMySlot]?.Base != null)
                 {
                     mDescWindow = new ItemDescriptionWindow(
-                        Globals.Me.Inventory[mMySlot].Base, Globals.Me.Inventory[mMySlot].Quantity,
-                        mInventoryWindow.X, mInventoryWindow.Y, Globals.Me.Inventory[mMySlot].ItemProperties, "",
+                        Globals.Me.Inventory[mMySlot].Base,
+                        Globals.Me.Inventory[mMySlot].Quantity,
+                        mInventoryWindow.X,
+                        mInventoryWindow.Y,
+                        Globals.Me.Inventory[mMySlot].ItemProperties,
+                        "",
                         Strings.Shop.SellsFor.ToString(invItem.Base.Price.ToString(), costItem.Name)
                     );
                 }
@@ -252,8 +304,13 @@ public partial class InventoryItem
                 if (invItem?.Base != null)
                 {
                     mDescWindow = new ItemDescriptionWindow(
-                        invItem.Base, invItem.Quantity, mInventoryWindow.X, mInventoryWindow.Y, invItem.ItemProperties,
-                        "", Strings.Shop.WontBuy
+                        invItem.Base,
+                        invItem.Quantity,
+                        mInventoryWindow.X,
+                        mInventoryWindow.Y,
+                        invItem.ItemProperties,
+                        "",
+                        Strings.Shop.WontBuy
                     );
                 }
             }

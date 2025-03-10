@@ -66,4 +66,22 @@ public partial class MonoRenderTexture : GameRenderTexture
         _renderTexture?.Dispose();
         _renderTexture = default;
     }
+
+    public override void SetColor(int x, int y, Color color)
+    {
+        // Asegurarte de que las coordenadas del pixel están dentro de los límites de la textura.
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+            return;
+
+        // Extraer todos los datos de color de la textura.
+        var colorData = new Microsoft.Xna.Framework.Color[Width * Height];
+        _renderTexture?.GetData(colorData);
+
+        // Calcular el índice del pixel y cambiar su color.
+        int index = x + y * Width;
+        colorData[index] = new Microsoft.Xna.Framework.Color(color.R, color.G, color.B, color.A);
+
+        // Volver a aplicar los datos de color modificados a la textura.
+        _renderTexture?.SetData(colorData);
+    }
 }

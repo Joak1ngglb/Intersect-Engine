@@ -45,6 +45,7 @@ public abstract partial class GameContentManager : IContentManager
     protected readonly Dictionary<string, IAsset> mItemDict = [];
 
     protected readonly Dictionary<string, IAsset> mMiscDict = [];
+    protected readonly Dictionary<string, IAsset> mGuildDict = [];
 
     protected readonly Dictionary<string, IAsset> mMusicDict = [];
 
@@ -60,7 +61,7 @@ public abstract partial class GameContentManager : IContentManager
 
     protected readonly Dictionary<string, IAsset> mSpellDict = [];
 
-    protected readonly  Dictionary<string, IAsset> mTexturePackDict = [];
+    protected readonly Dictionary<string, IAsset> mTexturePackDict = [];
 
     protected readonly Dictionary<string, IAsset> mTilesetDict = [];
 
@@ -101,6 +102,7 @@ public abstract partial class GameContentManager : IContentManager
         LoadGui();
         LoadFonts();
         LoadShaders();
+        LoadGuilds();
     }
 
     public abstract void LoadTexturePacks();
@@ -132,6 +134,7 @@ public abstract partial class GameContentManager : IContentManager
     public abstract void LoadFonts();
 
     public abstract void LoadShaders();
+    public abstract void LoadGuilds();
 
     //Audio Loading
     public void LoadAudio()
@@ -194,6 +197,8 @@ public abstract partial class GameContentManager : IContentManager
 
             case TextureType.Misc:
                 return mMiscDict.Keys.ToArray();
+            case TextureType.Guild:
+                return mGuildDict.Keys.ToArray();
         }
 
         return null;
@@ -275,7 +280,9 @@ public abstract partial class GameContentManager : IContentManager
                 textureDict = mMiscDict;
 
                 break;
-
+            case TextureType.Guild:
+                textureDict = mGuildDict;
+                break;
             default:
                 return null;
         }
@@ -425,7 +432,8 @@ public abstract partial class GameContentManager : IContentManager
         }
 
         var resolutionPath = Path.Combine(resourceDirectory, $"{name}.{resolution}.json");
-        if (!string.IsNullOrWhiteSpace(resolution) && File.Exists(resolutionPath)) {
+        if (!string.IsNullOrWhiteSpace(resolution) && File.Exists(resolutionPath))
+        {
             rawLayout = File.ReadAllText(resolutionPath);
             mUiDict[key] = rawLayout;
             return rawLayout;
@@ -548,7 +556,8 @@ public abstract partial class GameContentManager : IContentManager
 
             case ContentTypes.Sound:
                 return mSoundDict;
-
+                case ContentTypes.Guild:
+                return mGuildDict;
             default:
                 throw new ArgumentOutOfRangeException(nameof(contentType), contentType, null);
         }

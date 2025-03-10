@@ -37,7 +37,7 @@ public partial class Slider : Base
     ///     Initializes a new instance of the <see cref="Slider" /> class.
     /// </summary>
     /// <param name="parent">Parent control.</param>
-    protected Slider(Base parent, string name = "") : base(parent, name)
+   public Slider(Base parent, string name = "") : base(parent, name)
     {
         SetBounds(new Rectangle(0, 0, 32, 128));
 
@@ -54,6 +54,7 @@ public partial class Slider : Base
         KeyboardInputEnabled = true;
         IsTabable = true;
     }
+
 
     /// <summary>
     ///     Number of notches on the slider axis.

@@ -1,4 +1,4 @@
-﻿using Intersect.Client.Framework.Audio;
+using Intersect.Client.Framework.Audio;
 using Intersect.Client.Framework.Graphics;
 
 namespace Intersect.Client.Framework.Content;
@@ -56,7 +56,8 @@ public enum ContentTypes
 
     [AssetType(typeof(GameTexture))]
     TileSet,
-
+    [AssetType(typeof(GameTexture))]
+    Guild,
     [Obsolete] Gui = Interface
 
 }

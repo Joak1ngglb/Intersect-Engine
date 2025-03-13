@@ -7,11 +7,12 @@ using Intersect.Editor.Localization;
 using Intersect.Editor.Maps;
 using Intersect.Editor.Networking;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Events.Commands;
+using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Events.Commands;
-using Intersect.GameObjects.Maps;
 using Intersect.Utilities;
 using Newtonsoft.Json;
 using Graphics = System.Drawing.Graphics;
@@ -28,7 +29,7 @@ public partial class FrmEvent : Form
 
     private readonly List<CommandListProperties> mCommandProperties = new List<CommandListProperties>();
 
-    private readonly MapBase mCurrentMap;
+    private readonly MapDescriptor mCurrentMap;
 
     public EventPage CurrentPage;
 
@@ -48,7 +49,7 @@ public partial class FrmEvent : Form
 
     private List<DarkButton> mPageTabs = new List<DarkButton>();
 
-    public EventBase MyEvent;
+    public EventDescriptor MyEvent;
 
     public MapInstance MyMap;
 
@@ -440,7 +441,7 @@ public partial class FrmEvent : Form
 
     private void cmbAnimation_SelectedIndexChanged(object sender, EventArgs e)
     {
-        CurrentPage.AnimationId = AnimationBase.IdFromList(cmbAnimation.SelectedIndex - 1);
+        CurrentPage.AnimationId = AnimationDescriptor.IdFromList(cmbAnimation.SelectedIndex - 1);
     }
 
     private void chkIsGlobal_CheckedChanged(object sender, EventArgs e)
@@ -788,7 +789,7 @@ public partial class FrmEvent : Form
 
     #region "Form Events"
 
-    public FrmEvent(MapBase currentMap)
+    public FrmEvent(MapDescriptor currentMap)
     {
         InitializeComponent();
         Icon = Program.Icon;
@@ -1000,16 +1001,13 @@ public partial class FrmEvent : Form
 
         cmbAnimation.Items.Clear();
         cmbAnimation.Items.Add(Strings.General.None);
-        cmbAnimation.Items.AddRange(AnimationBase.Names);
+        cmbAnimation.Items.AddRange(AnimationDescriptor.Names);
         chkParallelRun.Checked = MyEvent.CanRunInParallel;
         if (MyEvent.CommonEvent || questEvent)
         {
             grpEntityOptions.Hide();
             cmbTrigger.Items.Clear();
-            for (var i = 0; i < Strings.EventEditor.commontriggers.Count; i++)
-            {
-                cmbTrigger.Items.Add(Strings.EventEditor.commontriggers[i]);
-            }
+            cmbTrigger.Items.AddRange([.. Strings.EventEditor.CommonTriggers.Values]);
         }
         else
         {
@@ -1021,7 +1019,7 @@ public partial class FrmEvent : Form
 
             cmbTriggerVal.Items.Clear();
             cmbTriggerVal.Items.Add(Strings.General.None);
-            cmbTriggerVal.Items.AddRange(ProjectileBase.Names);
+            cmbTriggerVal.Items.AddRange(ProjectileDescriptor.Names);
         }
 
         chkIsGlobal.Checked = Convert.ToBoolean(MyEvent.Global);
@@ -1092,7 +1090,7 @@ public partial class FrmEvent : Form
             UpdateFacePreview();
         }
 
-        cmbAnimation.SelectedIndex = AnimationBase.ListIndex(CurrentPage.AnimationId) + 1;
+        cmbAnimation.SelectedIndex = AnimationDescriptor.ListIndex(CurrentPage.AnimationId) + 1;
         chkHideName.Checked = Convert.ToBoolean(CurrentPage.HideName);
         chkDisableInspector.Checked = Convert.ToBoolean(CurrentPage.DisablePreview);
         chkDirectionFix.Checked = Convert.ToBoolean(CurrentPage.DirectionFix);

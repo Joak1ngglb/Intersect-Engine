@@ -1,9 +1,8 @@
-using System.Diagnostics;
 using Intersect.Admin.Actions;
-using Intersect.Client.Core.Controls;
 using Intersect.Client.Entities;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Graphics;
+using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface;
@@ -13,7 +12,7 @@ using Intersect.Client.Maps;
 using Intersect.Client.Networking;
 using Intersect.Configuration;
 using Intersect.Enums;
-using Intersect.Utilities;
+using Intersect.Framework.Core;
 
 namespace Intersect.Client.Core;
 
@@ -39,22 +38,28 @@ public static partial class Input
 
     public static HandleKeyEvent? MouseUp { get => _mouseUp; set => _mouseUp = value; }
 
-    private static void HandleZoomOut()
+    public static void HandleZoomOut(bool wrap = true)
     {
-        Globals.Database.WorldZoom /= 2;
-        if (Globals.Database.WorldZoom < Graphics.MinimumWorldScale)
+        var nextZoom = Globals.Database.WorldZoom / 2;
+
+        if (nextZoom < Graphics.MinimumWorldScale)
         {
-            Globals.Database.WorldZoom = Graphics.MaximumWorldScale;
+            nextZoom = wrap ? Graphics.MaximumWorldScale : Graphics.MinimumWorldScale;
         }
+
+        Globals.Database.WorldZoom = nextZoom;
     }
 
-    private static void HandleZoomIn()
+    public static void HandleZoomIn(bool wrap = true)
     {
-        Globals.Database.WorldZoom *= 2;
-        if (Globals.Database.WorldZoom > Graphics.MaximumWorldScale)
+        var nextZoom = Globals.Database.WorldZoom * 2;
+
+        if (nextZoom > Graphics.MaximumWorldScale)
         {
-            Globals.Database.WorldZoom = Graphics.MinimumWorldScale;
+            nextZoom = wrap ? Graphics.MinimumWorldScale : Graphics.MaximumWorldScale;
         }
+
+        Globals.Database.WorldZoom = nextZoom;
     }
 
     public static void OnKeyPressed(Keys modifier, Keys key)
@@ -93,6 +98,7 @@ public static partial class Input
                         if (inputBlockingComponent is InputBox { IsHidden: false } inputBox)
                         {
                             inputBox.SubmitInput();
+                            consumeKey = true;
                             canFocusChat = false;
                             break;
                         }
@@ -104,12 +110,18 @@ public static partial class Input
                         if (inputBlockingComponent is EventWindow { IsHidden: false } eventWindow && Globals.EventDialogs.Count > 0)
                         {
                             eventWindow.CloseEventResponse(EventResponseType.OneOption);
+                            consumeKey = true;
                             canFocusChat = false;
 
                             break;
                         }
                     }
                     catch { }
+                }
+
+                if (!consumeKey)
+                {
+
                 }
                 break;
         }
@@ -121,10 +133,12 @@ public static partial class Input
                 return;
             }
 
-            if (Interface.Interface.GameUi is not { } gameUi)
+            if (!Interface.Interface.HasInGameUI)
             {
                 return;
             }
+
+            var gameUi = Interface.Interface.GameUi;
 
             // First try and unfocus chat then close all UI elements, then untarget our target.. and THEN open the escape menu.
             // Most games do this, why not this?
@@ -146,7 +160,7 @@ public static partial class Input
 
                 if (simplifiedEscapeMenuSetting)
                 {
-                    if (gameUi.EscapeMenu.IsVisible)
+                    if (gameUi.EscapeMenu.IsVisibleInTree)
                     {
                         gameUi.EscapeMenu.ToggleHidden();
                     }
@@ -217,7 +231,7 @@ public static partial class Input
                 }
 
                 case Control.OpenDebugger:
-                    _ = MutableInterface.ToggleDebug();
+                    Interface.Interface.CurrentInterface.ToggleDebug();
                     break;
             }
 
@@ -227,25 +241,14 @@ public static partial class Input
                     break;
 
                 case GameStates.Menu:
-                    var selectCharacterWindow = Interface.Interface.MenuUi.MainMenu.SelectCharacterWindow;
-
-                    switch (control)
-                    {
-                        case Control.Enter:
-                            if (selectCharacterWindow is { IsHidden: false, CharacterSelectionPreviews: { } previews })
-                            {
-                                var selectedPreviewIndex = selectCharacterWindow._selectedCharacterIndex;
-                                if (previews.Length > selectedPreviewIndex && previews[selectedPreviewIndex] != default)
-                                {
-                                    selectCharacterWindow.ButtonPlay_Clicked(null, null);
-                                    consumeKey = true;
-                                }
-                            }
-                            break;
-                    }
                     break;
 
                 case GameStates.InGame:
+                    if (!Interface.Interface.HasInGameUI)
+                    {
+                        break;
+                    }
+
                     switch (control)
                     {
                         case Control.Block:
@@ -275,7 +278,7 @@ public static partial class Input
                             break;
 
                         case Control.Enter:
-                            if (canFocusChat && Interface.Interface.GameUi != default)
+                            if (canFocusChat)
                             {
                                 Interface.Interface.GameUi.FocusChat = true;
                                 consumeKey = true;
@@ -283,31 +286,31 @@ public static partial class Input
                             continue;
 
                         case Control.OpenInventory:
-                            Interface.Interface.GameUi?.GameMenu?.ToggleInventoryWindow();
+                            Interface.Interface.GameUi.GameMenu?.ToggleInventoryWindow();
                             break;
 
                         case Control.OpenQuests:
-                            Interface.Interface.GameUi?.GameMenu?.ToggleQuestsWindow();
+                            Interface.Interface.GameUi.GameMenu?.ToggleQuestsWindow();
                             break;
 
                         case Control.OpenCharacterInfo:
-                            Interface.Interface.GameUi?.GameMenu?.ToggleCharacterWindow();
+                            Interface.Interface.GameUi.GameMenu?.ToggleCharacterWindow();
                             break;
 
                         case Control.OpenParties:
-                            Interface.Interface.GameUi?.GameMenu?.TogglePartyWindow();
+                            Interface.Interface.GameUi.GameMenu?.TogglePartyWindow();
                             break;
 
                         case Control.OpenSpells:
-                            Interface.Interface.GameUi?.GameMenu?.ToggleSpellsWindow();
+                            Interface.Interface.GameUi.GameMenu?.ToggleSpellsWindow();
                             break;
 
                         case Control.OpenFriends:
-                            _ = (Interface.Interface.GameUi?.GameMenu?.ToggleFriendsWindow());
+                            _ = (Interface.Interface.GameUi.GameMenu?.ToggleFriendsWindow());
                             break;
 
                         case Control.OpenSettings:
-                            Interface.Interface.GameUi?.EscapeMenu?.OpenSettingsWindow();
+                            Interface.Interface.GameUi.EscapeMenu?.OpenSettingsWindow();
                             break;
 
                         case Control.OpenAdminPanel:
@@ -315,7 +318,7 @@ public static partial class Input
                             break;
 
                         case Control.OpenGuild:
-                            _ = Interface.Interface.GameUi?.GameMenu?.ToggleGuildWindow();
+                            _ = Interface.Interface.GameUi.GameMenu?.ToggleGuildWindow();
                             break;
                     }
                     break;

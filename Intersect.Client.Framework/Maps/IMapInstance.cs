@@ -3,6 +3,7 @@ using Intersect.Client.Framework.Entities;
 using Intersect.Client.Framework.Items;
 using Intersect.Enums;
 using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Maps;
 
 namespace Intersect.Client.Framework.Maps;
 
@@ -27,8 +28,17 @@ public interface IMapInstance
     bool IsDisposed { get; }
     bool IsLoaded { get; }
 
-    void AddTileAnimation(
+    IAnimation? AddTileAnimation(
         Guid animId,
+        int tileX,
+        int tileY,
+        Direction dir = Direction.None,
+        IEntity? owner = null,
+        AnimationSource source = default
+    );
+
+    IAnimation? AddTileAnimation(
+        AnimationDescriptor animationDescriptor,
         int tileX,
         int tileY,
         Direction dir = Direction.None,

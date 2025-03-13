@@ -1,6 +1,7 @@
 using Intersect.Client.Framework.Content;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.Graphics;
+using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.Framework.Gwen.ControlInternal;
 using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
@@ -19,7 +20,7 @@ public partial class Button : Label
     private bool mCenterImage;
 
     private readonly Dictionary<ButtonSoundState, string> _stateSoundNames = [];
-    private readonly Dictionary<ComponentState, GameTexture> _stateTextures = [];
+    private readonly Dictionary<ComponentState, IGameTexture> _stateTextures = [];
     private readonly Dictionary<ComponentState, string> _stateTextureNames = [];
 
     private bool mToggle;
@@ -265,19 +266,28 @@ public partial class Button : Label
     /// <param name="skin">Skin to use.</param>
     protected override void Render(Skin.Base skin)
     {
-        base.Render(skin);
+        skin.DrawButton(this);
 
-        if (ShouldDrawBackground)
+        base.Render(skin);
+    }
+
+    public override ComponentState ComponentState
+    {
+        get
         {
-            var drawDepressed = IsActive && IsHovered;
-            if (IsToggle)
+            var componentState = base.ComponentState;
+
+            if (componentState == ComponentState.Disabled)
             {
-                drawDepressed = drawDepressed || ToggleState;
+                return componentState;
             }
 
-            var bDrawHovered = IsHovered && ShouldDrawHover;
+            if (IsToggle && ToggleState)
+            {
+                componentState = ComponentState.Active;
+            }
 
-            skin.DrawButton(this, drawDepressed, bDrawHovered, IsDisabled, HasFocus);
+            return componentState;
         }
     }
 
@@ -318,11 +328,26 @@ public partial class Button : Label
     /// </returns>
     protected override bool OnKeySpace(bool down)
     {
-        return base.OnKeySpace(down);
+        if (!down)
+        {
+            EmitVirtualClick(new MouseButtonState(MouseButton.Left, mousePosition: default, isPressed: false));
+            // OnMouseClicked(MouseButton.Left, default);
+            return true;
+        }
 
-        //if (down)
-        //    OnClicked(0, 0);
-        //return true;
+        return base.OnKeySpace(down);
+    }
+
+    protected override bool OnKeyReturn(bool down)
+    {
+        if (!down)
+        {
+            EmitVirtualClick(new MouseButtonState(MouseButton.Left, mousePosition: default, isPressed: false));
+            // OnMouseClicked(MouseButton.Left, default);
+            return true;
+        }
+
+        return base.OnKeyReturn(down);
     }
 
     /// <summary>
@@ -406,6 +431,14 @@ public partial class Button : Label
         OnMouseClicked(mouseButton, mousePosition, userAction);
     }
 
+    public void SetAllStatesTexture(IGameTexture? texture)
+    {
+        foreach (var componentState in Enum.GetValues<ComponentState>())
+        {
+            SetStateTexture(texture, componentState);
+        }
+    }
+
     public void SetStateTexture(ComponentState componentState, string textureName)
     {
         var texture = GameContentManager.Current.GetTexture(TextureType.Gui, textureName);
@@ -416,9 +449,17 @@ public partial class Button : Label
     ///     Sets the button's image.
     /// </summary>
     /// <param name="texture"></param>
+    /// <param name="componentState"></param>
+    public void SetStateTexture(IGameTexture? texture, ComponentState componentState) =>
+        SetStateTexture(texture, texture?.Name, componentState);
+
+    /// <summary>
+    ///     Sets the button's image.
+    /// </summary>
+    /// <param name="texture"></param>
     /// <param name="name"></param>
     /// <param name="state"></param>
-    public void SetStateTexture(GameTexture? texture, string? name, ComponentState state)
+    public void SetStateTexture(IGameTexture? texture, string? name, ComponentState state)
     {
         if (texture == null && !string.IsNullOrWhiteSpace(name))
         {
@@ -444,7 +485,7 @@ public partial class Button : Label
         }
     }
 
-    public GameTexture? GetStateTexture(ComponentState state) => _stateTextures.GetValueOrDefault(state);
+    public IGameTexture? GetStateTexture(ComponentState state) => _stateTextures.GetValueOrDefault(state);
 
     public string? GetStateTextureName(ComponentState state) => _stateTextureNames.GetValueOrDefault(state);
 

@@ -15,6 +15,7 @@ using Intersect.Client.Interface.Menu;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.Localization;
 using Intersect.Core;
+using Intersect.Framework.Core;
 using Intersect.Network.Packets.Unconnected.Client;
 using Intersect.Rsa;
 using Microsoft.Extensions.Logging;
@@ -233,7 +234,13 @@ internal partial class MonoSocket : GameSocket
                                     }
                                     else
                                     {
-                                        network.SendUnconnected(serverEndpoint, new ServerStatusRequestPacket());
+                                        network.SendUnconnected(
+                                            serverEndpoint,
+                                            new ServerStatusRequestPacket
+                                            {
+                                                VersionData = SharedConstants.VersionData,
+                                            }
+                                        );
                                     }
                                 }
                                 else if (!ClientNetwork.UnresolvableHostNames.Contains(_lastHost))

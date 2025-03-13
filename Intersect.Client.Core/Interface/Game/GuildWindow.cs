@@ -21,7 +21,7 @@ partial class GuildWindow : Window
     private readonly Button _buttonAdd;
     private readonly Button _buttonLeave;
     private readonly Button _buttonAddPopup;
-    private readonly Framework.Gwen.Control.Menu _contextMenu;
+    private readonly ContextMenu _contextMenu;
     private readonly MenuItem _privateMessageOption;
     private readonly MenuItem[] _promoteOptions;
     private readonly MenuItem[] _demoteOptions;
@@ -115,7 +115,7 @@ partial class GuildWindow : Window
         #region Context Menu Options
 
         // Context Menu
-        _contextMenu = new Framework.Gwen.Control.Menu(gameCanvas, "GuildContextMenu")
+        _contextMenu = new ContextMenu(gameCanvas, "GuildContextMenu")
         {
             IsHidden = true,
             IconMarginDisabled = true
@@ -123,7 +123,7 @@ partial class GuildWindow : Window
 
         //Add Context Menu Options
         //TODO: Is this a memory leak?
-        _contextMenu.Children.Clear();
+        _contextMenu.ClearChildren();
 
         // Private Message
         _privateMessageOption = _contextMenu.AddItem(Strings.Guilds.PM);
@@ -326,8 +326,10 @@ partial class GuildWindow : Window
             _contextMenu.AddChild(_transferOption);
         }
 
-        _ = _contextMenu.SizeToChildren();
-        _contextMenu.Open(Framework.Gwen.Pos.None);
+        if (_contextMenu.Children.Count > 0)
+        {
+            _contextMenu.Open(Framework.Gwen.Pos.None);
+        }
     }
 
     #endregion

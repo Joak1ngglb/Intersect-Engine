@@ -34,7 +34,13 @@ using Newtonsoft.Json.Converters;
 using Intersect.Server.Collections.Indexing;
 using Intersect.Server.Web.Controllers;
 using Intersect.Server.Web.Controllers.Api;
+using Intersect.Server.Web.Controllers.AssetManagement;
+using Intersect.Server.Web.Extensions;
 using Intersect.Server.Web.Types.Chat;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Primitives;
+using MyCSharp.HttpUserAgentParser.AspNetCore.DependencyInjection;
+using MyCSharp.HttpUserAgentParser.MemoryCache.DependencyInjection;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
@@ -66,12 +72,20 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
             return default;
         }
 
-        ApplicationContext.Context.Value?.Logger.LogInformation($"Launching Intersect REST API in '{builder.Environment.EnvironmentName}' mode...");
+        ApplicationContext.CurrentContext.Logger.LogInformation(
+            "Launching Intersect REST API in '{EnvironmentName}' mode...",
+            builder.Environment.EnvironmentName
+        );
+
+        builder.Services.AddSingleton(ApplicationContext.GetCurrentContext<IApplicationContext>());
+
+        var updateServerSection = builder.Configuration.GetSection(GetOptionsName<UpdateServerOptions>());
+        builder.Services.Configure<UpdateServerOptions>(updateServerSection);
 
         // I can't get System.Text.Json to deserialize an array as non-null, and it totally ignores
         // the JsonConverter attribute I tried putting on it, so I am just giving up and doing this
         // to make sure the array is not null in the event that it is empty.
-        configuration.StaticFilePaths ??= new List<StaticFilePathOptions>();
+        configuration.StaticFilePaths ??= [];
 
         var tokenGenerationOptionsSection =
             apiConfigurationSection.GetRequiredSection(nameof(TokenGenerationOptions));
@@ -109,6 +123,8 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                 routeOptions.ConstraintMap.Add(nameof(LookupKey), typeof(NonNullConstraint));
             }
         );
+
+        builder.Services.AddHttpUserAgentMemoryCachedParser().AddHttpUserAgentParserAccessor();
 
         builder.Services.AddRateLimiter(
             rateLimiterOptions =>
@@ -155,12 +171,16 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
 
         builder.Services.AddSingleton<IntersectAuthenticationManager>();
 
-        builder.Services.AddAuthentication(BearerCookieFallbackAuthenticationScheme)
+        builder.Services.AddAuthentication(
+                options =>
+                {
+                    options.DefaultScheme = BearerCookieFallbackAuthenticationScheme;
+                }
+            )
             .AddCookie(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 options =>
                 {
-                    options.ForwardChallenge = JwtBearerDefaults.AuthenticationScheme;
                     options.Events.OnSignedIn += async (context) => { };
                     options.Events.OnSigningIn += async (context) => { };
                     options.Events.OnSigningOut += async (context) => { };
@@ -185,7 +205,7 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                             return;
                         }
 
-                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<ApiService>>();
+                        var logger = context.GetAPILogger();
                         logger.LogInformation(
                             "Renewing cookie for {UserId}",
                             updatedPrincipal.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -193,8 +213,40 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                         context.ShouldRenew = true;
                         context.ReplacePrincipal(updatedPrincipal);
                     };
-                    options.Events.OnRedirectToLogin += async (context) => { };
-                    options.Events.OnRedirectToAccessDenied += async (context) => { };
+                    options.Events.OnRedirectToLogin += async (context) =>
+                    {
+                        if (context.HttpContext.IsPage())
+                        {
+                            context.GetAPILogger().LogTrace(
+                                "{OnRedirectToLogin} called for page (non-API) endpoint: {Route}",
+                                nameof(CookieAuthenticationEvents.OnRedirectToLogin),
+                                context.HttpContext.Request.Path
+                            );
+                            return;
+                        }
+
+                        if (context.HttpContext.IsController())
+                        {
+                            context.GetAPILogger().LogTrace(
+                                "{OnRedirectToLogin} called for controller (API) endpoint: {Route}",
+                                nameof(CookieAuthenticationEvents.OnRedirectToLogin),
+                                context.HttpContext.Request.Path
+                            );
+
+                            context.RedirectUri = string.Empty;
+                            context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                            context.Response.Headers.Location = StringValues.Empty;
+                        }
+
+                        context.GetAPILogger().LogWarning(
+                            "{OnRedirectToLogin} called for unclassified endpoint: {Route}",
+                            nameof(CookieAuthenticationEvents.OnRedirectToLogin),
+                            context.HttpContext.Request.Path
+                        );
+                    };
+                    options.Events.OnRedirectToAccessDenied += async (context) =>
+                    {
+                    };
                     options.Events.OnRedirectToLogout += async (context) => { };
                     options.Events.OnRedirectToReturnUrl += async (context) => { };
                     options.ExpireTimeSpan = TimeSpan.FromSeconds(10);
@@ -214,6 +266,35 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                         ValidateLifetime = false,
                         ValidateIssuerSigningKey = true,
                     };
+                    options.ForwardDefaultSelector += context =>
+                    {
+                        if (context.IsController())
+                        {
+                            return null;
+                        }
+
+                        if (context.IsPage())
+                        {
+                            return CookieAuthenticationDefaults.AuthenticationScheme;
+                        }
+
+                        if (context.Request.Headers.Authorization.Count > 0)
+                        {
+                            context.GetAPILogger().LogWarning(
+                                "JwtBearer ForwardDefaultSelector invoked for unclassified endpoint, not forwarding because there is an Authorization header: {Route}",
+                                context.Request.Path
+                            );
+
+                            return null;
+                        }
+
+                        context.GetAPILogger().LogWarning(
+                            "JwtBearer ForwardDefaultSelector invoked for unclassified endpoint, falling back to cookie authentication because there is no Authorization header: {Route}",
+                            context.Request.Path
+                        );
+
+                        return CookieAuthenticationDefaults.AuthenticationScheme;
+                    };
                     builder.Configuration.Bind($"Api.{nameof(JwtBearerOptions)}", options);
                     options.TokenValidationParameters.ValidAudience ??= tokenGenerationOptions.Audience;
                     options.TokenValidationParameters.ValidIssuer ??= tokenGenerationOptions.Issuer;
@@ -224,6 +305,12 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                         },
                         OnChallenge = async context =>
                         {
+                            if (context.AuthenticateFailure is not null || context.HttpContext.IsController())
+                            {
+                                // This was needed to make sure authentication failures didn't return 200
+                                context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                                context.HandleResponse();
+                            }
                         },
                         OnMessageReceived = async context => { },
                         OnTokenValidated = async context =>
@@ -271,7 +358,7 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
 
                             context.Fail("expired_token");
 
-                            // var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<ApiService>>();
+                            // var logger = context.GetAPILogger();
                             // logger.LogInformation(
                             //     "Changing token for {UserId}",
                             //     updatedPrincipal.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -283,14 +370,36 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
                     SymmetricSecurityKey issuerKey = new(tokenGenerationOptions.SecretData);
                     options.TokenValidationParameters.IssuerSigningKey = issuerKey;
                 }
-            ).AddPolicyScheme(
+            )
+            .AddPolicyScheme(
                 BearerCookieFallbackAuthenticationScheme,
                 "Bearer-to-Cookie Fallback",
                 pso =>
                 {
-                    pso.ForwardDefaultSelector = context => context.Request.Headers.Authorization.Count > 0
-                        ? JwtBearerDefaults.AuthenticationScheme
-                        : CookieAuthenticationDefaults.AuthenticationScheme;
+                    pso.ForwardDefaultSelector = context =>
+                    {
+                        if (context.Request.Headers.Authorization.Count > 0)
+                        {
+                            return JwtBearerDefaults.AuthenticationScheme;
+                        }
+
+                        if (context.IsController())
+                        {
+                            return JwtBearerDefaults.AuthenticationScheme;
+                        }
+
+                        if (context.IsPage())
+                        {
+                            return CookieAuthenticationDefaults.AuthenticationScheme;
+                        }
+
+                        context.GetAPILogger().LogWarning(
+                            "Trying to authenticate with no authorization header on unclassified endpoint, falling back to cookie authentication: {Route}",
+                            context.Request.Path
+                        );
+
+                        return CookieAuthenticationDefaults.AuthenticationScheme;
+                    };
                 }
             );
 
@@ -476,30 +585,6 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
             app.UseIntersectRequestLogging(configuration.RequestLogLevel);
         }
 
-        app.UseStaticFiles();
-
-        // Unreadable if it LINQs it...
-        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
-        foreach (var (sourcePath, requestPath) in configuration.StaticFilePaths)
-        {
-            var pathToRoot = Path.Combine(builder.Environment.ContentRootPath, sourcePath);
-            if (!Directory.Exists(pathToRoot))
-            {
-                Directory.CreateDirectory(pathToRoot);
-            }
-
-            app.UseStaticFiles(
-                new StaticFileOptions
-                {
-                    FileProvider = new PhysicalFileProvider(
-                        pathToRoot,
-                        ExclusionFilters.Sensitive
-                    ),
-                    RequestPath = requestPath ?? string.Empty,
-                }
-            );
-        }
-
         app.UseRouting();
 
         app.UseAuthentication();
@@ -538,6 +623,38 @@ internal partial class ApiService : ApplicationService<ServerContext, IApiServic
 
         app.UseResponseCaching();
         app.UseOutputCache();
+
+        StaticFileOptions staticFileOptions = new()
+        {
+            HttpsCompression = HttpsCompressionMode.Compress,
+            ServeUnknownFileTypes = true,
+        };
+
+        app.UseStaticFiles(staticFileOptions);
+
+        // Unreadable if it LINQs it...
+        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+        foreach (var (sourcePath, requestPath) in configuration.StaticFilePaths)
+        {
+            var pathToRoot = Path.Combine(builder.Environment.ContentRootPath, sourcePath);
+            if (!Directory.Exists(pathToRoot))
+            {
+                Directory.CreateDirectory(pathToRoot);
+            }
+
+            app.UseStaticFiles(
+                new StaticFileOptions
+                {
+                    FileProvider = new PhysicalFileProvider(
+                        pathToRoot,
+                        ExclusionFilters.Sensitive
+                    ),
+                    HttpsCompression = HttpsCompressionMode.Compress,
+                    RequestPath = requestPath ?? string.Empty,
+                    ServeUnknownFileTypes = true,
+                }
+            );
+        }
 
         app.UseAuthorization();
 

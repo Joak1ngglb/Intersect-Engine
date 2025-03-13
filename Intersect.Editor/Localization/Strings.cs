@@ -1,8 +1,15 @@
 using System.Reflection;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Conditions;
+using Intersect.Framework.Core.GameObjects.Conditions.ConditionMetadata;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.NPCs;
+using Intersect.Framework.Core.GameObjects.PlayerClass;
 using Intersect.Framework.Core.GameObjects.Variables;
+using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
 using Intersect.Localization;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -111,27 +118,27 @@ public static partial class Strings
                     break;
             }
 
-            return EventConditionDesc.hasitem.ToString(amount, ItemBase.GetName(condition.ItemId));
+            return EventConditionDesc.hasitem.ToString(amount, ItemDescriptor.GetName(condition.ItemId));
         }
         else
         {
-            return EventConditionDesc.hasitem.ToString(condition.Quantity, ItemBase.GetName(condition.ItemId));
+            return EventConditionDesc.hasitem.ToString(condition.Quantity, ItemDescriptor.GetName(condition.ItemId));
         }
     }
 
     public static string GetEventConditionalDesc(IsItemEquippedCondition condition)
     {
-        return EventConditionDesc.hasitemequipped.ToString(ItemBase.GetName(condition.ItemId));
+        return EventConditionDesc.hasitemequipped.ToString(ItemDescriptor.GetName(condition.ItemId));
     }
 
     public static string GetEventConditionalDesc(ClassIsCondition condition)
     {
-        return EventConditionDesc.Class.ToString(ClassBase.GetName(condition.ClassId));
+        return EventConditionDesc.Class.ToString(ClassDescriptor.GetName(condition.ClassId));
     }
 
     public static string GetEventConditionalDesc(KnowsSpellCondition condition)
     {
-        return EventConditionDesc.knowsspell.ToString(SpellBase.GetName(condition.SpellId));
+        return EventConditionDesc.knowsspell.ToString(SpellDescriptor.GetName(condition.SpellId));
     }
 
     public static string GetEventConditionalDesc(LevelOrStatCondition condition)
@@ -207,10 +214,10 @@ public static partial class Strings
     {
         var timeRanges = new List<string>();
         var time = new DateTime(2000, 1, 1, 0, 0, 0);
-        for (var i = 0; i < 1440; i += TimeBase.GetTimeBase().RangeInterval)
+        for (var i = 0; i < 1440; i += DaylightCycleDescriptor.Instance.RangeInterval)
         {
             var addRange = time.ToString("h:mm:ss tt") + " to ";
-            time = time.AddMinutes(TimeBase.GetTimeBase().RangeInterval);
+            time = time.AddMinutes(DaylightCycleDescriptor.Instance.RangeInterval);
             addRange += time.ToString("h:mm:ss tt");
             timeRanges.Add(addRange);
         }
@@ -240,15 +247,15 @@ public static partial class Strings
 
     public static string GetEventConditionalDesc(CanStartQuestCondition condition)
     {
-        return EventConditionDesc.startquest.ToString(QuestBase.GetName(condition.QuestId));
+        return EventConditionDesc.startquest.ToString(QuestDescriptor.GetName(condition.QuestId));
     }
 
     public static string GetEventConditionalDesc(QuestInProgressCondition condition)
     {
-        var quest = QuestBase.Get(condition.QuestId);
+        var quest = QuestDescriptor.Get(condition.QuestId);
         if (quest != null)
         {
-            QuestBase.QuestTask task = null;
+            QuestTaskDescriptor task = null;
             foreach (var tsk in quest.Tasks)
             {
                 if (tsk.Id == condition.TaskId)
@@ -265,37 +272,37 @@ public static partial class Strings
             {
                 case QuestProgressState.BeforeTask:
                     return EventConditionDesc.questinprogress.ToString(
-                        QuestBase.GetName(condition.QuestId),
+                        QuestDescriptor.GetName(condition.QuestId),
                         EventConditionDesc.beforetask.ToString(taskName)
                     );
                 case QuestProgressState.AfterTask:
                     return EventConditionDesc.questinprogress.ToString(
-                        QuestBase.GetName(condition.QuestId),
+                        QuestDescriptor.GetName(condition.QuestId),
                         EventConditionDesc.aftertask.ToString(taskName)
                     );
                 case QuestProgressState.OnTask:
                     return EventConditionDesc.questinprogress.ToString(
-                        QuestBase.GetName(condition.QuestId), EventConditionDesc.ontask.ToString(taskName)
+                        QuestDescriptor.GetName(condition.QuestId), EventConditionDesc.ontask.ToString(taskName)
                     );
                 default: //On Any task
                     return EventConditionDesc.questinprogress.ToString(
-                        QuestBase.GetName(condition.QuestId), EventConditionDesc.onanytask
+                        QuestDescriptor.GetName(condition.QuestId), EventConditionDesc.onanytask
                     );
             }
         }
 
-        return EventConditionDesc.questinprogress.ToString(QuestBase.GetName(condition.QuestId));
+        return EventConditionDesc.questinprogress.ToString(QuestDescriptor.GetName(condition.QuestId));
     }
 
     public static string GetEventConditionalDesc(QuestCompletedCondition condition)
     {
-        return EventConditionDesc.questcompleted.ToString(QuestBase.GetName(condition.QuestId));
+        return EventConditionDesc.questcompleted.ToString(QuestDescriptor.GetName(condition.QuestId));
     }
 
     public static string GetEventConditionalDesc(NoNpcsOnMapCondition condition)
     {
         return condition.SpecificNpc
-            ? EventConditionDesc.NoNpcsOfTypeOnMap.ToString(NpcBase.GetName(condition.NpcId))
+            ? EventConditionDesc.NoNpcsOfTypeOnMap.ToString(NPCDescriptor.GetName(condition.NpcId))
             : EventConditionDesc.NoNpcsOnMap.ToString();
     }
 
@@ -308,7 +315,7 @@ public static partial class Strings
 
     public static string GetEventConditionalDesc(MapIsCondition condition)
     {
-        var map = GameObjects.Maps.MapList.MapList.List.FindMap(condition.MapId);
+        var map = Framework.Core.GameObjects.Maps.MapList.MapList.List.FindMap(condition.MapId);
         if (map != null)
         {
             return EventConditionDesc.map.ToString(map.Name);
@@ -356,6 +363,11 @@ public static partial class Strings
     public static string GetEventConditionalDesc(CheckEquippedSlot condition)
     {
         return EventConditionDesc.checkequippedslot.ToString(condition.Name);
+    }
+
+    public static string GetEventConditionalDesc(CombatCondition condition)
+    {
+        return EventConditionDesc.Combat.ToString();
     }
 
     public static string GetVariableComparisonString(VariableComparison comparison)
@@ -569,7 +581,7 @@ public static partial class Strings
                         default:
                             {
                                 var fieldType = fieldInfo.FieldType;
-                                if (!fieldType.IsGenericType || typeof(Dictionary<,>) != fieldType.GetGenericTypeDefinition())
+                                if (!fieldType.IsGenericType || typeof(Dictionary<,>).ExtendedBy(fieldType) && typeof(LocaleDictionary<,>).ExtendedBy(fieldType))
                                 {
                                     Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
                                         new NotSupportedException(
@@ -593,16 +605,19 @@ public static partial class Strings
                                     break;
                                 }
 
-                                _ = _methodInfoDeserializeDictionary.MakeGenericMethod(parameters.First()).Invoke(default, new object[]
-                                {
-                                            missingStrings,
+                                var keyType = parameters.First();
+                                var constructedMethod = _methodInfoDeserializeDictionary.MakeGenericMethod(keyType);
+                                _ = constructedMethod.Invoke(null,
+                                [
+                                    missingStrings,
                                             groupType,
                                             fieldInfo,
                                             fieldValue,
                                             serializedGroup,
                                             serializedValue,
-                                            fieldValue
-                                });
+                                            fieldValue,
+                                ]
+                                );
                                 break;
                             }
                     }
@@ -636,7 +651,7 @@ public static partial class Strings
         object fieldValue,
         Dictionary<string, object> serializedGroup,
         object serializedValue,
-        Dictionary<TKey, LocalizedString> dictionary
+        IDictionary<TKey, LocalizedString> dictionary
     )
     {
         var serializedDictionary = serializedValue as JObject;
@@ -664,7 +679,7 @@ public static partial class Strings
         }
     }
 
-    private static Dictionary<string, string> SerializeDictionary<TKey>(Dictionary<TKey, LocalizedString> localizedDictionary)
+    private static Dictionary<string, string> SerializeDictionary<TKey>(IDictionary<TKey, LocalizedString> localizedDictionary)
     {
         return localizedDictionary.ToDictionary(
             pair => pair.Key.ToString(),
@@ -693,6 +708,35 @@ public static partial class Strings
 
                 case Dictionary<ChatboxTab, LocalizedString> localizedChatboxTabKeyDictionary:
                     serializedGroup.Add(fieldInfo.Name, SerializeDictionary(localizedChatboxTabKeyDictionary));
+                    break;
+                
+                default:
+                    if (!typeof(LocaleDictionary<,>).ExtendedBy(fieldInfo.FieldType))
+                    {
+                        break;
+                    }
+
+                    var serializeMethod = typeof(Strings).GetMethod(
+                        nameof(SerializeDictionary),
+                        BindingFlags.Static | BindingFlags.NonPublic
+                    );
+
+                    if (serializeMethod == null)
+                    {
+                        throw new MissingMethodException(
+                            typeof(Strings).GetName(qualified: true),
+                            nameof(SerializeDictionary)
+                        );
+                    }
+
+                    var keyType = fieldInfo.FieldType.GenericTypeArguments.First();
+                    var constructedSerializeMethod = serializeMethod.MakeGenericMethod(keyType);
+                    var result = constructedSerializeMethod.Invoke(null, [fieldInfo.GetValue(null)]);
+                    if (result is not Dictionary<string, string> dictionary)
+                    {
+                        throw new InvalidOperationException("Invalid serialization result");
+                    }
+                    serializedGroup.Add(fieldInfo.Name, result);
                     break;
             }
         }
@@ -1529,6 +1573,8 @@ Tick timer saved in server config.json.";
 
     public partial struct Errors
     {
+        public static LocalizedString UnhandledError =
+            @"The Intersect Editor has encountered an error and must close. Error information can be found in logs/errors.log";
 
         public static LocalizedString disconnected = @"Disconnected!";
 
@@ -2421,27 +2467,28 @@ Tick timer saved in server config.json.";
             {5, @"Does Not Equal"}
         };
 
-        public static Dictionary<int, LocalizedString> conditions = new Dictionary<int, LocalizedString>
+        public static Dictionary<ConditionType, LocalizedString> conditions = new Dictionary<ConditionType, LocalizedString>
         {
-            {0, @"Variable Is..."},
-            {4, @"Has item..."},
-            {5, @"Class is..."},
-            {6, @"Knows spell..."},
-            {7, @"Level or Stat is..."},
-            {8, @"Self Switch is..."},
-            {9, @"Power level is..."},
-            {10, @"Time is between..."},
-            {11, @"Can Start Quest..."},
-            {12, @"Quest In Progress..."},
-            {13, @"Quest Completed..."},
-            {14, @"No NPCs on Map..."},
-            {15, @"Gender is..."},
-            {16, @"Map is..."},
-            {17, @"Item Equipped is..."},
-            {18, @"Has X free Inventory slots..." },
-            {19, @"In Guild With At Least Rank..." },
-            {20, @"Map Zone Type is..." },
-            {21, @"Check Equipped Slot..." },
+            {ConditionType.VariableIs, @"Variable Is..."},
+            {ConditionType.HasItem, @"Has item..."},
+            {ConditionType.ClassIs, @"Class is..."},
+            {ConditionType.KnowsSpell, @"Knows spell..."},
+            {ConditionType.LevelOrStat, @"Level or Stat is..."},
+            {ConditionType.SelfSwitch, @"Self Switch is..."},
+            {ConditionType.AccessIs, @"Power level is..."},
+            {ConditionType.TimeBetween, @"Time is between..."},
+            {ConditionType.CanStartQuest, @"Can Start Quest..."},
+            {ConditionType.QuestInProgress, @"Quest In Progress..."},
+            {ConditionType.QuestCompleted, @"Quest Completed..."},
+            {ConditionType.NoNpcsOnMap, @"No NPCs on Map..."},
+            {ConditionType.GenderIs, @"Gender is..."},
+            {ConditionType.MapIs, @"Map is..."},
+            {ConditionType.IsItemEquipped, @"Item Equipped is..."},
+            {ConditionType.HasFreeInventorySlots, @"Has X free Inventory slots..." },
+            {ConditionType.InGuildWithRank, @"In Guild With At Least Rank..." },
+            {ConditionType.MapZoneTypeIs, @"Map Zone Type is..." },
+            {ConditionType.CheckEquipment, @"Check Equipped Slot..." },
+            {ConditionType.IsInCombat, @"Is in Combat" },
         };
 
         public static LocalizedString endrange = @"End Range:";
@@ -2620,6 +2667,8 @@ Tick timer saved in server config.json.";
 
         public static LocalizedString Class = @"Player's class is {00}";
 
+        public static LocalizedString Combat = @"Is in Combat";
+
         public static LocalizedString contains = @"contains {00}";
 
         public static LocalizedString equal = @"is equal to {00}";
@@ -2779,28 +2828,29 @@ Tick timer saved in server config.json.";
 
         public static LocalizedString commandlist = @"Commands:";
 
-        public static Dictionary<int, LocalizedString> commontriggers = new Dictionary<int, LocalizedString>
+        public static Dictionary<CommonEventTrigger, LocalizedString> CommonTriggers = new()
         {
-            {0, @"None"},
-            {1, @"Login"},
-            {2, @"Level Up"},
-            {3, @"On Respawn"},
-            {4, @"/Command"},
-            {5, @"Autorun"},
-            {6, @"PVP Kill"},
-            {7, @"PVP Death"},
-            {8, @"Player Interact"},
-            {9, @"Equipment Changed"},
-            {10, @"Player Variable Changed"},
-            {11, @"Server Variable Changed"},
-            {12, @"Guild Member Joined"},
-            {13, @"Guild Member Left"},
-            {14, @"Guild Member Kicked"},
-            {15, @"Guild Variable Changed"},
-            {16, @"Inventory Changed"},
-            {17, @"Map Changed"},
-            {18, @"User Variable Changed"},
-            {19, @"Level Down"},
+            {CommonEventTrigger.None, @"None"},
+            {CommonEventTrigger.Login, @"Login"},
+            {CommonEventTrigger.LevelUp, @"Level Up"},
+            {CommonEventTrigger.OnRespawn, @"On Respawn"},
+            {CommonEventTrigger.SlashCommand, @"/Command"},
+            {CommonEventTrigger.Autorun, @"Autorun"},
+            {CommonEventTrigger.PVPKill, @"PVP Kill"},
+            {CommonEventTrigger.PVPDeath, @"PVP Death"},
+            {CommonEventTrigger.PlayerInteract, @"Player Interact"},
+            {CommonEventTrigger.EquipChange, @"Equipment Changed"},
+            {CommonEventTrigger.PlayerVariableChange, @"Player Variable Changed"},
+            {CommonEventTrigger.ServerVariableChange, @"Server Variable Changed"},
+            {CommonEventTrigger.GuildMemberJoined, @"Guild Member Joined"},
+            {CommonEventTrigger.GuildMemberLeft, @"Guild Member Left"},
+            {CommonEventTrigger.GuildMemberKicked, @"Guild Member Kicked"},
+            {CommonEventTrigger.GuildVariableChange, @"Guild Variable Changed"},
+            {CommonEventTrigger.InventoryChanged, @"Inventory Changed"},
+            {CommonEventTrigger.MapChanged, @"Map Changed"},
+            {CommonEventTrigger.UserVariableChange, @"User Variable Changed"},
+            {CommonEventTrigger.LevelDown, @"Level Down"},
+            {CommonEventTrigger.Logout, @"Logout"},
         };
 
         public static LocalizedString conditions = @"Conditions";
@@ -3758,26 +3808,26 @@ Tick timer saved in server config.json.";
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString EventGroupLabel = @"Event";
 
-        public static Dictionary<ItemEventTriggers, LocalizedString> EventTriggerNames = new Dictionary<ItemEventTriggers, LocalizedString>
+        public static Dictionary<ItemEventTrigger, LocalizedString> EventTriggerNames = new Dictionary<ItemEventTrigger, LocalizedString>
         {
-            {ItemEventTriggers.OnPickup, @"On Pickup"},
-            {ItemEventTriggers.OnDrop, @"On Drop"},
-            {ItemEventTriggers.OnUse, @"On Use"},
-            {ItemEventTriggers.OnEquip, @"On Equip"},
-            {ItemEventTriggers.OnUnequip, @"On Unequip"},
-            {ItemEventTriggers.OnHit, @"On Hit"},
-            {ItemEventTriggers.OnDamageReceived, @"On Damage Received"},
+            {ItemEventTrigger.OnPickup, @"On Pickup"},
+            {ItemEventTrigger.OnDrop, @"On Drop"},
+            {ItemEventTrigger.OnUse, @"On Use"},
+            {ItemEventTrigger.OnEquip, @"On Equip"},
+            {ItemEventTrigger.OnUnequip, @"On Unequip"},
+            {ItemEventTrigger.OnHit, @"On Hit"},
+            {ItemEventTrigger.OnDamageReceived, @"On Damage Received"},
         };
 
-        public static Dictionary<ItemEventTriggers, LocalizedString> EventTriggerSelections = new Dictionary<ItemEventTriggers, LocalizedString>
+        public static Dictionary<ItemEventTrigger, LocalizedString> EventTriggerSelections = new Dictionary<ItemEventTrigger, LocalizedString>
         {
-            {ItemEventTriggers.OnPickup, @"On Pickup: {00}"},
-            {ItemEventTriggers.OnDrop, @"On Drop: {00}"},
-            {ItemEventTriggers.OnUse, @"On Use: {00}"},
-            {ItemEventTriggers.OnEquip, @"On Equip: {00}"},
-            {ItemEventTriggers.OnUnequip, @"On Unequip: {00}"},
-            {ItemEventTriggers.OnHit, @"On Hit: {00}"},
-            {ItemEventTriggers.OnDamageReceived, @"On Damage Received: {00}"},
+            {ItemEventTrigger.OnPickup, @"On Pickup: {00}"},
+            {ItemEventTrigger.OnDrop, @"On Drop: {00}"},
+            {ItemEventTrigger.OnUse, @"On Use: {00}"},
+            {ItemEventTrigger.OnEquip, @"On Equip: {00}"},
+            {ItemEventTrigger.OnUnequip, @"On Unequip: {00}"},
+            {ItemEventTrigger.OnHit, @"On Hit: {00}"},
+            {ItemEventTrigger.OnDamageReceived, @"On Damage Received: {00}"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

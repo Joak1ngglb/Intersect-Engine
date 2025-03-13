@@ -15,7 +15,7 @@ namespace Intersect.Client.Framework.Gwen.Control;
 /// <summary>
 ///     Static text label.
 /// </summary>
-public partial class Label : Base, ILabel
+public partial class Label : Base, ILabel, IFontProvider
 {
     protected readonly Text _textElement;
 
@@ -27,7 +27,7 @@ public partial class Label : Base, ILabel
 
     private string? mBackgroundTemplateFilename;
 
-    private GameTexture? mBackgroundTemplateTex;
+    private IGameTexture? mBackgroundTemplateTex;
 
     protected Color? mClickedTextColor;
 
@@ -57,6 +57,7 @@ public partial class Label : Base, ILabel
         _textDisabled = disableText;
         _textElement = new Text(this)
         {
+            FontSize = 12,
             IsHidden = _textDisabled,
         };
 
@@ -171,6 +172,19 @@ public partial class Label : Base, ILabel
     private static bool IsArgument(string format, Range range, int argumentIndex) =>
         int.TryParse(format[range], out var index) && index == argumentIndex;
 
+    public bool IsEmpty
+    {
+        get
+        {
+            if (Children.Count > 1)
+            {
+                return false;
+            }
+
+            return Children.FirstOrDefault() is null or Text { IsVisibleInParent: false };
+        }
+    }
+
     public WrappingBehavior WrappingBehavior
     {
         get => _wrappingBehavior;
@@ -186,7 +200,7 @@ public partial class Label : Base, ILabel
         }
     }
 
-    public GameTexture? ToolTipBackground
+    public IGameTexture? ToolTipBackground
     {
         get => _tooltipBackground;
         set
@@ -234,7 +248,7 @@ public partial class Label : Base, ILabel
     /// <summary>
     ///     Font.
     /// </summary>
-    public virtual GameFont? Font
+    public virtual IFont? Font
     {
         get => _textElement.Font;
         set
@@ -248,7 +262,7 @@ public partial class Label : Base, ILabel
             if (value is not null)
             {
                 _textElement.Font = value;
-                _fontInfo = $"{value.GetName()},{value.GetSize()}";
+                _fontInfo = $"{value.Name},{FontSize}";
             }
             else
             {
@@ -264,7 +278,7 @@ public partial class Label : Base, ILabel
 
             Invalidate();
 
-            FontChanged?.Invoke(this, new ValueChangedEventArgs<GameFont?>
+            FontChanged?.Invoke(this, new ValueChangedEventArgs<IFont?>
             {
                 OldValue = oldValue,
                 Value = value,
@@ -272,9 +286,9 @@ public partial class Label : Base, ILabel
         }
     }
 
-    public event GwenEventHandler<ValueChangedEventArgs<GameFont?>>? FontChanged;
+    public event GwenEventHandler<ValueChangedEventArgs<IFont?>>? FontChanged;
 
-    protected virtual void OnFontChanged(Base sender, GameFont? oldFont, GameFont? newFont)
+    protected virtual void OnFontChanged(Base sender, IFont? oldFont, IFont? newFont)
     {
     }
 
@@ -283,8 +297,8 @@ public partial class Label : Base, ILabel
     /// </summary>
     public string? FontName
     {
-        get => _textElement.Font?.GetName();
-        set => Font = GameContentManager.Current?.GetFont(value, FontSize);
+        get => _textElement.Font?.Name;
+        set => Font = GameContentManager.Current?.GetFont(value);
     }
 
     /// <summary>
@@ -292,8 +306,8 @@ public partial class Label : Base, ILabel
     /// </summary>
     public int FontSize
     {
-        get => _textElement?.Font?.GetSize() ?? 12;
-        set => Font = GameContentManager.Current?.GetFont(FontName, value);
+        get => _textElement.FontSize;
+        set => _textElement.FontSize = value;
     }
 
     /// <summary>
@@ -324,7 +338,7 @@ public partial class Label : Base, ILabel
 
     private string? _textOverride;
     private WrappingBehavior _wrappingBehavior;
-    private GameTexture? _tooltipBackground;
+    private IGameTexture? _tooltipBackground;
 
     /// <summary>
     ///     Text override - used to display different string.
@@ -400,15 +414,30 @@ public partial class Label : Base, ILabel
         serializedProperties.Add("DisabledTextColor", mDisabledTextColor?.ToString());
         serializedProperties.Add(nameof(TextAlign), TextAlign.ToString());
         serializedProperties.Add(nameof(AutoSizeToContents), _autoSizeToContents);
-        serializedProperties.Add(nameof(Font), _fontInfo);
+        if (FontName is { } fontName && !string.IsNullOrWhiteSpace(fontName))
+        {
+            serializedProperties.Add(nameof(FontName), FontName);
+            serializedProperties.Add(nameof(FontSize), FontSize);
+        }
+        else
+        {
+            serializedProperties.Add(nameof(FontName), null);
+            serializedProperties.Add(nameof(FontSize), null);
+        }
         serializedProperties.Add("TextScale", _textElement.GetScale());
 
         return base.FixJson(serializedProperties);
     }
 
-    public override void LoadJson(JToken obj, bool isRoot = default)
+    public override void LoadJson(JToken token, bool isRoot = default)
     {
-        base.LoadJson(obj);
+        base.LoadJson(token, isRoot);
+
+        if (token is not JObject obj)
+        {
+            return;
+        }
+
         if (typeof(Label) == GetType() && obj["BackgroundTemplate"] != null)
         {
             SetBackgroundTemplate(
@@ -463,7 +492,8 @@ public partial class Label : Base, ILabel
                     _fontInfo = stringFont;
                     try
                     {
-                        Font = GameContentManager.Current.GetFont(fontArr[0], int.Parse(fontArr[1]));
+                        FontSize = int.Parse(fontArr[1]);
+                        FontName = fontArr[0];
                     }
                     catch
                     {
@@ -473,13 +503,25 @@ public partial class Label : Base, ILabel
             }
         }
 
+        if (obj.TryGetValue(nameof(FontName), out var tokenFontName) &&
+            tokenFontName is JValue { Type: JTokenType.String } valueFontName)
+        {
+            FontName = valueFontName.Value<string>();
+        }
+
+        if (obj.TryGetValue(nameof(FontSize), out var tokenFontSize) &&
+            tokenFontSize is JValue { Type: JTokenType.Integer } valueFontSize)
+        {
+            FontSize = valueFontSize.Value<int>();
+        }
+
         if (obj["TextScale"] != null)
         {
             _textElement.SetScale((float)obj["TextScale"]);
         }
     }
 
-    public GameTexture GetTemplate()
+    public IGameTexture GetTemplate()
     {
         return mBackgroundTemplateTex;
     }
@@ -502,7 +544,7 @@ public partial class Label : Base, ILabel
         }
     }
 
-    public void SetBackgroundTemplate(GameTexture texture, string fileName)
+    public void SetBackgroundTemplate(IGameTexture texture, string fileName)
     {
         if (texture == null && !string.IsNullOrWhiteSpace(fileName))
         {
@@ -796,11 +838,25 @@ public partial class Label : Base, ILabel
 
         var contentSize = GetContentSize();
 
+        var minimumSize = MinimumSize;
+
         var newWidth = contentSize.X + contentPadding.Left + contentPadding.Right;
-        newWidth = Math.Max(newWidth, MinimumSize.X);
+        newWidth = Math.Max(newWidth, minimumSize.X);
 
         var newHeight = contentSize.Y + contentPadding.Top + contentPadding.Bottom;
-        newHeight = Math.Max(newHeight, MinimumSize.Y);
+        newHeight = Math.Max(newHeight, minimumSize.Y);
+
+        var maximumSize = MaximumSize;
+
+        if (maximumSize.X > 0)
+        {
+            newWidth = Math.Min(maximumSize.X, newWidth);
+        }
+
+        if (maximumSize.Y > 0)
+        {
+            newHeight = Math.Min(maximumSize.Y, newHeight);
+        }
 
         return new Point(newWidth, newHeight);
     }

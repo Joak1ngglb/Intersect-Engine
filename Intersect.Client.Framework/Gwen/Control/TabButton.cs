@@ -26,7 +26,8 @@ public partial class TabButton : Button
     public TabButton(Base parent, string? name = null) : base(parent: parent, name: name)
     {
         DragAndDrop_SetPackage(true, "TabButtonMove");
-        Font = GameContentManager.Current?.GetFont("sourcesansproblack", 10);
+        Font = GameContentManager.Current?.GetFont("sourcesansproblack");
+        FontSize = 10;
         KeyboardInputEnabled = true;
 
         Padding = new Padding(4, 2);
@@ -36,7 +37,7 @@ public partial class TabButton : Button
     /// <summary>
     ///     Indicates whether the tab is active.
     /// </summary>
-    public bool IsTabActive => _page is { IsVisible: true };
+    public bool IsTabActive => _page is { IsVisibleInTree: true };
 
     // todo: remove public access
     public TabControl? TabControl
@@ -132,7 +133,7 @@ public partial class TabButton : Button
         if (down)
         {
             var count = Parent.Children.Count;
-            var me = Parent.Children.IndexOf(this);
+            var me = Parent.IndexOf(this);
             if (me + 1 < count)
             {
                 var nextTab = Parent.Children[me + 1];
@@ -156,7 +157,7 @@ public partial class TabButton : Button
         if (down)
         {
             var count = Parent.Children.Count;
-            var me = Parent.Children.IndexOf(this);
+            var me = Parent.IndexOf(this);
             if (me - 1 >= 0)
             {
                 var prevTab = Parent.Children[me - 1];

@@ -14,8 +14,6 @@ using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Enums;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Maps;
-using Intersect.GameObjects.Maps.MapList;
 using Intersect.Network;
 using Intersect.Network.Packets;
 using Intersect.Network.Packets.Server;
@@ -23,8 +21,14 @@ using Intersect.Utilities;
 using Intersect.Framework;
 using Intersect.Models;
 using Intersect.Client.Interface.Shared;
+using Intersect.Framework.Core;
 using Intersect.Framework.Core.GameObjects.Animations;
-using Intersect.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Crafting;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps.Attributes;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
 using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Networking;
@@ -198,17 +202,17 @@ internal sealed partial class PacketHandler
     public void HandlePacket(IPacketSender packetSender, MapAreaIdsPacket packet)
     {
         // TODO: Background all of this?
-        List<ObjectCacheKey<MapBase>> cacheKeys = new(packet.MapIds.Length);
+        List<ObjectCacheKey<MapDescriptor>> cacheKeys = new(packet.MapIds.Length);
         List<MapPacket> loadedCachedMaps = new(packet.MapIds.Length);
         foreach (var mapId in packet.MapIds)
         {
-            if (ObjectDataDiskCache<MapBase>.TryLoad(mapId, out var cacheData))
+            if (ObjectDataDiskCache<MapDescriptor>.TryLoad(mapId, out var cacheData))
             {
-                ObjectCacheKey<MapBase> cacheKey = new(cacheData.Id);
+                ObjectCacheKey<MapDescriptor> cacheKey = new(cacheData.Id);
                 var deserializedCachedPacket = MessagePacker.Instance.Deserialize<MapPacket>(cacheData.Data, silent: true);
                 if (deserializedCachedPacket != default)
                 {
-                    cacheKey = new ObjectCacheKey<MapBase>(
+                    cacheKey = new ObjectCacheKey<MapDescriptor>(
                         cacheData.Id,
                         cacheData.Checksum,
                         cacheData.Version
@@ -221,7 +225,7 @@ internal sealed partial class PacketHandler
                 ApplicationContext.Context.Value?.Logger.LogWarning($"Failed to deserialized cached data for {cacheKey}, will fetch again");
             }
 
-            cacheKeys.Add(new ObjectCacheKey<MapBase>(new Id<MapBase>(mapId)));
+            cacheKeys.Add(new ObjectCacheKey<MapDescriptor>(new Id<MapDescriptor>(mapId)));
         }
 
         PacketSender.SendNeedMap(cacheKeys.ToArray());
@@ -248,15 +252,15 @@ internal sealed partial class PacketHandler
                 $"[{string.Join(", ", packet.CameraHolds ?? [])}]"
             );
 
-            ObjectCacheData<MapBase> cacheData = new()
+            ObjectCacheData<MapDescriptor> cacheData = new()
             {
-                Id = new Id<MapBase>(mapId),
+                Id = new Id<MapDescriptor>(mapId),
                 Data = (packet as IntersectPacket).Data,
                 Version = packet.CacheVersion,
             };
-            ObjectCacheKey<MapBase> cacheKey = new(new Id<MapBase>(mapId), cacheData.Checksum, cacheData.Version);
+            ObjectCacheKey<MapDescriptor> cacheKey = new(new Id<MapDescriptor>(mapId), cacheData.Checksum, cacheData.Version);
 
-            if (!ObjectDataDiskCache<MapBase>.TrySave(cacheData))
+            if (!ObjectDataDiskCache<MapDescriptor>.TrySave(cacheData))
             {
                 ApplicationContext.CurrentContext.Logger.LogWarning("Failed to save cache for {CacheKey}", cacheKey);
             }
@@ -385,15 +389,22 @@ internal sealed partial class PacketHandler
     //ResourceEntityPacket
     public void HandlePacket(IPacketSender packetSender, ResourceEntityPacket packet)
     {
-        var en = Globals.GetEntity(packet.EntityId, EntityType.Resource);
-        if (en != null)
+        if (Globals.TryGetEntity(EntityType.Resource, packet.EntityId, out var entity))
         {
-            en.Load(packet);
+            entity.Load(packet);
         }
         else
         {
-            var entity = new Resource(packet.EntityId, packet);
-            Globals.Entities.Add(entity.Id, entity);
+            entity = new Resource(packet.EntityId, packet);
+            if (!Globals.Entities.TryAdd(entity.Id, entity))
+            {
+                ApplicationContext.CurrentContext.Logger.LogError(
+                    "Failed to register new {EntityType} {EntityId} ({EntityName})",
+                    EntityType.Resource,
+                    packet.EntityId,
+                    packet.Name
+                );
+            }
         }
     }
 
@@ -559,7 +570,7 @@ internal sealed partial class PacketHandler
 
         en.X = packet.X;
         en.Y = packet.Y;
-        en.Dir = (Direction)packet.Direction;
+        en.DirectionFacing = (Direction)packet.Direction;
         en.Passable = packet.Passable;
         en.HideName = packet.HideName;
     }
@@ -608,7 +619,9 @@ internal sealed partial class PacketHandler
     //AnnouncementPacket
     public void HandlePacket(IPacketSender packetSender, AnnouncementPacket packet)
     {
-        Interface.Interface.GameUi.AnnouncementWindow.ShowAnnouncement(packet.Message, packet.Duration);
+        Interface.Interface.EnqueueInGame(
+            gameInterface => gameInterface.AnnouncementWindow.ShowAnnouncement(packet.Message, packet.Duration)
+        );
     }
 
     //ActionMsgPackets
@@ -651,7 +664,7 @@ internal sealed partial class PacketHandler
     public void HandlePacket(IPacketSender packetSender, MapListPacket packet)
     {
         MapList.List.JsonData = packet.MapListData;
-        MapList.List.PostLoad(MapBase.Lookup, false, true);
+        MapList.List.PostLoad(MapDescriptor.Lookup, false, true);
 
         //TODO ? If admin window is open update it
     }
@@ -741,14 +754,14 @@ internal sealed partial class PacketHandler
             en.MapId = map;
             en.X = x;
             en.Y = y;
-            en.Dir = dir;
+            en.DirectionFacing = dir;
             if (en is Player p)
             {
-                p.MoveDir = dir;
+                p.DirectionMoving = dir;
             }
             en.IsMoving = true;
 
-            switch (en.Dir)
+            switch (en.DirectionFacing)
             {
                 case Direction.Up:
                     en.OffsetY = Options.Instance.Map.TileWidth;
@@ -913,17 +926,19 @@ internal sealed partial class PacketHandler
 
             entity.SortStatuses();
 
-            if (Interface.Interface.GameUi != null)
+            if (!Interface.Interface.HasInGameUI)
             {
-                //If its you or your target, update the entity box.
-                if (en.Id == Globals.Me.Id && Interface.Interface.GameUi.PlayerStatusWindow != null)
-                {
-                    Interface.Interface.GameUi.PlayerStatusWindow.ShouldUpdateStatuses = true;
-                }
-                else if (en.Id == Globals.Me.TargetId && Globals.Me.TargetBox != null)
-                {
-                    Globals.Me.TargetBox.ShouldUpdateStatuses = true;
-                }
+                continue;
+            }
+
+            //If its you or your target, update the entity box.
+            if (en.Id == Globals.Me.Id && Interface.Interface.GameUi.PlayerStatusWindow != null)
+            {
+                Interface.Interface.GameUi.PlayerStatusWindow.ShouldUpdateStatuses = true;
+            }
+            else if (en.Id == Globals.Me.TargetId && Globals.Me.TargetBox != null)
+            {
+                Globals.Me.TargetBox.ShouldUpdateStatuses = true;
             }
         }
     }
@@ -998,17 +1013,19 @@ internal sealed partial class PacketHandler
 
         en.SortStatuses();
 
-        if (Interface.Interface.GameUi != null)
+        if (!Interface.Interface.HasInGameUI)
         {
-            //If its you or your target, update the entity box.
-            if (id == Globals.Me.Id && Interface.Interface.GameUi.PlayerStatusWindow != null)
-            {
-                Interface.Interface.GameUi.PlayerStatusWindow.ShouldUpdateStatuses = true;
-            }
-            else if (id == Globals.Me.TargetId && Globals.Me.TargetBox != null)
-            {
-                Globals.Me.TargetBox.ShouldUpdateStatuses = true;
-            }
+            return;
+        }
+
+        //If its you or your target, update the entity box.
+        if (id == Globals.Me.Id && Interface.Interface.GameUi.PlayerStatusWindow != null)
+        {
+            Interface.Interface.GameUi.PlayerStatusWindow.ShouldUpdateStatuses = true;
+        }
+        else if (id == Globals.Me.TargetId && Globals.Me.TargetBox != null)
+        {
+            Globals.Me.TargetBox.ShouldUpdateStatuses = true;
         }
     }
 
@@ -1089,7 +1106,7 @@ internal sealed partial class PacketHandler
             return;
         }
 
-        en.Dir = (Direction)packet.Direction;
+        en.DirectionFacing = (Direction)packet.Direction;
     }
 
     //EntityAttackPacket
@@ -1398,7 +1415,7 @@ internal sealed partial class PacketHandler
     //AdminPanelPacket
     public void HandlePacket(IPacketSender packetSender, AdminPanelPacket packet)
     {
-        Interface.Interface.GameUi.NotifyOpenAdminWindow();
+        Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyOpenAdminWindow());
     }
 
     //SpellCastPacket
@@ -1406,9 +1423,9 @@ internal sealed partial class PacketHandler
     {
         var entityId = packet.EntityId;
         var spellId = packet.SpellId;
-        if (SpellBase.Get(spellId) != null && Globals.Entities.ContainsKey(entityId))
+        if (SpellDescriptor.Get(spellId) != null && Globals.Entities.ContainsKey(entityId))
         {
-            Globals.Entities[entityId].CastTime = Timing.Global.Milliseconds + SpellBase.Get(spellId).CastDuration;
+            Globals.Entities[entityId].CastTime = Timing.Global.Milliseconds + SpellDescriptor.Get(spellId).CastDuration;
             Globals.Entities[entityId].SpellCast = spellId;
         }
     }
@@ -1539,7 +1556,7 @@ internal sealed partial class PacketHandler
                     return;
                 }
 
-                if (!AnimationBase.TryGet(animationDescriptorId, out var animationDescriptor))
+                if (!AnimationDescriptor.TryGet(animationDescriptorId, out var animationDescriptor))
                 {
                     return;
                 }
@@ -1588,7 +1605,7 @@ internal sealed partial class PacketHandler
                     return;
                 }
 
-                if (!AnimationBase.TryGet(animationDescriptorId, out var animationDescriptor))
+                if (!AnimationDescriptor.TryGet(animationDescriptorId, out var animationDescriptor))
                 {
                     return;
                 }
@@ -1690,7 +1707,7 @@ internal sealed partial class PacketHandler
     //ShopPacket
     public void HandlePacket(IPacketSender packetSender, ShopPacket packet)
     {
-        if (Interface.Interface.GameUi == null)
+        if (!Interface.Interface.HasInGameUI)
         {
             throw new ArgumentNullException(nameof(Interface.Interface.GameUi));
         }
@@ -1702,14 +1719,14 @@ internal sealed partial class PacketHandler
 
         if (packet.ShopData != null)
         {
-            Globals.GameShop = new ShopBase();
+            Globals.GameShop = new ShopDescriptor();
             Globals.GameShop.Load(packet.ShopData);
-            Interface.Interface.GameUi.NotifyOpenShop();
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyOpenShop());
         }
         else
         {
             Globals.GameShop = null;
-            Interface.Interface.GameUi.NotifyCloseShop();
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyCloseShop());
         }
     }
 
@@ -1718,13 +1735,13 @@ internal sealed partial class PacketHandler
     {
         if (!packet.Close)
         {
-            Globals.ActiveCraftingTable = new CraftingTableBase();
+            Globals.ActiveCraftingTable = new CraftingTableDescriptor();
             Globals.ActiveCraftingTable.Load(packet.TableData);
-            Interface.Interface.GameUi.NotifyOpenCraftingTable(packet.JournalMode);
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyOpenCraftingTable(packet.JournalMode));
         }
         else
         {
-            Interface.Interface.GameUi.NotifyCloseCraftingTable();
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyCloseCraftingTable());
         }
     }
 
@@ -1733,18 +1750,18 @@ internal sealed partial class PacketHandler
     {
         if (!packet.Close)
         {
-            Globals.GuildBank = packet.Guild;
-            Globals.Bank = new Item[packet.Slots];
+            Globals.IsGuildBank = packet.Guild;
+            Globals.BankSlots = new Item[packet.Slots];
             foreach (var itm in packet.Items)
             {
                 HandlePacket(itm);
             }
-            Globals.BankSlots = packet.Slots;
-            Interface.Interface.GameUi.NotifyOpenBank();
+            Globals.BankSlotCount = packet.Slots;
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyOpenBank());
         }
         else
         {
-            Interface.Interface.GameUi.NotifyCloseBank();
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyCloseBank());
         }
     }
 
@@ -1754,12 +1771,12 @@ internal sealed partial class PacketHandler
         var slot = packet.Slot;
         if (packet.ItemId != Guid.Empty)
         {
-            Globals.Bank[slot] = new Item();
-            Globals.Bank[slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.BankSlots[slot] = new Item();
+            Globals.BankSlots[slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
         }
         else
         {
-            Globals.Bank[slot] = null;
+            Globals.BankSlots[slot] = null;
         }
     }
 
@@ -1782,12 +1799,12 @@ internal sealed partial class PacketHandler
                 //Handled in a different packet
                 break;
             case GameObjectType.Tileset:
-                var obj = new TilesetBase(objectId);
+                var obj = new TilesetDescriptor(objectId);
                 obj.Load(json);
-                TilesetBase.Lookup.Set(objectId, obj);
+                TilesetDescriptor.Lookup.Set(objectId, obj);
                 if (Globals.HasGameData && !another)
                 {
-                    Globals.ContentManager.LoadTilesets(TilesetBase.GetNameList());
+                    Globals.ContentManager.LoadTilesets(TilesetDescriptor.GetNameList());
                 }
 
                 break;
@@ -2000,10 +2017,7 @@ internal sealed partial class PacketHandler
 
             Globals.Me.HiddenQuests = packet.HiddenQuests;
 
-            if (Interface.Interface.GameUi != null)
-            {
-                Interface.Interface.GameUi.NotifyQuestsUpdated();
-            }
+            Interface.Interface.EnqueueInGame(uiInGame => uiInGame.NotifyQuestsUpdated());
         }
     }
 
@@ -2023,11 +2037,11 @@ internal sealed partial class PacketHandler
                 }
             }
 
-            Interface.Interface.GameUi.NotifyOpenTrading(packet.TradePartner);
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyOpenTrading(packet.TradePartner));
         }
         else
         {
-            Interface.Interface.GameUi.NotifyCloseTrading();
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyCloseTrading());
         }
     }
 
@@ -2101,12 +2115,12 @@ internal sealed partial class PacketHandler
     {
         if (!packet.Close)
         {
-            Globals.Bag = new Item[packet.Slots];
-            Interface.Interface.GameUi.NotifyOpenBag();
+            Globals.BagSlots = new Item[packet.Slots];
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyOpenBag());
         }
         else
         {
-            Interface.Interface.GameUi.NotifyCloseBag();
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyCloseBag());
         }
     }
 
@@ -2115,12 +2129,12 @@ internal sealed partial class PacketHandler
     {
         if (packet.ItemId == Guid.Empty)
         {
-            Globals.Bag[packet.Slot] = null;
+            Globals.BagSlots[packet.Slot] = null;
         }
         else
         {
-            Globals.Bag[packet.Slot] = new Item();
-            Globals.Bag[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.BagSlots[packet.Slot] = new Item();
+            Globals.BagSlots[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
         }
     }
 
@@ -2158,7 +2172,12 @@ internal sealed partial class PacketHandler
             Globals.Me?.Friends.Add(f);
         }
 
-        Interface.Interface.GameUi?.NotifyUpdateFriendsList();
+        if (!Interface.Interface.HasInGameUI)
+        {
+            return;
+        }
+
+        Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyUpdateFriendsList());
     }
 
     //FriendRequestPacket
@@ -2260,8 +2279,8 @@ internal sealed partial class PacketHandler
         {
             ApplicationContext.CurrentContext.Logger.LogDebug(
                 "Removing cancelled spell cast animation {AnimationId} ({AnimationName})",
-                removedAnimation.MyBase?.Id,
-                removedAnimation.MyBase?.Name
+                removedAnimation.Descriptor?.Id,
+                removedAnimation.Descriptor?.Name
             );
         }
 
@@ -2318,7 +2337,7 @@ internal sealed partial class PacketHandler
         if (hasUpdates)
         {
             Globals.Me.GuildMembers = updatedGuildMembers;
-            Interface.Interface.GameUi.NotifyUpdateGuildList();
+            Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyUpdateGuildList());
         }
     }
 
@@ -2346,13 +2365,13 @@ internal sealed partial class PacketHandler
     {
         switch (packet.FadeType)
         {
-            case GameObjects.Events.FadeType.None:
+            case FadeType.None:
                 Fade.Cancel();
                 break;
-            case GameObjects.Events.FadeType.FadeIn:
+            case FadeType.FadeIn:
                 Fade.FadeIn(packet.DurationMs, packet.WaitForCompletion);
                 break;
-            case GameObjects.Events.FadeType.FadeOut:
+            case FadeType.FadeOut:
                 Fade.FadeOut(packet.DurationMs, packet.WaitForCompletion);
                 break;
         }

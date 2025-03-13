@@ -14,7 +14,7 @@ public partial class TreeNode : Base
     private readonly Dictionary<GwenEventHandler<MouseButtonState>, GwenEventHandler<MouseButtonState>>
         _wrappedMouseButtonStateDelegates = [];
 
-    private GameFont? _font;
+    private IFont? _font;
 
     private Color? _textColor;
 
@@ -42,6 +42,7 @@ public partial class TreeNode : Base
         _trigger = new TreeNodeLabel(this)
         {
             Dock = Pos.Top,
+            FontSize = _fontSize,
             Margin = new Margin(16, 0, 0, 0),
         };
         _trigger.DoubleClicked += OnDoubleClickName;
@@ -51,7 +52,7 @@ public partial class TreeNode : Base
         {
             Dock = Pos.Top,
             Height = 100,
-            IsVisible = false,
+            IsVisibleInTree = false,
             Margin = new Margin(TREE_INDENTATION, 1, 0, 0),
         };
 
@@ -64,7 +65,33 @@ public partial class TreeNode : Base
 
     protected Button? _trigger { get; set; }
 
-    public virtual GameFont? Font
+    private int _fontSize = 10;
+
+    public virtual int FontSize
+    {
+        get => _trigger?.FontSize ?? _fontSize;
+        set
+        {
+            if (_fontSize == value)
+            {
+                return;
+            }
+
+            _fontSize = value;
+            if (_trigger is { } trigger)
+            {
+                trigger.FontSize = value;
+            }
+
+            var treeNodes = Children.OfType<TreeNode>().ToArray();
+            foreach (var node in treeNodes)
+            {
+                node.FontSize = value;
+            }
+        }
+    }
+
+    public virtual IFont? Font
     {
         get => _trigger?.Font ?? _font;
         set
@@ -128,40 +155,18 @@ public partial class TreeNode : Base
                 _trigger.ToggleState = value;
             }
 
-            if (SelectionChanged != null)
-            {
-                SelectionChanged.Invoke(this, EventArgs.Empty);
-            }
-
-            // propagate to root parent (tree)
-            if (_treeControl != null && _treeControl.SelectionChanged != null)
-            {
-                _treeControl.SelectionChanged.Invoke(this, EventArgs.Empty);
-            }
+            SelectionChanged?.Invoke(this, EventArgs.Empty);
+            _treeControl.SelectionChanged?.Invoke(this, EventArgs.Empty);
 
             if (value)
             {
-                if (Selected != null)
-                {
-                    Selected.Invoke(this, EventArgs.Empty);
-                }
-
-                if (_treeControl != null && _treeControl.Selected != null)
-                {
-                    _treeControl.Selected.Invoke(this, EventArgs.Empty);
-                }
+                Selected?.Invoke(this, EventArgs.Empty);
+                _treeControl.Selected?.Invoke(this, EventArgs.Empty);
             }
             else
             {
-                if (Unselected != null)
-                {
-                    Unselected.Invoke(this, EventArgs.Empty);
-                }
-
-                if (_treeControl != null && _treeControl.Unselected != null)
-                {
-                    _treeControl.Unselected.Invoke(this, EventArgs.Empty);
-                }
+                Unselected?.Invoke(this, EventArgs.Empty);
+                _treeControl.Unselected?.Invoke(this, EventArgs.Empty);
             }
         }
     }
@@ -235,32 +240,32 @@ public partial class TreeNode : Base
     /// <summary>
     ///     Invoked when the node label has been pressed.
     /// </summary>
-    public event GwenEventHandler<EventArgs> LabelPressed;
+    public event GwenEventHandler<EventArgs>? LabelPressed;
 
     /// <summary>
     ///     Invoked when the node's selected state has changed.
     /// </summary>
-    public event GwenEventHandler<EventArgs> SelectionChanged;
+    public event GwenEventHandler<EventArgs>? SelectionChanged;
 
     /// <summary>
     ///     Invoked when the node has been selected.
     /// </summary>
-    public event GwenEventHandler<EventArgs> Selected;
+    public event GwenEventHandler<EventArgs>? Selected;
 
     /// <summary>
     ///     Invoked when the node has been unselected.
     /// </summary>
-    public event GwenEventHandler<EventArgs> Unselected;
+    public event GwenEventHandler<EventArgs>? Unselected;
 
     /// <summary>
     ///     Invoked when the node has been expanded.
     /// </summary>
-    public event GwenEventHandler<EventArgs> Expanded;
+    public event GwenEventHandler<EventArgs>? Expanded;
 
     /// <summary>
     ///     Invoked when the node has been collapsed.
     /// </summary>
-    public event GwenEventHandler<EventArgs> Collapsed;
+    public event GwenEventHandler<EventArgs>? Collapsed;
 
     /// <summary>
     ///     Renders the control using the specified skin.
@@ -269,7 +274,7 @@ public partial class TreeNode : Base
     protected override void Render(Skin.Base skin)
     {
         // Calculate the height of the tree node
-        var isOpen = _innerPanel?.IsVisible ?? false;
+        var isOpen = _innerPanel?.IsVisibleInTree ?? false;
         var treeNodeHeight = CalculateTreeNodeHeight(isOpen);
 
         // Draw the tree node using the specified skin.
@@ -309,7 +314,7 @@ public partial class TreeNode : Base
         // ReSharper disable once InvertIf
         if (isOpen)
         {
-            if (innerPanel.Children.OfType<TreeNode>().LastOrDefault(child => child.IsVisible) is { } lastVisibleChild)
+            if (innerPanel.Children.OfType<TreeNode>().LastOrDefault(child => child.IsVisibleInTree) is { } lastVisibleChild)
             {
                 return height + lastVisibleChild.Y;
             }
@@ -331,16 +336,16 @@ public partial class TreeNode : Base
                 _toggleButton.SetPosition(0, (_trigger.Height - _toggleButton.Height) * 0.5f);
             }
 
-            if (_innerPanel.Children.Count == 0)
+            if (_innerPanel is not { Children.Count: >0 } innerPanel)
             {
                 _toggleButton.Hide();
                 _toggleButton.ToggleState = false;
-                _innerPanel.Hide();
+                _innerPanel?.Hide();
             }
             else
             {
                 _toggleButton.Show();
-                _innerPanel.SizeToChildren(false);
+                innerPanel.SizeToChildren(false);
             }
         }
 
@@ -351,11 +356,11 @@ public partial class TreeNode : Base
     ///     Function invoked after layout.
     /// </summary>
     /// <param name="skin">Skin to use.</param>
-    protected override void PostLayout(Skin.Base skin)
+    protected override void DoPostlayout(Skin.Base skin)
     {
         if (SizeToChildren(false))
         {
-            InvalidateParent();
+            InvalidateParentDock();
         }
     }
 
@@ -370,6 +375,7 @@ public partial class TreeNode : Base
         TreeNode node = new(this)
         {
             Font = Font,
+            FontSize = FontSize,
             Text = label,
             TextColor = _textColor,
             TextColorOverride = _textColorOverride,
@@ -384,21 +390,17 @@ public partial class TreeNode : Base
     /// </summary>
     public void Open()
     {
-        _innerPanel.Show();
+        _innerPanel?.Show();
+
         if (_toggleButton != null)
         {
             _toggleButton.ToggleState = true;
         }
 
-        if (Expanded != null)
-        {
-            Expanded.Invoke(this, EventArgs.Empty);
-        }
+        Expanded?.Invoke(this, EventArgs.Empty);
+        _treeControl.Expanded?.Invoke(this, EventArgs.Empty);
 
-        if (_treeControl != null && _treeControl.Expanded != null)
-        {
-            _treeControl.Expanded.Invoke(this, EventArgs.Empty);
-        }
+        InvalidateParentDock();
 
         Invalidate();
     }
@@ -408,21 +410,15 @@ public partial class TreeNode : Base
     /// </summary>
     public void Close()
     {
-        _innerPanel.Hide();
+        _innerPanel?.Hide();
+
         if (_toggleButton != null)
         {
             _toggleButton.ToggleState = false;
         }
 
-        if (Collapsed != null)
-        {
-            Collapsed.Invoke(this, EventArgs.Empty);
-        }
-
-        if (_treeControl != null && _treeControl.Collapsed != null)
-        {
-            _treeControl.Collapsed.Invoke(this, EventArgs.Empty);
-        }
+        Collapsed?.Invoke(this, EventArgs.Empty);
+        _treeControl.Collapsed?.Invoke(this, EventArgs.Empty);
 
         Invalidate();
     }
@@ -433,15 +429,17 @@ public partial class TreeNode : Base
     public void ExpandAll()
     {
         Open();
-        foreach (var child in Children)
-        {
-            var node = child as TreeNode;
-            if (node == null)
-            {
-                continue;
-            }
+        RunOnMainThread(ExpandAllChildren, this);
+    }
 
-            node.ExpandAll();
+    private static void ExpandAllChildren(TreeNode @this)
+    {
+        foreach (var child in @this.Children)
+        {
+            if (child is TreeNode treeNode)
+            {
+                treeNode.ExpandAll();
+            }
         }
     }
 
@@ -456,15 +454,17 @@ public partial class TreeNode : Base
             _trigger.ToggleState = false;
         }
 
-        foreach (var child in Children)
-        {
-            var node = child as TreeNode;
-            if (node == null)
-            {
-                continue;
-            }
+        RunOnMainThread(UnselectChildren, this);
+    }
 
-            node.UnselectAll();
+    private static void UnselectChildren(TreeNode @this)
+    {
+        foreach (var child in @this.Children)
+        {
+            if (child is TreeNode treeNode)
+            {
+                treeNode.UnselectAll();
+            }
         }
     }
 
@@ -490,7 +490,7 @@ public partial class TreeNode : Base
     /// <param name="control">Event source.</param>
     protected virtual void OnDoubleClickName(Base control, EventArgs args)
     {
-        if (!_toggleButton.IsVisible)
+        if (!_toggleButton.IsVisibleInTree)
         {
             return;
         }
@@ -512,7 +512,7 @@ public partial class TreeNode : Base
         IsSelected = !IsSelected;
     }
 
-    public void SetImage(GameTexture texture, string fileName = "")
+    public void SetImage(IGameTexture texture, string fileName = "")
     {
         _trigger.SetStateTexture(texture, fileName, ComponentState.Normal);
     }
@@ -524,10 +524,7 @@ public partial class TreeNode : Base
         {
             node.TreeControl = _treeControl;
 
-            if (_treeControl != null)
-            {
-                _treeControl.OnNodeAdded(node);
-            }
+            _treeControl?.OnNodeAdded(node);
         }
 
         base.OnChildAdded(child);

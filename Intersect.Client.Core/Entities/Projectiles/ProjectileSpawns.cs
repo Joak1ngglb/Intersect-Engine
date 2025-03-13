@@ -1,4 +1,6 @@
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Animations;
 using Intersect.GameObjects;
 using Intersect.Utilities;
 
@@ -22,7 +24,7 @@ public partial class ProjectileSpawns
 
     public float OffsetY;
 
-    public ProjectileBase ProjectileBase;
+    public ProjectileDescriptor ProjectileDescriptor;
 
     public Guid SpawnMapId;
 
@@ -46,9 +48,9 @@ public partial class ProjectileSpawns
         int y,
         int z,
         Guid mapId,
-        AnimationBase animBase,
+        AnimationDescriptor animationDescriptor,
         bool autoRotate,
-        ProjectileBase projectileBase,
+        ProjectileDescriptor projectileDescriptor,
         Entity parent
     )
     {
@@ -60,10 +62,10 @@ public partial class ProjectileSpawns
         MapId = mapId;
         SpawnMapId = MapId;
         Dir = dir;
-        Anim = new Animation(animBase, true, autoRotate, Z, parent);
+        Anim = new Animation(animationDescriptor, true, autoRotate, Z, parent);
         AutoRotate = autoRotate;
-        ProjectileBase = projectileBase;
-        TransmissionTimer = Timing.Global.Milliseconds + (ProjectileBase.Speed / ProjectileBase.Range);
+        ProjectileDescriptor = projectileDescriptor;
+        TransmissionTimer = Timing.Global.Milliseconds + (ProjectileDescriptor.Speed / ProjectileDescriptor.Range);
     }
 
     public void Dispose()

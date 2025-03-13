@@ -12,6 +12,7 @@ using Intersect.Client.General;
 using Intersect.Client.Localization;
 using Intersect.Config;
 using Intersect.Core;
+using Intersect.Framework.Core;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
 using static Intersect.Client.Framework.File_Management.GameContentManager;
@@ -23,7 +24,7 @@ using BottomBarItems = (Panel BottomBar, Button RestoreDefaultControlsButton, Bu
 
 public partial class SettingsWindow : Window
 {
-    private readonly GameFont? _defaultFont;
+    private readonly IFont? _defaultFont;
 
     // Bottom Bar
     private readonly Button _restoreDefaultsButton;
@@ -73,6 +74,9 @@ public partial class SettingsWindow : Window
     private readonly ScrollControl _videoContainer;
     private readonly LabeledComboBox _resolutionList;
     private readonly LabeledComboBox _fpsList;
+    private readonly LabeledCheckBox _showFPSCounterCheckbox;
+    private readonly LabeledCheckBox _showPingCounterCheckbox;
+    public readonly LabeledCheckBox _enableScrollingWorldZoomCheckbox;
     private readonly LabeledSlider _worldScale;
     private readonly LabeledCheckBox _fullscreenCheckbox;
     private readonly LabeledCheckBox _lightingEnabledCheckbox;
@@ -120,7 +124,7 @@ public partial class SettingsWindow : Window
         TitleLabel.FontSize = 14;
         TitleLabel.TextColorOverride = Color.White;
 
-        _defaultFont = Current.GetFont(name: TitleLabel.FontName, 12);
+        _defaultFont = Current.GetFont(name: TitleLabel.FontName);
 
 #region Game
 
@@ -130,6 +134,7 @@ public partial class SettingsWindow : Window
             Dock = Pos.Fill,
             DockChildSpacing = new Padding(0, 4, 0, 0),
             Font = _defaultFont,
+            FontSize = 12,
             TabStripPosition = Pos.Left,
         };
         _gameContainer.TabChanged += GameContainerOnTabChanged;
@@ -177,6 +182,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.AutoCloseWindows,
         };
 
@@ -185,6 +191,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.AutoToggleChatLog,
         };
 
@@ -193,6 +200,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowExperienceAsPercentage,
         };
 
@@ -200,6 +208,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowHealthAsPercentage,
         };
 
@@ -207,6 +216,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowManaAsPercentage,
         };
 
@@ -215,6 +225,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.SimplifiedEscapeMenu,
         };
 
@@ -223,14 +234,27 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.TypewriterText,
         };
+
+        // Game > Information
+
+        _showPingCounterCheckbox = new LabeledCheckBox(parent: _informationSettings, name: nameof(_showPingCounterCheckbox))
+        {
+            Dock = Pos.Top,
+            Font = _defaultFont,
+            FontSize = 12,
+            Text = Strings.Settings.ShowPingCounter,
+        };
+        _showPingCounterCheckbox.CheckChanged += ShowPingCounterCheckboxOnCheckChanged;
 
         // Game Settings - Information: Friends.
         _friendOverheadInfoCheckbox = new LabeledCheckBox(parent: _informationSettings, name: nameof(_friendOverheadInfoCheckbox))
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowFriendOverheadInformation,
         };
 
@@ -239,6 +263,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowGuildOverheadInformation,
         };
 
@@ -247,6 +272,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowMyOverheadInformation,
         };
 
@@ -255,6 +281,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowNpcOverheadInformation,
         };
 
@@ -263,6 +290,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowPartyOverheadInformation,
         };
 
@@ -271,6 +299,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowPlayerOverheadInformation,
         };
 
@@ -279,6 +308,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowFriendOverheadHpBar,
         };
 
@@ -287,6 +317,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowGuildOverheadHpBar,
         };
 
@@ -295,6 +326,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowMyOverheadHpBar,
         };
 
@@ -303,6 +335,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowNpcOverheadHpBar,
         };
 
@@ -311,6 +344,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowPartyOverheadHpBar,
         };
 
@@ -319,6 +353,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.ShowPlayerOverheadHpBar,
         };
 
@@ -327,6 +362,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.StickyTarget,
         };
 
@@ -335,6 +371,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.AutoTurnToTarget,
         };
 
@@ -343,6 +380,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.AutoSoftRetargetOnSelfCast,
             TooltipText = Strings.Settings.AutoSoftRetargetOnSelfCastTooltip,
             TooltipBackgroundName = "tooltip.png",
@@ -367,11 +405,12 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Label = Strings.Settings.Resolution,
             TextPadding = new Padding(8, 4, 0, 4),
         };
 
-        var availableVideoModes = Graphics.Renderer?.GetValidVideoModes().ToArray() ?? [];
+        var availableVideoModes = (Graphics.Renderer?.ValidVideoModes).ToArray() ?? [];
         for (var videoModeIndex = 0; videoModeIndex < availableVideoModes.Length; videoModeIndex++)
         {
             var availableVideoMode = availableVideoModes[videoModeIndex];
@@ -386,6 +425,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Label = Strings.Settings.FPS,
             TextPadding = new Padding(8, 4, 0, 4),
         };
@@ -396,11 +436,21 @@ public partial class SettingsWindow : Window
         _ = _fpsList.AddItem(label: Strings.Settings.Fps120);
         _ = _fpsList.AddItem(label: Strings.Settings.UnlimitedFps);
 
+        _showFPSCounterCheckbox = new LabeledCheckBox(parent: _videoContainer, name: nameof(_showFPSCounterCheckbox))
+        {
+            Dock = Pos.Top,
+            Font = _defaultFont,
+            FontSize = 12,
+            Text = Strings.Settings.ShowFPSCounter,
+        };
+        _showFPSCounterCheckbox.CheckChanged += ShowFPSCounterCheckboxOnCheckChanged;
+
         // Video Settings - Fullscreen Checkbox.
         _fullscreenCheckbox = new LabeledCheckBox(parent: _videoContainer, name: nameof(_fullscreenCheckbox))
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.Fullscreen,
         };
 
@@ -409,13 +459,24 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.Settings.EnableLighting,
+        };
+
+        // Video Settings - Enable Scrolling World Zoom Checkbox
+        _enableScrollingWorldZoomCheckbox = new LabeledCheckBox(parent: _videoContainer, name: nameof(_enableScrollingWorldZoomCheckbox))
+        {
+            Dock = Pos.Top,
+            Font = _defaultFont,
+            FontSize = 12,
+            Text = Strings.Settings.EnableScrollingWorldZoom,
         };
 
         _worldScale = new LabeledSlider(parent: _videoContainer, name: nameof(_worldScale))
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Label = Strings.Settings.WorldScale,
             Orientation = Orientation.LeftToRight,
             SnapToNotches = true,
@@ -439,6 +500,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Orientation = Orientation.LeftToRight,
             Height = 35,
             DraggerSize = new Point(9, 9),
@@ -462,6 +524,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Orientation = Orientation.LeftToRight,
             Height = 35,
             DraggerSize = new Point(9, 9),
@@ -497,12 +560,14 @@ public partial class SettingsWindow : Window
             DockChildSpacing = new Padding(0, 4, 0, 0),
             ColumnCount = 3,
             Font = _defaultFont,
+            FontSize = 12,
             SizeToContents = true,
         };
 
         // Keybinding Settings - Controls
         var row = 0;
-        foreach (var control in (_keybindingEditControls ?? Controls.ActiveControls).Mappings.Keys)
+        var controls = (_keybindingEditControls ?? Controls.ActiveControls).Mappings.Keys.ToArray();
+        foreach (var control in controls)
         {
             AddControlKeybindRow(control: control, row: ref row, keyButtons: out _);
         }
@@ -518,6 +583,7 @@ public partial class SettingsWindow : Window
         {
             Dock = Pos.Fill,
             Font = _defaultFont,
+            FontSize = 12,
             Margin = new Margin(left: 4, top: 4, right: 4, bottom: 0),
         };
 
@@ -545,6 +611,16 @@ public partial class SettingsWindow : Window
 
         (_bottomBar, _restoreDefaultsButton, _applyPendingChangesButton, _cancelPendingChangesButton) =
             CreateBottomBar(this);
+    }
+
+    private static void ShowFPSCounterCheckboxOnCheckChanged(ICheckbox fpsCounterCheckbox, ValueChangedEventArgs<bool> args)
+    {
+        Interface.ShowStatisticsPanelFPS = args.Value;
+    }
+
+    private static void ShowPingCounterCheckboxOnCheckChanged(ICheckbox pingCounterCheckbox, ValueChangedEventArgs<bool> args)
+    {
+        Interface.ShowStatisticsPanelPing = args.Value;
     }
 
     protected override void EnsureInitialized()
@@ -577,7 +653,8 @@ public partial class SettingsWindow : Window
             Alignment = [Alignments.Left, Alignments.CenterV],
             AutoSizeToContents = true,
             Font = _defaultFont,
-            IsVisible = false,
+            FontSize = 12,
+            IsVisibleInTree = false,
             MinimumSize = new Point(x: 96, y: 24),
             Padding = new Padding(horizontal: 16, vertical: 2),
             Text = Strings.Settings.Restore,
@@ -590,6 +667,7 @@ public partial class SettingsWindow : Window
             Alignment = [Alignments.Center],
             AutoSizeToContents = true,
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(x: 96, y: 24),
             Padding = new Padding(horizontal: 16, vertical: 2),
             Text = Strings.Settings.Apply,
@@ -602,6 +680,7 @@ public partial class SettingsWindow : Window
             Alignment = [Alignments.Right, Alignments.CenterV],
             AutoSizeToContents = true,
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(x: 96, y: 24),
             Padding = new Padding(horizontal: 16, vertical: 2),
             Text = Strings.Settings.Cancel,
@@ -631,7 +710,7 @@ public partial class SettingsWindow : Window
     {
         if (_controlsTab.IsTabActive)
         {
-            _restoreDefaultsButton.IsVisible = true;
+            _restoreDefaultsButton.IsVisibleInTree = true;
 
             bool controlsAdded = false;
 
@@ -660,7 +739,7 @@ public partial class SettingsWindow : Window
         }
         else
         {
-            _restoreDefaultsButton.IsVisible = false;
+            _restoreDefaultsButton.IsVisibleInTree = false;
         }
     }
 
@@ -672,11 +751,10 @@ public partial class SettingsWindow : Window
             return false;
         }
 
-        GameFont? defaultFont = Current.GetFont("sourcesansproblack", 10);
+        IFont? defaultFont = Current.GetFont("sourcesansproblack");
 
-            var offset = row++ * 32;
         var controlName = control.GetControlId();
-            var name = controlName?.ToLower() ?? string.Empty;
+        var name = controlName?.ToLower() ?? string.Empty;
 
         if (!Strings.Controls.KeyDictionary.TryGetValue(name, out var localizedControlName))
         {
@@ -703,6 +781,7 @@ public partial class SettingsWindow : Window
             AutoSizeToContents = true,
             MouseInputEnabled = false,
             Font = defaultFont,
+            FontSize = 10,
         };
 
         controlRow.SetCellContents(0, controlLabel, enableMouseInput: false);
@@ -712,6 +791,7 @@ public partial class SettingsWindow : Window
             Alignment = [Alignments.Center],
             AutoSizeToContents = false,
             Font = defaultFont,
+            FontSize = 10,
             MinimumSize = new Point(150, 20),
             Text = string.Empty,
             UserData = new KeyValuePair<Control, int>(control, 0),
@@ -724,6 +804,7 @@ public partial class SettingsWindow : Window
             Alignment = [Alignments.Center],
             AutoSizeToContents = false,
             Font = defaultFont,
+            FontSize = 10,
             MinimumSize = new Point(150, 20),
             Text = string.Empty,
             UserData = new KeyValuePair<Control, int>(control, 1),
@@ -804,6 +885,7 @@ public partial class SettingsWindow : Window
     {
         Title = Strings.Settings.Title;
 
+        _gameSettingsTabInterface.Select();
         _gameSettingsTab.Select();
 
         UpdateWorldScaleControls();
@@ -913,10 +995,11 @@ public partial class SettingsWindow : Window
         // Video Settings.
         _fullscreenCheckbox.IsChecked = Globals.Database.FullScreen;
         _lightingEnabledCheckbox.IsChecked = Globals.Database.EnableLighting;
+        _enableScrollingWorldZoomCheckbox.IsChecked = Globals.Database.EnableScrollingWorldZoom;
 
         // _uiScale.Value = Globals.Database.UIScale;
 
-        if (Graphics.Renderer?.GetValidVideoModes().Count > 0)
+        if ((Graphics.Renderer?.ValidVideoModes).Count > 0)
         {
             if (Graphics.Renderer.HasOverrideResolution)
             {
@@ -932,6 +1015,9 @@ public partial class SettingsWindow : Window
                 _resolutionList.SelectByUserData(Globals.Database.TargetResolution);
             }
         }
+
+        _showPingCounterCheckbox.IsChecked = Globals.Database.ShowPingCounter;
+        _showFPSCounterCheckbox.IsChecked = Globals.Database.ShowFPSCounter;
 
         switch (Globals.Database.TargetFps)
         {
@@ -1088,6 +1174,7 @@ public partial class SettingsWindow : Window
         Globals.Database.TypewriterBehavior = _typewriterCheckbox.IsChecked ? Enums.TypewriterBehavior.Word : Enums.TypewriterBehavior.Off;
 
         // Video Settings.
+        Globals.Database.EnableScrollingWorldZoom = _enableScrollingWorldZoomCheckbox.IsChecked;
         Globals.Database.WorldZoom = (float)_worldScale.Value;
 
         var resolutionItem = _resolutionList.SelectedItem;
@@ -1135,6 +1222,9 @@ public partial class SettingsWindow : Window
             Globals.Database.TargetFps = newFps;
         }
 
+        Globals.Database.ShowFPSCounter = _showFPSCounterCheckbox.IsChecked;
+        Globals.Database.ShowPingCounter = _showPingCounterCheckbox.IsChecked;
+
         // Audio Settings.
         Globals.Database.MusicVolume = (int)_musicSlider.Value;
         Globals.Database.SoundVolume = (int)_soundEffectsSlider.Value;
@@ -1164,6 +1254,8 @@ public partial class SettingsWindow : Window
         // Update previously saved values in order to discard changes.
         Globals.Database.MusicVolume = _previousMusicVolume;
         Globals.Database.SoundVolume = _previousSoundVolume;
+        Interface.ShowStatisticsPanelFPS = Globals.Database.ShowFPSCounter;
+        Interface.ShowStatisticsPanelPing = Globals.Database.ShowPingCounter;
         Audio.UpdateGlobalVolume();
         _keybindingEditControls = new Controls(Controls.ActiveControls);
 

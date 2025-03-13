@@ -21,7 +21,8 @@ using MonoGameKeys = Microsoft.Xna.Framework.Input.Keys;
 public partial class MonoInput : GameInput
 {
     private readonly Dictionary<Keys, MonoGameKeys> _intersectToMonoGameKeyMap;
-
+    public override InputDeviceType CursorMovementDevice { get; set; } = InputDeviceType.Mouse;
+    
     private GamePadState _currentGamePadState;
     private GamePadState _previousGamePadState;
 
@@ -132,6 +133,8 @@ public partial class MonoInput : GameInput
 
     public override bool MouseHitInterface => Interface.Interface.DoesMouseHitInterface();
 
+    public override bool IsMouseInBounds => Interface.Interface.IsInBounds(_currentMouseState.X, _currentMouseState.Y);
+
     private void InputHandlerOnFocusChanged(Base? control, FocusSource focusSource)
     {
         if (control == default)
@@ -144,6 +147,12 @@ public partial class MonoInput : GameInput
             return;
         }
 
+        switch (CursorMovementDevice)
+        {
+            case InputDeviceType.Mouse:
+                return;
+        }
+
         Vector2 center = new(
             (control.GlobalBounds.Left + control.GlobalBounds.Right) / 2f,
             (control.GlobalBounds.Bottom + control.GlobalBounds.Top) / 2f
@@ -152,7 +161,7 @@ public partial class MonoInput : GameInput
         Mouse.SetPosition((int)center.X, (int)center.Y);
         var mouseState = Mouse.GetState();
         Interface.Interface.GwenInput.ProcessMessage(
-            new GwenInputMessage(IntersectInput.InputEvent.MouseMove, new Pointf(mouseState.X, mouseState.Y), MouseButton.None, Keys.Alt)
+            new GwenInputMessage(IntersectInput.InputEvent.MouseMove, new System.Numerics.Vector2(mouseState.X, mouseState.Y), MouseButton.None, Keys.Alt)
         );
     }
 
@@ -195,9 +204,9 @@ public partial class MonoInput : GameInput
     public override bool WasKeyDown(Keys key) =>
         _intersectToMonoGameKeyMap.TryGetValue(key, out var mappedKey) && _previousKeyboardState.IsKeyDown(mappedKey);
 
-    public override Pointf GetMousePosition()
+    public override System.Numerics.Vector2 GetMousePosition()
     {
-        return new Pointf(mMouseX, mMouseY);
+        return new System.Numerics.Vector2(mMouseX, mMouseY);
     }
 
     private void CheckMouseButton(Keys modifier, ButtonState bs, MouseButton mb)
@@ -235,18 +244,45 @@ public partial class MonoInput : GameInput
         }
     }
 
+    private static readonly TimeSpan ZoomDelay = TimeSpan.FromMilliseconds(300);
+    private DateTime _lastZoomTime = DateTime.MinValue;
+
     private void CheckMouseScrollWheel(int scrlVValue, int scrlHValue)
     {
-        Pointf p = new Pointf(0, 0);
+        System.Numerics.Vector2 p = default;
 
         if (scrlVValue != mMouseVScroll || scrlHValue != mMouseHScroll)
         {
-            p = new Pointf(scrlHValue - mMouseHScroll, scrlVValue - mMouseVScroll);
+            p = new System.Numerics.Vector2(scrlHValue - mMouseHScroll, scrlVValue - mMouseVScroll);
 
             Interface.Interface.GwenInput.ProcessMessage(
                 new GwenInputMessage(IntersectInput.InputEvent.MouseScroll, p, MouseButton.Middle, Keys.Alt)
             );
 
+            var deltaV = Math.Sign(mMouseVScroll - scrlVValue);
+
+            var now = DateTime.Now;
+            if (now - _lastZoomTime >= ZoomDelay)
+
+            {
+
+                if ((InputHandler.HoveredControl == null
+                     || !InputHandler.HoveredControl.IsVisibleInTree
+                     || (InputHandler.HoveredControl is Canvas canvas && canvas == canvas.Canvas))
+                    && Globals.GameState == GameStates.InGame
+                    && Globals.Database.EnableScrollingWorldZoom)
+                {
+                    if (deltaV < 0)
+                    {
+                        Core.Input.HandleZoomIn(false);
+                    }
+                    else
+                    {
+                        Core.Input.HandleZoomOut(false);
+                    }
+                    _lastZoomTime = now;
+                }
+            }
             mMouseVScroll = scrlVValue;
             mMouseHScroll = scrlHValue;
         }
@@ -282,6 +318,11 @@ public partial class MonoInput : GameInput
                 var deltaX = (int)(gamePadState.ThumbSticks.Right.X * elapsed.TotalSeconds * 1000);
                 var deltaY = (int)(-gamePadState.ThumbSticks.Right.Y * elapsed.TotalSeconds * 1000);
 
+                if (deltaX != 0 || deltaY != 0)
+                {
+                    CursorMovementDevice = InputDeviceType.Controller;
+                }
+
                 var temporaryMouseState = Mouse.GetState();
                 Mouse.SetPosition(temporaryMouseState.X + deltaX, temporaryMouseState.Y + deltaY);
             }
@@ -293,6 +334,9 @@ public partial class MonoInput : GameInput
             {
                 mMouseX = (int)(mouseState.X * ((MonoRenderer)Core.Graphics.Renderer).GetMouseOffset().X);
                 mMouseY = (int)(mouseState.Y * ((MonoRenderer)Core.Graphics.Renderer).GetMouseOffset().Y);
+
+                CursorMovementDevice = InputDeviceType.Mouse;
+
                 Interface.Interface.GwenInput.ProcessMessage(
                     new GwenInputMessage(
                         IntersectInput.InputEvent.MouseMove, GetMousePosition(), MouseButton.None, Keys.Alt
@@ -368,13 +412,16 @@ public partial class MonoInput : GameInput
             var modifier = GetPressedModifier(keyboardState);
 
             //Check for state changes in the left mouse button
-            CheckMouseButton(modifier, mouseState.LeftButton, MouseButton.Left);
-            CheckMouseButton(modifier, mouseState.RightButton, MouseButton.Right);
-            CheckMouseButton(modifier, mouseState.MiddleButton, MouseButton.Middle);
-            CheckMouseButton(modifier, mouseState.XButton1, MouseButton.X1);
-            CheckMouseButton(modifier, mouseState.XButton2, MouseButton.X2);
+            if (Interface.Interface.IsInBounds(mouseState.X, mouseState.Y))
+            {
+                CheckMouseButton(modifier, mouseState.LeftButton, MouseButton.Left);
+                CheckMouseButton(modifier, mouseState.RightButton, MouseButton.Right);
+                CheckMouseButton(modifier, mouseState.MiddleButton, MouseButton.Middle);
+                CheckMouseButton(modifier, mouseState.XButton1, MouseButton.X1);
+                CheckMouseButton(modifier, mouseState.XButton2, MouseButton.X2);
 
-            CheckMouseScrollWheel(mouseState.ScrollWheelValue, mouseState.HorizontalScrollWheelValue);
+                CheckMouseScrollWheel(mouseState.ScrollWheelValue, mouseState.HorizontalScrollWheelValue);
+            }
 
             foreach (var key in _intersectToMonoGameKeyMap)
             {

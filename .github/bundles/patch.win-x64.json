@@ -1,7 +1,8 @@
 {
 	"directories": [
 		"Client and Editor",
-		"Server"
+		"Server",
+		"Server/wwwroot"
 	],
 	"includes": [
 		{
@@ -27,6 +28,10 @@
 		{
 			"source": "Intersect.Server/bin/Release/**/win-x64/publish/Intersect Server.exe",
 			"target": "Server"
+		},
+		{
+			"source": "Intersect.Server/bin/Release/**/win-x64/publish/wwwroot/**",
+			"target": "Server/wwwroot"
 		},
 		{
 			"source": "Documentation/Intersect Documentation.url",

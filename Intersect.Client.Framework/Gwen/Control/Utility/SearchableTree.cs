@@ -57,16 +57,28 @@ public sealed class SearchableTree : Base
         }
     }
 
-    public GameFont? FontSearch
+    public IFont? FontSearch
     {
         get => _searchInput.Font;
         set => _searchInput.Font = value;
     }
 
-    public GameFont? FontTree
+    public int FontSearchSize
+    {
+        get => _searchInput.FontSize;
+        set => _searchInput.FontSize = value;
+    }
+
+    public IFont? FontTree
     {
         get => _tree.Font;
         set => _tree.Font = value;
+    }
+
+    public int FontTreeSize
+    {
+        get => _tree.FontSize;
+        set => _tree.FontSize = value;
     }
 
     public string? SearchPlaceholderText
@@ -167,11 +179,11 @@ public sealed class SearchableTree : Base
         {
             if (node.UserData is not SearchableTreeDataEntry nodeEntry)
             {
-                node.IsVisible = false;
+                node.IsVisibleInTree = false;
                 continue;
             }
 
-            node.IsVisible = visibleEntryIds.Contains(nodeEntry.Id);
+            node.IsVisibleInTree = visibleEntryIds.Contains(nodeEntry.Id);
         }
 
         foreach (var entry in entries)

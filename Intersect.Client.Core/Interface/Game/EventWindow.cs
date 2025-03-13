@@ -15,6 +15,7 @@ using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Enums;
 using Intersect.Framework.Core;
+using Intersect.Framework.Threading;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -22,7 +23,7 @@ namespace Intersect.Client.Interface.Game;
 
 public partial class EventWindow : Panel
 {
-    private readonly GameFont? _defaultFont;
+    private readonly IFont? _defaultFont;
 
     private readonly Panel _promptPanel;
 
@@ -42,8 +43,10 @@ public partial class EventWindow : Panel
 
     private EventWindow(Canvas gameCanvas, Dialog dialog) : base(gameCanvas, nameof(EventWindow))
     {
+        ThreadQueue.Default.ThrowIfNotOnMainThread();
+
         _dialog = dialog;
-        _defaultFont = GameContentManager.Current.GetFont(name: "sourcesansproblack", 12);
+        _defaultFont = GameContentManager.Current.GetFont(name: "sourcesansproblack");
 
         Alignment = [Alignments.Center];
         MinimumSize = new Point(520, 180);
@@ -70,6 +73,7 @@ public partial class EventWindow : Panel
             {
                 Dock = Pos.Top,
                 Font = _defaultFont,
+                FontSize = 12,
                 UserData = (EventResponseType)(optionIndex + 1),
             };
             optionButton.Clicked += (sender, _) =>
@@ -84,7 +88,10 @@ public partial class EventWindow : Panel
             _optionButtons[optionIndex] = optionButton;
         }
 
-        _optionsPanel.SizeToChildren(recursive: true);
+        _optionsPanel.PostLayout.Enqueue(
+            ResizeOptionsPanelToChildren,
+            _optionsPanel
+        );
 
         _faceImage = new ImagePanel(_promptPanel, nameof(_faceImage))
         {
@@ -103,18 +110,19 @@ public partial class EventWindow : Panel
         _promptTemplateLabel = new Label(_promptScroller, nameof(_promptTemplateLabel))
         {
             Font = _defaultFont,
-            IsVisible = false,
+            FontSize = 12,
+            IsVisibleInTree = false,
         };
 
         _promptLabel = new RichLabel(_promptScroller, nameof(_promptLabel))
         {
             Dock = Pos.Fill,
             Font = _defaultFont,
+            FontSize = 12,
             Padding = new Padding(8),
         };
 
         _promptPanel.SizeToChildren(recursive: true);
-
 
         #region Configure and Display
 
@@ -124,18 +132,18 @@ public partial class EventWindow : Panel
             _faceImage.Texture = faceTexture;
             if (faceTexture is not null)
             {
-                _faceImage.IsVisible = true;
+                _faceImage.IsVisibleInTree = true;
                 _faceImage.SizeToContents();
             }
             else
             {
-                _faceImage.IsVisible = false;
+                _faceImage.IsVisibleInTree = false;
             }
         }
         else
         {
             _faceImage.Texture = null;
-            _faceImage.IsVisible = false;
+            _faceImage.IsVisibleInTree = false;
         }
 
         var visibleOptions = _dialog.Options.Where(option => !string.IsNullOrEmpty(option)).ToArray();
@@ -150,11 +158,11 @@ public partial class EventWindow : Panel
             if (optionIndex < visibleOptions.Length)
             {
                 optionButton.Text = visibleOptions[optionIndex];
-                optionButton.IsVisible = true;
+                optionButton.IsVisibleInTree = true;
             }
             else
             {
-                optionButton.IsVisible = false;
+                optionButton.IsVisibleInTree = false;
             }
         }
 
@@ -180,18 +188,22 @@ public partial class EventWindow : Panel
         if (_typewriting)
         {
             _promptLabel.ClearText();
-            _writer = new Typewriter(parsedText.ToArray(), (text, color) =>
-            {
-                _promptLabel.AppendText(text, color, Alignments.Left, _promptTemplateLabel.Font);
-            });
+            _writer = new Typewriter(
+                parsedText.ToArray(),
+                (text, color) =>
+                {
+                    _promptLabel.AppendText(text, color, Alignments.Left, _promptTemplateLabel.Font);
+                }
+            );
         }
-        Defer(
-            () =>
-            {
-                SizeToChildren(recursive: true);
 
-                _promptScroller.ScrollToTop();
-            }
+        RunOnMainThread(
+            static @this =>
+            {
+                @this.SizeToChildren(recursive: true);
+                @this._promptScroller.ScrollToTop();
+            },
+            this
         );
 
         MakeModal(dim: true);
@@ -202,6 +214,11 @@ public partial class EventWindow : Panel
         #endregion Configure and Display
     }
 
+    private static void ResizeOptionsPanelToChildren(Panel optionsPanel)
+    {
+        optionsPanel.SizeToChildren(new SizeToChildrenArgs(Recurse: true));
+    }
+
     protected override void OnMouseClicked(MouseButton mouseButton, Point mousePosition, bool userAction = true)
     {
         base.OnMouseClicked(mouseButton, mousePosition, userAction);
@@ -209,17 +226,17 @@ public partial class EventWindow : Panel
         SkipTypewriting();
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
         EnsureControlRestored();
-        base.Dispose();
+        base.Dispose(disposing);
     }
 
     private static EventWindow? _instance;
 
     private void Update()
     {
-        if (!IsVisible || !_typewriting)
+        if (!IsVisibleInTree || !_typewriting)
         {
             return;
         }
@@ -233,7 +250,7 @@ public partial class EventWindow : Panel
 
         foreach (var optionButton in _optionButtons)
         {
-            optionButton.IsVisible = writerCompleted && !string.IsNullOrEmpty(optionButton.Text);
+            optionButton.IsVisibleInTree = writerCompleted && !string.IsNullOrEmpty(optionButton.Text);
         }
 
         if (writerCompleted)
@@ -248,7 +265,7 @@ public partial class EventWindow : Panel
         else if (Controls.IsControlJustPressed(Control.AttackInteract))
         {
             SkipTypewriting();
-            Defer(_promptScroller.ScrollToBottom);
+            PostLayout.Enqueue(_promptScroller.ScrollToBottom);
         }
         else
         {

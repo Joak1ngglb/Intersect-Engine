@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
+using System.Numerics;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Core;
 using Intersect.Framework.Reflection;
@@ -44,13 +45,15 @@ public abstract partial class GameInput : IGameInput
 
     public abstract IControlSet ControlSet { get; set; }
 
-    public IReadOnlySet<IControlsProvider> ControlsProviders => _controlsProviders.ToImmutableHashSet();
+    public IReadOnlySet<IControlsProvider> ControlsProviders => _controlsProviders;
 
     public Control[] AllControls => ControlsProviders.SelectMany(provider => provider.Controls)
         .Distinct()
         .ToArray();
 
     public abstract bool MouseHitInterface { get; }
+
+    public abstract bool IsMouseInBounds { get; }
 
     public bool AddControlsProviders(params IControlsProvider[] controlsProviders)
     {
@@ -114,9 +117,11 @@ public abstract partial class GameInput : IGameInput
 
     public abstract bool WasKeyDown(Keys key);
 
-    public Pointf MousePosition => GetMousePosition();
+    public abstract InputDeviceType CursorMovementDevice { get; set; }
 
-    public abstract Pointf GetMousePosition();
+    public Vector2 MousePosition => GetMousePosition();
+
+    public abstract Vector2 GetMousePosition();
 
     public abstract void Update(TimeSpan elapsed);
 

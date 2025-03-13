@@ -1,4 +1,5 @@
-﻿using Intersect.Collections;
+﻿using System.Globalization;
+using Intersect.Collections;
 using System.Reflection;
 using Intersect.Framework.Reflection;
 using Microsoft.Extensions.Logging;
@@ -24,10 +25,10 @@ public sealed partial class PacketTypeRegistry
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _builtinAssembly = builtinAssembly;
 
-        BuiltInTypesInternal = new List<Type>();
+        BuiltInTypesInternal = [];
         BuiltInTypes = BuiltInTypesInternal.WrapReadOnly();
 
-        TypesInternal = new List<Type>();
+        TypesInternal = [];
         Types = TypesInternal.WrapReadOnly();
     }
 
@@ -55,7 +56,10 @@ public sealed partial class PacketTypeRegistry
                     );
                 }
             )
-            .OrderBy(type => type.ToString());
+            .OrderBy(
+                type => type.GetName(qualified: true),
+                CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.Ordinal)
+            );
         BuiltInTypesInternal.AddRange(definedPacketTypes);
         return BuiltInTypesInternal.All(TryRegister) && BuiltInTypesInternal.Count > 0;
     }

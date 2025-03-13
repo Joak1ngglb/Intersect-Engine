@@ -2,6 +2,7 @@ using Intersect.Client.Framework.Entities;
 using Intersect.Client.Maps;
 using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -92,7 +93,7 @@ public partial class Dash : IDash
         mEndYCoord = targetMap.Y + mEndY * Options.Instance.Map.TileHeight - (currentMap.Y + entity.Y * Options.Instance.Map.TileHeight);
         if (mChangeDirection > Direction.None)
         {
-            entity.Dir = mChangeDirection;
+            entity.DirectionFacing = mChangeDirection;
         }
     }
 

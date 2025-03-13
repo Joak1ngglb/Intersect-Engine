@@ -6,11 +6,13 @@ using CommandLine;
 using Intersect.Config;
 using Intersect.Core;
 using Intersect.Factories;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.NPCs;
 using Intersect.Framework.Logging;
-using Intersect.Framework.Reflection;
+using Intersect.Framework.SystemInformation;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Maps;
 using Intersect.Network;
 using Intersect.Plugins;
 using Intersect.Plugins.Contexts;
@@ -22,13 +24,11 @@ using Intersect.Server.General;
 using Intersect.Server.Localization;
 using Intersect.Server.Metrics;
 using Intersect.Server.Networking;
+using Intersect.Server.Plugins;
 using Intersect.Threading;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
 using Serilog;
-using Serilog.Core;
-using Serilog.Events;
-using Serilog.Extensions.Logging;
 
 namespace Intersect.Server.Core;
 
@@ -45,7 +45,7 @@ internal static class Bootstrapper
 
     public static ILockingActionQueue MainThread { get; private set; }
 
-    public static void Start(params string[] args)
+    public static void Start(Assembly entryAssembly, string[] args, params Action<ServerCommandLineOptions>[] configuredActions)
     {
         (string[] Args, Parser Parser, ServerCommandLineOptions CommandLineOptions) parsedArguments =
             ParseCommandLineArgs(args);
@@ -58,6 +58,11 @@ internal static class Bootstrapper
             }
         }
 
+        foreach (var configureAction in configuredActions)
+        {
+            configureAction(parsedArguments.CommandLineOptions);
+        }
+
         if (!PreContextSetup(args))
         {
             Console.Error.WriteLine("[FATAL] Pre-context setup failed.");
@@ -66,14 +71,15 @@ internal static class Bootstrapper
 
         Console.WriteLine("Pre-context setup finished.");
 
-        var executingAssembly = Assembly.GetExecutingAssembly();
-        var (_, logger) = new LoggerConfiguration().CreateLoggerForIntersect(
-            executingAssembly,
+        var (loggerFactory, logger) = new LoggerConfiguration().CreateLoggerForIntersect(
+            entryAssembly,
             "Server",
             LoggingOptions.LoggingLevelSwitch
         );
 
-        var packetTypeRegistry = new PacketTypeRegistry(logger, typeof(SharedConstants).Assembly);
+        PlatformStatistics.Logger = loggerFactory.CreateLogger<PlatformStatistics>();
+
+        var packetTypeRegistry = new PacketTypeRegistry(logger, typeof(IntersectPacket).Assembly);
         if (!packetTypeRegistry.TryRegisterBuiltIn())
         {
             logger.LogCritical("[FATAL] Failed to load built-in packet types.");
@@ -87,6 +93,7 @@ internal static class Bootstrapper
 
         FactoryRegistry<IPluginBootstrapContext>.RegisterFactory(
             PluginBootstrapContext.CreateFactory(
+                typeof(IServerPluginContext),
                 parsedArguments.Args ?? [],
                 parsedArguments.Parser,
                 packetHelper
@@ -291,11 +298,11 @@ internal static class Bootstrapper
         Console.WriteLine(Strings.Commandoutput.ServerInfo);
         Console.WriteLine(Strings.Commandoutput.AccountCount.ToString(Database.PlayerData.User.Count()));
         Console.WriteLine(Strings.Commandoutput.CharacterCount.ToString(Player.Count()));
-        Console.WriteLine(Strings.Commandoutput.NpcCount.ToString(NpcBase.Lookup.Count));
-        Console.WriteLine(Strings.Commandoutput.SpellCount.ToString(SpellBase.Lookup.Count));
-        Console.WriteLine(Strings.Commandoutput.MapCount.ToString(MapBase.Lookup.Count));
-        Console.WriteLine(Strings.Commandoutput.EventCount.ToString(EventBase.Lookup.Count));
-        Console.WriteLine(Strings.Commandoutput.ItemCount.ToString(ItemBase.Lookup.Count));
+        Console.WriteLine(Strings.Commandoutput.NpcCount.ToString(NPCDescriptor.Lookup.Count));
+        Console.WriteLine(Strings.Commandoutput.SpellCount.ToString(SpellDescriptor.Lookup.Count));
+        Console.WriteLine(Strings.Commandoutput.MapCount.ToString(MapDescriptor.Lookup.Count));
+        Console.WriteLine(Strings.Commandoutput.EventCount.ToString(EventDescriptor.Lookup.Count));
+        Console.WriteLine(Strings.Commandoutput.ItemCount.ToString(ItemDescriptor.Lookup.Count));
         Console.WriteLine();
         Console.WriteLine(Strings.Commandoutput.GameTime.ToString(Time.GetTime().ToString("F")));
         Console.WriteLine();

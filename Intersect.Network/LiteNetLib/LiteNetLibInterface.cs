@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using Intersect.Core;
+using Intersect.Framework.Core;
 using Intersect.Framework.Reflection;
 using Intersect.Memory;
 using Intersect.Network.Events;
@@ -303,8 +304,29 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (packetCode > 1)
         {
-            ApplicationContext.Context.Value?.Logger.LogWarning($"Invalid packet code from {peer} / {connection.Guid}");
-            return;
+            if (packetCode != 0x20)
+            {
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Invalid packet code from {peer} / {connection.Guid}");
+                return;
+            }
+
+            if (reader.GetByte() != 0x21)
+            {
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Invalid packet code from {peer} / {connection.Guid}");
+                return;
+            }
+
+            if (reader.GetByte() != 0x22)
+            {
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Invalid packet code from {peer} / {connection.Guid}");
+                return;
+            }
+
+            if (reader.GetByte() != 0x23)
+            {
+                ApplicationContext.Context.Value?.Logger.LogWarning($"Invalid packet code from {peer} / {connection.Guid}");
+                return;
+            }
         }
 
         if (packetCode == 0)
@@ -468,7 +490,29 @@ public sealed class LiteNetLibInterface : INetworkLayerInterface, INetEventListe
         }
 #endif
 
-        ApplicationContext.Context.Value?.Logger.LogDebug($"LTNC {peer} {latency}ms");
+        ApplicationContext.CurrentContext.Logger.LogTrace("LATENCY {Peer} {Latency}ms", peer, latency);
+
+        if (!_connectionIdLookup.TryGetValue(peer.Id, out var connectionId))
+        {
+            ApplicationContext.CurrentContext.Logger.LogWarning("Missing connection for {PeerId}", peer.Id);
+            return;
+        }
+
+        var genericConnection = _network.FindConnection(connectionId);
+        if (genericConnection is not LiteNetLibConnection connection)
+        {
+            var expectedTypeName = typeof(LiteNetLibConnection).GetName(qualified: true);
+            var actualTypeName = genericConnection.GetType().GetName(qualified: true);
+            ApplicationContext.CurrentContext.Logger.LogWarning(
+                "Connection is not {ExpectedType} for {PeerId}, was {ActualType}",
+                expectedTypeName,
+                peer.Id,
+                actualTypeName
+            );
+            return;
+        }
+
+        connection.Statistics.Ping = latency;
     }
 
     public void OnConnectionRequest(ConnectionRequest request)

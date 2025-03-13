@@ -4,7 +4,7 @@ using Intersect.Editor.General;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Maps;
 using Intersect.Editor.Networking;
-using Intersect.GameObjects.Maps.MapList;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
 using Graphics = System.Drawing.Graphics;
 
 namespace Intersect.Editor.Forms;
@@ -23,7 +23,7 @@ public partial class FrmWarpSelection : Form
 
     private Image mMapImage;
 
-    private List<Guid> mRestrictMaps;
+    private List<Guid>? mRestrictMaps;
 
     private bool mResult;
 
@@ -47,7 +47,7 @@ public partial class FrmWarpSelection : Form
         );
     }
 
-    public void InitForm(bool tileSelection = true, List<Guid> restrictMaps = null)
+    public void InitForm(bool tileSelection = true, List<Guid>? restrictMaps = null)
     {
         mapTreeList1.UpdateMapList(mCurrentMapId, restrictMaps);
         mRestrictMaps = restrictMaps;

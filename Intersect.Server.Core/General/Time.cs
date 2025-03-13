@@ -1,4 +1,5 @@
 using Intersect.Core;
+using Intersect.Framework.Core;
 using Intersect.GameObjects;
 using Intersect.Server.Networking;
 using Intersect.Utilities;
@@ -24,7 +25,7 @@ public static partial class Time
 
     public static void Init()
     {
-        var timeBase = TimeBase.GetTimeBase();
+        var timeBase = DaylightCycleDescriptor.Instance;
         if (timeBase.SyncTime)
         {
             sGameTime = DateTime.Now;
@@ -47,7 +48,7 @@ public static partial class Time
 
     public static void Update()
     {
-        var timeBase = TimeBase.GetTimeBase();
+        var timeBase = DaylightCycleDescriptor.Instance;
         if (Timing.Global.Milliseconds > sUpdateTime)
         {
             if (timeBase.SyncTime)
@@ -98,7 +99,7 @@ public static partial class Time
 
     public static Color GetTimeColor()
     {
-        var time = TimeBase.GetTimeBase();
+        var time = DaylightCycleDescriptor.Instance;
         return time.DaylightHues[sTimeRange];
     }
 

@@ -1,70 +1,59 @@
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using Hardware.Info;
+using Intersect.Framework.SystemInformation;
+
 namespace Intersect.Client.MonoGame.NativeInterop.OpenGL;
 
 public static partial class GL
 {
-    /// <summary>
-    /// Available amount of memory for render buffers in bytes
-    /// </summary>
-    public static long AvailableRenderBufferMemory
+    private sealed class AMDStatisticsProvider : IGPUStatisticsProvider
     {
-        get
+        public long? AvailableMemory
         {
-            if (IsATI_meminfoSupported)
-            {
-                var info = glGetATIMemInfo(GLenum.RENDERBUFFER_FREE_MEMORY_ATI);
-                return info.FreeInPool * 1000L;
-            }
-
-            if (IsNVX_gpu_memory_infoSupported)
-            {
-                return glGetNVXGPUMemoryInfo(GLenum.GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) * 1000L;
-            }
-
-            return -1;
-        }
-    }
-
-    /// <summary>
-    /// Available amount of memory for textures in bytes
-    /// </summary>
-    public static long AvailableTextureMemory
-    {
-        get
-        {
-            if (IsATI_meminfoSupported)
+            get
             {
                 var info = glGetATIMemInfo(GLenum.TEXTURE_FREE_MEMORY_ATI);
                 return info.FreeInPool * 1000L;
             }
+        }
 
-            if (IsNVX_gpu_memory_infoSupported)
-            {
-                return glGetNVXGPUMemoryInfo(GLenum.GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) * 1000L;
-            }
-
-            return -1;
+        public long? TotalMemory
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => -1;
         }
     }
 
-    /// <summary>
-    /// Available amount of memory for VBOs in bytes
-    /// </summary>
-    public static long AvailableVBOMemory
+    private sealed class NvidiaStatisticsProvider : IGPUStatisticsProvider
     {
-        get
+        public long? AvailableMemory =>
+            glGetNVXGPUMemoryInfo(GLenum.GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) * 1000L;
+
+        public long? TotalMemory => glGetNVXGPUMemoryInfo(GLenum.GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX) * 1000L;
+    }
+
+    private static bool _gpuStatisticsProviderCreated;
+    private static IGPUStatisticsProvider? _gpuStatisticsProvider;
+
+    public static IGPUStatisticsProvider? CreateGPUStatisticsProvider()
+    {
+        if (_gpuStatisticsProviderCreated)
         {
-            if (IsATI_meminfoSupported)
-            {
-                var info = glGetATIMemInfo(GLenum.VBO_FREE_MEMORY_ATI);
-                return info.FreeInPool * 1000L;
-            }
-
-            if (IsNVX_gpu_memory_infoSupported)
-            {
-                return glGetNVXGPUMemoryInfo(GLenum.GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) * 1000L;
-            }
-
-            return -1;
+            return _gpuStatisticsProvider;
         }
+
+        _gpuStatisticsProviderCreated = true;
+
+        if (IsATI_meminfoSupported)
+        {
+            _gpuStatisticsProvider = new AMDStatisticsProvider();
+        }
+        else if (IsNVX_gpu_memory_infoSupported)
+        {
+            _gpuStatisticsProvider = new NvidiaStatisticsProvider();
+        }
+
+        return _gpuStatisticsProvider;
     }
 }

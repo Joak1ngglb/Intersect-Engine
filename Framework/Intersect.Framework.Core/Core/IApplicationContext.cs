@@ -52,6 +52,11 @@ public interface IApplicationContext : IDisposable
     bool IsRunning { get; }
 
     /// <summary>
+    /// The name of the application.
+    /// </summary>
+    string Name { get; }
+
+    /// <summary>
     /// The options the application was started with.
     /// </summary>
     ICommandLineOptions StartupOptions { get; }
@@ -70,6 +75,11 @@ public interface IApplicationContext : IDisposable
     /// The <see cref="IApplicationService"/>s currently registered.
     /// </summary>
     List<IApplicationService> Services { get; }
+
+    /// <summary>
+    /// The version string used in protocol communication.
+    /// </summary>
+    string Version => GetType().Assembly.GetMetadataVersion();
 
     /// <summary>
     /// The human-friendly version string.

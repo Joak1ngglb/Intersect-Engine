@@ -5,6 +5,7 @@ using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Framework.Gwen.Control.Data;
 using Intersect.Configuration;
 using Intersect.Core;
+using Intersect.Framework.Collections;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -27,7 +28,7 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
 
     private ITableDataProvider? _dataProvider;
 
-    private GameFont? _font;
+    private IFont? _font;
     private Color? _textColor;
     private Color? _textColorOverride;
     private bool _fitRowHeightToContents = true;
@@ -137,16 +138,40 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
         });
     }
 
-    public GameFont? Font
+    public IFont? Font
     {
         get => _font;
-        set => SetAndDoIfChanged(ref _font, value, () =>
+        set => SetAndDoIfChanged(ref _font, value, SetFont);
+    }
+
+    private static void SetFont(Base @this, IFont? value)
+    {
+        foreach (var row in @this.Children.OfType<TableRow>())
         {
-            foreach (var row in Children.OfType<TableRow>())
-            {
-                row.Font = value;
-            }
-        });
+            row.Font = value;
+        }
+    }
+
+    public string? FontName
+    {
+        get => _font?.Name;
+        set => Font = GameContentManager.Current.GetFont(value);
+    }
+
+    private int _fontSize = 10;
+
+    public int FontSize
+    {
+        get => _fontSize;
+        set => SetAndDoIfChanged(ref _fontSize, value, SetFontSize);
+    }
+
+    private static void SetFontSize(Base @this, int value)
+    {
+        foreach (var row in @this.Children.OfType<TableRow>())
+        {
+            row.FontSize = value;
+        }
     }
 
     /// <summary>
@@ -157,25 +182,29 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
     public Color? TextColor
     {
         get => _textColor;
-        set => SetAndDoIfChanged(ref _textColor, value, () =>
+        set => SetAndDoIfChanged(ref _textColor, value, SetTextColor);
+    }
+
+    private static void SetTextColor(Base @this, Color? value)
+    {
+        foreach (var colorableText in @this.Children.OfType<IColorableText>())
         {
-            foreach (IColorableText colorableText in Children)
-            {
-                colorableText.TextColor = value;
-            }
-        });
+            colorableText.TextColor = value;
+        }
     }
 
     public Color? TextColorOverride
     {
         get => _textColorOverride;
-        set => SetAndDoIfChanged(ref _textColorOverride, value, () =>
+        set => SetAndDoIfChanged(ref _textColorOverride, value, SetTextColorOverride);
+    }
+
+    private static void SetTextColorOverride(Base @this, Color? value)
+    {
+        foreach (var colorableText in @this.Children.OfType<IColorableText>())
         {
-            foreach (IColorableText colorableText in Children)
-            {
-                colorableText.TextColorOverride = value;
-            }
-        });
+            colorableText.TextColorOverride = value;
+        }
     }
 
     /// <summary>
@@ -227,16 +256,23 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
 
         serializedProperties.Add(nameof(SizeToContents), _sizeToContents);
         serializedProperties.Add(nameof(DefaultRowHeight), _defaultRowHeight);
-        serializedProperties.Add(nameof(Font), Font?.ToString());
+        serializedProperties.Add(nameof(FontName), FontName);
+        serializedProperties.Add(nameof(FontSize), FontSize);
         serializedProperties.Add(nameof(TextColor), TextColor?.ToString());
         serializedProperties.Add(nameof(TextColorOverride), TextColorOverride?.ToString());
 
         return base.FixJson(serializedProperties);
     }
 
-    public override void LoadJson(JToken obj, bool isRoot = default)
+    public override void LoadJson(JToken token, bool isRoot = default)
     {
-        base.LoadJson(obj);
+        base.LoadJson(token, isRoot);
+
+        if (token is not JObject obj)
+        {
+            return;
+        }
+
         if (obj[nameof(FitContents)] != null)
         {
             _sizeToContents = (bool)obj[nameof(FitContents)];
@@ -255,8 +291,21 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
                 var parts = fontInfo.Split(',');
                 var name = parts[0];
                 var size = int.Parse(parts[1], CultureInfo.InvariantCulture);
-                Font = GameContentManager.Current?.GetFont(name, size);
+                FontSize = size;
+                Font = GameContentManager.Current?.GetFont(name);
             }
+        }
+
+        if (obj.TryGetValue(nameof(FontName), out var tokenFontName) &&
+            tokenFontName is JValue { Type: JTokenType.String } valueFontName)
+        {
+            FontName = valueFontName.Value<string>();
+        }
+
+        if (obj.TryGetValue(nameof(FontSize), out var tokenFontSize) &&
+            tokenFontSize is JValue { Type: JTokenType.Integer } valueFontSize)
+        {
+            FontSize = valueFontSize.Value<int>();
         }
 
         if (obj[nameof(TextColor)] != null)
@@ -429,6 +478,19 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
         return row;
     }
 
+    public TableRow InsertRowSorted<TKey>(
+        string text,
+        Func<Base?, TKey?> keySelector,
+        string? name = null,
+        object? userData = null
+    ) where TKey : IComparable<TKey>
+    {
+        var row = AddRow(text, name: name);
+        row.UserData = userData;
+        ResortChild(row, keySelector);
+        return row;
+    }
+
     public TableRow AddRow(string text, int columnCount, string? name = null, int columnIndex = 0)
     {
         var row = AddRow(columnCount, name: name);
@@ -473,10 +535,7 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
     /// </summary>
     /// <param name="row">Row to search for.</param>
     /// <returns>Row index if found, -1 otherwise.</returns>
-    public int GetRowIndex(TableRow row)
-    {
-        return Children.IndexOf(row);
-    }
+    public int GetRowIndex(TableRow row) => IndexOf(row);
 
     /// <summary>
     ///     Lays out the control's interior according to alignment, padding, dock etc.
@@ -518,9 +577,9 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
         }
     }
 
-    protected override void PostLayout(Skin.Base skin)
+    protected override void DoPostlayout(Skin.Base skin)
     {
-        base.PostLayout(skin);
+        base.DoPostlayout(skin);
     }
 
     public bool FitRowHeightToContents
@@ -580,7 +639,8 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
                     .ToArray()
             );
 
-        var availableWidth = InnerWidth - CellSpacing.X * Math.Max(0, _columnCount - 1);
+        var cellSpacingX = CellSpacing.X;
+        var availableWidth = InnerWidth;
 
         var requestedWidths = _columnWidths.ToArray();
         requestedWidths = measuredContentWidths.Select(
@@ -680,6 +740,51 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
             )
             .ToArray();
 
+        var computedFlexColumnWidthSum = flexColumnWidths.Sum();
+        if (computedFlexColumnWidthSum > availableWidth)
+        {
+            var negativePixelsToRedistribute = computedFlexColumnWidthSum - availableWidth;
+            if (negativePixelsToRedistribute > columnCount)
+            {
+                var leftoverPixels = negativePixelsToRedistribute % columnCount;
+                var pixelsPerColumn = (negativePixelsToRedistribute - leftoverPixels) / columnCount;
+                flexColumnWidths = flexColumnWidths.Select(fcw => fcw - pixelsPerColumn).ToArray();
+                negativePixelsToRedistribute = leftoverPixels;
+            }
+
+            var distinctColumnWidths = flexColumnWidths.Distinct().ToArray();
+            if (distinctColumnWidths.Length == columnCount)
+            {
+                for (var index = 0; index < columnCount && negativePixelsToRedistribute > 0; ++index, --negativePixelsToRedistribute)
+                {
+                    --flexColumnWidths[index];
+                }
+            }
+            else
+            {
+                var distinctColumnWidthsSortedByCountAscending = distinctColumnWidths.ToDictionary(
+                        dw => dw,
+                        dw => flexColumnWidths.Count(fcw => fcw == dw)
+                    )
+                    .OrderBy(p => p.Value)
+                    .Select(p => p.Key)
+                    .ToArray();
+
+                foreach (var distinctColumnWidth in distinctColumnWidthsSortedByCountAscending)
+                {
+                    for (var index = 0;
+                         index < columnCount && negativePixelsToRedistribute > 0;
+                         ++index, --negativePixelsToRedistribute)
+                    {
+                        if (flexColumnWidths[index] == distinctColumnWidth)
+                        {
+                            --flexColumnWidths[index];
+                        }
+                    }
+                }
+            }
+        }
+
         var actualWidth = 0;
         var actualHeight = 0;
         var columnLimit = Math.Min(columnCount, requestedWidths.Length);
@@ -692,12 +797,43 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
 
         foreach (var row in rows)
         {
-            var rowWidth = 0;
+            var rowCellWidths = new int[columnLimit];
             for (var columnIndex = 0; columnIndex < columnLimit; ++columnIndex)
             {
                 var requestedWidth = requestedWidths[columnIndex];
                 var flexColumnWidth = flexColumnWidths[columnIndex];
                 var cellWidth = requestedWidth ?? flexColumnWidth;
+                if (columnIndex > 0)
+                {
+                    cellWidth -= cellSpacingX;
+                }
+
+                rowCellWidths[columnIndex] = cellWidth;
+            }
+
+            var rowPadding = row.Padding;
+            var rowPaddingH = rowPadding.Left + rowPadding.Right;
+            if (rowPaddingH > 0)
+            {
+                var negativePixelsToRedistribute = rowPaddingH;
+                if (negativePixelsToRedistribute % columnLimit == 0)
+                {
+                    var pixelsToRemovePerCell = negativePixelsToRedistribute / columnLimit;
+                    rowCellWidths = rowCellWidths.Select(rcw => rcw - pixelsToRemovePerCell).ToArray();
+                }
+                else
+                {
+                    for (var columnIndex = 0; columnIndex < columnLimit && negativePixelsToRedistribute > 0; ++columnIndex, --negativePixelsToRedistribute)
+                    {
+                        --rowCellWidths[columnIndex];
+                    }
+                }
+            }
+
+            var rowWidth = 0;
+            for (var columnIndex = 0; columnIndex < columnLimit; ++columnIndex)
+            {
+                var cellWidth = rowCellWidths[columnIndex];
                 var cell = row.GetColumn(columnIndex);
                 if (cell is not null)
                 {
@@ -769,16 +905,14 @@ public partial class Table : Base, ISmartAutoSizeToContents, IColorableText
         return childrenSize;
     }
 
-    public override bool SizeToChildren(bool resizeX = true, bool resizeY = true, bool recursive = false)
+    public override bool SizeToChildren(SizeToChildrenArgs args)
     {
         ApplicationContext.CurrentContext.Logger.LogTrace(
-            "Resizing Table {TableName} to children (X={ResizeX}, Y={ResizeY}, Recursive={Recursive})...",
+            "Resizing Table {TableName} to children ({Args})...",
             ParentQualifiedName,
-            resizeX,
-            resizeY,
-            recursive
+            args
         );
-        return base.SizeToChildren(resizeX, resizeY, recursive);
+        return base.SizeToChildren(args);
     }
 
     public void Invalidate(bool invalidateChildren, bool invalidateRecursive = true)

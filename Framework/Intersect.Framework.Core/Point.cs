@@ -1,3 +1,4 @@
+using System.Numerics;
 using MessagePack;
 
 namespace Intersect;
@@ -76,4 +77,13 @@ public partial struct Point
 
     public static Point operator /(Point point, float scalar) => new((int)(point.X / scalar), (int)(point.Y / scalar));
 
+    public void Deconstruct(out int x, out int y)
+    {
+        x = X;
+        y = Y;
+    }
+
+    public static implicit operator Point(Vector2 vector) => new((int)vector.X, (int)vector.Y);
+
+    public static implicit operator Vector2(Point point) => new(point.X, point.Y);
 }

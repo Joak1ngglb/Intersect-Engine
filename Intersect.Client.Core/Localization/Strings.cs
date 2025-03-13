@@ -959,13 +959,40 @@ public static partial class Strings
         public static LocalizedString SectionGPUStatistics = @"GPU Statistics";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString RenderBufferVRAMFree = @"Render Buffer VRAM Free";
+        public static LocalizedString SectionGPUAllocations = @"GPU Allocations";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString TextureVRAMFree = @"Texture VRAM Free";
+        public static LocalizedString SectionSystemStatistics = @"System Statistics";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString VBOVRAMFree = @"VBO VRAM Free";
+        public static LocalizedString RenderTargetAllocations = @"Render Target Allocations";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TextureAllocations = @"Texture Allocations";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TextureCount = @"Texture Assets";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString UsedVRAM = @"Used VRAM";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString FreeVRAM = @"Free VRAM";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TotalVRAM = @"Total VRAM";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString FreeVirtualRAM = @"Free RAM (Virtual)";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TotalVirtualRAM = @"Total RAM (Virtual)";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString FreePhysicalRAM = @"Free RAM (Physical)";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TotalPhysicalRAM = @"Total RAM (Physical)";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString ControlUnderCursor = @"Control Under Cursor";
@@ -1029,6 +1056,12 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Title = @"Debug";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TitleX = @"Debug #{0}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TabLabelSystem = @"System";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString TabLabelInfo = @"Info";
@@ -1227,6 +1260,12 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString None = @"None";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString FpsLabelFormat = @"{0}fps";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString PingLabelFormat = @"{0}ms";
     }
 
     public partial struct Guilds
@@ -1444,10 +1483,10 @@ If you are sure you want to hand over your guild enter '\c{{#ff8080}}{02}\c{{}}'
         public static LocalizedString AutoSizeToContentHeightOnChildResize = @"ASTH on Child Resize";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString IsVisible = @"IsVisible";
+        public static LocalizedString IsVisibleInParent = @"IsVisibleInParent";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public static LocalizedString IsVisibleInParent = @"IsVisibleInParent";
+        public static LocalizedString IsVisibleInTree = @"IsVisibleInTree";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString IsDisabled = @"IsDisabled";
@@ -2072,6 +2111,12 @@ If you are sure you want to hand over your guild enter '\c{{#ff8080}}{02}\c{{}}'
         public static LocalizedString Fps90 = @"90";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ShowFPSCounter = @"Show FPS Counter";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ShowPingCounter = @"Show Ping Counter";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Fullscreen = @"Fullscreen";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -2197,6 +2242,9 @@ If you are sure you want to hand over your guild enter '\c{{#ff8080}}{02}\c{{}}'
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString Vsync = @"V-Sync";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString EnableScrollingWorldZoom = @"Enable scrolling to change World Scale in game";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString WorldScale = @"World Scale";
@@ -2414,6 +2462,9 @@ If you are sure you want to hand over your guild enter '\c{{#ff8080}}{02}\c{{}}'
 
     public partial struct Shop
     {
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Title = @"Shop";
+
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString BuyItem = @"Buy Item";
 

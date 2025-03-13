@@ -1,3 +1,4 @@
+using System.Numerics;
 using Intersect.Client.Entities;
 using Intersect.Client.Entities.Events;
 using Intersect.Client.Framework.Content;
@@ -8,7 +9,9 @@ using Intersect.Client.General;
 using Intersect.Client.Maps;
 using Intersect.Configuration;
 using Intersect.Enums;
+using Intersect.Framework;
 using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Lighting;
 using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.GameObjects;
 using Intersect.Utilities;
@@ -18,14 +21,16 @@ namespace Intersect.Client.Core;
 public static partial class Graphics
 {
 
-    public static GameFont? ActionMsgFont;
+    public static IFont? ActionMsgFont { get; set; }
+    public static int ActionMsgFontSize { get; set; }
 
     public static object AnimationLock = new();
 
     //Darkness Stuff
-    public static float BrightnessLevel;
+    public static float BrightnessLevel { get; set; }
 
-    public static GameFont? ChatBubbleFont;
+    public static IFont? ChatBubbleFont { get; set; }
+    public static int ChatBubbleFontSize { get; set; }
 
     private static FloatRect _currentView;
 
@@ -44,16 +49,18 @@ public static partial class Graphics
     public static GameShader? DefaultShader;
 
     //Rendering Variables
-    private static GameTexture? sMenuBackground;
+    private static IGameTexture? sMenuBackground;
 
     public static int DrawCalls;
 
     public static int EntitiesDrawn;
 
-    public static GameFont? EntityNameFont;
+    public static IFont? EntityNameFont { get; set; }
+    public static int EntityNameFontSize { get; set; }
 
     //Screen Values
-    public static GameFont? GameFont;
+    public static IFont? GameFont { get; set; }
+    public static int GameFontSize { get; set; }
 
     public static object GfxLock = new();
 
@@ -77,16 +84,16 @@ public static partial class Graphics
     public static ColorF PlayerLightColor = ColorF.White;
 
     //Game Renderer
-    public static GameRenderer? Renderer;
+    public static GameRenderer Renderer { get; set; }
 
     //Cache the Y based rendering
     public static HashSet<Entity>[,]? RenderingEntities;
 
     private static GameContentManager sContentManager = null!;
 
-    private static GameRenderTexture? sDarknessTexture;
+    private static IGameRenderTexture? sDarknessTexture;
 
-    private static readonly List<LightBase> sLightQueue = [];
+    private static readonly List<LightDescriptor> sLightQueue = [];
 
     //Player Spotlight Values
     private static long sLightUpdate;
@@ -104,7 +111,8 @@ public static partial class Graphics
 
     private static float sPlayerLightSize;
 
-    public static GameFont? UIFont;
+    public static IFont? UIFont { get; set; }
+    public static int UIFontSize { get; set; }
 
     public static float MinimumWorldScale => Options.Instance?.Map?.MinimumWorldScale ?? 1;
 
@@ -116,27 +124,26 @@ public static partial class Graphics
         Renderer?.Init();
         sContentManager = Globals.ContentManager;
         sContentManager.LoadAll();
-        GameFont = FindFont(ClientConfiguration.Instance.GameFont);
-        UIFont = FindFont(ClientConfiguration.Instance.UIFont);
-        EntityNameFont = FindFont(ClientConfiguration.Instance.EntityNameFont);
-        ChatBubbleFont = FindFont(ClientConfiguration.Instance.ChatBubbleFont);
-        ActionMsgFont = FindFont(ClientConfiguration.Instance.ActionMsgFont);
+        (GameFont, GameFontSize) = FindFont(ClientConfiguration.Instance.GameFont);
+        (UIFont, UIFontSize) = FindFont(ClientConfiguration.Instance.UIFont);
+        (EntityNameFont, EntityNameFontSize) = FindFont(ClientConfiguration.Instance.EntityNameFont);
+        (ChatBubbleFont, ChatBubbleFontSize) = FindFont(ClientConfiguration.Instance.ChatBubbleFont);
+        (ActionMsgFont, ActionMsgFontSize) = FindFont(ClientConfiguration.Instance.ActionMsgFont);
     }
 
-    public static GameFont FindFont(string font)
+    private static (IFont?, int) FindFont(string font)
     {
         var size = 8;
 
-        if (font.IndexOf(',') < 0)
+        // ReSharper disable once InvertIf
+        if (font.IndexOf(',') > 0)
         {
-            return sContentManager.GetFont(font, size);
+            var parts = font.Split(',');
+            font = parts[0];
+            _ = int.TryParse(parts[1], out size);
         }
 
-        var parts = font.Split(',');
-        font = parts[0];
-        _ = int.TryParse(parts[1], out size);
-
-        return sContentManager.GetFont(font, size);
+        return (sContentManager.GetFont(font), size);
     }
 
     public static void InitInGame()
@@ -153,11 +160,13 @@ public static partial class Graphics
 
     public static void DrawIntro()
     {
-        if (!sContentManager.TryGetTexture(
-                TextureType.Image,
-                ClientConfiguration.Instance.IntroImages[Globals.IntroIndex],
-                out var texture
-            ))
+        var introImages = ClientConfiguration.Instance.IntroImages;
+        if (introImages.Count <= Globals.IntroIndex)
+        {
+            return;
+        }
+
+        if (!sContentManager.TryGetTexture(TextureType.Image, introImages[Globals.IntroIndex], out var texture))
         {
             return;
         }
@@ -531,36 +540,38 @@ public static partial class Graphics
     //Game Rendering
     public static void Render(TimeSpan deltaTime, TimeSpan totalTime)
     {
+        if (Renderer is not { } renderer)
+        {
+            return;
+        }
+
         var takingScreenshot = false;
-        if (Renderer?.ScreenshotRequests.Count > 0)
+        if (renderer is { HasScreenshotRequests: true })
         {
-            takingScreenshot = Renderer.BeginScreenshot();
+            takingScreenshot = renderer.BeginScreenshot();
         }
 
-        if (Renderer == default)
-        {
-            return;
-        }
+        var gameState = Globals.GameState;
 
-        Renderer.Scale = Globals.GameState == GameStates.InGame ? Globals.Database.WorldZoom : 1.0f;
+        renderer.Scale = gameState == GameStates.InGame ? Globals.Database.WorldZoom : 1.0f;
 
-        if (!Renderer.Begin())
+        if (!renderer.Begin())
         {
             return;
         }
 
-        if (Renderer.GetScreenWidth() != sOldWidth ||
-            Renderer.GetScreenHeight() != sOldHeight ||
-            Renderer.DisplayModeChanged())
+        if (renderer.ScreenWidth != sOldWidth ||
+            renderer.ScreenHeight != sOldHeight ||
+            renderer.DisplayModeChanged())
         {
             sDarknessTexture = null;
             Interface.Interface.DestroyGwen();
             Interface.Interface.InitGwen();
-            sOldWidth = Renderer.GetScreenWidth();
-            sOldHeight = Renderer.GetScreenHeight();
+            sOldWidth = renderer.ScreenWidth;
+            sOldHeight = renderer.ScreenHeight;
         }
 
-        Renderer.Clear(Color.Black);
+        renderer.Clear(Color.Black);
         DrawCalls = 0;
         MapsDrawn = 0;
         EntitiesDrawn = 0;
@@ -568,51 +579,67 @@ public static partial class Graphics
 
         UpdateView();
 
-        switch (Globals.GameState)
+        switch (gameState)
         {
             case GameStates.Intro:
                 DrawIntro();
-
                 break;
+
             case GameStates.Menu:
                 DrawMenu();
-
                 break;
+
             case GameStates.Loading:
                 break;
+
             case GameStates.InGame:
                 DrawInGame(deltaTime);
-
                 break;
+
             case GameStates.Error:
                 break;
+
             default:
-                throw new ArgumentOutOfRangeException();
+                throw Exceptions.UnreachableInvalidEnum(gameState);
         }
 
-        Renderer.Scale = Globals.Database.UIScale;
+        renderer.Scale = Globals.Database.UIScale;
 
         Interface.Interface.DrawGui(deltaTime, totalTime);
 
         DrawGameTexture(
-            Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1), CurrentView,
-            new Color((int)Fade.Alpha, 0, 0, 0), null, GameBlendModes.None
+            tex: renderer.WhitePixel,
+            srcRectangle: new FloatRect(0, 0, 1, 1),
+            targetRect: CurrentView,
+            renderColor: new Color((int)Fade.Alpha, 0, 0, 0),
+            renderTarget: null,
+            blendMode: GameBlendModes.None
         );
 
         // Draw our mousecursor at the very end, but not when taking screenshots.
         if (!takingScreenshot && !string.IsNullOrWhiteSpace(ClientConfiguration.Instance.MouseCursor))
         {
-            var renderLoc = ConvertToWorldPointNoZoom(Globals.InputManager.GetMousePosition());
-            DrawGameTexture(
-                Globals.ContentManager.GetTexture(Framework.Content.TextureType.Misc, ClientConfiguration.Instance.MouseCursor), renderLoc.X, renderLoc.Y
-           );
+            var cursorTexture = Globals.ContentManager.GetTexture(
+                TextureType.Misc,
+                ClientConfiguration.Instance.MouseCursor
+            );
+
+            if (cursorTexture is not null)
+            {
+                var cursorPosition = ConvertToWorldPointNoZoom(Globals.InputManager.GetMousePosition());
+                DrawGameTexture(
+                    cursorTexture,
+                    cursorPosition.X,
+                    cursorPosition.Y
+                );
+            }
         }
 
-        Renderer.End();
+        renderer.End();
 
         if (takingScreenshot)
         {
-            Renderer.EndScreenshot();
+            renderer.EndScreenshot();
         }
     }
 
@@ -774,40 +801,40 @@ public static partial class Graphics
             }
         }
 
-        DrawGameTexture(Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1), CurrentView, OverlayColor, null);
+        DrawGameTexture(Renderer.WhitePixel, new FloatRect(0, 0, 1, 1), CurrentView, OverlayColor, null);
         sOverlayUpdate = Timing.Global.MillisecondsUtc;
     }
 
-    public static FloatRect GetSourceRect(GameTexture gameTexture)
+    public static FloatRect GetSourceRect(IGameTexture gameTexture)
     {
         return gameTexture == null
             ? new FloatRect()
             : new FloatRect(0, 0, gameTexture.Width, gameTexture.Height);
     }
 
-    public static void DrawFullScreenTexture(GameTexture tex, float alpha = 1f)
+    public static void DrawFullScreenTexture(IGameTexture tex, float alpha = 1f)
     {
         if (Renderer == default)
         {
             return;
         }
 
-        var bgx = Renderer.GetScreenWidth() / 2 - tex.Width / 2;
-        var bgy = Renderer.GetScreenHeight() / 2 - tex.Height / 2;
+        var bgx = Renderer.ScreenWidth / 2 - tex.Width / 2;
+        var bgy = Renderer.ScreenHeight / 2 - tex.Height / 2;
         var bgw = tex.Width;
         var bgh = tex.Height;
         int diff;
 
-        if (bgw < Renderer.GetScreenWidth())
+        if (bgw < Renderer.ScreenWidth)
         {
-            diff = Renderer.GetScreenWidth() - bgw;
+            diff = Renderer.ScreenWidth - bgw;
             bgx -= diff / 2;
             bgw += diff;
         }
 
-        if (bgh < Renderer.GetScreenHeight())
+        if (bgh < Renderer.ScreenHeight)
         {
-            diff = Renderer.GetScreenHeight() - bgh;
+            diff = Renderer.ScreenHeight - bgh;
             bgy -= diff / 2;
             bgh += diff;
         }
@@ -819,15 +846,15 @@ public static partial class Graphics
         );
     }
 
-    public static void DrawFullScreenTextureCentered(GameTexture tex, float alpha = 1f)
+    public static void DrawFullScreenTextureCentered(IGameTexture tex, float alpha = 1f)
     {
         if (Renderer == default)
         {
             return;
         }
 
-        var bgx = Renderer.GetScreenWidth() / 2 - tex.Width / 2;
-        var bgy = Renderer.GetScreenHeight() / 2 - tex.Height / 2;
+        var bgx = Renderer.ScreenWidth / 2 - tex.Width / 2;
+        var bgy = Renderer.ScreenHeight / 2 - tex.Height / 2;
         var bgw = tex.Width;
         var bgh = tex.Height;
 
@@ -838,7 +865,7 @@ public static partial class Graphics
         );
     }
 
-    public static void DrawFullScreenTextureStretched(GameTexture tex)
+    public static void DrawFullScreenTextureStretched(IGameTexture tex)
     {
         if (Renderer == default)
         {
@@ -848,55 +875,55 @@ public static partial class Graphics
         DrawGameTexture(
             tex, GetSourceRect(tex),
             new FloatRect(
-                Renderer.GetView().X, Renderer.GetView().Y, Renderer.GetScreenWidth(), Renderer.GetScreenHeight()
+                Renderer.GetView().X, Renderer.GetView().Y, Renderer.ScreenWidth, Renderer.ScreenHeight
             ), Color.White
         );
     }
 
-    public static void DrawFullScreenTextureFitWidth(GameTexture tex)
+    public static void DrawFullScreenTextureFitWidth(IGameTexture tex)
     {
         if (Renderer == default)
         {
             return;
         }
 
-        var scale = Renderer.GetScreenWidth() / (float)tex.Width;
+        var scale = Renderer.ScreenWidth / (float)tex.Width;
         var scaledHeight = tex.Height * scale;
-        var offsetY = (Renderer.GetScreenHeight() - tex.Height) / 2f;
+        var offsetY = (Renderer.ScreenHeight - tex.Height) / 2f;
         DrawGameTexture(
             tex, GetSourceRect(tex),
             new FloatRect(
-                Renderer.GetView().X, Renderer.GetView().Y + offsetY, Renderer.GetScreenWidth(), scaledHeight
+                Renderer.GetView().X, Renderer.GetView().Y + offsetY, Renderer.ScreenWidth, scaledHeight
             ), Color.White
         );
     }
 
-    public static void DrawFullScreenTextureFitHeight(GameTexture tex)
+    public static void DrawFullScreenTextureFitHeight(IGameTexture tex)
     {
         if (Renderer == default)
         {
             return;
         }
 
-        var scale = Renderer.GetScreenHeight() / (float)tex.Height;
+        var scale = Renderer.ScreenHeight / (float)tex.Height;
         var scaledWidth = tex.Width * scale;
-        var offsetX = (Renderer.GetScreenWidth() - scaledWidth) / 2f;
+        var offsetX = (Renderer.ScreenWidth - scaledWidth) / 2f;
         DrawGameTexture(
             tex, GetSourceRect(tex),
             new FloatRect(
-                Renderer.GetView().X + offsetX, Renderer.GetView().Y, scaledWidth, Renderer.GetScreenHeight()
+                Renderer.GetView().X + offsetX, Renderer.GetView().Y, scaledWidth, Renderer.ScreenHeight
             ), Color.White
         );
     }
 
-    public static void DrawFullScreenTextureFitMinimum(GameTexture tex)
+    public static void DrawFullScreenTextureFitMinimum(IGameTexture tex)
     {
         if (Renderer == default)
         {
             return;
         }
 
-        if (Renderer.GetScreenWidth() > Renderer.GetScreenHeight())
+        if (Renderer.ScreenWidth > Renderer.ScreenHeight)
         {
             DrawFullScreenTextureFitHeight(tex);
         }
@@ -906,14 +933,14 @@ public static partial class Graphics
         }
     }
 
-    public static void DrawFullScreenTextureFitMaximum(GameTexture tex)
+    public static void DrawFullScreenTextureFitMaximum(IGameTexture tex)
     {
         if (Renderer == default)
         {
             return;
         }
 
-        if (Renderer.GetScreenWidth() < Renderer.GetScreenHeight())
+        if (Renderer.ScreenWidth < Renderer.ScreenHeight)
         {
             DrawFullScreenTextureFitHeight(tex);
         }
@@ -934,8 +961,8 @@ public static partial class Graphics
 
         if (Globals.GameState != GameStates.InGame || !MapInstance.TryGet(Globals.Me?.MapId ?? Guid.Empty, out var map))
         {
-            var sw = Renderer.GetScreenWidth();
-            var sh = Renderer.GetScreenHeight();
+            var sw = Renderer.ScreenWidth;
+            var sh = Renderer.ScreenHeight;
             var sx = 0;
             var sy = 0;
             CurrentView = new FloatRect(sx, sy, sw / scale, sh / scale);
@@ -1043,7 +1070,7 @@ public static partial class Graphics
             return;
         }
 
-        sDarknessTexture ??= Renderer.CreateRenderTexture(Renderer.GetScreenWidth(), Renderer.GetScreenHeight());
+        sDarknessTexture ??= Renderer.CreateRenderTexture(Renderer.ScreenWidth, Renderer.ScreenHeight);
         sDarknessTexture.Clear(Color.Black);
     }
 
@@ -1075,11 +1102,11 @@ public static partial class Graphics
             return;
         }
 
-        var destRect = new FloatRect(new Pointf(), sDarknessTexture.Dimensions / Globals.Database.WorldZoom);
+        var destRect = new FloatRect(new Vector2(), sDarknessTexture.Dimensions / Globals.Database.WorldZoom);
         if (map.IsIndoors)
         {
             DrawGameTexture(
-                Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1),
+                Renderer.WhitePixel, new FloatRect(0, 0, 1, 1),
                 destRect,
                 new Color((byte)BrightnessLevel, 255, 255, 255), sDarknessTexture, GameBlendModes.Add
             );
@@ -1087,13 +1114,13 @@ public static partial class Graphics
         else
         {
             DrawGameTexture(
-                Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1),
+                Renderer.WhitePixel, new FloatRect(0, 0, 1, 1),
                 destRect,
                 new Color(255, 255, 255, 255), sDarknessTexture, GameBlendModes.Add
             );
 
             DrawGameTexture(
-                Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1),
+                Renderer.WhitePixel, new FloatRect(0, 0, 1, 1),
                 destRect,
                 new Color(
                     (int)Time.GetTintColor().A, (int)Time.GetTintColor().R, (int)Time.GetTintColor().G,
@@ -1149,7 +1176,7 @@ public static partial class Graphics
             return;
         }
 
-        sLightQueue.Add(new LightBase(0, 0, x, y, intensity, size, expand, color));
+        sLightQueue.Add(new LightDescriptor(0, 0, x, y, intensity, size, expand, color));
         LightsDrawn++;
     }
 
@@ -1175,7 +1202,7 @@ public static partial class Graphics
                     radialShader.SetFloat("Expand", l.Expand / 100f);
 
                     DrawGameTexture(
-                        Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1),
+                        Renderer.WhitePixel, new FloatRect(0, 0, 1, 1),
                         new FloatRect(x, y, l.Size * 2, l.Size * 2), new Color(255, 255, 255, 255), sDarknessTexture, GameBlendModes.Add, radialShader, 0, false
                     );
 
@@ -1388,9 +1415,9 @@ public static partial class Graphics
     /// </summary>
     /// <param name="windowPoint">The point to convert.</param>
     /// <returns>The converted point.</returns>
-    public static Pointf ConvertToWorldPoint(Pointf windowPoint)
+    public static Vector2 ConvertToWorldPoint(Vector2 windowPoint)
     {
-        return new Pointf(
+        return new Vector2(
             (int)Math.Floor(windowPoint.X / Globals.Database.WorldZoom + CurrentView.Left),
             (int)Math.Floor(windowPoint.Y / Globals.Database.WorldZoom + CurrentView.Top)
         );
@@ -1401,9 +1428,9 @@ public static partial class Graphics
     /// </summary>
     /// <param name="windowPoint">The point to convert.</param>
     /// <returns>The converted point.</returns>
-    public static Pointf ConvertToWorldPointNoZoom(Pointf windowPoint)
+    public static Vector2 ConvertToWorldPointNoZoom(Vector2 windowPoint)
     {
-        return new Pointf((int)Math.Floor(windowPoint.X + CurrentView.Left), (int)Math.Floor(windowPoint.Y + CurrentView.Top));
+        return new Vector2((int)Math.Floor(windowPoint.X + CurrentView.Left), (int)Math.Floor(windowPoint.Y + CurrentView.Top));
     }
 
     //Rendering Functions
@@ -1421,10 +1448,10 @@ public static partial class Graphics
     /// <param name="rotationDegrees">How much to rotate the texture in degrees</param>
     /// <param name="drawImmediate">If true, the texture will be drawn immediately. If false, it will be queued for drawing.</param>
     public static void DrawGameTexture(
-        GameTexture tex,
+        IGameTexture tex,
         float x,
         float y,
-        GameRenderTexture? renderTarget = null,
+        IGameRenderTexture? renderTarget = null,
         GameBlendModes blendMode = GameBlendModes.None,
         GameShader? shader = null,
         float rotationDegrees = 0.0f,
@@ -1454,11 +1481,11 @@ public static partial class Graphics
     /// <param name="rotationDegrees">How much to rotate the texture in degrees</param>
     /// <param name="drawImmediate">If true, the texture will be drawn immediately. If false, it will be queued for drawing.</param>
     public static void DrawGameTexture(
-        GameTexture tex,
+        IGameTexture tex,
         float x,
         float y,
         Color renderColor,
-        GameRenderTexture? renderTarget = null,
+        IGameRenderTexture? renderTarget = null,
         GameBlendModes blendMode = GameBlendModes.None,
         GameShader? shader = null,
         float rotationDegrees = 0.0f,
@@ -1490,14 +1517,14 @@ public static partial class Graphics
     /// <param name="rotationDegrees">How much to rotate the texture in degrees</param>
     /// <param name="drawImmediate">If true, the texture will be drawn immediately. If false, it will be queued for drawing.</param>
     public static void DrawGameTexture(
-        GameTexture tex,
+        IGameTexture tex,
         float dx,
         float dy,
         float sx,
         float sy,
         float w,
         float h,
-        GameRenderTexture? renderTarget = null,
+        IGameRenderTexture? renderTarget = null,
         GameBlendModes blendMode = GameBlendModes.None,
         GameShader? shader = null,
         float rotationDegrees = 0.0f,
@@ -1516,11 +1543,11 @@ public static partial class Graphics
     }
 
     public static void DrawGameTexture(
-        GameTexture tex,
+        IGameTexture tex,
         FloatRect srcRectangle,
         FloatRect targetRect,
         Color renderColor,
-        GameRenderTexture? renderTarget = null,
+        IGameRenderTexture? renderTarget = null,
         GameBlendModes blendMode = GameBlendModes.None,
         GameShader? shader = null,
         float rotationDegrees = 0.0f,

@@ -10,6 +10,7 @@ using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
 using Intersect.Client.Interface.Game.Shop;
 using Intersect.Client.Interface.Game.Trades;
+using Intersect.Client.Interface.Menu;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.Networking;
 using Intersect.Core;
@@ -34,9 +35,9 @@ public partial class GameInterface : MutableInterface
 
     private AdminWindow? mAdminWindow;
 
-    private BagWindow mBagWindow;
+    private BagWindow _bagWindow;
 
-    private BankWindow mBankWindow;
+    private BankWindow? _bankWindow;
 
     private Chatbox mChatBox;
 
@@ -46,7 +47,7 @@ public partial class GameInterface : MutableInterface
 
     private QuestOfferWindow mQuestOfferWindow;
 
-    private ShopWindow mShopWindow;
+    private ShopWindow _shopWindow;
 
     private MapItemWindow mMapItemWindow;
 
@@ -54,7 +55,7 @@ public partial class GameInterface : MutableInterface
 
     private bool mShouldCloseBag;
 
-    private bool mShouldCloseBank;
+    private bool _shouldCloseBank;
 
     private bool mShouldCloseCraftingTable;
 
@@ -96,7 +97,7 @@ public partial class GameInterface : MutableInterface
     {
         _settingsWindow ??= new SettingsWindow(GameCanvas)
         {
-            IsVisible = false,
+            IsVisibleInTree = false,
         };
 
         return _settingsWindow;
@@ -105,23 +106,27 @@ public partial class GameInterface : MutableInterface
     public GameInterface(Canvas canvas) : base(canvas)
     {
         GameCanvas = canvas;
-        EscapeMenu = new EscapeMenu(GameCanvas, GetOrCreateSettingsWindow) {IsHidden = true};
-        SimplifiedEscapeMenu = new SimplifiedEscapeMenu(GameCanvas, GetOrCreateSettingsWindow) {IsHidden = true};
-        TargetContextMenu = new TargetContextMenu(GameCanvas) {IsHidden = true};
-        AnnouncementWindow = new AnnouncementWindow(GameCanvas) { IsHidden = true };
 
         InitGameGui();
     }
 
     public Canvas GameCanvas { get; }
 
-    public EscapeMenu EscapeMenu { get; }
+    private AnnouncementWindow? _announcementWindow;
+    private EscapeMenuWindow? _escapeMenu;
+    private SimplifiedEscapeMenu? _simplifiedEscapeMenu;
+    private TargetContextMenu? _targetContextMenu;
 
-    public SimplifiedEscapeMenu SimplifiedEscapeMenu { get; }
+    public EscapeMenuWindow EscapeMenu => _escapeMenu ??= new EscapeMenuWindow(GameCanvas, GetOrCreateSettingsWindow)
+    {
+        IsHidden = true,
+    };
 
-    public TargetContextMenu TargetContextMenu { get; }
+    public SimplifiedEscapeMenu SimplifiedEscapeMenu => _simplifiedEscapeMenu ??= new SimplifiedEscapeMenu(GameCanvas, GetOrCreateSettingsWindow) {IsHidden = true};
 
-    public AnnouncementWindow AnnouncementWindow { get; }
+    public TargetContextMenu TargetContextMenu => _targetContextMenu ??= new TargetContextMenu(GameCanvas) {IsHidden = true};
+
+    public AnnouncementWindow AnnouncementWindow => _announcementWindow ??= new AnnouncementWindow(GameCanvas) { IsHidden = true };
 
     public MenuContainer GameMenu { get; private set; }
 
@@ -140,7 +145,6 @@ public partial class GameInterface : MutableInterface
 
         mQuestOfferWindow = new QuestOfferWindow(GameCanvas);
         mMapItemWindow = new MapItemWindow(GameCanvas);
-        mBankWindow = new BankWindow(GameCanvas);
     }
 
     //Chatbox
@@ -205,9 +209,7 @@ public partial class GameInterface : MutableInterface
 
     public void OpenShop()
     {
-        mShopWindow?.Close();
-
-        mShopWindow = new ShopWindow(GameCanvas);
+        _shopWindow = new ShopWindow(GameCanvas) { DeleteOnClose = true };
         mShouldOpenShop = false;
     }
 
@@ -219,12 +221,12 @@ public partial class GameInterface : MutableInterface
 
     public void NotifyCloseBank()
     {
-        mShouldCloseBank = true;
+        _shouldCloseBank = true;
     }
 
     public void OpenBank()
     {
-        mBankWindow.Open();
+        _bankWindow = new BankWindow(GameCanvas) { DeleteOnClose = true };
         mShouldOpenBank = false;
         Globals.InBank = true;
     }
@@ -242,21 +244,19 @@ public partial class GameInterface : MutableInterface
 
     public void OpenBag()
     {
-        mBagWindow?.Close();
-
-        mBagWindow = new BagWindow(GameCanvas);
+        _bagWindow = new BagWindow(GameCanvas) { DeleteOnClose = true };
         mShouldOpenBag = false;
         Globals.InBag = true;
     }
 
     public BagWindow GetBagWindow()
     {
-        return mBagWindow;
+        return _bagWindow;
     }
 
-    public BankWindow GetBankWindow()
+    public BankWindow? GetBankWindow()
     {
-        return mBankWindow;
+        return _bankWindow;
     }
 
     //Crafting
@@ -347,7 +347,7 @@ public partial class GameInterface : MutableInterface
                 mQuestOfferWindow.Hide();
             }
         }
-        else if (QuestBase.TryGet(questDescriptorId, out var questDescriptor))
+        else if (QuestDescriptor.TryGet(questDescriptorId, out var questDescriptor))
         {
             mQuestOfferWindow.Update(questDescriptor);
         }
@@ -388,7 +388,7 @@ public partial class GameInterface : MutableInterface
             GameMenu.OpenInventory();
         }
 
-        if (mShopWindow != null && (!mShopWindow.IsVisible() || mShouldCloseShop))
+        if (_shopWindow != null && (!_shopWindow.IsVisibleInTree || mShouldCloseShop))
         {
             CloseShop();
         }
@@ -399,18 +399,16 @@ public partial class GameInterface : MutableInterface
         if (mShouldOpenBank)
         {
             OpenBank();
-            GameMenu.OpenInventory();
+            GameMenu?.OpenInventory();
         }
-        else if (mShouldCloseBank)
+        else if (_shouldCloseBank)
         {
             CloseBank();
         }
         else
         {
-            mBankWindow.Update();
+            _bankWindow?.Update();
         }
-
-
 
         //Bag Update
         if (mShouldOpenBag)
@@ -418,15 +416,15 @@ public partial class GameInterface : MutableInterface
             OpenBag();
         }
 
-        if (mBagWindow != null)
+        if (_bagWindow != null)
         {
-            if (!mBagWindow.IsVisible() || mShouldCloseBag)
+            if (!_bagWindow.IsVisibleInTree || mShouldCloseBag)
             {
                 CloseBagWindow();
             }
             else
             {
-                mBagWindow.Update();
+                _bagWindow.Update();
             }
         }
 
@@ -441,7 +439,7 @@ public partial class GameInterface : MutableInterface
 
         if (mCraftingWindow != null)
         {
-            if (!mCraftingWindow.IsVisible || mShouldCloseCraftingTable)
+            if (!mCraftingWindow.IsVisibleInTree || mShouldCloseCraftingTable)
             {
                 CloseCraftingTable();
             }
@@ -517,23 +515,23 @@ public partial class GameInterface : MutableInterface
     private void CloseShop()
     {
         Globals.GameShop = null;
-        mShopWindow?.Close();
-        mShopWindow = null;
+        _shopWindow?.Hide();
+        _shopWindow = null;
         PacketSender.SendCloseShop();
     }
 
     private void CloseBank()
     {
-        mBankWindow.Close();
+        _bankWindow = null;
         Globals.InBank = false;
         PacketSender.SendCloseBank();
-        mShouldCloseBank = false;
+        _shouldCloseBank = false;
     }
 
     private void CloseBagWindow()
     {
-        mBagWindow?.Close();
-        mBagWindow = null;
+        _bagWindow?.Hide();
+        _bagWindow = null;
         Globals.InBag = false;
         PacketSender.SendCloseBag();
     }
@@ -557,7 +555,7 @@ public partial class GameInterface : MutableInterface
     public bool CloseAllWindows()
     {
         var closedWindows = false;
-        if (mBagWindow != null && mBagWindow.IsVisible())
+        if (_bagWindow != null && _bagWindow.IsVisibleInTree)
         {
             CloseBagWindow();
             closedWindows = true;
@@ -569,19 +567,19 @@ public partial class GameInterface : MutableInterface
             closedWindows = true;
         }
 
-        if (mBankWindow != null && mBankWindow.IsVisible())
+        if (_bankWindow is { IsVisibleInTree: true })
         {
             CloseBank();
             closedWindows = true;
         }
 
-        if (mCraftingWindow is { IsVisible: true, IsCrafting: false })
+        if (mCraftingWindow is { IsVisibleInTree: true, IsCrafting: false })
         {
             CloseCraftingTable();
             closedWindows = true;
         }
 
-        if (mShopWindow != null && mShopWindow.IsVisible())
+        if (_shopWindow is { IsVisibleInTree: true })
         {
             CloseShop();
             closedWindows = true;
@@ -593,7 +591,7 @@ public partial class GameInterface : MutableInterface
             closedWindows = true;
         }
 
-        if (TargetContextMenu.IsVisible)
+        if (TargetContextMenu.IsVisibleInTree)
         {
             TargetContextMenu.ToggleHidden();
             closedWindows = true;

@@ -38,7 +38,7 @@ public partial class SelectCharacterWindow : Window
     public int _selectedCharacterIndex;
     private CharacterSelectionPreviewMetadata[]? _characterSelectionPreviews;
 
-    private readonly GameFont? _defaultFont;
+    private readonly IFont? _defaultFont;
 
     private readonly Panel _characterPreviewPanel;
     private readonly Panel _previewContainer;
@@ -53,7 +53,7 @@ public partial class SelectCharacterWindow : Window
     {
         _mainMenu = mainMenu;
 
-        _defaultFont = GameContentManager.Current.GetFont(name: "sourcesansproblack", 12);
+        _defaultFont = GameContentManager.Current.GetFont(name: "sourcesansproblack");
 
         Alignment = [Alignments.Center];
         MinimumSize = new Point(x: 560, y: 240);
@@ -75,6 +75,7 @@ public partial class SelectCharacterWindow : Window
         {
             Alignment = [Alignments.Left],
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(120, 24),
             Text = Strings.CharacterSelection.New,
         };
@@ -84,6 +85,7 @@ public partial class SelectCharacterWindow : Window
         {
             Alignment = [Alignments.Left],
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(120, 24),
             Text = Strings.CharacterSelection.Play,
         };
@@ -93,6 +95,7 @@ public partial class SelectCharacterWindow : Window
         {
             Alignment = [Alignments.CenterH],
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(120, 24),
             Text = Strings.CharacterSelection.Delete,
         };
@@ -102,6 +105,7 @@ public partial class SelectCharacterWindow : Window
         {
             Alignment = [Alignments.Right],
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(120, 24),
             Text = Strings.CharacterSelection.Logout,
         };
@@ -142,6 +146,7 @@ public partial class SelectCharacterWindow : Window
             AutoSizeToContents = true,
             Dock = Pos.Bottom | Pos.CenterH,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.CharacterSelection.Empty,
         };
 
@@ -150,6 +155,7 @@ public partial class SelectCharacterWindow : Window
             AutoSizeToContents = true,
             Dock = Pos.Bottom | Pos.CenterH,
             Font = _defaultFont,
+            FontSize = 12,
         };
 
         _previewContainer = new Panel(_characterPreviewPanel, name: nameof(_previewContainer))
@@ -173,6 +179,7 @@ public partial class SelectCharacterWindow : Window
         SizeToChildren(recursive: true);
 
         LoadJsonUi(GameContentManager.UI.Menu, Graphics.Renderer?.GetResolutionString());
+        EnsureArrowsVisibility();
     }
 
     //Methods
@@ -250,11 +257,11 @@ public partial class SelectCharacterWindow : Window
             faceLayer.ResetUVs();
             faceLayer.SetBounds(x, y, faceTextureWidth, faceTextureHeight);
             faceLayer.Texture = faceTexture;
-            faceLayer.IsVisible = true;
+            faceLayer.IsVisibleInTree = true;
 
             foreach (var renderLayer in _renderLayers.Skip(1))
             {
-                renderLayer.IsVisible = false;
+                renderLayer.IsVisibleInTree = false;
             }
             return;
         }
@@ -339,7 +346,25 @@ public partial class SelectCharacterWindow : Window
 
         _selectedCharacterIndex = 0;
         UpdateDisplay();
+
+        if (_buttonPlay.IsVisibleInParent)
+        {
+            PostLayout.Enqueue(button => button.Focus(), _buttonPlay);
+        }
+
         base.Show();
+        EnsureArrowsVisibility();
+    }
+
+    private void EnsureArrowsVisibility()
+    {
+        // in case the json load is changing the visibility of the arrows when it shouldn't
+        // lets ensure the right value
+        if (CharacterSelectionPreviews != default)
+        {
+            _selectCharacterRightButton.IsHidden = CharacterSelectionPreviews.Length <= 1;
+            _selectCharacterLeftButton.IsHidden = CharacterSelectionPreviews.Length <= 1;
+        }
     }
 
     private void _buttonLogout_Clicked(Base sender, MouseButtonState arguments)

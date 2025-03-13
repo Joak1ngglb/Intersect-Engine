@@ -22,10 +22,13 @@ internal static class Program
 
         try
         {
-            Console.WriteLine($"Starting {Assembly.GetExecutingAssembly().GetMetadataName()}...");
+            var executingAssembly = Assembly.GetExecutingAssembly();
+            Console.WriteLine(
+                $"Starting {executingAssembly.GetMetadataName()} in {Environment.CurrentDirectory}...\n\t{string.Join(' ', args)}"
+            );
 
             ServerContext.ServerContextFactory = (options, logger, packetHelper) =>
-                new FullServerContext(options, logger, packetHelper);
+                new FullServerContext(executingAssembly, options, logger, packetHelper);
 
             ServerContext.NetworkFactory = (context, parameters, handlePacket, shouldProcessPacket) =>
             {
@@ -39,11 +42,49 @@ internal static class Program
 
             Client.EnqueueNetworkTask = action => ServerNetwork.Pool.QueueWorkItem(action);
 
-            Bootstrapper.Start(args);
+            Bootstrapper.Start(executingAssembly, args, ExtractWwwroot);
         }
         catch (Exception exception)
         {
             ServerContext.DispatchUnhandledException(exception.InnerException ?? exception);
+        }
+    }
+
+    private static void ExtractWwwroot(ServerCommandLineOptions options)
+    {
+        var assembly = typeof(Program).Assembly;
+        var wwwrootResourceNames = assembly.FindMatchingResources("wwwroot");
+        var workingDirectory = options.WorkingDirectory;
+        if (string.IsNullOrWhiteSpace(workingDirectory))
+        {
+            workingDirectory = Environment.CurrentDirectory;
+        }
+
+        foreach (var wwwrootResourceName in wwwrootResourceNames)
+        {
+            var resolvedOutputPath = Path.Combine(workingDirectory, wwwrootResourceName);
+            FileInfo outputFileInfo = new(resolvedOutputPath);
+            if (outputFileInfo.Exists)
+            {
+                // Don't overwrite existing files
+                continue;
+            }
+
+            using var manifestResourceStream = assembly.GetManifestResourceStream(wwwrootResourceName);
+            if (manifestResourceStream == null)
+            {
+                // TODO: Pre-context logging
+                continue;
+            }
+
+            DirectoryInfo outputFileDirectoryInfo = outputFileInfo.Directory;
+            if (outputFileDirectoryInfo is { Exists: false })
+            {
+                outputFileDirectoryInfo.Create();
+            }
+
+            using var outputFileStream = outputFileInfo.OpenWrite();
+            manifestResourceStream.CopyTo(outputFileStream);
         }
     }
 

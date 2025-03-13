@@ -10,6 +10,8 @@ using Intersect.Client.Localization;
 using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
@@ -814,7 +816,7 @@ public partial class EntityBox
                     if (equipment[Options.Instance.Equipment.Slots.IndexOf(Options.Instance.Equipment.Paperdoll.Directions[1][z])] != Guid.Empty)
                     {
                         var itemId = equipment[Options.Instance.Equipment.Slots.IndexOf(Options.Instance.Equipment.Paperdoll.Directions[1][z])];
-                        if (ItemBase.TryGet(itemId, out var itemDescriptor))
+                        if (ItemDescriptor.TryGet(itemId, out var itemDescriptor))
                         {
                             paperdoll = MyEntity.Gender == 0
                                 ? itemDescriptor.MalePaperdoll : itemDescriptor.FemalePaperdoll;
@@ -892,14 +894,13 @@ public partial class EntityBox
     public void Dispose()
     {
         EntityWindow.Hide();
-        Interface.GameUi.GameCanvas.RemoveChild(EntityWindow, false);
-        EntityWindow.Dispose();
+        EntityWindow.Canvas?.RemoveChild(EntityWindow, true);
     }
 
     public bool IsVisible
     {
-        get => EntityWindow.IsVisible;
-        set => EntityWindow.IsVisible = value;
+        get => EntityWindow.IsVisibleInTree;
+        set => EntityWindow.IsVisibleInTree = value;
     }
 
     public void Hide()

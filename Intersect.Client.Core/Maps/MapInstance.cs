@@ -15,10 +15,14 @@ using Intersect.Client.Localization;
 using Intersect.Compression;
 using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
 using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps.Attributes;
 using Intersect.Framework.Core.Serialization;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Maps;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
@@ -27,7 +31,7 @@ using Newtonsoft.Json;
 namespace Intersect.Client.Maps;
 
 
-public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMapInstance
+public partial class MapInstance : MapDescriptor, IGameObject<Guid, MapInstance>, IMapInstance
 {
     public const int MapAnimationFrames = 3;
     private const int XpAnimationFrameTileWidth = 3;
@@ -95,8 +99,8 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
     IReadOnlyList<IMapItemInstance> IMapInstance.Items => MapItems.Values.SelectMany(x => x).ToList();
 
     //Map Attributes
-    private Dictionary<GameObjects.Maps.MapAttribute, Animation> mAttributeAnimInstances = new Dictionary<GameObjects.Maps.MapAttribute, Animation>();
-    private Dictionary<GameObjects.Maps.MapAttribute, Entity> mAttributeCritterInstances = new Dictionary<GameObjects.Maps.MapAttribute, Entity>();
+    private Dictionary<MapAttribute, Animation> mAttributeAnimInstances = new Dictionary<MapAttribute, Animation>();
+    private Dictionary<MapAttribute, Entity> mAttributeCritterInstances = new Dictionary<MapAttribute, Entity>();
 
     protected float mCurFogIntensity;
 
@@ -174,7 +178,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
     //Map Sounds
     public IMapSound? BackgroundSound { get; set; }
 
-    public new static MapControllers Lookup => sLookup ?? (sLookup = new MapControllers(MapBase.Lookup));
+    public new static MapControllers Lookup => sLookup ?? (sLookup = new MapControllers(MapDescriptor.Lookup));
 
     //Load
     public void Load(string json)
@@ -233,7 +237,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                         continue;
                     }
 
-                    if (!TilesetBase.TryGet(layerTile.TilesetId, out var tileset))
+                    if (!TilesetDescriptor.TryGet(layerTile.TilesetId, out var tileset))
                     {
                         continue;
                     }
@@ -434,7 +438,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
         }
     }
 
-    private GameTileBuffer[] CheckAutotile(int x, int y, MapBase[,] surroundingMaps)
+    private GameTileBuffer[] CheckAutotile(int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var mapXOffset = X;
         var mapYOffset = Y;
@@ -470,7 +474,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 continue;
             }
 
-            var tilesetTexture = (GameTexture)tile.TilesetTexture;
+            var tilesetTexture = (IGameTexture)tile.TilesetTexture;
             if (tile.X < 0 || tile.Y < 0)
             {
                 continue;
@@ -558,9 +562,9 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
     }
 
     //Helper Functions
-    public MapBase[,] GenerateAutotileGrid()
+    public MapDescriptor[,] GenerateAutotileGrid()
     {
-        var mapBase = new MapBase[3, 3];
+        var mapBase = new MapDescriptor[3, 3];
         if (Globals.MapGrid != null && Globals.GridMaps.ContainsKey(Id))
         {
             for (var x = -1; x <= 1; x++)
@@ -624,7 +628,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 {
                     case MapAttributeType.Animation:
                     {
-                        var anim = AnimationBase.Get(((MapAnimationAttribute)mapAttribute).AnimationId);
+                        var anim = AnimationDescriptor.Get(((MapAnimationAttribute)mapAttribute).AnimationId);
                         if (anim == null)
                         {
                             continue;
@@ -648,7 +652,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                     {
                         var critterAttribute = ((MapCritterAttribute)mapAttribute);
                         var sprite = critterAttribute.Sprite;
-                        var anim = AnimationBase.Get(critterAttribute.AnimationId);
+                        var anim = AnimationDescriptor.Get(critterAttribute.AnimationId);
                         if (anim == null && TextUtils.IsNone(sprite))
                         {
                             continue;
@@ -721,8 +725,8 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
     }
 
     //Animations
-    public void AddTileAnimation(
-        Guid animId,
+    public IAnimation? AddTileAnimation(
+        Guid animationDescriptorId,
         int tileX,
         int tileY,
         Direction dir = Direction.None,
@@ -730,22 +734,42 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
         AnimationSource source = default
     )
     {
-        var animBase = AnimationBase.Get(animId);
-        if (animBase == null)
+        if (!AnimationDescriptor.TryGet(animationDescriptorId, out var animationDescriptor))
         {
-            return;
+            return null;
         }
 
-        var anim = new MapAnimation(
-            animBase,
+        return AddTileAnimation(
+            animationDescriptor,
+            tileX,
+            tileY,
+            dir,
+            owner,
+            source
+        );
+    }
+
+    public IAnimation? AddTileAnimation(
+        AnimationDescriptor animationDescriptor,
+        int tileX,
+        int tileY,
+        Direction dir = Direction.None,
+        IEntity? owner = null,
+        AnimationSource source = default
+    )
+    {
+        var animationInstance = new MapAnimation(
+            animationDescriptor,
             tileX,
             tileY,
             dir,
             owner as Entity,
             source: source
         );
-        LocalAnimations.TryAdd(anim.Id, anim);
-        anim.SetPosition(
+
+        LocalAnimations.TryAdd(animationInstance.Id, animationInstance);
+
+        animationInstance.SetPosition(
             X + tileX * _tileWidth + _tileHalfWidth,
             Y + tileY * _tileHeight + _tileHalfHeight,
             tileX,
@@ -753,6 +777,8 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             Id,
             dir
         );
+
+        return animationInstance;
     }
 
     private void HideActiveAnimations()
@@ -882,12 +908,12 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 continue;
             }
 
-            if (layerBuffers[Globals.AnimFrame] == null)
+            if (layerBuffers[Globals.AnimationFrame] == null)
             {
                 continue;
             }
 
-            var buffersForFrame = layerBuffers[Globals.AnimFrame];
+            var buffersForFrame = layerBuffers[Globals.AnimationFrame];
             foreach (var buffer in buffersForFrame)
             {
                 Graphics.Renderer?.DrawTileBuffer(buffer);
@@ -902,20 +928,28 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
         var mapItemHeight = Options.Instance.Map.MapItemHeight;
 
         // Draw map items.
-        foreach (var (key, tileItems) in MapItems)
+        foreach (var (tileIndex, itemInstancesOnTile) in MapItems)
         {
             // Calculate tile coordinates.
-            var tileX = key % _width;
-            var tileY = (int)Math.Floor(key / (float)_width);
+            var tileX = tileIndex % _width;
+            var tileY = (int)Math.Floor(tileIndex / (float)_width);
 
             // Loop through this in reverse to match client/server display and pick-up order.
-            for (var index = tileItems.Count - 1; index >= 0; index--)
+            for (var index = itemInstancesOnTile.Count - 1; index >= 0; index--)
             {
-                // Set up all information we need to draw this name.
-                var itemBase = ItemBase.Get(tileItems[index].ItemId);
-                var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, itemBase.Icon);
+                var mapItemInstance = itemInstancesOnTile[index];
+                if (!ItemDescriptor.TryGet(mapItemInstance.ItemId, out var itemDescriptor))
+                {
+                    continue;
+                }
 
-                if (itemTex == null)
+                // Set up all information we need to draw this name.
+                var itemTexture = GameContentManager.Current.GetTexture(
+                    Framework.Content.TextureType.Item,
+                    itemDescriptor.Icon
+                );
+
+                if (itemTexture == null)
                 {
                     continue;
                 }
@@ -929,10 +963,10 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
 
                 // Draw the item texture.
                 Graphics.DrawGameTexture(
-                    itemTex,
-                    new FloatRect(0, 0, itemTex.Width, itemTex.Height),
+                    itemTexture,
+                    new FloatRect(0, 0, itemTexture.Width, itemTexture.Height),
                     new FloatRect(textureXPosition, textureYPosition, mapItemWidth, mapItemHeight),
-                    itemBase.Color
+                    itemDescriptor.Color
                 );
             }
         }
@@ -956,57 +990,91 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
         {
             return;
         }
+
+        if (Globals.Me is not { } player)
+        {
+            return;
+        }
+
         // Get where our mouse is located and convert it to a tile based location.
-        var mousePos = Graphics.ConvertToWorldPoint(
-                Globals.InputManager.GetMousePosition()
-        );
-        var x = (int)(mousePos.X - (int)X) / _tileWidth;
-        var y = (int)(mousePos.Y - (int)Y) / _tileHeight;
+        var mousePos = Graphics.ConvertToWorldPoint(Globals.InputManager.GetMousePosition());
+        var x = (int)(mousePos.X - X) / _tileWidth;
+        var y = (int)(mousePos.Y - Y) / _tileHeight;
         var mapId = Id;
 
         // Is this an actual location on this map?
-        if (Globals.Me.TryGetRealLocation(ref x, ref y, ref mapId) && mapId == Id)
+        if (!player.TryGetRealLocation(ref x, ref y, ref mapId) || mapId != Id)
         {
-            // Apparently it is! Do we have any items to render here?
-            var tileItems = new List<IMapItemInstance>();
-            if (MapItems.TryGetValue(y * _width + x, out tileItems))
-            {
-                var baseOffset = 0;
-                // Loop through this in reverse to match client/server display and pick-up order.
-                for (var index = tileItems.Count - 1; index >= 0; index--)
-                {
-                    // Set up all information we need to draw this name.
-                    var itemBase = ItemBase.Get(tileItems[index].ItemId);
-                    var name = tileItems[index].Base.Name;
-                    var quantity = tileItems[index].Quantity;
-                    var rarity = itemBase.Rarity;
-                    if (tileItems[index].Quantity > 1)
-                    {
-                        name = Strings.General.MapItemStackable.ToString(name, Strings.FormatQuantityAbbreviated(quantity));
-                    }
-                    var color = CustomColors.Items.MapRarities.ContainsKey(rarity)
-                        ? CustomColors.Items.MapRarities[rarity]
-                        : new LabelColor(Color.White, Color.Black, new Color(100, 0, 0, 0));
-                    var textSize = Graphics.Renderer.MeasureText(name, Graphics.EntityNameFont, 1);
-                    var offsetY = (baseOffset * textSize.Y);
-                    var destX = X + (int)Math.Ceiling(((x * _tileWidth) + (_tileHalfWidth)) - (textSize.X / 2));
-                    var destY = Y + (int)Math.Ceiling(((y * _tileHeight) - ((_tileHeight / 3) + textSize.Y))) - offsetY;
+            return;
+        }
 
-                    // Do we need to draw a background?
-                    if (color.Background != Color.Transparent)
-                    {
-                        Graphics.DrawGameTexture(
-                            Graphics.Renderer.GetWhiteTexture(), new FloatRect(0, 0, 1, 1),
-                            new FloatRect(destX - 4, destY, textSize.X + 8, textSize.Y), color.Background
-                        );
-                    }
+        // Apparently it is! Do we have any items to render here?
+        if (!MapItems.TryGetValue(y * _width + x, out var tileItems))
+        {
+            return;
+        }
 
-                    // Finaly, draw the actual name!
-                    Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, destX, destY, 1, color.Name, true, null, color.Outline);
-
-                    baseOffset++;
-                }
+        var baseOffset = 0;
+        // Loop through this in reverse to match client/server display and pick-up order.
+        for (var index = tileItems.Count - 1; index >= 0; index--)
+        {
+            var mapItemInstance = tileItems[index];
+            if (!ItemDescriptor.TryGet(mapItemInstance.ItemId, out var itemDescriptor)) {
+                continue;
             }
+
+            // Set up all information we need to draw this name.
+            var name = mapItemInstance.Descriptor.Name;
+            var quantity = mapItemInstance.Quantity;
+            var rarity = itemDescriptor.Rarity;
+            if (mapItemInstance.Quantity > 1)
+            {
+                name = Strings.General.MapItemStackable.ToString(
+                    name,
+                    Strings.FormatQuantityAbbreviated(quantity)
+                );
+            }
+
+            var color = CustomColors.Items.MapRarities.GetValueOrDefault(
+                rarity,
+                new LabelColor(Color.White, Color.Black, new Color(100, 0, 0, 0))
+            );
+            var textSize = Graphics.Renderer.MeasureText(
+                name,
+                Graphics.EntityNameFont,
+                Graphics.EntityNameFontSize,
+                1
+            );
+            var offsetY = (baseOffset * textSize.Y);
+            var destX = X + (int)Math.Ceiling(((x * _tileWidth) + (_tileHalfWidth)) - (textSize.X / 2));
+            var destY = Y + (int)Math.Ceiling(((y * _tileHeight) - ((_tileHeight / 3f) + textSize.Y))) - offsetY;
+
+            // Do we need to draw a background?
+            if (color.Background != Color.Transparent)
+            {
+                Graphics.DrawGameTexture(
+                    Graphics.Renderer.WhitePixel,
+                    new FloatRect(0, 0, 1, 1),
+                    new FloatRect(destX - 4, destY, textSize.X + 8, textSize.Y),
+                    color.Background
+                );
+            }
+
+            // Finaly, draw the actual name!
+            Graphics.Renderer.DrawString(
+                name,
+                Graphics.EntityNameFont,
+                Graphics.EntityNameFontSize,
+                destX,
+                destY,
+                1,
+                color.Name,
+                true,
+                null,
+                color.Outline
+            );
+
+            baseOffset++;
         }
     }
 
@@ -1027,11 +1095,11 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
         int x,
         int y,
         int forceFrame,
-        GameTexture tileset,
+        IGameTexture tileset,
         GameTileBuffer buffer,
         bool update = false,
         Tile? layerTile = default,
-        QuarterTileCls? layerAutoTile = default
+        Autotile? layerAutoTile = default
     )
     {
         if (layerTile == null)
@@ -1130,7 +1198,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             for (var y = 0; y < _height; y++)
             {
                 var layerTile = layerTiles[x, y];
-                if (layerTile.TilesetTexture is not GameTexture tilesetTexture)
+                if (layerTile.TilesetTexture is not IGameTexture tilesetTexture)
                 {
                     continue;
                 }
@@ -1356,7 +1424,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             return;
         }
 
-        var anim = AnimationBase.Get(WeatherAnimationId);
+        var anim = AnimationDescriptor.Get(WeatherAnimationId);
 
         if (anim == null || WeatherIntensity == 0)
         {
@@ -1373,7 +1441,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 var spawnTime = 25 + (int)(475 * (1f - WeatherIntensity / 100f));
                 spawnTime = (int)(spawnTime *
                                    (480000f /
-                                    (Graphics.Renderer.GetScreenWidth() * Graphics.Renderer.GetScreenHeight())));
+                                    (Graphics.Renderer.ScreenWidth * Graphics.Renderer.ScreenHeight)));
 
                 _weatherParticleSpawnTime = Timing.Global.MillisecondsUtc + spawnTime;
             }
@@ -1543,11 +1611,18 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             var x = (X + actionMessage.X * _tileWidth + actionMessage.XOffset);
             var y = Y + actionMessage.Y * _tileHeight - _tileHeight * 2 *
                 (1000 - (int)(actionMessage.TransmissionTimer - Timing.Global.MillisecondsUtc)) / 1000;
-            var textWidth = Graphics.Renderer.MeasureText(actionMessage.Text, Graphics.ActionMsgFont, 1).X;
+            var textWidth = Graphics.Renderer.MeasureText(
+                    actionMessage.Text,
+                    Graphics.ActionMsgFont,
+                    Graphics.ActionMsgFontSize,
+                    1
+                )
+                .X;
 
             Graphics.Renderer.DrawString(
                 actionMessage.Text,
                 Graphics.ActionMsgFont,
+                Graphics.ActionMsgFontSize,
                 x - textWidth / 2f,
                 y,
                 1,

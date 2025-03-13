@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.Reflection;
 using CommandLine;
+using Intersect.Client.Plugins;
 using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Factories;
 using Intersect.Framework.Logging;
+using Intersect.Framework.SystemInformation;
 using Intersect.Network;
 using Intersect.Plugins;
 using Intersect.Plugins.Contexts;
@@ -19,7 +21,7 @@ namespace Intersect.Client.Core;
 
 internal static partial class Bootstrapper
 {
-    public static void Start(params string[] args)
+    public static void Start(Assembly entryAssembly, params string[] args)
     {
         var parser = new Parser(
             parserSettings =>
@@ -43,14 +45,15 @@ internal static partial class Bootstrapper
         LoggingLevelSwitch loggingLevelSwitch =
             new(Debugger.IsAttached ? LogEventLevel.Debug : LogEventLevel.Information);
 
-        var executingAssembly = Assembly.GetExecutingAssembly();
-        var (_, logger) = new LoggerConfiguration().CreateLoggerForIntersect(
-            executingAssembly,
+        var (loggerFactory, logger) = new LoggerConfiguration().CreateLoggerForIntersect(
+            entryAssembly,
             "Client",
             loggingLevelSwitch
         );
 
-        var packetTypeRegistry = new PacketTypeRegistry(logger, typeof(SharedConstants).Assembly);
+        PlatformStatistics.Logger = loggerFactory.CreateLogger<PlatformStatistics>();
+
+        var packetTypeRegistry = new PacketTypeRegistry(logger, typeof(IntersectPacket).Assembly);
         if (!packetTypeRegistry.TryRegisterBuiltIn())
         {
             logger.LogError("Failed to register built-in packets.");
@@ -59,7 +62,7 @@ internal static partial class Bootstrapper
 
         var packetHandlerRegistry = new PacketHandlerRegistry(packetTypeRegistry, logger);
         var packetHelper = new PacketHelper(packetTypeRegistry, packetHandlerRegistry);
-        _ = FactoryRegistry<IPluginBootstrapContext>.RegisterFactory(PluginBootstrapContext.CreateFactory(args, parser, packetHelper));
+        _ = FactoryRegistry<IPluginBootstrapContext>.RegisterFactory(PluginBootstrapContext.CreateFactory(typeof(IClientPluginContext), args, parser, packetHelper));
 
         if (!string.IsNullOrWhiteSpace(commandLineOptions.WorkingDirectory))
         {
@@ -71,7 +74,11 @@ internal static partial class Bootstrapper
             }
             else
             {
-                ApplicationContext.Context.Value?.Logger.LogWarning($"Failed to set working directory to '{workingDirectory}', path does not exist: {resolvedWorkingDirectory}");
+                ApplicationContext.Context.Value?.Logger.LogWarning(
+                    "Failed to set working directory to '{Path}', path does not exist: {ResolvedPath}",
+                    workingDirectory,
+                    resolvedWorkingDirectory
+                );
             }
         }
 
@@ -99,7 +106,7 @@ internal static partial class Bootstrapper
             Server = $"{clientConfiguration.Host}:{clientConfiguration.Port}",
         };
 
-        ClientContext context = new(commandLineOptions, clientConfiguration, logger, packetHelper);
+        ClientContext context = new(entryAssembly, commandLineOptions, clientConfiguration, logger, packetHelper);
         context.Start();
     }
 
@@ -108,9 +115,9 @@ internal static partial class Bootstrapper
 
     private static ClientCommandLineOptions HandleParserErrors(IEnumerable<Error> errors)
     {
-        var errorsAsList = errors?.ToList();
-        var fatalParsingError = errorsAsList?.Any(error => error?.StopsProcessing ?? false) ?? false;
-        var errorString = string.Join(", ", errorsAsList?.ToList().Select(error => error?.ToString()) ?? []);
+        var errorsAsList = errors.ToList();
+        var fatalParsingError = errorsAsList.Any(error => error.StopsProcessing);
+        var errorString = string.Join(", ", errorsAsList.ToList().Select(error => error.ToString()));
 
         var exception = new ArgumentException(
             $@"Error parsing command line arguments, received the following errors: {errorString}"

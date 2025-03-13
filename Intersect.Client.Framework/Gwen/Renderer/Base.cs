@@ -1,4 +1,5 @@
-﻿using Intersect.Client.Framework.GenericClasses;
+﻿using System.Numerics;
+using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Graphics;
 #if DEBUG || DIAGNOSTIC
 #endif
@@ -126,7 +127,7 @@ public partial class Base : IDisposable, ITextHelper
     {
     }
 
-    public virtual GameTexture GetWhiteTexture()
+    public virtual IGameTexture GetWhiteTexture()
     {
         return null;
     }
@@ -168,7 +169,7 @@ public partial class Base : IDisposable, ITextHelper
     ///     Loads the specified texture.
     /// </summary>
     /// <param name="t"></param>
-    public virtual void LoadTexture(GameTexture t)
+    public virtual void LoadTexture(IGameTexture t)
     {
     }
 
@@ -176,7 +177,7 @@ public partial class Base : IDisposable, ITextHelper
     ///     Frees the specified texture.
     /// </summary>
     /// <param name="t">Texture to free.</param>
-    public virtual void FreeTexture(GameTexture t)
+    public virtual void FreeTexture(IGameTexture t)
     {
     }
 
@@ -190,7 +191,7 @@ public partial class Base : IDisposable, ITextHelper
     /// <param name="u2">Texture coordinate u2.</param>
     /// <param name="v2">Texture coordinate v2.</param>
     public virtual void DrawTexturedRect(
-        GameTexture? texture,
+        IGameTexture? texture,
         Rectangle targetBounds,
         Color color,
         float u1 = 0,
@@ -217,7 +218,7 @@ public partial class Base : IDisposable, ITextHelper
     /// </summary>
     /// <param name="font">Font to load.</param>
     /// <returns>True if succeeded.</returns>
-    public virtual bool LoadFont(GameFont font)
+    public virtual bool LoadFont(IFont font)
     {
         return false;
     }
@@ -226,7 +227,7 @@ public partial class Base : IDisposable, ITextHelper
     ///     Frees the specified font.
     /// </summary>
     /// <param name="font">Font to free.</param>
-    public virtual void FreeFont(GameFont font)
+    public virtual void FreeFont(IFont font)
     {
     }
 
@@ -234,18 +235,20 @@ public partial class Base : IDisposable, ITextHelper
     ///     Returns dimensions of the text using specified font.
     /// </summary>
     /// <param name="font">Font to use.</param>
+    /// <param name="fontSize"></param>
     /// <param name="text">Text to measure.</param>
     /// <param name="scale"></param>
     /// <returns>Width and height of the rendered text.</returns>
-    public virtual Point MeasureText(GameFont? font, string? text, float scale = 1f) => default;
+    public virtual Point MeasureText(IFont? font, int fontSize, string? text, float scale = 1f) => default;
 
     /// <summary>
     ///     Renders text using specified font.
     /// </summary>
     /// <param name="font">Font to use.</param>
+    /// <param name="fontSize"></param>
     /// <param name="position">Top-left corner of the text.</param>
     /// <param name="text">Text to render.</param>
-    public virtual void RenderText(GameFont font, Point position, string text, float scale = 1f)
+    public virtual void RenderText(IFont? font, int fontSize, Point position, string text, float scale = 1f)
     {
     }
 
@@ -293,7 +296,7 @@ public partial class Base : IDisposable, ITextHelper
     /// <param name="x">X.</param>
     /// <param name="y">Y.</param>
     /// <returns>Pixel color.</returns>
-    public virtual Color PixelColor(GameTexture texture, uint x, uint y)
+    public virtual Color PixelColor(IGameTexture texture, uint x, uint y)
     {
         return PixelColor(texture, x, y, Color.White);
     }
@@ -306,7 +309,7 @@ public partial class Base : IDisposable, ITextHelper
     /// <param name="y">Y.</param>
     /// <param name="defaultColor">Color to return on failure.</param>
     /// <returns>Pixel color.</returns>
-    public virtual Color PixelColor(GameTexture texture, uint x, uint y, Color defaultColor)
+    public virtual Color PixelColor(IGameTexture texture, uint x, uint y, Color defaultColor)
     {
         return defaultColor;
     }
@@ -443,6 +446,6 @@ public partial class Base : IDisposable, ITextHelper
         mClipRegion = r;
     }
 
-    public Pointf MeasureText(string text, GameFont? gameFont, float fontScale) =>
-        MeasureText(font: gameFont, text: text, scale: fontScale);
+    public Vector2 MeasureText(string? text, IFont? font, int size, float fontScale) =>
+        MeasureText(font: font, fontSize: size, text: text, scale: fontScale);
 }

@@ -1,3 +1,4 @@
+using Intersect.Framework.Core;
 using Intersect.GameObjects;
 using Intersect.Server.Entities;
 using Intersect.Server.Entities.Events;
@@ -19,7 +20,7 @@ public partial class MapTrapInstance
 
     public Entity Owner;
 
-    public SpellBase ParentSpell;
+    public SpellDescriptor ParentSpell;
 
     public bool Triggered = false;
 
@@ -29,7 +30,7 @@ public partial class MapTrapInstance
 
     public byte Z;
 
-    public MapTrapInstance(Entity owner, SpellBase parentSpell, Guid mapId, Guid mapInstanceId, byte x, byte y, byte z)
+    public MapTrapInstance(Entity owner, SpellDescriptor parentSpell, Guid mapId, Guid mapInstanceId, byte x, byte y, byte z)
     {
         Owner = owner;
         ParentSpell = parentSpell;

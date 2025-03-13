@@ -1,11 +1,12 @@
 using Intersect.Editor.Forms.Helpers;
 using Intersect.Editor.Localization;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Events.Commands;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Events.Commands;
-using Intersect.GameObjects.Maps;
-using Intersect.GameObjects.Maps.MapList;
 
 namespace Intersect.Editor.Forms.Editors.Events.Event_Commands;
 
@@ -15,9 +16,9 @@ public partial class EventCommandPlayAnimation : UserControl
 
     private readonly FrmEvent mEventEditor;
 
-    private MapBase mCurrentMap;
+    private MapDescriptor mCurrentMap;
 
-    private EventBase mEditingEvent;
+    private EventDescriptor mEditingEvent;
 
     private PlayAnimationCommand mMyCommand;
 
@@ -29,8 +30,8 @@ public partial class EventCommandPlayAnimation : UserControl
 
     public EventCommandPlayAnimation(
         FrmEvent eventEditor,
-        MapBase currentMap,
-        EventBase currentEvent,
+        MapDescriptor currentMap,
+        EventDescriptor currentEvent,
         PlayAnimationCommand editingCommand
     )
     {
@@ -41,8 +42,8 @@ public partial class EventCommandPlayAnimation : UserControl
         mCurrentMap = currentMap;
         InitLocalization();
         cmbAnimation.Items.Clear();
-        cmbAnimation.Items.AddRange(AnimationBase.Names);
-        cmbAnimation.SelectedIndex = AnimationBase.ListIndex(mMyCommand.AnimationId);
+        cmbAnimation.Items.AddRange(AnimationDescriptor.Names);
+        cmbAnimation.SelectedIndex = AnimationDescriptor.ListIndex(mMyCommand.AnimationId);
         if (mMyCommand.MapId != Guid.Empty)
         {
             cmbConditionType.SelectedIndex = 0;
@@ -211,7 +212,7 @@ public partial class EventCommandPlayAnimation : UserControl
 
     private void btnSave_Click(object sender, EventArgs e)
     {
-        mMyCommand.AnimationId = AnimationBase.IdFromList(cmbAnimation.SelectedIndex);
+        mMyCommand.AnimationId = AnimationDescriptor.IdFromList(cmbAnimation.SelectedIndex);
         switch (cmbConditionType.SelectedIndex)
         {
             case 0: //Tile Spawn

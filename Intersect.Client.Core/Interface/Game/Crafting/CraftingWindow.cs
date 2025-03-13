@@ -9,9 +9,11 @@ using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Crafting;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Crafting;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -139,7 +141,7 @@ public partial class CraftingWindow : Window
 
     private void LoadCraftRecipeById(Guid craftDescriptorId)
     {
-        if (!CraftBase.TryGet(craftDescriptorId, out var craftDescriptor))
+        if (!CraftingRecipeDescriptor.TryGet(craftDescriptorId, out var craftDescriptor))
         {
             return;
         }
@@ -147,7 +149,7 @@ public partial class CraftingWindow : Window
         LoadCraftRecipe(craftDescriptor);
     }
 
-    private void LoadCraftRecipe(CraftBase craftDescriptor)
+    private void LoadCraftRecipe(CraftingRecipeDescriptor craftDescriptor)
     {
         _craftRecipeDescriptorId = craftDescriptor.Id;
 
@@ -165,7 +167,7 @@ public partial class CraftingWindow : Window
         }
 
         var craftedItemDescriptorId = craftDescriptor.ItemId;
-        _craftedItem = new RecipeItem(this, new CraftIngredient(craftedItemDescriptorId, 0))
+        _craftedItem = new RecipeItem(this, new CraftingRecipeIngredient(craftedItemDescriptorId, 0))
         {
             Container = new ImagePanel(this, "CraftedItem"),
         };
@@ -178,7 +180,7 @@ public partial class CraftingWindow : Window
         _craftedItem.LoadItem();
         mCombinedValue.Show();
         var quantity = Math.Max(craftDescriptor.Quantity, 1);
-        if (!ItemBase.TryGet(craftedItemDescriptorId, out var craftedItemDescriptor) ||
+        if (!ItemDescriptor.TryGet(craftedItemDescriptorId, out var craftedItemDescriptor) ||
             !craftedItemDescriptor.IsStackable)
         {
             quantity = 1;
@@ -269,7 +271,7 @@ public partial class CraftingWindow : Window
         if (IsCrafting)
         {
             var cancraft = true;
-            foreach (var c in CraftBase.Get(_craftRecipeDescriptorId).Ingredients)
+            foreach (var c in CraftingRecipeDescriptor.Get(_craftRecipeDescriptorId).Ingredients)
             {
                 if (inventoryItemsByDescriptorId.ContainsKey(c.ItemId))
                 {
@@ -336,13 +338,13 @@ public partial class CraftingWindow : Window
             return;
         }
 
-        if (sender is not ListBoxRow { UserData: CraftBase craftDescriptor })
+        if (sender is not ListBoxRow { UserData: CraftingRecipeDescriptor craftDescriptor })
         {
             ApplicationContext.CurrentContext.Logger.LogError(
                 "Sender is not a {ListBoxRowTypeName} or the {UserDataPropertyName} is not a {CraftDescriptorTypeName}",
                 typeof(ListBoxRow).GetName(true),
                 nameof(UserData),
-                typeof(CraftBase).GetName(true)
+                typeof(CraftingRecipeDescriptor).GetName(true)
             );
             return;
         }
@@ -370,7 +372,7 @@ public partial class CraftingWindow : Window
             }
         }
 
-        var craftDescriptor = CraftBase.Get(_craftRecipeDescriptorId);
+        var craftDescriptor = CraftingRecipeDescriptor.Get(_craftRecipeDescriptorId);
         var canCraft = craftDescriptor?.Ingredients != null;
 
         if (canCraft)
@@ -452,9 +454,9 @@ public partial class CraftingWindow : Window
         }
     }
 
-    protected override void Prelayout(Framework.Gwen.Skin.Base skin)
+    protected override void DoPrelayout(Framework.Gwen.Skin.Base skin)
     {
-        base.Prelayout(skin);
+        base.DoPrelayout(skin);
 
         if (IsCrafting)
         {
@@ -467,7 +469,7 @@ public partial class CraftingWindow : Window
             return;
         }
 
-        var craft = CraftBase.Get(_craftRecipeDescriptorId);
+        var craft = CraftingRecipeDescriptor.Get(_craftRecipeDescriptorId);
         if (craft == null)
         {
             return;
@@ -515,10 +517,10 @@ public partial class CraftingWindow : Window
             return;
         }
 
-        CraftBase? craftRecipeDescriptorToLoad = null;
+        CraftingRecipeDescriptor? craftRecipeDescriptorToLoad = null;
         foreach (var craftRecipeDescriptorId in craftRecipeDescriptorIds)
         {
-            if (!CraftBase.TryGet(craftRecipeDescriptorId, out var craftRecipeDescriptor))
+            if (!CraftingRecipeDescriptor.TryGet(craftRecipeDescriptorId, out var craftRecipeDescriptor))
             {
                 ApplicationContext.CurrentContext.Logger.LogWarning(
                     "Failed to load craft recipe descriptor {CraftDescriptorId}",

@@ -14,6 +14,7 @@ using Intersect.Client.Networking;
 using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
 using Intersect.Localization;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
@@ -42,7 +43,7 @@ public partial class Chatbox
 
     private Button _chatboxClearLogButton;
 
-    private readonly GameTexture _chatboxTexture;
+    private readonly IGameTexture _chatboxTexture;
 
     private Label mChatboxText;
 
@@ -157,6 +158,7 @@ public partial class Chatbox
         mChatboxText = new Label(mChatboxWindow);
         mChatboxText.Name = "ChatboxText";
         mChatboxText.Font = mChatboxWindow.Parent.Skin.DefaultFont;
+        mChatboxText.FontSize = mChatboxWindow.Parent.Skin.DefaultFontSize;
 
         mChatboxSendButton = new Button(mChatboxWindow, "ChatboxSendButton");
         mChatboxSendButton.Text = Strings.Chatbox.Send;
@@ -189,7 +191,7 @@ public partial class Chatbox
         mContextMenu.IsHidden = true;
         mContextMenu.IconMarginDisabled = true;
         //TODO: Is this a memory leak?
-        mContextMenu.Children.Clear();
+        mContextMenu.ClearChildren();
         mPMContextItem = mContextMenu.AddItem(Strings.ChatContextMenu.PM);
         mPMContextItem.Clicked += MPMContextItem_Clicked;
         mFriendInviteContextItem = mContextMenu.AddItem(Strings.ChatContextMenu.FriendInvite);
@@ -210,7 +212,7 @@ public partial class Chatbox
         mContextMenu.RemoveChild(mFriendInviteContextItem, false);
         mContextMenu.RemoveChild(mPartyInviteContextItem, false);
         mContextMenu.RemoveChild(mGuildInviteContextItem, false);
-        mContextMenu.Children.Clear();
+        mContextMenu.ClearChildren();
 
         // No point showing a menu for blank space.
         if (string.IsNullOrWhiteSpace(name))
@@ -390,6 +392,7 @@ public partial class Chatbox
                 row.ShouldDrawBackground = false;
                 row.Padding = new Padding(2, 0);
                 row.Font = mChatboxText.Font;
+                row.FontSize = mChatboxWindow.Parent.Skin.DefaultFontSize;
                 row.SetTextColor(msg.Color);
                 if (row.GetCellContents(0) is Label label)
                 {
@@ -415,18 +418,23 @@ public partial class Chatbox
 
             if (scrollToBottom)
             {
-                mChatboxMessages.Defer(mChatboxMessages.ScrollToBottom);
+                mChatboxMessages.PostLayout.Enqueue(scroller => scroller.ScrollToBottom(), mChatboxMessages);
+                mChatboxMessages.RunOnMainThread(mChatboxMessages.ScrollToBottom);
             }
             else
             {
-                mChatboxMessages.Defer(() =>
+                mChatboxMessages.PostLayout.Enqueue(
+                    (scroller, position) =>
                     {
                         ApplicationContext.CurrentContext.Logger.LogTrace(
-                            "Scrolling chat to {ScrollY}",
-                            scrollPosition
+                            "Scrolling chat ({ChatNode}) to {ScrollY}",
+                            scroller.CanonicalName,
+                            position
                         );
-                        mChatboxMessages.ScrollToY(scrollPosition);
-                    }
+                        scroller.ScrollToY(position);
+                    },
+                    mChatboxMessages,
+                    scrollPosition
                 );
             }
 

@@ -22,9 +22,14 @@ using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Enums;
 using Intersect.Extensions;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps.Attributes;
+using Intersect.Framework.Core.GameObjects.PlayerClass;
 using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Maps;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
 using Microsoft.Extensions.Logging;
@@ -88,12 +93,12 @@ public partial class Player : Entity, IPlayer
 
     private List<IPartyMember>? mParty;
 
-    public override Direction MoveDir
+    public override Direction DirectionMoving
     {
-        get => base.MoveDir;
+        get => base.DirectionMoving;
         set
         {
-            base.MoveDir = value;
+            base.DirectionMoving = value;
         }
     }
 
@@ -294,7 +299,7 @@ public partial class Player : Entity, IPlayer
             }
         }
 
-        if (TargetBox == default && this == Globals.Me && Interface.Interface.GameUi != default)
+        if (TargetBox == default && this == Globals.Me && Interface.Interface.HasInGameUI)
         {
             // If for WHATEVER reason the box hasn't been created, create it.
             TargetBox = new EntityBox(Interface.Interface.GameUi.GameCanvas, EntityType.Player, null);
@@ -317,7 +322,7 @@ public partial class Player : Entity, IPlayer
         StatusWindow?.Update();
 
         // Hide our Guild window if we're not in a guild!
-        if (this == Globals.Me && string.IsNullOrEmpty(Guild) && Interface.Interface.GameUi != null)
+        if (this == Globals.Me && string.IsNullOrEmpty(Guild) && Interface.Interface.HasInGameUI)
         {
             Interface.Interface.GameUi.HideGuildWindow();
         }
@@ -362,7 +367,7 @@ public partial class Player : Entity, IPlayer
             }
         }
 
-        if (this == Globals.Me && TargetBox == null && Interface.Interface.GameUi != null)
+        if (this == Globals.Me && TargetBox == null && Interface.Interface.HasInGameUI)
         {
             TargetBox = new EntityBox(Interface.Interface.GameUi.GameCanvas, EntityType.Player, null);
             TargetBox.Hide();
@@ -378,7 +383,7 @@ public partial class Player : Entity, IPlayer
 
         if (
             fromSlot.ItemId == toSlot.ItemId
-            && ItemBase.TryGet(toSlot.ItemId, out var itemInSlot)
+            && ItemDescriptor.TryGet(toSlot.ItemId, out var itemInSlot)
             && itemInSlot.IsStackable
             && fromSlot.Quantity < itemInSlot.MaxInventoryStack
             && toSlot.Quantity < itemInSlot.MaxInventoryStack
@@ -404,7 +409,7 @@ public partial class Player : Entity, IPlayer
     public void TryDropItem(int inventorySlotIndex)
     {
         var inventorySlot = Inventory[inventorySlotIndex];
-        if (!ItemBase.TryGet(inventorySlot.ItemId, out var itemDescriptor))
+        if (!ItemDescriptor.TryGet(inventorySlot.ItemId, out var itemDescriptor))
         {
             return;
         }
@@ -504,7 +509,7 @@ public partial class Player : Entity, IPlayer
         return (int)Math.Min(count, int.MaxValue);
     }
 
-    public static int GetQuantityOfItemInBank(Guid itemId) => GetQuantityOfItemIn(Globals.Bank, itemId);
+    public static int GetQuantityOfItemInBank(Guid itemId) => GetQuantityOfItemIn(Globals.BankSlots, itemId);
 
     public int GetQuantityOfItemInInventory(Guid itemId) => GetQuantityOfItemIn(Inventory, itemId);
 
@@ -539,39 +544,41 @@ public partial class Player : Entity, IPlayer
                 if (itm != null && itm.ItemId == hotbarInstance.ItemOrSpellId)
                 {
                     bestMatch = i;
-                    var itemBase = ItemBase.Get(itm.ItemId);
-                    if (itemBase != null)
+                    var itemDescriptor = ItemDescriptor.Get(itm.ItemId);
+                    if (itemDescriptor == null)
                     {
-                        if (itemBase.ItemType == ItemType.Bag)
+                        continue;
+                    }
+
+                    if (itemDescriptor.ItemType == ItemType.Bag)
+                    {
+                        if (hotbarInstance.BagId == itm.BagId)
                         {
-                            if (hotbarInstance.BagId == itm.BagId)
+                            break;
+                        }
+                    }
+                    else if (itemDescriptor.ItemType == ItemType.Equipment)
+                    {
+                        if (hotbarInstance.PreferredStatBuffs != null)
+                        {
+                            var statMatch = true;
+                            for (var s = 0; s < hotbarInstance.PreferredStatBuffs.Length; s++)
+                            {
+                                if (itm.ItemProperties.StatModifiers[s] != hotbarInstance.PreferredStatBuffs[s])
+                                {
+                                    statMatch = false;
+                                }
+                            }
+
+                            if (statMatch)
                             {
                                 break;
                             }
                         }
-                        else if (itemBase.ItemType == ItemType.Equipment)
-                        {
-                            if (hotbarInstance.PreferredStatBuffs != null)
-                            {
-                                var statMatch = true;
-                                for (var s = 0; s < hotbarInstance.PreferredStatBuffs.Length; s++)
-                                {
-                                    if (itm.ItemProperties.StatModifiers[s] != hotbarInstance.PreferredStatBuffs[s])
-                                    {
-                                        statMatch = false;
-                                    }
-                                }
-
-                                if (statMatch)
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            break;
-                        }
+                    }
+                    else
+                    {
+                        break;
                     }
                 }
             }
@@ -595,46 +602,62 @@ public partial class Player : Entity, IPlayer
 
     public bool IsItemOnCooldown(int slot)
     {
-        if (Inventory[slot] != null)
+        if (Inventory[slot] is not {} inventorySlot)
         {
-            var itm = Inventory[slot];
-            if (itm.ItemId != Guid.Empty)
-            {
-                if (ItemCooldowns.TryGetValue(itm.ItemId, out var value) && value > Timing.Global.Milliseconds)
-                {
-                    return true;
-                }
-
-                if ((ItemBase.TryGet(itm.ItemId, out var itemBase) && !itemBase.IgnoreGlobalCooldown) && Globals.Me?.GlobalCooldown > Timing.Global.Milliseconds)
-                {
-                    return true;
-                }
-            }
+            return false;
         }
 
-        return false;
+        if (inventorySlot.ItemId == Guid.Empty)
+        {
+            return false;
+        }
+
+        if (ItemCooldowns.TryGetValue(inventorySlot.ItemId, out var cooldownEndTime) &&
+            cooldownEndTime > Timing.Global.Milliseconds)
+        {
+            return true;
+        }
+
+        return ItemDescriptor.TryGet(inventorySlot.ItemId, out var itemDescriptor) &&
+               !itemDescriptor.IgnoreGlobalCooldown &&
+               Globals.Me?.GlobalCooldown > Timing.Global.Milliseconds;
     }
 
     public long GetItemRemainingCooldown(int slot)
     {
-        if (Inventory[slot] != null)
+        if (Inventory[slot] is not { } inventorySlot)
         {
-            var itm = Inventory[slot];
-            if (itm.ItemId != Guid.Empty)
-            {
-                if (ItemCooldowns.TryGetValue(itm.ItemId, out var value) && value > Timing.Global.Milliseconds)
-                {
-                    return value - Timing.Global.Milliseconds;
-                }
-
-                if ((ItemBase.TryGet(itm.ItemId, out var itemBase) && !itemBase.IgnoreGlobalCooldown) && Globals.Me?.GlobalCooldown > Timing.Global.Milliseconds)
-                {
-                    return Globals.Me.GlobalCooldown - Timing.Global.Milliseconds;
-                }
-            }
+            return 0;
         }
 
-        return 0;
+        if (inventorySlot.ItemId == Guid.Empty)
+        {
+            return 0;
+        }
+
+        if (ItemCooldowns.TryGetValue(inventorySlot.ItemId, out var cooldownEndTime) &&
+            cooldownEndTime > Timing.Global.Milliseconds)
+        {
+            return cooldownEndTime - Timing.Global.Milliseconds;
+        }
+
+        if (!ItemDescriptor.TryGet(inventorySlot.ItemId, out var itemDescriptor))
+        {
+            return 0;
+        }
+
+        if (itemDescriptor.IgnoreGlobalCooldown)
+        {
+            return 0;
+        }
+
+        if (Globals.Me is not { } player)
+        {
+            return 0;
+        }
+
+        var itemRemainingCooldown = player.GlobalCooldown - Timing.Global.Milliseconds;
+        return Math.Max(0, itemRemainingCooldown);
     }
 
     public bool IsSpellOnCooldown(int slot)
@@ -649,7 +672,7 @@ public partial class Player : Entity, IPlayer
                     return true;
                 }
 
-                if ((SpellBase.TryGet(spl.Id, out var spellBase) && !spellBase.IgnoreGlobalCooldown) && Globals.Me?.GlobalCooldown > Timing.Global.Milliseconds)
+                if ((SpellDescriptor.TryGet(spl.Id, out var spellBase) && !spellBase.IgnoreGlobalCooldown) && Globals.Me?.GlobalCooldown > Timing.Global.Milliseconds)
                 {
                     return true;
                 }
@@ -685,7 +708,7 @@ public partial class Player : Entity, IPlayer
             return cd - now;
         }
 
-        if (SpellBase.TryGet(spell.Id, out var spellBase) && !spellBase.IgnoreGlobalCooldown && Globals.Me?.GlobalCooldown > now)
+        if (SpellDescriptor.TryGet(spell.Id, out var spellBase) && !spellBase.IgnoreGlobalCooldown && Globals.Me?.GlobalCooldown > now)
         {
             return Globals.Me.GlobalCooldown - now;
         }
@@ -696,7 +719,7 @@ public partial class Player : Entity, IPlayer
     public void TrySellItem(int inventorySlotIndex)
     {
         var inventorySlot = Inventory[inventorySlotIndex];
-        if (!ItemBase.TryGet(inventorySlot.ItemId, out var itemDescriptor))
+        if (!ItemDescriptor.TryGet(inventorySlot.ItemId, out var itemDescriptor))
         {
             return;
         }
@@ -775,7 +798,7 @@ public partial class Player : Entity, IPlayer
     {
         //Confirm the purchase
         var shopSlot = Globals.GameShop?.SellingItems[shopSlotIndex];
-        if (shopSlot == default || !ItemBase.TryGet(shopSlot.ItemId, out var itemDescriptor))
+        if (shopSlot == default || !ItemDescriptor.TryGet(shopSlot.ItemId, out var itemDescriptor))
         {
             return;
         }
@@ -852,14 +875,14 @@ public partial class Player : Entity, IPlayer
     )
     {
         // Permission Check for Guild Bank
-        if (Globals.GuildBank && !IsGuildBankDepositAllowed())
+        if (Globals.IsGuildBank && !IsGuildBankDepositAllowed())
         {
             ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Guilds.NotAllowedDeposit.ToString(Globals.Me?.Guild), CustomColors.Alerts.Error, ChatMessageType.Bank));
             return false;
         }
 
         slot ??= Inventory[inventorySlotIndex];
-        if (!ItemBase.TryGet(slot.ItemId, out var itemDescriptor))
+        if (!ItemDescriptor.TryGet(slot.ItemId, out var itemDescriptor))
         {
             ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to move item that does not exist from slot {inventorySlotIndex}: {itemDescriptor.Id}");
             return false;
@@ -876,7 +899,7 @@ public partial class Player : Entity, IPlayer
         var sourceQuantity = GetQuantityOfItemInInventory(itemDescriptor.Id);
         var quantity = quantityHint < 0 ? sourceQuantity : quantityHint;
 
-        var targetSlots = Globals.Bank.ToArray();
+        var targetSlots = Globals.BankSlots.ToArray();
 
         var movableQuantity = Item.FindSpaceForItem(
             itemDescriptor.Id,
@@ -979,14 +1002,14 @@ public partial class Player : Entity, IPlayer
     )
     {
         // Permission Check for Guild Bank
-        if (Globals.GuildBank && !IsGuildBankWithdrawAllowed())
+        if (Globals.IsGuildBank && !IsGuildBankWithdrawAllowed())
         {
             ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Guilds.NotAllowedWithdraw.ToString(Globals.Me?.Guild), CustomColors.Alerts.Error, ChatMessageType.Bank));
             return false;
         }
 
-        slot ??= Globals.Bank[bankSlotIndex];
-        if (!ItemBase.TryGet(slot.ItemId, out var itemDescriptor))
+        slot ??= Globals.BankSlots[bankSlotIndex];
+        if (!ItemDescriptor.TryGet(slot.ItemId, out var itemDescriptor))
         {
             ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to move item that does not exist from slot {bankSlotIndex}: {itemDescriptor.Id}");
             return false;
@@ -1091,7 +1114,7 @@ public partial class Player : Entity, IPlayer
     public void TryStoreItemInBag(int inventorySlotIndex, int bagSlotIndex)
     {
         var inventorySlot = Inventory[inventorySlotIndex];
-        if (!ItemBase.TryGet(inventorySlot.ItemId, out var itemDescriptor))
+        if (!ItemDescriptor.TryGet(inventorySlot.ItemId, out var itemDescriptor))
         {
             return;
         }
@@ -1137,13 +1160,13 @@ public partial class Player : Entity, IPlayer
 
     public void TryRetrieveItemFromBag(int bagSlotIndex, int inventorySlotIndex)
     {
-        var bagSlot = Globals.Bag[bagSlotIndex];
+        var bagSlot = Globals.BagSlots[bagSlotIndex];
         if (bagSlot == default)
         {
             return;
         }
 
-        if (!ItemBase.TryGet(bagSlot.ItemId, out var itemDescriptor))
+        if (!ItemDescriptor.TryGet(bagSlot.ItemId, out var itemDescriptor))
         {
             return;
         }
@@ -1192,7 +1215,7 @@ public partial class Player : Entity, IPlayer
     {
         var slot = Inventory[index];
         var quantity = slot.Quantity;
-        var tradingItem = ItemBase.Get(slot.ItemId);
+        var tradingItem = ItemDescriptor.Get(slot.ItemId);
         if (tradingItem == null)
         {
             return;
@@ -1238,7 +1261,7 @@ public partial class Player : Entity, IPlayer
     {
         var slot = Globals.Trade[0, index];
         var quantity = slot.Quantity;
-        var revokedItem = ItemBase.Get(slot.ItemId);
+        var revokedItem = ItemDescriptor.Get(slot.ItemId);
         if (revokedItem == null)
         {
             return;
@@ -1290,7 +1313,7 @@ public partial class Player : Entity, IPlayer
     public void TryForgetSpell(int spellIndex)
     {
         var spellSlot = Spells[spellIndex];
-        if (SpellBase.TryGet(spellSlot.Id, out var spellDescriptor))
+        if (SpellDescriptor.TryGet(spellSlot.Id, out var spellDescriptor))
         {
             _ = new InputBox(
                 title: Strings.Spells.ForgetSpell,
@@ -1330,7 +1353,7 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        if (!SpellBase.TryGet(spell.Id, out var spellDescriptor))
+        if (!SpellDescriptor.TryGet(spell.Id, out var spellDescriptor))
         {
             return;
         }
@@ -1353,7 +1376,7 @@ public partial class Player : Entity, IPlayer
             return cd;
         }
 
-        if ((SpellBase.TryGet(id, out var spellBase) && !spellBase.IgnoreGlobalCooldown) && Globals.Me?.GlobalCooldown > Timing.Global.Milliseconds)
+        if ((SpellDescriptor.TryGet(id, out var spellBase) && !spellBase.IgnoreGlobalCooldown) && Globals.Me?.GlobalCooldown > Timing.Global.Milliseconds)
         {
             return Globals.Me.GlobalCooldown;
         }
@@ -1381,7 +1404,7 @@ public partial class Player : Entity, IPlayer
 
     public int FindHotbarSpell(IHotbarInstance hotbarInstance)
     {
-        if (hotbarInstance.ItemOrSpellId != Guid.Empty && SpellBase.Get(hotbarInstance.ItemOrSpellId) != null)
+        if (hotbarInstance.ItemOrSpellId != Guid.Empty && SpellDescriptor.Get(hotbarInstance.ItemOrSpellId) != null)
         {
             for (var i = 0; i < Spells.Length; i++)
             {
@@ -1441,36 +1464,51 @@ public partial class Player : Entity, IPlayer
     // Change the dimension if the player is on a gateway
     private void TryToChangeDimension()
     {
-        if (X < Options.Instance.Map.MapWidth && X >= 0)
-        {
-            if (Y < Options.Instance.Map.MapHeight && Y >= 0)
-            {
-                if (Maps.MapInstance.Get(MapId) != null && Maps.MapInstance.Get(MapId).Attributes[X, Y] != null)
-                {
-                    if (Maps.MapInstance.Get(MapId).Attributes[X, Y].Type == MapAttributeType.ZDimension)
-                    {
-                        if (((MapZDimensionAttribute)Maps.MapInstance.Get(MapId).Attributes[X, Y]).GatewayTo > 0)
-                        {
-                            Z = (byte)(((MapZDimensionAttribute)Maps.MapInstance.Get(MapId).Attributes[X, Y])
-                                        .GatewayTo -
-                                        1);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    //Input Handling
-    private void HandleInput()
-    {
-        var inputX = 0;
-        var inputY = 0;
-
-        if (Interface.Interface.HasInputFocus())
+        var tileX = TileX;
+        if (tileX >= MapWidth || tileX < 0)
         {
             return;
         }
+
+        var tileY = TileY;
+        if (tileY >= MapHeight || tileY < 0)
+        {
+            return;
+        }
+
+        if (!Maps.MapInstance.TryGet(MapId, out var mapInstance))
+        {
+            return;
+        }
+
+        var mapAttribute = mapInstance.Attributes[tileX, tileY];
+        if (mapAttribute is not MapZDimensionAttribute { Type: MapAttributeType.ZDimension } zAttribute)
+        {
+            return;
+        }
+
+        var gatewayZ = zAttribute.GatewayTo - 1;
+        if (gatewayZ < 0)
+        {
+            return;
+        }
+
+        var tileZ = TileZ;
+        if (tileZ != gatewayZ)
+        {
+            Position = Position with { Z = zAttribute.GatewayTo - 1 };
+        }
+    }
+
+    private Direction GetInputDirection()
+    {
+        if (Interface.Interface.HasInputFocus())
+        {
+            return Direction.None;
+        }
+
+        var inputX = 0;
+        var inputY = 0;
 
         if (Controls.IsControlPressed(Control.MoveUp))
         {
@@ -1542,12 +1580,26 @@ public partial class Player : Entity, IPlayer
             }
         }
 
-        if (Globals.Me != default)
+        return inputDirection;
+    }
+
+    //Input Handling
+    private void HandleInput()
+    {
+        if (Globals.Me != this)
         {
-            Globals.Me.MoveDir = inputDirection;
+            return;
         }
 
-        TurnAround();
+        var inputDirection = GetInputDirection();
+        if (TryTurnAround(inputDirection))
+        {
+            DirectionMoving = Direction.None;
+        }
+        else
+        {
+            DirectionMoving = inputDirection;
+        }
 
         var castInput = -1;
 
@@ -1583,10 +1635,15 @@ public partial class Player : Entity, IPlayer
             castInput = slotIndex;
         }
 
-        // ReSharper disable once InvertIf
-        if (0 <= castInput && castInput < Interface.Interface.GameUi?.Hotbar?.Items?.Count && mLastHotbarUseTime[castInput] < Timing.Global.Milliseconds)
+        if (!Interface.Interface.HasInGameUI)
         {
-            Interface.Interface.GameUi?.Hotbar?.Items?[castInput]?.Activate();
+            return;
+
+        }
+        // ReSharper disable once InvertIf
+        if (0 <= castInput && castInput < Interface.Interface.GameUi.Hotbar?.Items?.Count && mLastHotbarUseTime[castInput] < Timing.Global.Milliseconds)
+        {
+            Interface.Interface.GameUi.Hotbar?.Items?[castInput]?.Activate();
             mLastHotbarUseTime[castInput] = Timing.Global.Milliseconds + mHotbarUseDelay;
         }
     }
@@ -1600,12 +1657,12 @@ public partial class Player : Entity, IPlayer
             if (myMap != null && targetMap != null)
             {
                 //Calculate World Tile of Me
-                var x1 = X + myMap.GridX * Options.Instance.Map.MapWidth;
-                var y1 = Y + myMap.GridY * Options.Instance.Map.MapHeight;
+                var x1 = X + myMap.GridX * MapWidth;
+                var y1 = Y + myMap.GridY * MapHeight;
 
                 //Calculate world tile of target
-                var x2 = target.X + targetMap.GridX * Options.Instance.Map.MapWidth;
-                var y2 = target.Y + targetMap.GridY * Options.Instance.Map.MapHeight;
+                var x2 = target.X + targetMap.GridX * MapWidth;
+                var y2 = target.Y + targetMap.GridY * MapHeight;
 
                 return (int)Math.Sqrt(Math.Pow(x1 - x2, 2) + Math.Pow(y1 - y2, 2));
             }
@@ -1831,19 +1888,19 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        if (Controls.IsControlPressed(Control.TurnAround))
+        if (CanTurnAround)
         {
             return;
         }
 
-        if (IsTurnAroundWhileCastingDisabled)
+        if (Controls.IsControlPressed(Control.TurnAround))
         {
             return;
         }
 
         var directionToTarget = DirectionToTarget(en);
 
-        if (IsMoving || Dir == MoveDir || Dir == directionToTarget)
+        if (IsMoving || DirectionFacing == DirectionMoving || DirectionFacing == directionToTarget)
         {
             AutoTurnToTargetTimer = Timing.Global.Milliseconds + Options.Instance.Player.AutoTurnToTargetDelay;
             return;
@@ -1855,15 +1912,15 @@ public partial class Player : Entity, IPlayer
         }
 
         if (Options.Instance.Player.AutoTurnToTargetIgnoresEntitiesBehind &&
-            IsTargetAtOppositeDirection(Dir, directionToTarget))
+            IsTargetAtOppositeDirection(DirectionFacing, directionToTarget))
         {
             return;
         }
 
-        MoveDir = Direction.None;
-        Dir = directionToTarget;
-        PacketSender.SendDirection(Dir);
-        PickLastDirection(Dir);
+        DirectionMoving = Direction.None;
+        DirectionFacing = directionToTarget;
+        PacketSender.SendDirection(DirectionFacing);
+        PickLastDirection(DirectionFacing);
     }
 
     private static void ToggleTargetContextMenu(Entity en)
@@ -1886,7 +1943,7 @@ public partial class Player : Entity, IPlayer
         }
 
         // Return false if the shield item descriptor could not be retrieved.
-        if (!ItemBase.TryGet(Inventory[myShieldIndex].ItemId, out _))
+        if (!ItemDescriptor.TryGet(Inventory[myShieldIndex].ItemId, out _))
         {
             return false;
         }
@@ -1907,7 +1964,7 @@ public partial class Player : Entity, IPlayer
         int y = Globals.Me.Y;
         var map = Globals.Me.MapId;
 
-        switch (Globals.Me.Dir)
+        switch (Globals.Me.DirectionFacing)
         {
             case Direction.Up:
                 y--;
@@ -2028,25 +2085,25 @@ public partial class Player : Entity, IPlayer
 
             if (x < 0)
             {
-                tmpX = Options.Instance.Map.MapWidth - x * -1;
+                tmpX = MapWidth - x * -1;
                 gridX--;
             }
 
             if (y < 0)
             {
-                tmpY = Options.Instance.Map.MapHeight - y * -1;
+                tmpY = MapHeight - y * -1;
                 gridY--;
             }
 
-            if (y > Options.Instance.Map.MapHeight - 1)
+            if (y > MapHeight - 1)
             {
-                tmpY = y - Options.Instance.Map.MapHeight;
+                tmpY = y - MapHeight;
                 gridY++;
             }
 
-            if (x > Options.Instance.Map.MapWidth - 1)
+            if (x > MapWidth - 1)
             {
-                tmpX = x - Options.Instance.Map.MapWidth;
+                tmpX = x - MapWidth;
                 gridX++;
             }
 
@@ -2087,17 +2144,17 @@ public partial class Player : Entity, IPlayer
 
         foreach (MapInstance map in Maps.MapInstance.Lookup.Values.Cast<MapInstance>())
         {
-            if (x >= map.X && x <= map.X + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth)
+            if (x >= map.X && x <= map.X + MapWidth * TileWidth)
             {
-                if (y >= map.Y && y <= map.Y + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight)
+                if (y >= map.Y && y <= map.Y + MapHeight * TileHeight)
                 {
                     //Remove the offsets to just be dealing with pixels within the map selected
                     x -= (int)map.X;
                     y -= (int)map.Y;
 
                     //transform pixel format to tile format
-                    x /= Options.Instance.Map.TileWidth;
-                    y /= Options.Instance.Map.TileHeight;
+                    x /= TileWidth;
+                    y /= TileHeight;
                     var mapId = map.Id;
 
                     if (TryGetRealLocation(ref x, ref y, ref mapId))
@@ -2312,10 +2369,10 @@ public partial class Player : Entity, IPlayer
 
     public override int CalculateAttackTime()
     {
-        ItemBase? weapon = null;
+        ItemDescriptor? weapon = null;
         var attackTime = base.CalculateAttackTime();
 
-        var cls = ClassBase.Get(Class);
+        var cls = ClassDescriptor.Get(Class);
         if (cls != null && cls.AttackSpeedModifier == 1) //Static
         {
             attackTime = cls.AttackSpeedValue;
@@ -2327,7 +2384,7 @@ public partial class Player : Entity, IPlayer
                 Options.Instance.Equipment.WeaponSlot < Equipment.Length &&
                 MyEquipment[Options.Instance.Equipment.WeaponSlot] >= 0)
             {
-                weapon = ItemBase.Get(Inventory[MyEquipment[Options.Instance.Equipment.WeaponSlot]].ItemId);
+                weapon = ItemDescriptor.Get(Inventory[MyEquipment[Options.Instance.Equipment.WeaponSlot]].ItemId);
             }
         }
         else
@@ -2336,7 +2393,7 @@ public partial class Player : Entity, IPlayer
                 Options.Instance.Equipment.WeaponSlot < Equipment.Length &&
                 Equipment[Options.Instance.Equipment.WeaponSlot] != Guid.Empty)
             {
-                weapon = ItemBase.Get(Equipment[Options.Instance.Equipment.WeaponSlot]);
+                weapon = ItemDescriptor.Get(Equipment[Options.Instance.Equipment.WeaponSlot]);
             }
         }
 
@@ -2405,7 +2462,7 @@ public partial class Player : Entity, IPlayer
         Point position = new(X, Y);
         IEntity? blockedBy = null;
 
-        if (MoveDir <= Direction.None || Globals.EventDialogs.Count != 0)
+        if (DirectionMoving <= Direction.None || Globals.EventDialogs.Count != 0)
         {
             return;
         }
@@ -2422,8 +2479,8 @@ public partial class Player : Entity, IPlayer
             CastTime = 0;
         }
 
-        var dir = Dir;
-        var moveDir = MoveDir;
+        var dir = DirectionFacing;
+        var moveDir = DirectionMoving;
 
         var enableCrossingDiagonalBlocks = Options.Instance.Map.EnableCrossingDiagonalBlocks;
 
@@ -2463,7 +2520,7 @@ public partial class Player : Entity, IPlayer
                 position.X += delta.X;
                 position.Y += delta.Y;
                 IsMoving = true;
-                Dir = possibleDirection;
+                DirectionFacing = possibleDirection;
 
                 if (delta.X == 0)
                 {
@@ -2471,7 +2528,7 @@ public partial class Player : Entity, IPlayer
                 }
                 else
                 {
-                    OffsetX = delta.X > 0 ? -Options.Instance.Map.TileWidth : Options.Instance.Map.TileWidth;
+                    OffsetX = delta.X > 0 ? -TileWidth : TileWidth;
                 }
 
                 if (delta.Y == 0)
@@ -2480,7 +2537,7 @@ public partial class Player : Entity, IPlayer
                 }
                 else
                 {
-                    OffsetY = delta.Y > 0 ? -Options.Instance.Map.TileHeight : Options.Instance.Map.TileHeight;
+                    OffsetY = delta.Y > 0 ? -TileHeight : TileHeight;
                 }
 
                 break;
@@ -2494,16 +2551,16 @@ public partial class Player : Entity, IPlayer
 
         if (IsMoving)
         {
-            if (position.X < 0 || position.Y < 0 || position.X > Options.Instance.Map.MapWidth - 1 || position.Y > Options.Instance.Map.MapHeight - 1)
+            if (position.X < 0 || position.Y < 0 || position.X > MapWidth - 1 || position.Y > MapHeight - 1)
             {
                 var gridX = Maps.MapInstance.Get(Globals.Me.MapId).GridX;
                 var gridY = Maps.MapInstance.Get(Globals.Me.MapId).GridY;
                 if (position.X < 0)
                 {
                     gridX--;
-                    X = (byte)(Options.Instance.Map.MapWidth - 1);
+                    X = (byte)(MapWidth - 1);
                 }
-                else if (position.X >= Options.Instance.Map.MapWidth)
+                else if (position.X >= MapWidth)
                 {
                     X = 0;
                     gridX++;
@@ -2516,9 +2573,9 @@ public partial class Player : Entity, IPlayer
                 if (position.Y < 0)
                 {
                     gridY--;
-                    Y = (byte)(Options.Instance.Map.MapHeight - 1);
+                    Y = (byte)(MapHeight - 1);
                 }
-                else if (position.Y >= Options.Instance.Map.MapHeight)
+                else if (position.Y >= MapHeight)
                 {
                     Y = 0;
                     gridY++;
@@ -2546,11 +2603,11 @@ public partial class Player : Entity, IPlayer
         }
         else
         {
-            if (MoveDir != Dir)
+            if (DirectionMoving != DirectionFacing)
             {
-                Dir = MoveDir;
-                PacketSender.SendDirection(Dir);
-                PickLastDirection(Dir);
+                DirectionFacing = DirectionMoving;
+                PacketSender.SendDirection(DirectionFacing);
+                PickLastDirection(DirectionFacing);
             }
 
             if (blockedBy != null && mLastBumpedEvent != blockedBy && blockedBy is Event)
@@ -2679,7 +2736,9 @@ public partial class Player : Entity, IPlayer
         }
 
         var guildLabel = Guild?.Trim();
-        if (!ShouldDrawName || string.IsNullOrWhiteSpace(guildLabel) || !Options.Instance.Guild.ShowGuildNameTagsOverMembers)
+        if (!ShouldDrawName ||
+            string.IsNullOrWhiteSpace(guildLabel) ||
+            !Options.Instance.Guild.ShowGuildNameTagsOverMembers)
         {
             return;
         }
@@ -2695,7 +2754,12 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        var textSize = Graphics.Renderer.MeasureText(guildLabel, Graphics.EntityNameFont, 1);
+        var textSize = Graphics.Renderer.MeasureText(
+            guildLabel,
+            Graphics.EntityNameFont,
+            Graphics.EntityNameFontSize,
+            1
+        );
 
         var x = (int)Math.Ceiling(Origin.X);
         var y = GetLabelLocation(LabelType.Guild);
@@ -2704,7 +2768,7 @@ public partial class Player : Entity, IPlayer
         if (backgroundColor != Color.Transparent)
         {
             Graphics.DrawGameTexture(
-                Graphics.Renderer.GetWhiteTexture(),
+                Graphics.Renderer.WhitePixel,
                 new FloatRect(0, 0, 1, 1),
                 new FloatRect(x - textSize.X / 2f - 4, y, textSize.X + 8, textSize.Y),
                 backgroundColor
@@ -2715,6 +2779,7 @@ public partial class Player : Entity, IPlayer
         Graphics.Renderer.DrawString(
             guildLabel,
             Graphics.EntityNameFont,
+            Graphics.EntityNameFontSize,
             x - (int)Math.Ceiling(textSize.X / 2f),
             (int)y,
             1,
@@ -2849,10 +2914,10 @@ public partial class Player : Entity, IPlayer
             var mouseInWorld = Graphics.ConvertToWorldPoint(Globals.InputManager.GetMousePosition());
             foreach (MapInstance map in Maps.MapInstance.Lookup.Values.Cast<MapInstance>())
             {
-                if (mouseInWorld.X >= map.X && mouseInWorld.X <= map.X + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth)
+                if (mouseInWorld.X >= map.X && mouseInWorld.X <= map.X + MapWidth * TileWidth)
                 {
                     if (mouseInWorld.Y >= map.Y &&
-                        mouseInWorld.Y <= map.Y + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight)
+                        mouseInWorld.Y <= map.Y + MapHeight * TileHeight)
                     {
                         var mapId = map.Id;
 
@@ -2919,38 +2984,34 @@ public partial class Player : Entity, IPlayer
         public int DistanceTo;
     }
 
-    private void TurnAround()
+    private bool TryTurnAround(Direction inputDirection)
     {
-        if (Globals.Me == default)
+        if (inputDirection == Direction.None)
         {
-            return;
+            return false;
         }
 
-        // If players hold the 'TurnAround' Control Key and tap to any direction, they will turn on their own axis.
-        for (var direction = 0; direction < Options.Instance.Map.MovementDirections; direction++)
+        if (!CanTurnAround)
         {
-            if (!Controls.IsControlPressed(Control.TurnAround) || direction != (int)Globals.Me.MoveDir || IsTurnAroundWhileCastingDisabled)
-            {
-                continue;
-            }
-
-            // Turn around and hold the player in place if the requested direction is different from the current one.
-            if (!Globals.Me.IsMoving && Dir != Globals.Me.MoveDir)
-            {
-                Dir = Globals.Me.MoveDir;
-                PacketSender.SendDirection(Dir);
-                Globals.Me.MoveDir = Direction.None;
-                PickLastDirection(Dir);
-            }
-
-            // Hold the player in place if the requested direction is the same as the current one.
-            if (!Globals.Me.IsMoving && Dir == Globals.Me.MoveDir)
-            {
-                Globals.Me.MoveDir = Direction.None;
-            }
+            return false;
         }
+
+        if (!Controls.IsControlPressed(Control.TurnAround))
+        {
+            return false;
+        }
+
+        var directionFacing = DirectionFacing;
+        if (inputDirection == directionFacing)
+        {
+            return true;
+        }
+
+        PacketSender.SendDirection(inputDirection);
+        PickLastDirection(inputDirection);
+
+        return true;
     }
-
     // Checks if the target is at the opposite direction of the current player's direction.
     // The comparison also takes into account whether diagonal movement is enabled or not.
     private static bool IsTargetAtOppositeDirection(Direction currentDir, Direction targetDir)

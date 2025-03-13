@@ -226,7 +226,7 @@ public partial class MenuContainer : Panel
         SizeToChildren(recursive: true);
 
         SkipRender();
-        Defer(
+        RunOnMainThread(
             action: () =>
             {
                 LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer!.GetResolutionString());
@@ -337,7 +337,7 @@ public partial class MenuContainer : Panel
 
     public void ToggleInventoryWindow()
     {
-        if (_inventoryWindow.IsVisible())
+        if (_inventoryWindow.IsVisibleInTree)
         {
             _inventoryWindow.Hide();
         }
@@ -391,7 +391,7 @@ public partial class MenuContainer : Panel
 
     public void ToggleSpellsWindow()
     {
-        if (_spellsWindow.IsVisible())
+        if (_spellsWindow.IsVisibleInTree)
         {
             _spellsWindow.Hide();
         }
@@ -423,11 +423,11 @@ public partial class MenuContainer : Panel
     {
         var windowsOpen = _characterWindow.IsVisible() ||
                           _friendsWindow.IsVisible ||
-                          _inventoryWindow.IsVisible() ||
+                          _inventoryWindow.IsVisibleInTree ||
                           _questsWindow.IsVisible() ||
-                          _spellsWindow.IsVisible() ||
+                          _spellsWindow.IsVisibleInTree ||
                           _partyWindow.IsVisible() ||
-                          _guildWindow.IsVisible;
+                          _guildWindow.IsVisibleInTree;
         return windowsOpen;
     }
 

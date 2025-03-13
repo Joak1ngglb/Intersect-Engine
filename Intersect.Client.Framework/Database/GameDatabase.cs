@@ -19,6 +19,10 @@ public abstract partial class GameDatabase
 
     public int SoundVolume { get; set; }
 
+    public bool ShowFPSCounter { get; set; }
+
+    public bool ShowPingCounter { get; set; }
+
     public int TargetFps { get; set; }
 
     public int TargetResolution { get; set; }
@@ -69,6 +73,8 @@ public abstract partial class GameDatabase
 
     public float UIScale { get; set; } = 1.0f;
 
+    public bool EnableScrollingWorldZoom { get; set; }
+
     public float WorldZoom { get; set; } = 1.0f;
 
     public abstract void DeletePreference(string key);
@@ -113,6 +119,8 @@ public abstract partial class GameDatabase
         MusicVolume = LoadPreference(nameof(MusicVolume), 10);
         SoundVolume = LoadPreference(nameof(SoundVolume), 15);
         TargetResolution = LoadPreference(nameof(TargetResolution), -1);
+        ShowFPSCounter = LoadPreference(nameof(ShowFPSCounter), false);
+        ShowPingCounter = LoadPreference(nameof(ShowPingCounter), false);
         TargetFps = LoadPreference(nameof(TargetFps), 0);
         FullScreen = LoadPreference(nameof(FullScreen), false);
         EnableLighting = LoadPreference(nameof(EnableLighting), true);
@@ -140,6 +148,7 @@ public abstract partial class GameDatabase
         SimplifiedEscapeMenu = LoadPreference(nameof(SimplifiedEscapeMenu), false);
         TypewriterBehavior = LoadPreference(nameof(TypewriterBehavior), TypewriterBehavior.Word);
         UIScale = LoadPreference(nameof(UIScale), 1.0f);
+        EnableScrollingWorldZoom = LoadPreference(nameof(EnableScrollingWorldZoom), false);
         WorldZoom = LoadPreference(nameof(WorldZoom), 1.0f);
     }
 
@@ -153,6 +162,8 @@ public abstract partial class GameDatabase
         SavePreference(nameof(TargetResolution), TargetResolution);
         SavePreference(nameof(TargetFps), TargetFps);
         SavePreference(nameof(FullScreen), FullScreen);
+        SavePreference(nameof(ShowFPSCounter), ShowFPSCounter);
+        SavePreference(nameof(ShowPingCounter), ShowPingCounter);
         SavePreference(nameof(EnableLighting), EnableLighting);
         SavePreference(nameof(HideOthersOnWindowOpen), HideOthersOnWindowOpen);
         SavePreference(nameof(AutoToggleChatLog), AutoToggleChatLog);
@@ -178,6 +189,7 @@ public abstract partial class GameDatabase
         SavePreference(nameof(SimplifiedEscapeMenu), SimplifiedEscapeMenu);
         SavePreference(nameof(TypewriterBehavior), TypewriterBehavior);
         SavePreference(nameof(UIScale), UIScale);
+        SavePreference(nameof(EnableScrollingWorldZoom), EnableScrollingWorldZoom);
         SavePreference(nameof(WorldZoom), WorldZoom);
     }
 

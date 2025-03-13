@@ -99,7 +99,7 @@ public partial class LabeledSlider : Base, ISmartAutoSizeToContents, INumericInp
         IsTabable = true;
     }
 
-    public GameTexture? BackgroundImage
+    public IGameTexture? BackgroundImage
     {
         get => _slider.BackgroundImage;
         set => _slider.BackgroundImage = value;
@@ -117,13 +117,24 @@ public partial class LabeledSlider : Base, ISmartAutoSizeToContents, INumericInp
         set => _slider.DraggerSize = value;
     }
 
-    public GameFont? Font
+    public IFont? Font
     {
         get => _label.Font;
         set
         {
             _label.Font = value;
             _sliderValue.Font = value;
+            _sliderValue.MinimumSize = ComputeMinimumSizeForSliderValue();
+        }
+    }
+
+    public int FontSize
+    {
+        get => _label.FontSize;
+        set
+        {
+            _label.FontSize = value;
+            _sliderValue.FontSize = value;
             _sliderValue.MinimumSize = ComputeMinimumSizeForSliderValue();
         }
     }
@@ -136,8 +147,8 @@ public partial class LabeledSlider : Base, ISmartAutoSizeToContents, INumericInp
 
     public bool IsValueInputEnabled
     {
-        get => _sliderValue.IsVisible;
-        set => _sliderValue.IsVisible = value;
+        get => _sliderValue.IsVisibleInTree;
+        set => _sliderValue.IsVisibleInTree = value;
     }
 
     public string? Label
@@ -225,7 +236,7 @@ public partial class LabeledSlider : Base, ISmartAutoSizeToContents, INumericInp
             valueString = string.Format(valueFormatString, valueString);
         }
 
-        return Skin.Renderer.MeasureText(_sliderValue.Font, valueString) +
+        return Skin.Renderer.MeasureText(font: _sliderValue.Font, fontSize: _sliderValue.FontSize, text: valueString) +
                _sliderValue.Padding +
                _sliderValue.Padding;
     }
@@ -259,12 +270,12 @@ public partial class LabeledSlider : Base, ISmartAutoSizeToContents, INumericInp
         set => _label.MinimumSize = value;
     }
 
-    public void SetDraggerImage(GameTexture? texture, ComponentState state)
+    public void SetDraggerImage(IGameTexture? texture, ComponentState state)
     {
         _slider.SetDraggerImage(texture, state);
     }
 
-    public GameTexture? GetDraggerImage(ComponentState state)
+    public IGameTexture? GetDraggerImage(ComponentState state)
     {
         return _slider.GetDraggerImage(state);
     }

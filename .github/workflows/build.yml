@@ -3,13 +3,18 @@ name: Intersect (main)
 on:
   push:
     branches: [ "main" ]
-    paths-ignore:
-      - '.github/**'
-      - 'Documentation/**'
-      - '.gitignore'
-      - '*.DotSettings'
-      - '*.json'
-      - '*.md'
+    paths:
+      - 'Framework/**'
+      - 'Intersect*/**'
+      - '.github/bundles/**'
+      - '.github/workflows/build.yml'
+      - '!Intersect.Tests*/**'
+      - '!launchSettings.json'
+      - '!*.md'
+      - '!Examples/**'
+      - '!Documentation/**'
+      - '!.git*'
+      - '!*.DotSettings'
   workflow_dispatch:
     inputs:
       forceBuild:
@@ -86,7 +91,7 @@ jobs:
       uses: actions/cache@v4.2.0
       id: cache-binaries
       with:
-        key: ${{ runner.os }}-binaries-keys-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        key: ${{ runner.os }}-binaries-keys-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/**/*.cs*', 'Framework/**/*.cs*') }}
         path: |
           Intersect*/bin/Release/**/*
 
@@ -101,13 +106,13 @@ jobs:
       id: cache-nuget
       if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
       with:
-        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/*.csproj') }}
+        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/*.csproj', 'Framework/*/*.csproj') }}
         path: |
           ~/.nuget/packages
           Intersect*/obj/
 
     - name: Apply environment patches
-      run: git apply disable-windows-editor.patch
+      run: git apply disable-windows-only.patch
 
     - name: Restore NuGet Packages
       if: steps.cache-binaries.outputs.cache-hit != 'true' && steps.cache-nuget.outputs.cache-hit != 'true' || inputs.forceRestore == true
@@ -142,7 +147,7 @@ jobs:
       uses: actions/cache@v4.2.0
       id: cache-binaries
       with:
-        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/**/*.cs*', 'Framework/**/*.cs*') }}
         path: |
           Intersect*/bin/Release/**/*
 
@@ -157,13 +162,13 @@ jobs:
       id: cache-nuget
       if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
       with:
-        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/*.csproj') }}
+        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/*.csproj', 'Framework/*/*.csproj') }}
         path: |
           ~/.nuget/packages
           Intersect*/obj/
 
     - name: Apply environment patches
-      run: git apply disable-windows-editor.patch
+      run: git apply disable-windows-only.patch
 
     - name: Restore NuGet Packages
       if: steps.cache-binaries.outputs.cache-hit != 'true' && steps.cache-nuget.outputs.cache-hit != 'true' || inputs.forceRestore == true
@@ -210,9 +215,13 @@ jobs:
       uses: actions/cache@v4.2.0
       id: cache-binaries
       with:
-        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/**/*.cs*', 'Framework/**/*.cs*') }}
         path: |
           Intersect*/bin/Release/**/*
+
+    - name: Force cURL to use HTTP 1.1
+      run: |
+        alias curl="$(which curl) --http1.1"
 
     - name: Setup dotnet
       if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
@@ -225,13 +234,13 @@ jobs:
       id: cache-nuget
       if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
       with:
-        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/*.csproj') }}
+        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/*.csproj', 'Framework/*/*.csproj') }}
         path: |
           ~/.nuget/packages
           Intersect*/obj/
 
     - name: Apply environment patches
-      run: git apply disable-windows-editor.patch
+      run: git apply disable-windows-only.patch
 
     - name: Restore NuGet Packages
       if: steps.cache-binaries.outputs.cache-hit != 'true' && steps.cache-nuget.outputs.cache-hit != 'true' || inputs.forceRestore == true
@@ -278,7 +287,7 @@ jobs:
       uses: actions/cache@v4.2.0
       id: cache-binaries
       with:
-        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/**/*.cs*', 'Framework/**/*.cs*') }}
         path: |
           Intersect*/bin/Release/**/*
 
@@ -398,7 +407,7 @@ jobs:
           token: ${{ secrets.INTERSECTBOT_ACCESS_TOKEN }}
 
       - name: Package artifacts
-        uses: AscensionGameDev/actions@cc2eb0e356546042e4dc7eca6788fd0b5a063b32
+        uses: AscensionGameDev/actions@7bc0d0221a73dfcd7620c5c151b31ee8815d95a0
         with:
           bundle: .github/bundles/*.json
           version: ${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }}

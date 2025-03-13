@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
+using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.DragDrop;
 using Intersect.Client.Framework.Input;
@@ -206,8 +207,9 @@ public static partial class InputHandler
     /// </summary>
     /// <param name="canvas">Canvas.</param>
     /// <param name="chr">Input character.</param>
+    /// <param name="msgKey"></param>
     /// <returns>True if the key was handled.</returns>
-    public static bool DoSpecialKeys(Base canvas, char chr)
+    public static bool DoSpecialKeys(Base canvas, char chr, Keys msgKey)
     {
         if (null == KeyboardFocus)
         {
@@ -219,42 +221,42 @@ public static partial class InputHandler
             return false;
         }
 
-        if (!KeyboardFocus.IsVisible)
+        if (!KeyboardFocus.IsVisibleInTree)
         {
             return false;
         }
 
-        if (!IsControlDown)
+        if (IsControlDown)
         {
+            if (chr == 'C' || chr == 'c')
+            {
+                KeyboardFocus.InputCopy(null);
+
+                return true;
+            }
+
+            if (chr == 'V' || chr == 'v')
+            {
+                KeyboardFocus.InputPaste(null);
+
+                return true;
+            }
+
+            if (chr == 'X' || chr == 'x')
+            {
+                KeyboardFocus.InputCut(null);
+
+                return true;
+            }
+
+            if (chr == 'A' || chr == 'a')
+            {
+                KeyboardFocus.InputSelectAll(null);
+
+                return true;
+            }
+
             return false;
-        }
-
-        if (chr == 'C' || chr == 'c')
-        {
-            KeyboardFocus.InputCopy(null);
-
-            return true;
-        }
-
-        if (chr == 'V' || chr == 'v')
-        {
-            KeyboardFocus.InputPaste(null);
-
-            return true;
-        }
-
-        if (chr == 'X' || chr == 'x')
-        {
-            KeyboardFocus.InputCut(null);
-
-            return true;
-        }
-
-        if (chr == 'A' || chr == 'a')
-        {
-            KeyboardFocus.InputSelectAll(null);
-
-            return true;
         }
 
         return false;
@@ -328,12 +330,12 @@ public static partial class InputHandler
     /// <param name="canvas">Unused.</param>
     public static void OnCanvasThink(Canvas canvas)
     {
-        if (MouseFocus is { IsVisible: false })
+        if (MouseFocus is { IsVisibleInTree: false })
         {
             MouseFocus = null;
         }
 
-        if (KeyboardFocus != null && (!KeyboardFocus.IsVisible || !KeyboardFocus.KeyboardInputEnabled))
+        if (KeyboardFocus != null && (!KeyboardFocus.IsVisibleInTree || !KeyboardFocus.KeyboardInputEnabled))
         {
             // KeyboardFocus = null;
         }
@@ -404,7 +406,7 @@ public static partial class InputHandler
             return false;
         }
 
-        if (!hoveredControl.IsVisible)
+        if (!hoveredControl.IsVisibleInTree)
         {
             return false;
         }
@@ -489,7 +491,7 @@ public static partial class InputHandler
         if (canvas == null ||
             HoveredControl == null ||
             HoveredControl.Canvas != canvas ||
-            !canvas.IsVisible
+            !canvas.IsVisibleInTree
         )
         {
             return false;
@@ -527,7 +529,7 @@ public static partial class InputHandler
             return false;
         }
 
-        if (!KeyboardFocus.IsVisible)
+        if (!KeyboardFocus.IsVisibleInTree)
         {
             return false;
         }

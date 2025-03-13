@@ -10,7 +10,7 @@ namespace Intersect.Client.Interface.Game.Admin;
 
 public class TexturePicker : Panel, ITextContainer
 {
-    private readonly GameFont? _defaultFont;
+    private readonly IFont? _defaultFont;
 
     private readonly Panel _previewPanel;
     private readonly ImagePanel _preview;
@@ -29,7 +29,7 @@ public class TexturePicker : Panel, ITextContainer
     public TexturePicker(Base parent, string? name = nameof(TexturePicker)) : base(parent: parent, name: name)
     {
         _allowNone = true;
-        _defaultFont = GameContentManager.Current.GetFont(name: "sourcesansproblack", size: 12);
+        _defaultFont = GameContentManager.Current.GetFont(name: "sourcesansproblack");
 
         DockChildSpacing = new Padding(8);
         ShouldDrawBackground = false;
@@ -59,6 +59,7 @@ public class TexturePicker : Panel, ITextContainer
             AutoSizeToContents = false,
             Dock = Pos.Fill,
             Font = _defaultFont,
+            FontSize = 12,
             TextPadding = new Padding(8, 4, 0, 4),
         };
         _textureSelector.ItemSelected += TextureSelectorOnItemSelected;
@@ -67,6 +68,7 @@ public class TexturePicker : Panel, ITextContainer
         {
             Dock = Pos.Bottom,
             Font = _defaultFont,
+            FontSize = 12,
             Padding = new Padding(8, 4),
         };
         _submitButton.Clicked += SubmitButtonOnClicked;
@@ -124,34 +126,44 @@ public class TexturePicker : Panel, ITextContainer
     public bool AllowNone
     {
         get => _allowNone;
-        set => SetAndDoIfChanged(ref _allowNone, value, UpdateNone);
+        set => SetAndDoIfChanged(ref _allowNone, value, UpdateNone, this);
     }
 
-    public GameFont? ButtonFont
+    public IFont? ButtonFont
     {
         get => _submitButton.Font;
         set => _submitButton.Font = value;
     }
 
-    public GameFont? LabelFont
+    public IFont? LabelFont
     {
         get => _textureSelector.LabelFont;
         set => _textureSelector.LabelFont = value;
     }
 
-    public GameFont? SelectorFont
+    public IFont? SelectorFont
     {
         get => _textureSelector.ItemFont;
         set => _textureSelector.ItemFont = value;
     }
 
-    public GameFont? Font
+    public IFont? Font
     {
         get => _textureSelector.Font;
         set
         {
             _submitButton.Font = value;
             _textureSelector.Font = value;
+        }
+    }
+
+    public int FontSize
+    {
+        get => _textureSelector.FontSize;
+        set
+        {
+            _submitButton.FontSize = value;
+            _textureSelector.FontSize = value;
         }
     }
 
@@ -170,7 +182,7 @@ public class TexturePicker : Panel, ITextContainer
     public TextureType TextureType
     {
         get => _textureType;
-        set => SetAndDoIfChanged(ref _textureType, value, InvalidateSelector);
+        set => SetAndDoIfChanged(ref _textureType, value, InvalidateSelector, this);
     }
 
     string? ITextContainer.Text
@@ -181,27 +193,29 @@ public class TexturePicker : Panel, ITextContainer
 
     public Color? TextPaddingDebugColor { get; set; }
 
-    private void UpdateNone()
+    private static void UpdateNone(TexturePicker @this)
     {
-        if (_allowNone)
+        if (@this._allowNone)
         {
-            _noneItem ??= AddNone();
+            @this._noneItem ??= @this.AddNone();
         }
-        else if (_noneItem is not null)
+        else if (@this._noneItem is not null)
         {
-            RemoveChild(_noneItem, dispose: true);
-            _noneItem = null;
+            @this.RemoveChild(@this._noneItem, dispose: true);
+            @this._noneItem = null;
         }
     }
 
-    public void InvalidateSelector()
+    public void InvalidateSelector() => RunOnMainThread(InvalidateSelector, this);
+
+    private static void InvalidateSelector(TexturePicker @this)
     {
-        if (!_selectorDirty)
+        if (!@this._selectorDirty)
         {
-            _selectorDirty = true;
+            @this._selectorDirty = true;
         }
 
-        Invalidate();
+        @this.Invalidate();
     }
 
     private MenuItem AddNone()
@@ -223,7 +237,7 @@ public class TexturePicker : Panel, ITextContainer
             _noneItem = null;
             _textureSelector.ClearItems();
 
-            UpdateNone();
+            UpdateNone(this);
 
             foreach (var textureName in textureNames)
             {

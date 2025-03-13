@@ -5,6 +5,7 @@ using Intersect.Client.Framework.Gwen.ControlInternal;
 using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Core;
+using Intersect.Framework.Reflection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -83,7 +84,7 @@ public partial class TextBox : Label
         _placeholder = new Text(this)
         {
             ColorOverride = new Color(255, 143, 143, 143),
-            IsVisible = false,
+            IsVisibleInTree = false,
         };
     }
 
@@ -105,6 +106,20 @@ public partial class TextBox : Label
                 SelectAll();
             }
         }
+    }
+
+    protected override void OnKeyboardFocus()
+    {
+        base.OnKeyboardFocus();
+
+        ApplicationContext.CurrentContext.Logger.LogDebug("{Node} ({NodeType}) gained keyboard focus", CanonicalName, GetType().GetName());
+    }
+
+    protected override void OnLostKeyboardFocus()
+    {
+        base.OnLostKeyboardFocus();
+
+        ApplicationContext.CurrentContext.Logger.LogDebug("{Node} ({NodeType}) lost keyboard focus", CanonicalName, GetType().GetName());
     }
 
     /// <summary>
@@ -145,7 +160,7 @@ public partial class TextBox : Label
         }
     }
 
-    public override GameFont? Font
+    public override IFont? Font
     {
         get => base.Font;
         set
@@ -417,7 +432,11 @@ public partial class TextBox : Label
     /// </returns>
     protected override bool OnKeyReturn(bool down)
     {
-        base.OnKeyReturn(down);
+        if (base.OnKeyReturn(down))
+        {
+            return true;
+        }
+
         if (down)
         {
             return true;
@@ -882,7 +901,7 @@ public partial class TextBox : Label
 
     private void UpdatePlaceholder()
     {
-        _placeholder.IsVisible = string.IsNullOrEmpty(Text) && !string.IsNullOrWhiteSpace(PlaceholderText);
+        _placeholder.IsVisibleInTree = string.IsNullOrEmpty(Text) && !string.IsNullOrWhiteSpace(PlaceholderText);
         AlignTextElement(_placeholder);
     }
 

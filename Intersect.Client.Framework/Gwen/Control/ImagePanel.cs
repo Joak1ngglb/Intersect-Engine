@@ -2,7 +2,6 @@ using Intersect.Client.Framework.Content;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Graphics;
-using Intersect.Client.Framework.Gwen.ControlInternal;
 using Intersect.Client.Framework.Gwen.Skin.Texturing;
 using Intersect.Client.Framework.Input;
 using Newtonsoft.Json.Linq;
@@ -19,13 +18,13 @@ public partial class ImagePanel : Base
     private readonly float[] _uv;
 
     //Sound Effects
-    protected string mHoverSound;
+    public string? HoverSound { get; set; }
 
-    protected string mLeftMouseClickSound;
+    public string? LeftMouseClickSound { get; set; }
 
-    protected string mRightMouseClickSound;
+    public string? RightMouseClickSound { get; set; }
 
-    private GameTexture? _texture { get; set; }
+    private IGameTexture? _texture { get; set; }
     private string? _textureName;
     private Rectangle _textureSourceBounds;
     private float _textureAspectRatio;
@@ -70,7 +69,7 @@ public partial class ImagePanel : Base
     /// <summary>
     ///     Assign Existing Texture
     /// </summary>
-    public GameTexture? Texture
+    public IGameTexture? Texture
     {
         get => _texture;
         set
@@ -81,7 +80,7 @@ public partial class ImagePanel : Base
             }
 
             _texture = value;
-            _textureName = _texture?.Name;
+            _textureName = Path.GetFileName(_texture?.Name);
             RecomputeTextureSourceBounds();
             if (_texture != null)
             {
@@ -145,7 +144,7 @@ public partial class ImagePanel : Base
     protected override void OnMouseEntered()
     {
         base.OnMouseEntered();
-        PlaySound(mHoverSound);
+        PlaySound(HoverSound);
     }
 
     protected override void OnMouseClicked(MouseButton mouseButton, Point mousePosition, bool userAction = true)
@@ -154,8 +153,8 @@ public partial class ImagePanel : Base
         PlaySound(
             mouseButton switch
             {
-                MouseButton.Left => mLeftMouseClickSound,
-                MouseButton.Right => mRightMouseClickSound,
+                MouseButton.Left => LeftMouseClickSound,
+                MouseButton.Right => RightMouseClickSound,
                 _ => null,
             }
         );
@@ -166,12 +165,9 @@ public partial class ImagePanel : Base
         base.OnPositionChanged(oldPosition, newPosition);
     }
 
-    /// <summary>
-    ///     Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
-    /// </summary>
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        base.Dispose();
+        base.Dispose(disposing);
     }
 
     public override JObject? GetJson(bool isRoot = false, bool onlySerializeIfNotEmpty = false)
@@ -184,9 +180,9 @@ public partial class ImagePanel : Base
 
         serializedProperties.Add(nameof(Texture), TextureFilename);
         serializedProperties.Add(nameof(TextureNinePatchMargin), TextureNinePatchMargin?.ToString());
-        serializedProperties.Add("HoverSound", mHoverSound);
-        serializedProperties.Add("LeftMouseClickSound", mLeftMouseClickSound);
-        serializedProperties.Add("RightMouseClickSound", mRightMouseClickSound);
+        serializedProperties.Add(nameof(HoverSound), HoverSound);
+        serializedProperties.Add(nameof(LeftMouseClickSound), LeftMouseClickSound);
+        serializedProperties.Add(nameof(RightMouseClickSound), RightMouseClickSound);
 
         return base.FixJson(serializedProperties);
     }
@@ -229,19 +225,22 @@ public partial class ImagePanel : Base
             }
         }
 
-        if (obj["HoverSound"] != null)
+        if (obj[nameof(HoverSound)] is JValue { Type: JTokenType.String } tokenHoverSound &&
+            tokenHoverSound.Value<string>()?.Trim() is { Length: > 0 } hoverSound)
         {
-            mHoverSound = (string) obj["HoverSound"];
+            HoverSound = hoverSound;
         }
 
-        if (obj["LeftMouseClickSound"] != null)
+        if (obj[nameof(LeftMouseClickSound)] is JValue { Type: JTokenType.String } tokenLeftMouseClickSound &&
+            tokenLeftMouseClickSound.Value<string>()?.Trim() is { Length: > 0 } leftMouseClickSound)
         {
-            mLeftMouseClickSound = (string) obj["LeftMouseClickSound"];
+            LeftMouseClickSound = leftMouseClickSound;
         }
 
-        if (obj["RightMouseClickSound"] != null)
+        if (obj[nameof(RightMouseClickSound)] is JValue { Type: JTokenType.String } tokenRightMouseClickSound &&
+            tokenRightMouseClickSound.Value<string>()?.Trim() is { Length: > 0 } rightMouseClickSound)
         {
-            mRightMouseClickSound = (string) obj["RightMouseClickSound"];
+            RightMouseClickSound = rightMouseClickSound;
         }
     }
 
@@ -312,9 +311,9 @@ public partial class ImagePanel : Base
         EnsureTextureLoaded();
     }
 
-    protected override void Prelayout(Skin.Base skin)
+    protected override void DoPrelayout(Skin.Base skin)
     {
-        base.Prelayout(skin);
+        base.DoPrelayout(skin);
 
         EnsureTextureLoaded();
     }
@@ -355,14 +354,17 @@ public partial class ImagePanel : Base
         if (TextureNinePatchMargin is { } textureNinePatchMargin)
         {
             var sourceBounds = _textureSourceBounds;
-            _ninepatchRenderer ??= new Bordered(
-                texture,
-                sourceBounds.X,
-                sourceBounds.Y,
-                sourceBounds.Width,
-                sourceBounds.Height,
-                textureNinePatchMargin
-            );
+            if (_ninepatchRenderer == null || _ninepatchRenderer.Value.Margin != textureNinePatchMargin)
+            {
+                _ninepatchRenderer = new Bordered(
+                    texture,
+                    sourceBounds.X,
+                    sourceBounds.Y,
+                    sourceBounds.Width,
+                    sourceBounds.Height,
+                    textureNinePatchMargin
+                );
+            }
 
             if (_ninepatchRenderer is { } ninepatchRenderer)
             {
@@ -402,11 +404,6 @@ public partial class ImagePanel : Base
     ///     Sizes the control to its contents.
     /// </summary>
     public virtual void SizeToContents() => SizeToChildren();
-
-    public override bool SizeToChildren(bool resizeX = true, bool resizeY = true, bool recursive = false)
-    {
-        return base.SizeToChildren(resizeX, resizeY, recursive);
-    }
 
     public override bool SetBounds(int x, int y, int width, int height)
     {

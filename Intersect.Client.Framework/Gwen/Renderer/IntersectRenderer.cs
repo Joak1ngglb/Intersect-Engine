@@ -19,13 +19,13 @@ public partial class IntersectRenderer : Base, ICacheToTexture
 
     private GameRenderer mRenderer;
 
-    private GameRenderTexture? mRenderTarget;
+    private IGameRenderTexture? mRenderTarget;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="UnityGwenRenderer" /> class.
     /// </summary>
     /// <param name="target">Intersect render target.</param>
-    public IntersectRenderer(GameRenderTexture renderTarget, GameRenderer renderer)
+    public IntersectRenderer(IGameRenderTexture renderTarget, GameRenderer renderer)
     {
         mRenderer = renderer;
         mRenderTarget = renderTarget;
@@ -40,7 +40,7 @@ public partial class IntersectRenderer : Base, ICacheToTexture
         set => mColor = new Color(value.A, value.R, value.G, value.B);
     }
 
-    public override Color PixelColor(GameTexture texture, uint x, uint y, Color defaultColor)
+    public override Color PixelColor(IGameTexture texture, uint x, uint y, Color defaultColor)
     {
         var x1 = (int) x;
         var y1 = (int) y;
@@ -58,7 +58,7 @@ public partial class IntersectRenderer : Base, ICacheToTexture
         Translate(ref x1, ref y1);
         Translate(ref x2, ref y2);
 
-        Vertex[] line = {new Vertex(new Pointf(x1, y1), m_Color), new Vertex(new Pointf(x2, y2), m_Color)};
+        Vertex[] line = {new Vertex(new Vector2(x1, y1), m_Color), new Vertex(new Vector2(x2, y2), m_Color)};
 
         m_Target.Draw(line, PrimitiveType.Lines);
     }
@@ -68,24 +68,25 @@ public partial class IntersectRenderer : Base, ICacheToTexture
     ///     Returns dimensions of the text using specified font.
     /// </summary>
     /// <param name="font">Font to use.</param>
+    /// <param name="fontSize"></param>
     /// <param name="text">Text to measure.</param>
     /// <param name="scale"></param>
     /// <returns>
     ///     Width and height of the rendered text.
     /// </returns>
-    public override Point MeasureText(GameFont? font, string? text, float scale = 1f)
+    public override Point MeasureText(IFont? font, int fontSize, string? text, float scale = 1f)
     {
         if (font == null || string.IsNullOrEmpty(text))
         {
             return default;
         }
 
-        var size = mRenderer.MeasureText(text, font, scale * Scale);
+        var size = mRenderer.MeasureText(text: text, font: font, size: fontSize, fontScale: scale * Scale);
 
         return new Point((int) size.X, (int) size.Y);
     }
 
-    public override void RenderText(GameFont font, Point pos, string text, float scale = 1f)
+    public override void RenderText(IFont font, int fontSize, Point pos, string text, float scale = 1f)
     {
         pos = Translate(pos);
         var clip = new FloatRect(ClipRegion.X, ClipRegion.Y, ClipRegion.Width, ClipRegion.Height);
@@ -93,7 +94,18 @@ public partial class IntersectRenderer : Base, ICacheToTexture
         clip.Y = (int) Math.Round(clip.Y * Scale);
         clip.Width = (int) Math.Round(clip.Width * Scale);
         clip.Height = (int) Math.Round(clip.Height * Scale);
-        mRenderer.DrawString(text, font, pos.X, pos.Y, Scale * scale, mColor, false, mRenderTarget, clip);
+        mRenderer.DrawString(
+            text,
+            font,
+            size: fontSize,
+            pos.X,
+            pos.Y,
+            Scale * scale,
+            mColor,
+            false,
+            mRenderTarget,
+            clip
+        );
     }
 
     public override void DrawFilledRect(Rectangle targetRect)
@@ -156,7 +168,7 @@ public partial class IntersectRenderer : Base, ICacheToTexture
         if (mRenderTarget == null)
         {
             mRenderer.DrawTexture(
-                mRenderer.GetWhiteTexture(),
+                mRenderer.WhitePixel,
                 0,
                 0,
                 1,
@@ -176,7 +188,7 @@ public partial class IntersectRenderer : Base, ICacheToTexture
         else
         {
             mRenderer.DrawTexture(
-                mRenderer.GetWhiteTexture(),
+                mRenderer.WhitePixel,
                 0,
                 0,
                 1,
@@ -196,7 +208,7 @@ public partial class IntersectRenderer : Base, ICacheToTexture
     }
 
     public override void DrawTexturedRect(
-        GameTexture? tex,
+        IGameTexture? tex,
         Rectangle targetRect,
         Color clr,
         float u1 = 0,
@@ -341,16 +353,16 @@ public partial class IntersectRenderer : Base, ICacheToTexture
     /// </summary>
     public override ICacheToTexture Ctt => this;
 
-    private Dictionary<Control.Base, GameRenderTexture> m_RT;
+    private Dictionary<Control.Base, IGameRenderTexture> m_RT;
 
-    private Stack<GameRenderTexture> m_Stack;
+    private Stack<IGameRenderTexture> m_Stack;
 
-    private GameRenderTexture m_RealRT;
+    private IGameRenderTexture m_RealRT;
 
     public void Initialize()
     {
-        m_RT = new Dictionary<Control.Base, GameRenderTexture>();
-        m_Stack = new Stack<GameRenderTexture>();
+        m_RT = new Dictionary<Control.Base, IGameRenderTexture>();
+        m_Stack = new Stack<IGameRenderTexture>();
     }
 
     public void ShutDown()

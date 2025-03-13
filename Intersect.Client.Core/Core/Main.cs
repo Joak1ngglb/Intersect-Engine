@@ -4,9 +4,10 @@ using Intersect.Client.Maps;
 using Intersect.Client.Networking;
 using Intersect.Configuration;
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
+using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Maps;
-using Intersect.Utilities;
 
 // ReSharper disable All
 
@@ -106,7 +107,7 @@ internal static partial class Main
     {
         if (ClientConfiguration.Instance.IntroImages.Count > 0)
         {
-            GameTexture imageTex = Globals.ContentManager.GetTexture(
+            IGameTexture imageTex = Globals.ContentManager.GetTexture(
                 Framework.Content.TextureType.Image, ClientConfiguration.Instance.IntroImages[Globals.IntroIndex]
             );
 
@@ -173,7 +174,7 @@ internal static partial class Main
 
         if (!_loadedTilesets && Globals.HasGameData)
         {
-            Globals.ContentManager.LoadTilesets(TilesetBase.GetNameList());
+            Globals.ContentManager.LoadTilesets(TilesetDescriptor.GetNameList());
             _loadedTilesets = true;
         }
 
@@ -243,7 +244,7 @@ internal static partial class Main
         //Update Game Animations
         if (_animationTimer < millisecondsNow)
         {
-            Globals.AnimFrame = (Globals.AnimFrame + 1) % 3;
+            Globals.AnimationFrame = (Globals.AnimationFrame + 1) % 3;
 
             _animationTimer = millisecondsNow + 500;
         }
@@ -324,7 +325,7 @@ internal static partial class Main
             en.Value.Dispose();
         }
 
-        MapBase.Lookup.Clear();
+        MapDescriptor.Lookup.Clear();
         MapInstance.Lookup.Clear();
 
         Globals.Entities.Clear();

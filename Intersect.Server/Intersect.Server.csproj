@@ -5,7 +5,7 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(Configuration) != 'Debug'">
+  <PropertyGroup Condition="$(Configuration.StartsWith('Debug')) != 'true'">
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
@@ -44,6 +44,10 @@
     <Content Update="wwwroot\favicon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="wwwroot\css\theme.css" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="wwwroot\css\site.css" CopyToOutputDirectory="PreserveNewest" />
+
+    <EmbeddedResource Include="wwwroot\**" CopyToOutputDirectory="PreserveNewest">
+      <LogicalName>$([System.String]::new('%(RelativeDir)').Replace('\','/'))%(FileName)%(Extension)</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup Label="Resources (ResX)">
@@ -123,10 +127,12 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
+    <PackageReference Include="MyCSharp.HttpUserAgentParser.AspNetCore" Version="3.0.13" />
+    <PackageReference Include="MyCSharp.HttpUserAgentParser.MemoryCache" Version="3.0.13" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.2" />
     <PackageReference Include="Pomelo.JsonObject" Version="2.2.1" />
     <PackageReference Include="Remotion.Linq" Version="2.2.0" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.Newtonsoft" Version="7.2.0" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen.ConventionalRouting" Version="4.3.0" />

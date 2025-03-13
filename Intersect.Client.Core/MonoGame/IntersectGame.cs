@@ -9,7 +9,6 @@ using Intersect.Client.MonoGame.Graphics;
 using Intersect.Client.MonoGame.Input;
 using Intersect.Client.MonoGame.Network;
 using Intersect.Configuration;
-using Intersect.Updater;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System.Diagnostics;
@@ -17,12 +16,17 @@ using System.Reflection;
 using Intersect.Client.Framework.Database;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.ThirdParty;
-using Intersect.Utilities;
 using MainMenu = Intersect.Client.Interface.Menu.MainMenu;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.MonoGame.NativeInterop;
+using Intersect.Client.MonoGame.NativeInterop.OpenGL;
 using Intersect.Core;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.AssetManagement;
+using Intersect.Framework.SystemInformation;
+using Intersect.Framework.Utilities;
 using Microsoft.Extensions.Logging;
+using Exception = System.Exception;
 
 namespace Intersect.Client.MonoGame;
 
@@ -41,17 +45,17 @@ internal partial class IntersectGame : Game
 
     #region "Autoupdate Variables"
 
-    private Updater.Updater mUpdater;
+    private Updater? _updater;
 
-    private Texture2D updaterBackground;
+    private Texture2D? updaterBackground;
 
-    private SpriteFont updaterFont;
+    private SpriteFont? updaterFont;
 
-    private SpriteFont updaterFontSmall;
+    private SpriteFont? updaterFontSmall;
 
-    private Texture2D updaterProgressBar;
+    private Texture2D? updaterProgressBar;
 
-    private SpriteBatch updateBatch;
+    private SpriteBatch? updateBatch;
 
     private bool updaterGraphicsReset;
 
@@ -91,7 +95,9 @@ internal partial class IntersectGame : Game
             args.GraphicsDeviceInformation.PresentationParameters.MultiSampleCount = 8;
         };
 
-        Content.RootDirectory = string.Empty;
+        var workingDirectory = context.StartupOptions.WorkingDirectory ?? string.Empty;
+        var resolvedWorkingDirectory = Path.GetFullPath(workingDirectory, Environment.CurrentDirectory);
+        Content.RootDirectory = resolvedWorkingDirectory;
         IsMouseVisible = true;
         Globals.ContentManager = new MonoContentManager();
         Globals.Database = new JsonDatabase();
@@ -134,12 +140,8 @@ internal partial class IntersectGame : Game
         // Reuse Updater object instead of creating a new one each time.
         if (!string.IsNullOrWhiteSpace(updateUrl))
         {
-            mUpdater = new Updater.Updater(
-                updateUrl,
-                Path.Combine("version.json"),
-                true,
-                5
-            );
+            _updater ??= new Updater(updateUrl, "client/update.json", "version.client.json", 7);
+            _updater.Start();
         }
     }
 
@@ -153,7 +155,9 @@ internal partial class IntersectGame : Game
     {
         base.Initialize();
 
-        if (mUpdater != null)
+        PlatformStatistics.GPUStatisticsProvider = GL.CreateGPUStatisticsProvider();
+
+        if (_updater != null)
         {
             //Set the size of the updater screen before applying graphic changes.
             //We need to do this here instead of in the constructor for the size change to apply to Linux
@@ -200,6 +204,9 @@ internal partial class IntersectGame : Game
         PostStartupAction();
     }
 
+    private TimeSpan _elapsedSincePlatformStatisticsRefresh;
+    private bool _restartFailed;
+
     /// <summary>
     ///     Allows the game to run logic such as updating the world,
     ///     checking for collisions, gathering input, and playing audio.
@@ -207,67 +214,76 @@ internal partial class IntersectGame : Game
     /// <param name="gameTime">Provides a snapshot of timing values.</param>
     protected override void Update(GameTime gameTime)
     {
-        if (mUpdater != null)
+        _elapsedSincePlatformStatisticsRefresh += gameTime.ElapsedGameTime;
+        if (_elapsedSincePlatformStatisticsRefresh.TotalSeconds > 1)
         {
-            if (mUpdater.CheckUpdaterContentLoaded())
+            _elapsedSincePlatformStatisticsRefresh = default;
+            PlatformStatistics.Refresh();
+        }
+
+        if (_updater == null)
+        {
+            if (_updater == null)
+            {
+                if (!mInitialized)
+                {
+                    IntersectInit();
+                }
+
+                if (Globals.IsRunning)
+                {
+                    if (mLastUpdateTime < gameTime.TotalGameTime.TotalMilliseconds)
+                    {
+                        lock (Globals.GameLock)
+                        {
+                            Main.Update(gameTime.ElapsedGameTime);
+                        }
+
+                        ///mLastUpdateTime = gameTime.TotalGameTime.TotalMilliseconds + (1000/60f);
+                    }
+                }
+                else
+                {
+                    Main.DestroyGame();
+                    Exit();
+                }
+            }
+        }
+        else
+        {
+            if (_updater.CheckUpdaterContentLoaded())
             {
                 LoadUpdaterContent();
             }
 
-            if (mUpdater.Status == UpdateStatus.Done || mUpdater.Status == UpdateStatus.None)
+            switch (_updater.Status)
             {
-                if (updaterGraphicsReset == true)
+                case UpdateStatus.UpdateCompleted or UpdateStatus.None:
                 {
-                    //Drew a frame, now let's initialize the engine
-                    IntersectInit();
-                    mUpdater = null;
-                }
-            }
-            else if (mUpdater.Status == UpdateStatus.Restart)
-            {
-                //Auto relaunch on Windows
-                switch (Environment.OSVersion.Platform)
-                {
-                    case PlatformID.Win32NT:
-                    case PlatformID.Win32S:
-                    case PlatformID.Win32Windows:
-                    case PlatformID.WinCE:
-                        Process.Start(
-                            Environment.GetCommandLineArgs()[0],
-                            Environment.GetCommandLineArgs().Length > 1
-                                ? string.Join(" ", Environment.GetCommandLineArgs().Skip(1))
-                                : null
-                        );
-
-                        Exit();
-                        break;
-                }
-            }
-        }
-
-        if (mUpdater == null)
-        {
-            if (!mInitialized)
-            {
-                IntersectInit();
-            }
-
-            if (Globals.IsRunning)
-            {
-                if (mLastUpdateTime < gameTime.TotalGameTime.TotalMilliseconds)
-                {
-                    lock (Globals.GameLock)
+                    if (updaterGraphicsReset)
                     {
-                        Main.Update(gameTime.ElapsedGameTime);
+                        // Drew a frame, now let's initialize the engine
+                        IntersectInit();
+                        _updater = null;
                     }
 
-                    ///mLastUpdateTime = gameTime.TotalGameTime.TotalMilliseconds + (1000/60f);
+                    break;
                 }
-            }
-            else
-            {
-                Main.DestroyGame();
-                Exit();
+                case UpdateStatus.Restart:
+                {
+                    if (_restartFailed)
+                    {
+                        break;
+                    }
+                    
+                    if (!ProcessHelper.TryRelaunch())
+                    {
+                        ApplicationContext.CurrentContext.Logger.LogWarning("Failed to restart automatically");
+                        _restartFailed = true;
+                    }
+
+                    break;
+                }
             }
         }
 
@@ -278,7 +294,7 @@ internal partial class IntersectGame : Game
     {
         base.LoadContent();
 
-        if (mUpdater != null)
+        if (_updater != null)
         {
             LoadUpdaterContent();
         }
@@ -294,22 +310,26 @@ internal partial class IntersectGame : Game
 
         GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.Black);
 
-        if (mUpdater != null)
+        if (_updater is { } updater)
         {
-            if (mUpdater.Status == UpdateStatus.Done || mUpdater.Status == UpdateStatus.None)
+            if (updater.Status is UpdateStatus.UpdateCompleted or UpdateStatus.None)
             {
                 if (updaterGraphicsReset == false)
                 {
-                    (Core.Graphics.Renderer as MonoRenderer)?.Init(GraphicsDevice);
-                    (Core.Graphics.Renderer as MonoRenderer)?.Init();
-                    (Core.Graphics.Renderer as MonoRenderer)?.Begin();
-                    (Core.Graphics.Renderer as MonoRenderer)?.End();
+                    if (Core.Graphics.Renderer is MonoRenderer renderer)
+                    {
+                        renderer.Init(GraphicsDevice);
+                        renderer.Init();
+                        renderer.Begin();
+                        renderer.End();
+                    }
+
                     updaterGraphicsReset = true;
                 }
             }
             else
             {
-                DrawUpdater();
+                DrawUpdater(updater);
             }
         }
         else
@@ -326,7 +346,7 @@ internal partial class IntersectGame : Game
         base.Draw(gameTime);
     }
 
-    protected override void OnExiting(object sender, EventArgs args)
+    protected override void OnExiting(object sender, ExitingEventArgs args)
     {
         ApplicationContext.Context.Value?.Logger.LogInformation("System window closing (due to user interaction most likely).");
 
@@ -377,19 +397,44 @@ internal partial class IntersectGame : Game
 
         try
         {
-            mUpdater?.Stop();
+            _updater?.Stop();
         }
-        catch
+        catch (Exception exception)
         {
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                exception,
+                "Exception thrown while stopping the updater on game close"
+            );
         }
 
-        //Just close if we don't need to show a combat warning
+        try
+        {
+            Interface.Interface.DestroyGwen();
+        }
+        catch (Exception exception)
+        {
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                exception,
+                "Exception thrown while destroying GWEN on game close"
+            );
+        }
+
+        try
+        {
+            Networking.Network.Close("quitting");
+        }
+        catch (Exception exception)
+        {
+            ApplicationContext.Context.Value?.Logger.LogWarning(
+                exception,
+                "Exception thrown while closing the network on game close"
+            );
+        }
+
         base.OnExiting(sender, args);
-        Networking.Network.Close("quitting");
-        Dispose();
     }
 
-    private void DrawUpdater()
+    private void DrawUpdater(Updater updater)
     {
         //Draw updating text and show progress bar...
 
@@ -416,18 +461,18 @@ internal partial class IntersectGame : Game
         var filesRemaining = string.Empty;
         var sizeRemaining = string.Empty;
 
-        switch (mUpdater.Status)
+        switch (updater.Status)
         {
-            case UpdateStatus.Checking:
+            case UpdateStatus.DownloadingManifest:
                 status = Strings.Update.Checking;
                 break;
 
-            case UpdateStatus.Updating:
+            case UpdateStatus.UpdateInProgress:
                 status = Strings.Update.Updating;
-                progressPercent = mUpdater.Progress / 100f;
-                progress = Strings.Update.PercentComplete.ToString((int)mUpdater.Progress);
-                filesRemaining = Strings.Update.FilesRemaining.ToString(mUpdater.FilesRemaining);
-                sizeRemaining = Strings.Update.RemainingSize.ToString(mUpdater.GetHumanReadableFileSize(mUpdater.SizeRemaining));
+                progressPercent = updater.Progress / 100f;
+                progress = Strings.Update.PercentComplete.ToString((int)updater.Progress);
+                filesRemaining = Strings.Update.FilesRemaining.ToString(updater.FilesRemaining);
+                sizeRemaining = Strings.Update.RemainingSize.ToString(Updater.GetHumanReadableFileSize(updater.SizeRemaining));
                 break;
 
             case UpdateStatus.Restart:
@@ -436,7 +481,7 @@ internal partial class IntersectGame : Game
                 progress = Strings.Update.PercentComplete.ToString(100);
                 break;
 
-            case UpdateStatus.Done:
+            case UpdateStatus.UpdateCompleted:
                 status = Strings.Update.Done;
                 progressPercent = 100;
                 progress = Strings.Update.PercentComplete.ToString(100);
@@ -444,7 +489,7 @@ internal partial class IntersectGame : Game
 
             case UpdateStatus.Error:
                 status = Strings.Update.Error;
-                progress = mUpdater.Exception?.Message ?? "";
+                progress = updater.Exception?.Message ?? "";
                 progressPercent = 100;
                 break;
 
@@ -531,7 +576,14 @@ internal partial class IntersectGame : Game
 
     protected override void Dispose(bool disposing)
     {
-        base.Dispose(disposing);
+        try
+        {
+            base.Dispose(disposing);
+        }
+        catch (NullReferenceException)
+        {
+            throw;
+        }
 
         if (!disposing)
         {
@@ -565,7 +617,15 @@ internal partial class IntersectGame : Game
             }
 
             using var game = new IntersectGame(context, postStartupAction);
-            game.Run();
+            try
+            {
+                game.Run();
+            }
+            catch (Exception exception)
+            {
+                context.Logger.LogCritical(exception, "Game is crashing due to an exception");
+                throw;
+            }
         }
 
         private delegate void SdlInit(int flags);

@@ -11,6 +11,7 @@ using Intersect.Client.Interface.Shared;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Core;
+using Intersect.Framework.Core.GameObjects.PlayerClass;
 using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
 using Intersect.Utilities;
@@ -25,7 +26,7 @@ public partial class CharacterCreationWindow : Window
     private readonly MainMenu _mainMenu;
     private readonly SelectCharacterWindow _selectCharacterWindow;
 
-    private readonly GameFont? _defaultFont;
+    private readonly IFont? _defaultFont;
 
     private readonly Panel _previewPanel;
     private readonly Panel _previewContainer;
@@ -60,7 +61,7 @@ public partial class CharacterCreationWindow : Window
         _mainMenu = mainMenu;
         _selectCharacterWindow = selectCharacterWindow;
 
-        _defaultFont = GameContentManager.Current.GetFont(name: "sourcesansproblack", 12);
+        _defaultFont = GameContentManager.Current.GetFont(name: "sourcesansproblack");
 
         Alignment = [Alignments.Center];
         MinimumSize = new Point(x: 560, y: 240);
@@ -82,6 +83,7 @@ public partial class CharacterCreationWindow : Window
         {
             Alignment = [Alignments.Left],
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(120, 24),
             Text = Strings.CharacterCreation.Create,
         };
@@ -91,6 +93,7 @@ public partial class CharacterCreationWindow : Window
         {
             Alignment = [Alignments.Right],
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(120, 24),
             Text = Strings.CharacterCreation.Back,
         };
@@ -114,6 +117,7 @@ public partial class CharacterCreationWindow : Window
         {
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             MinimumSize = new Point(240, 0),
             PlaceholderText = Strings.CharacterCreation.Name,
         };
@@ -124,6 +128,7 @@ public partial class CharacterCreationWindow : Window
             AutoSizeToContents = false,
             Dock = Pos.Top,
             Font = _defaultFont,
+            FontSize = 12,
             Label = Strings.CharacterCreation.Class,
         };
         _classCombobox.ItemSelected += classCombobox_ItemSelected;
@@ -140,6 +145,7 @@ public partial class CharacterCreationWindow : Window
             AutoSizeToContents = true,
             Dock = Pos.Left | Pos.CenterV,
             Font = _defaultFont,
+            FontSize = 12,
             IsChecked = true,
             Text = Strings.CharacterCreation.Male,
         };
@@ -151,6 +157,7 @@ public partial class CharacterCreationWindow : Window
             AutoSizeToContents = true,
             Dock = Pos.Right | Pos.CenterV,
             Font = _defaultFont,
+            FontSize = 12,
             Text = Strings.CharacterCreation.Female,
         };
         _genderFemaleCheckbox.Checked += FemaleCheckboxGenderChecked;
@@ -205,7 +212,7 @@ public partial class CharacterCreationWindow : Window
 
         _classCombobox.ClearItems();
 
-        var classDescriptors = ClassBase.Lookup.Values.OfType<ClassBase>()
+        var classDescriptors = ClassDescriptor.Lookup.Values.OfType<ClassDescriptor>()
             .Where(classDescriptor => !classDescriptor.Locked)
             .ToArray();
 
@@ -244,7 +251,7 @@ public partial class CharacterCreationWindow : Window
 
     public void Show(bool force)
     {
-        _backButton.IsVisible = !force;
+        _backButton.IsVisibleInTree = !force;
         _createButton.Alignment = force ? [Alignments.Center] : [Alignments.Left];
 
         _renderLayers = new ImagePanel[Options.Instance.Equipment.Paperdoll.Down.Count];
@@ -268,7 +275,7 @@ public partial class CharacterCreationWindow : Window
         {
             foreach (var renderLayer in _renderLayers)
             {
-                renderLayer.IsVisible = false;
+                renderLayer.IsVisibleInTree = false;
             }
             return;
         }
@@ -290,11 +297,11 @@ public partial class CharacterCreationWindow : Window
             faceLayer.ResetUVs();
             faceLayer.SetBounds(x, y, faceTextureWidth, faceTextureHeight);
             faceLayer.Texture = faceTexture;
-            faceLayer.IsVisible = true;
+            faceLayer.IsVisibleInTree = true;
 
             foreach (var renderLayer in _renderLayers.Skip(1))
             {
-                renderLayer.IsVisible = false;
+                renderLayer.IsVisibleInTree = false;
             }
 
             return;
@@ -361,14 +368,14 @@ public partial class CharacterCreationWindow : Window
         }
     }
 
-    private ClassBase? GetClass()
+    private ClassDescriptor? GetClass()
     {
         if (_classCombobox.SelectedItem == null)
         {
             return null;
         }
 
-        return ClassBase.Lookup.Values.OfType<ClassBase>().FirstOrDefault(
+        return ClassDescriptor.Lookup.Values.OfType<ClassDescriptor>().FirstOrDefault(
             descriptor =>
                 !descriptor.Locked &&
                 string.Equals(_classCombobox.SelectedItem.Text, descriptor.Name, StringComparison.Ordinal)
@@ -538,7 +545,7 @@ public partial class CharacterCreationWindow : Window
         UpdateDisplay();
     }
 
-    void MaleCheckboxGenderChecked(Base sender, EventArgs arguments)
+    void MaleCheckboxGenderChecked(ICheckbox sender, EventArgs arguments)
     {
         _genderMaleCheckbox.IsChecked = true;
         _genderFemaleCheckbox.IsChecked = false;
@@ -546,7 +553,7 @@ public partial class CharacterCreationWindow : Window
         UpdateDisplay();
     }
 
-    void FemaleCheckboxGenderChecked(Base sender, EventArgs arguments)
+    void FemaleCheckboxGenderChecked(ICheckbox sender, EventArgs arguments)
     {
         _genderFemaleCheckbox.IsChecked = true;
         _genderMaleCheckbox.IsChecked = false;

@@ -27,7 +27,8 @@ namespace Intersect.Client.Interface.Game.Guilds
         private Button mBackgroundButton;
         private ImagePanel mSymbolPanel;    // Lista de símbolos
         private ImagePanel mBackgroundPanel; // Lista de fondos
-
+                                             // Botón para CREAR el gremio
+        private Button mCreateGuildButton;
         // Panel de previsualización
         private ImagePanel mLogoCompositionPanel;
         private ImagePanel mBackgroundPreview;
@@ -67,6 +68,8 @@ namespace Intersect.Client.Interface.Game.Guilds
 
         private int symbolPosY = 0;      // Offset en vertical
         private float symbolScale = 1f;  // 1.0 = tamaño normal
+        private string selectedBackgroundFile = string.Empty;
+        private string selectedSymbolFile = string.Empty;
 
         // Tamaño del panel donde se dibuja el logo
         private const int COMPOSITION_SIZE = 100;
@@ -124,6 +127,12 @@ namespace Intersect.Client.Interface.Game.Guilds
             mSymbolPreview = new ImagePanel(mLogoCompositionPanel, "SymbolPreview");
             mSymbolPreview.SetBounds(0, 0, 56, 56);
             mSymbolPreview.Show();
+            mCreateGuildButton = new Button(mCreateGuildWindow, "CreateGuildButton");
+            mCreateGuildButton.Text = "Crear Gremio";
+            // Ajusta su posición y tamaño donde mejor quede en tu UI
+            mCreateGuildButton.SetBounds(650, 650, 150, 40);
+            mCreateGuildButton.Clicked += OnCreateGuildButtonClicked;
+
 
             // 5) Estructuras para las texturas
             mLogoElements = new List<GameTexture> { null, null };
@@ -147,6 +156,43 @@ namespace Intersect.Client.Interface.Game.Guilds
             mCreateGuildWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
         }
 
+        private void OnCreateGuildButtonClicked(Base sender, ClickedEventArgs arguments)
+        {
+            // 1) Tomar el nombre del gremio
+            string guildName = mGuildNameTextbox.Text.Trim();
+            if (string.IsNullOrEmpty(guildName))
+            {
+                PacketSender.SendChatMsg("El nombre del gremio está vacío.", 5);
+                return;
+            }
+
+            // 2) Verificar que tenemos archivos para fondo / símbolo
+            if (string.IsNullOrEmpty(selectedBackgroundFile))
+            {
+                PacketSender.SendChatMsg("No se ha seleccionado un fondo.", 5);
+                return;
+            }
+            if (string.IsNullOrEmpty(selectedSymbolFile))
+            {
+                PacketSender.SendChatMsg("No se ha seleccionado un símbolo.", 5);
+                return;
+            }
+
+            // 3) Llamar a PacketSender.SendCreateGuild con todos los parámetros
+            PacketSender.SendCreateGuild(
+                guildName,
+                selectedBackgroundFile,
+                bgR, bgG, bgB,
+                selectedSymbolFile,
+                symR, symG, symB,
+                symbolPosY,
+                symbolScale
+            );
+
+            // Opcional: Cerrar la ventana, o dejarla abierta
+            mCreateGuildWindow.Close();
+        }
+
         // =====================================================
         //  Inicializar la lista de símbolos
         // =====================================================
@@ -157,6 +203,7 @@ namespace Intersect.Client.Interface.Game.Guilds
                 Directory.CreateDirectory(symbolFolderPath);
 
             var files = Directory.GetFiles(symbolFolderPath, "*.png");
+            
             mSymbolPanel.Children.Clear();
 
             int containerSize = 48;
@@ -197,8 +244,12 @@ namespace Intersect.Client.Interface.Game.Guilds
                     // Al hacer clic, seleccionamos esa textura como símbolo
                     mOriginalLogoElements[1] = symbolImg.Texture;
                     mLogoElements[1] = symbolImg.Texture;
+
+                    selectedSymbolFile = fileName; // Guardar el nombre
+
                     UpdateLogoPreview();
                 };
+
 
                 index++;
             }
@@ -254,6 +305,9 @@ namespace Intersect.Client.Interface.Game.Guilds
                     // Al hacer clic, seleccionamos esa textura como fondo
                     mOriginalLogoElements[0] = bgImg.Texture;
                     mLogoElements[0] = bgImg.Texture;
+
+                    selectedBackgroundFile = fileName; // Guardar el nombre
+
                     UpdateLogoPreview();
                 };
 
@@ -555,7 +609,7 @@ namespace Intersect.Client.Interface.Game.Guilds
 
                 int centerX = (previewSize - scaledW) / 2;
                 int centerY = (previewSize - scaledH) / 2;
-                mSymbolPreview.SetPosition(centerX, centerY);
+                Align.Center(mSymbolPreview);
             }
             else
             {

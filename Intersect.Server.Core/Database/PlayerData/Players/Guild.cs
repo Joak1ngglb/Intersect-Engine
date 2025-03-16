@@ -41,7 +41,25 @@ public partial class Guild
     /// The name of the guild.
     /// </summary>
     public string Name { get; private set; }
+    // Indica el archivo (o “ID”/“nombre”) para el fondo
+    public string LogoBackground { get; set; } = string.Empty;
 
+    // Colores RGB para el fondo
+    public byte BackgroundR { get; set; } = 255;
+    public byte BackgroundG { get; set; } = 255;
+    public byte BackgroundB { get; set; } = 255;
+
+    // Indica el archivo para el símbolo
+    public string LogoSymbol { get; set; } = string.Empty;
+
+    // Colores RGB para el símbolo
+    public byte SymbolR { get; set; } = 255;
+    public byte SymbolG { get; set; } = 255;
+    public byte SymbolB { get; set; } = 255;
+
+    // Parámetros para la posición/escala del símbolo, si deseas guardarlo
+    public int SymbolPosY { get; set; } = 0;
+    public float SymbolScale { get; set; } = 1.0f;
     /// <summary>
     /// The date on which this guild was founded.
     /// </summary>
@@ -130,7 +148,7 @@ public partial class Guild
                     player.GuildRank = 0;
                     player.GuildJoinDate = DateTime.UtcNow;
 
-
+                   
                     context.ChangeTracker.DetectChanges();
                     context.SaveChanges();
 
@@ -143,7 +161,7 @@ public partial class Guild
 
                     // Send our entity data to nearby players.
                     PacketSender.SendEntityDataToProximity(Player.FindOnline(creator.Id));
-
+                    PacketSender.UpdateGuild(creator);
                     Guilds.AddOrUpdate(guild.Id, guild, (key, oldValue) => guild);
 
                     LogActivity(guild.Id, creator, null, GuildActivityType.Created, name);
@@ -823,7 +841,35 @@ public partial class Guild
             }
         }
     }
+    public void SetLogo(
+    string backgroundFile,
+    byte bgR, byte bgG, byte bgB,
+    string symbolFile,
+    byte symR, byte symG, byte symB,
+    int symbolPosY,
+    float symbolScale
+)
+    {
+        // Asignar propiedades
+        LogoBackground = backgroundFile ?? string.Empty;
+        BackgroundR = bgR;
+        BackgroundG = bgG;
+        BackgroundB = bgB;
 
+        LogoSymbol = symbolFile ?? string.Empty;
+        SymbolR = symR;
+        SymbolG = symG;
+        SymbolB = symB;
+
+        SymbolPosY = symbolPosY;
+        SymbolScale = symbolScale;
+
+        // Guardar en DB
+        Save(); // Usa tu método lock(mLock) { ... context.SaveChanges() }
+
+        // Opcional: notificar a los miembros online que el “logo” cambió
+        UpdateMemberList();
+    }
     /// <summary>
     /// Retrieves a list of guilds from the db as an IList
     /// </summary>

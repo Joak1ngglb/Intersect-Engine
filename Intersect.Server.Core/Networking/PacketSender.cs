@@ -2295,7 +2295,7 @@ public static partial class PacketSender
         }
 
         player.SendPacket(new GuildPacket(members));
-    }
+        UpdateGuild(player);    }
 
     //GuildRequestPacket
     public static void SendGuildInvite(Player player, Player from)
@@ -2513,5 +2513,27 @@ public static partial class PacketSender
             SendOpenMailBox(player);
         }
     }
-
+    public static void UpdateGuild(Player player)
+    {
+        if (player == null || player.Guild == null)
+        {
+            return;
+        }
+        var guild = player.Guild;
+        var guildUpdatePacket = new GuildUpdate
+        (
+            guild.Name,
+            guild.LogoBackground,
+            guild.BackgroundR,
+            guild.BackgroundG,
+            guild.BackgroundB,
+            guild.LogoSymbol,
+            guild.SymbolR,
+            guild.SymbolG,
+            guild.SymbolB,
+            guild.SymbolPosY,
+            guild.SymbolScale
+        );
+        player.SendPacket(guildUpdatePacket);
+    }
 }

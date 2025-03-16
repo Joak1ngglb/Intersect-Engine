@@ -322,7 +322,7 @@ internal sealed partial class PacketHandler
             en.Load(packet);
             if (packet.IsSelf)
             {
-                Globals.Me = (Player) Globals.Entities[packet.EntityId];
+                Globals.Me = (Player)Globals.Entities[packet.EntityId];
             }
         }
         else
@@ -330,7 +330,7 @@ internal sealed partial class PacketHandler
             Globals.Entities.Add(packet.EntityId, new Player(packet.EntityId, packet));
             if (packet.IsSelf)
             {
-                Globals.Me = (Player) Globals.Entities[packet.EntityId];
+                Globals.Me = (Player)Globals.Entities[packet.EntityId];
             }
         }
     }
@@ -772,9 +772,9 @@ internal sealed partial class PacketHandler
         if (entityMap.Attributes[en.X, en.Y] != null &&
             entityMap.Attributes[en.X, en.Y].Type == MapAttributeType.ZDimension)
         {
-            if (((MapZDimensionAttribute) entityMap.Attributes[en.X, en.Y]).GatewayTo > 0)
+            if (((MapZDimensionAttribute)entityMap.Attributes[en.X, en.Y]).GatewayTo > 0)
             {
-                en.Z = (byte) (((MapZDimensionAttribute) entityMap.Attributes[en.X, en.Y]).GatewayTo - 1);
+                en.Z = (byte)(((MapZDimensionAttribute)entityMap.Attributes[en.X, en.Y]).GatewayTo - 1);
             }
         }
     }
@@ -1240,9 +1240,9 @@ internal sealed partial class PacketHandler
         }
 
         map.MapItems.Clear();
-        foreach(var item in packet.Items)
+        foreach (var item in packet.Items)
         {
-            var mapItem = new MapItemInstance(item.TileIndex,item.Id, item.ItemId, item.BagId, item.Quantity, item.Properties);
+            var mapItem = new MapItemInstance(item.TileIndex, item.Id, item.ItemId, item.BagId, item.Quantity, item.Properties);
 
             if (!map.MapItems.ContainsKey(mapItem.TileIndex))
             {
@@ -1266,7 +1266,7 @@ internal sealed partial class PacketHandler
         if (packet.ItemId == Guid.Empty)
         {
             // Find our item based on our unique Id and remove it.
-            foreach(var location in map.MapItems.Keys)
+            foreach (var location in map.MapItems.Keys)
             {
                 var tempItem = map.MapItems[location].Where(item => item.Id == packet.Id).SingleOrDefault();
                 if (tempItem != null)
@@ -1839,7 +1839,7 @@ internal sealed partial class PacketHandler
         {
             foreach (var map in MapInstance.Lookup.Values.ToArray())
             {
-                ((MapInstance) map).Dispose();
+                ((MapInstance)map).Dispose();
             }
         }
 
@@ -2293,7 +2293,33 @@ internal sealed partial class PacketHandler
             Interface.Interface.GameUi.NotifyUpdateGuildList();
         }
     }
-
+    public void HandlePacket (IPacketHandler packetsender, GuildUpdate packet)
+    {
+        if (Globals.Me == null || Globals.Me.Guild == null)
+        {
+            return;
+        }
+        // Si usas el nombre del gremio en el cliente
+        Globals.Me.Guild = packet.Name; // O la propiedad adecuada para almacenar el nombre
+        // Llamada al método GetLogo con TODOS los parámetros
+        // (Asegúrate de tener un método que coincida con esta firma en tu lado cliente)
+        Globals.Me.GetLogo(
+            packet.LogoBackground,
+            packet.BackgroundR,
+            packet.BackgroundG,
+            packet.BackgroundB,
+            packet.LogoSymbol,
+            packet.SymbolR,
+            packet.SymbolG,
+            packet.SymbolB,
+            packet.SymbolPosY,
+            packet.SymbolScale
+        );
+        Globals.Me.GuildBackgroundFile = packet.LogoBackground;
+        Globals.Me.GuildSymbolFile = packet.LogoSymbol;
+        // Por ejemplo, notificar a la interfaz gráfica de que se actualizó la guild
+        //Interface.Interface.GameUi.NotifyUpdateGuild();
+    }
 
     //GuildInvitePacket
     public void HandlePacket(IPacketSender packetSender, GuildInvitePacket packet)
@@ -2396,6 +2422,39 @@ internal sealed partial class PacketHandler
         }
     }
 
+    public void HandlePacket(IPacketSender packetSender, GuildUpdate packet)
+    {
+        // Verifica que el jugador y su guild estén disponibles
+        if (Globals.Me == null || Globals.Me.Guild == null)
+        {
+            return;
+        }
 
+        // Si usas el nombre del gremio en el cliente
+        Globals.Me.Guild = packet.Name; // O la propiedad adecuada para almacenar el nombre
 
+        // Llamada al método GetLogo con TODOS los parámetros
+        // (Asegúrate de tener un método que coincida con esta firma en tu lado cliente)
+        Globals.Me.GetLogo(
+            packet.LogoBackground,
+            packet.BackgroundR,
+            packet.BackgroundG,
+            packet.BackgroundB,
+            packet.LogoSymbol,
+            packet.SymbolR,
+            packet.SymbolG,
+            packet.SymbolB,
+            packet.SymbolPosY,
+            packet.SymbolScale
+        );
+        Globals.Me.GuildBackgroundFile = packet.LogoBackground;
+        Globals.Me.GuildSymbolFile = packet.LogoSymbol;
+        Globals.Me.GuildBackgroundB = packet.BackgroundB;
+        Globals.Me.GuildBackgroundR = packet.BackgroundR;
+        Globals.Me.GuildBackgroundG = packet.BackgroundG;
+        
+        // Por ejemplo, notificar a la interfaz gráfica de que se actualizó la guild
+        //Interface.Interface.GameUi.NotifyUpdateGuild();
+    }
+ 
 }

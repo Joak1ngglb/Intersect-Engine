@@ -133,6 +133,14 @@ public partial class Player : Entity, IPlayer
 
     string IPlayer.GuildName => Guild ?? string.Empty;
 
+    public void ConsultGuildLogo()
+    {
+        if (IsInGuild)
+        {
+            PacketSender.SendRequestGuild();
+
+        }
+    }
     /// <summary>
     /// Index of our rank where 0 is the leader
     /// </summary>

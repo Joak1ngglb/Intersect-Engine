@@ -25,8 +25,8 @@ namespace Intersect.Client.Interface.Game.Guilds
         private ImagePanel mLogoPanel;
         private Button mSymbolButton;
         private Button mBackgroundButton;
-        private ImagePanel mSymbolPanel;    // Lista de símbolos
-        private ImagePanel mBackgroundPanel; // Lista de fondos
+        private ScrollControl mSymbolPanel;    // Lista de símbolos
+        private ScrollControl mBackgroundPanel; // Lista de fondos
                                              // Botón para CREAR el gremio
         private Button mCreateGuildButton;
         // Panel de previsualización
@@ -98,12 +98,13 @@ namespace Intersect.Client.Interface.Game.Guilds
             mBackgroundButton.SetBounds(405, 0, 405, 40);
 
             // Panel de símbolos
-            mSymbolPanel = new ImagePanel(mLogoPanel, "SymbolPanel");
+            mSymbolPanel = new ScrollControl(mLogoPanel, "SymbolPanel");
             mSymbolPanel.SetBounds(0, 40, 810, 190);
-
+            mSymbolPanel.EnableScroll(false, true);
             // Panel de fondos
-            mBackgroundPanel = new ImagePanel(mLogoPanel, "BackgroundPanel");
+            mBackgroundPanel = new ScrollControl(mLogoPanel, "BackgroundPanel");
             mBackgroundPanel.SetBounds(0, 40, 810, 190);
+            mBackgroundPanel.EnableScroll(false, true);
 
             mSymbolButton.Clicked += (s, e) =>
             {
@@ -130,7 +131,7 @@ namespace Intersect.Client.Interface.Game.Guilds
             mCreateGuildButton = new Button(mCreateGuildWindow, "CreateGuildButton");
             mCreateGuildButton.Text = "Crear Gremio";
             // Ajusta su posición y tamaño donde mejor quede en tu UI
-            mCreateGuildButton.SetBounds(650, 650, 150, 40);
+            mCreateGuildButton.SetBounds(650, 620, 150, 40);
             mCreateGuildButton.Clicked += OnCreateGuildButtonClicked;
 
 

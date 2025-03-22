@@ -1009,7 +1009,21 @@ public partial class Player : Entity
 
         pkt.Guild = Guild?.Name;
         pkt.GuildRank = GuildRank;
+        if (Guild != null)
+        {
+            pkt.GuildBackgroundFile = Guild.LogoBackground;
+            pkt.GuildBackgroundR = Guild.BackgroundR;
+            pkt.GuildBackgroundG = Guild.BackgroundG;
+            pkt.GuildBackgroundB = Guild.BackgroundB;
 
+            pkt.GuildSymbolFile = Guild.LogoSymbol;
+            pkt.GuildSymbolR = Guild.SymbolR;
+            pkt.GuildSymbolG = Guild.SymbolG;
+            pkt.GuildSymbolB = Guild.SymbolB;
+
+            pkt.GuildSymbolScale = Guild.SymbolScale;
+            pkt.GuildSymbolPosY = Guild.SymbolPosY;
+        }
         return pkt;
     }
 

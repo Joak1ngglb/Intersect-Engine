@@ -29,6 +29,8 @@ using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
 using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.Framework.Core.GameObjects.Maps.Attributes;
 using Intersect.Framework.Core.GameObjects.Maps.MapList;
+using Intersect.Framework.Core.Security;
+using Intersect.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Networking;
@@ -1412,12 +1414,6 @@ internal sealed partial class PacketHandler
         Interface.Interface.MenuUi.MainMenu.NotifyOpenCharacterCreation(packet.Force);
     }
 
-    //AdminPanelPacket
-    public void HandlePacket(IPacketSender packetSender, AdminPanelPacket packet)
-    {
-        Interface.Interface.EnqueueInGame(gameInterface => gameInterface.NotifyOpenAdminWindow());
-    }
-
     //SpellCastPacket
     public void HandlePacket(IPacketSender packetSender, SpellCastPacket packet)
     {
@@ -2208,7 +2204,7 @@ internal sealed partial class PacketHandler
                     characterPacket.ClassName,
                     characterPacket.Equipment
                 )
-            )
+            ),
         ];
 
         if (packet.FreeSlot)
@@ -2217,29 +2213,29 @@ internal sealed partial class PacketHandler
         }
 
         Globals.WaitingOnServer = false;
-        Interface.Interface.MenuUi.MainMenu.NotifyOpenCharacterSelection(characterSelectionPreviews);
+        Interface.Interface.MenuUi.MainMenu.NotifyOpenCharacterSelection(characterSelectionPreviews, packet.Username);
     }
 
     //PasswordResetResultPacket
-    public void HandlePacket(IPacketSender packetSender, PasswordResetResultPacket packet)
+    public void HandlePacket(IPacketSender packetSender, PasswordChangeResultPacket packet)
     {
-        if (packet.Succeeded)
+        var passwordResetResultType = packet.ResultType;
+        var responseMessage = Strings.PasswordChange.ResponseMessages[passwordResetResultType];
+        var requestSuccessful = passwordResetResultType == PasswordResetResultType.Success;
+        var alertType = requestSuccessful
+            ? AlertType.Information
+            : AlertType.Error;
+        var alertTitle = requestSuccessful ? Strings.PasswordChange.AlertTitleSuccess : Strings.PasswordChange.AlertTitleError;
+
+        Interface.Interface.ShowAlert(
+            message: responseMessage,
+            title: alertTitle,
+            alertType: alertType
+        );
+
+        if (requestSuccessful)
         {
-            // Show Success Message and Open Login Screen
-            Interface.Interface.ShowAlert(
-                Strings.ResetPass.Success,
-                Strings.ResetPass.SuccessMessage,
-                AlertType.Information
-            );
             Interface.Interface.MenuUi.MainMenu.NotifyOpenLogin();
-        }
-        else
-        {
-            Interface.Interface.ShowAlert(
-                Strings.ResetPass.Error,
-                Strings.ResetPass.ErrorMessage,
-                alertType: AlertType.Error
-            );
         }
 
         Globals.WaitingOnServer = false;

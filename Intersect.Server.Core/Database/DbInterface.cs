@@ -414,7 +414,7 @@ public static partial class DbInterface
         LoadAllGameObjects();
 
         ValidateMapEvents();
-        
+
         LoadTime();
         OnClassesLoaded();
         OnMapsLoaded();
@@ -423,7 +423,73 @@ public static partial class DbInterface
         CacheGuildVariableEventTextLookups();
         CacheUserVariableEventTextLookups();
 
+        CheckPlayerDatabaseCaseInsensitiveCollisions();
+
         return true;
+    }
+
+    private static void CheckPlayerDatabaseCaseInsensitiveCollisions()
+    {
+        using var playerContext = CreatePlayerContext();
+        var conflictingUsersByName =
+            (from u1 in playerContext.Users
+                join u2 in playerContext.Users on u1.Name equals u2.Name
+                where u1.Id != u2.Id
+                select u1).Distinct()
+            .ToArray();
+        if (conflictingUsersByName.Length > 0)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "There are {Count} users with conflicting names (they only differ by case):\nThis needs to be resolved but cannot be handled automatically!\n{Users}",
+                conflictingUsersByName.Length,
+                string.Join('\n', conflictingUsersByName.Select(u => $"\t{u.Id}"))
+            );
+        }
+
+        var conflictingUsersByEmail =
+            (from u1 in playerContext.Users
+                join u2 in playerContext.Users on u1.Email equals u2.Email
+                where u1.Id != u2.Id
+                select u1).Distinct()
+            .ToArray();
+        if (conflictingUsersByEmail.Length > 0)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "There are {Count} users with conflicting emails (they only differ by case):\nThis needs to be resolved but cannot be handled automatically!\n{Users}",
+                conflictingUsersByEmail.Length,
+                string.Join('\n', conflictingUsersByName.Select(u => $"\t{u.Id}"))
+            );
+        }
+
+        var conflictingPlayersByName =
+            (from p1 in playerContext.Players
+                join p2 in playerContext.Players on p1.Name equals p2.Name
+                where p1.Id != p2.Id
+                select p1).Distinct()
+            .ToArray();
+        if (conflictingPlayersByName.Length > 0)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "There are {Count} players with conflicting names (they only differ by case):\nThis needs to be resolved but cannot be handled automatically!\n{Players}",
+                conflictingPlayersByName.Length,
+                string.Join('\n', conflictingPlayersByName.Select(p => $"\t{p.Id}"))
+            );
+        }
+
+        var conflictingGuildsByName =
+            (from g1 in playerContext.Guilds
+                join g2 in playerContext.Guilds on g1.Name equals g2.Name
+                where g1.Id != g2.Id
+                select g1).Distinct()
+            .ToArray();
+        if (conflictingGuildsByName.Length > 0)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "There are {Count} guilds with conflicting names (they only differ by case):\nThis needs to be resolved but cannot be handled automatically!\n{Guilds}",
+                conflictingGuildsByName.Length,
+                string.Join('\n', conflictingGuildsByName.Select(g => $"\t{g.Id}"))
+            );
+        }
     }
 
     public static void SetPlayerPower(string username, UserRights power)
@@ -589,19 +655,12 @@ public static partial class DbInterface
         client?.SetUser(user);
     }
 
-    public static void ResetPass(User user, string password)
+    public static void UpdatePassword(User user, string password)
     {
-        var sha = new SHA256Managed();
-
-        //Generate a Salt
-        var rng = new RNGCryptoServiceProvider();
-        var buff = new byte[20];
-        rng.GetBytes(buff);
-        var salt = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(Convert.ToBase64String(buff))))
-            .Replace("-", "");
-
+        var salt = User.GenerateSalt();
+        var saltedPasswordHash = User.SaltPasswordHash(password, salt);
         user.Salt = salt;
-        user.Password = User.SaltPasswordHash(password, salt);
+        user.Password = saltedPasswordHash;
         user.Save();
     }
 
@@ -881,12 +940,12 @@ public static partial class DbInterface
             throw;
         }
     }
-    
+
     private static void ValidateMapEvents()
     {
         var missingEvents = 0;
         var correctedEvents = 0;
-        
+
         foreach (var (mapId, databaseObject) in MapController.Lookup)
         {
             if (databaseObject is not MapDescriptor mapDescriptor)
@@ -909,7 +968,7 @@ public static partial class DbInterface
                     mapId
                 );
             }
-            
+
             foreach (var eventId in mapDescriptor.EventIds)
             {
                 if (!EventDescriptor.TryGet(eventId, out var eventDescriptor))

@@ -233,7 +233,8 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.HasKey("Id");
 
@@ -476,14 +477,16 @@ namespace Intersect.Server.Migrations.Sqlite.Player
 
                     b.Property<string>("Email")
                         .HasColumnType("TEXT")
-                        .HasColumnOrder(2);
+                        .HasColumnOrder(2)
+                        .UseCollation("NOCASE");
 
                     b.Property<string>("LastIp")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .HasColumnType("TEXT")
-                        .HasColumnOrder(1);
+                        .HasColumnOrder(1)
+                        .UseCollation("NOCASE");
 
                     b.Property<string>("Password")
                         .HasColumnType("TEXT");
@@ -589,7 +592,8 @@ namespace Intersect.Server.Migrations.Sqlite.Player
 
                     b.Property<string>("Name")
                         .HasColumnType("TEXT")
-                        .HasColumnOrder(1);
+                        .HasColumnOrder(1)
+                        .UseCollation("NOCASE");
 
                     b.Property<string>("NameColorJson")
                         .HasColumnType("TEXT")

@@ -432,6 +432,7 @@ public partial class QuestsWindow:IQuestWindow
         }
 
         mQuestDescLabel.ClearText();
+        mQuestTasksList.RemoveAllRows();
         mQuitButton.IsDisabled = true;
 
         // Configurar título y estado de la misión
@@ -561,13 +562,20 @@ public partial class QuestsWindow:IQuestWindow
 
     private void UpdateQuestTasks()
     {
+ 
+        // 🔄 Eliminar todas las tareas visuales (redundancia segura)
         mQuestTasksList.RemoveAllRows();
+        foreach (var child in mQuestTasksList.Children.ToList())
+        {
+            mQuestTasksList.RemoveChild(child, true);
+        }
 
         if (mSelectedQuest == null || !Globals.Me.QuestProgress.TryGetValue(mSelectedQuest.Id, out var progress))
         {
             mQuestTasksContainer.IsHidden = true;
             return;
         }
+
 
         int taskIndex = 0;
 
@@ -583,21 +591,21 @@ public partial class QuestsWindow:IQuestWindow
                 _ => task.Description
             };
 
-            var taskPanel = new ImagePanel(mQuestTasksList, $"TaskPanel_{task.Id}");
+            var taskPanel = new ImagePanel(mQuestTasksList, $"TaskPanel"); // Nombre general
             taskPanel.SetSize(360, 25);
             taskPanel.SetPosition(10, taskIndex * 30);
 
             string checkTexture = isComplete ? "checkboxfull.png" : "checkboxempty.png";
-            var taskCheckImage = new ImagePanel(taskPanel, $"TaskCheckImage_{task.Id}");
+            var taskCheckImage = new ImagePanel(taskPanel, $"TaskCheckImage");
             taskCheckImage.SetSize(24, 25);
             taskCheckImage.SetPosition(0, 0);
             taskCheckImage.Texture = Globals.ContentManager.GetTexture(TextureType.Gui, checkTexture);
 
-            var taskLabel = new Label(taskPanel, $"TaskLabel_{task.Id}");
+            var taskLabel = new Label(taskPanel, $"TaskLabel");
             taskLabel.SetSize(330, 20);
             taskLabel.SetPosition(30, 3);
             taskLabel.SetText(taskText);
-
+            taskLabel.SetTextColor(Color.White,Label.ControlState.Normal);
             taskIndex++;
         }
 

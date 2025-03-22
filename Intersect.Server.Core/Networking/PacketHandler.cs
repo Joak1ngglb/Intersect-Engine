@@ -495,26 +495,7 @@ internal sealed partial class PacketHandler
             return;
         }
 
-        // Manejar adjuntos
-        var attachments = new List<MailAttachment>();
-        foreach (var attachment in packet.Attachments)
-        {
-            if (sender.TryTakeItem(attachment.ItemId, attachment.Quantity))
-            {
-                attachments.Add(new MailAttachment
-                {
-                    ItemId = attachment.ItemId,
-                    Quantity = attachment.Quantity,
-                    Properties = attachment.Properties
-                });
-            }
-            else
-            {
-                PacketSender.SendChatMsg(sender, Strings.Mails.invaliditem, ChatMessageType.Error, CustomColors.Alerts.Info);
-                sender.CloseMailBox();
-                return;
-            }
-        }
+       
 
         using (var context = DbInterface.CreatePlayerContext(readOnly: false))
         {
@@ -526,7 +507,33 @@ internal sealed partial class PacketHandler
                 sender.CloseMailBox();
                 return;
             }
-
+            // ❌ PREVENIR correo a uno mismo
+            if (string.Equals(sender.Name, recipient.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                PacketSender.SendChatMsg(sender, "⚠️ No puedes enviarte un correo a ti mismo.", ChatMessageType.Error, CustomColors.Alerts.Info);
+                sender.CloseMailBox();
+                return;
+            }
+            // Manejar adjuntos
+            var attachments = new List<MailAttachment>();
+            foreach (var attachment in packet.Attachments)
+            {
+                if (sender.TryTakeItem(attachment.ItemId, attachment.Quantity))
+                {
+                    attachments.Add(new MailAttachment
+                    {
+                        ItemId = attachment.ItemId,
+                        Quantity = attachment.Quantity,
+                        Properties = attachment.Properties
+                    });
+                }
+                else
+                {
+                    PacketSender.SendChatMsg(sender, Strings.Mails.invaliditem, ChatMessageType.Error, CustomColors.Alerts.Info);
+                    sender.CloseMailBox();
+                    return;
+                }
+            }
             // Asegurar que el objeto `recipient` está correctamente referenciado en el contexto
             context.Attach(recipient);
             context.Attach(sender);

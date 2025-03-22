@@ -181,6 +181,7 @@ namespace Intersect.Client.Interface.Game.Mail
       
         void CloseButton_Clicked(Base sender, ClickedEventArgs e)
         {
+            mMailBoxWindow.Close();
             PacketSender.SendCloseMail();
         }
 

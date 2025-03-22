@@ -719,7 +719,13 @@ internal sealed partial class PacketHandler
         }
     }
 
+    public void HandlePacket(Client client, GuildExpPercentagePacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null) return;
 
+        player.SetGuildExpPercentage(packet.Percentage);
+    }
     #region "Client Packets"
 
     public void HandleDroppedPacket(Client client, IPacket packet)

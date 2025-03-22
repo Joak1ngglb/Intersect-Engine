@@ -1,4 +1,4 @@
-﻿using System.Runtime.Serialization;
+using System.Runtime.Serialization;
 
 namespace Intersect.Config.Guilds;
 
@@ -104,7 +104,25 @@ public partial class GuildOptions
         }
 
     };
+    /// <summary>
+    /// La cantidad base de experiencia requerida para el nivel 2.
+    /// </summary>
+    public long BaseXP { get; set; } = 500000;
 
+    /// <summary>
+    /// Factor de crecimiento de experiencia requerida por nivel.
+    /// </summary>
+    public double GrowthFactor { get; set; } = 1.7;
+
+    /// <summary>
+    /// Define el porcentaje de experiencia obtenida por un jugador que se transfiere al gremio.
+    /// </summary>
+    public double GuildXpContribution { get; set; } = 0.40; // 40% de la XP obtenida va al gremio.
+
+    /// <summary>
+    /// Número inicial de miembros permitidos en un gremio.
+    /// </summary>
+    public int InitialMaxMembers { get; set; } = 10;
     [OnDeserialized]
     internal void OnDeserializedMethod(StreamingContext context)
     {

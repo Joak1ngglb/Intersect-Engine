@@ -37,29 +37,7 @@ public partial class Guild
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public Guid Id { get; private set; } = Guid.NewGuid();
 
-    /// <summary>
-    /// The name of the guild.
-    /// </summary>
-    public string Name { get; private set; }
-    // Indica el archivo (o “ID”/“nombre”) para el fondo
-    public string LogoBackground { get; set; } = string.Empty;
-
-    // Colores RGB para el fondo
-    public byte BackgroundR { get; set; } = 255;
-    public byte BackgroundG { get; set; } = 255;
-    public byte BackgroundB { get; set; } = 255;
-
-    // Indica el archivo para el símbolo
-    public string LogoSymbol { get; set; } = string.Empty;
-
-    // Colores RGB para el símbolo
-    public byte SymbolR { get; set; } = 255;
-    public byte SymbolG { get; set; } = 255;
-    public byte SymbolB { get; set; } = 255;
-
-    // Parámetros para la posición/escala del símbolo, si deseas guardarlo
-    public int SymbolPosY { get; set; } = 0;
-    public float SymbolScale { get; set; } = 1.0f;
+   
     /// <summary>
     /// The date on which this guild was founded.
     /// </summary>
@@ -152,7 +130,7 @@ public partial class Guild
                     context.ChangeTracker.DetectChanges();
                     context.SaveChanges();
 
-                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName);
+                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage);
                     guild.Members.AddOrUpdate(player.Id, member, (key, oldValue) => member);
 
                     creator.Guild = guild;
@@ -264,7 +242,7 @@ public partial class Guild
                     player.GuildRank = rank;
                     player.GuildJoinDate = DateTime.UtcNow;
 
-                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName);
+                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage);
                     Members.AddOrUpdate(player.Id, member, (key, oldValue) => member);
 
                     // Send our new guild list to everyone that's online.

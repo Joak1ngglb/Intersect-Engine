@@ -9,6 +9,7 @@ using Intersect.Client.General;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
+using Intersect.Enums;
 using Intersect.Network.Packets.Server;
 
 namespace Intersect.Client.Interface.Game
@@ -39,6 +40,7 @@ namespace Intersect.Client.Interface.Game
         private readonly MenuItem[] _demoteOptions;
         private readonly MenuItem _kickOption;
         private readonly MenuItem _transferOption;
+        private readonly MenuItem _expContributionOption;
 
         private readonly bool _addButtonUsed;
         private readonly bool _addPopupButtonUsed;
@@ -56,9 +58,9 @@ namespace Intersect.Client.Interface.Game
             this.SetSize(600, 400);
 
             // 1) Panel principal o contenedor (ya en la Window).
-            // Podrías hacer sub-paneles, por ejemplo:
-            // _panelSearchArea = new ImagePanel(this, "SearchArea");
-            // _panelSearchArea.SetBounds( ... );
+           
+           _panelSearchArea = new ImagePanel(this, "SearchArea");
+         
 
             // Textbox Search
             _textboxContainer = new ImagePanel(this, "SearchContainer");
@@ -69,11 +71,9 @@ namespace Intersect.Client.Interface.Game
             Interface.FocusElements.Add(_textboxSearch);
 
             // List of Guild Members
-            _panelMemberList = new ImagePanel(this, "MemberListPanel");
-            _panelMemberList.SetBounds(10, 40, 300, 300);
-
-            _listGuildMembers = new ListBox(_panelMemberList, "GuildMembers");
-            _listGuildMembers.SetBounds(0, 0, 300, 300);
+    
+            _listGuildMembers = new ListBox(this, "GuildMembers");
+            _listGuildMembers.SetBounds(2, 60, 300, 300);
 
             #region Action Buttons
             // Acciones (Invitar, Salir, etc.)
@@ -179,6 +179,26 @@ namespace Intersect.Client.Interface.Game
             // Transfer Option
             _transferOption = _contextMenu.AddItem(Strings.Guilds.Transfer);
             _transferOption.Clicked += transferOption_Clicked;
+            // Change Experience Option
+            _expContributionOption = _contextMenu.AddItem("Modificar contribución de XP");
+            _expContributionOption.Clicked += (s, e) =>
+            {
+                _ = new InputBox(
+                    title: "Configurar Contribución de XP",
+                    prompt: "Ingresa el porcentaje de XP que deseas donar al gremio:",
+                    inputType: InputBox.InputType.NumericInput,
+                    userData: null,
+                    onSuccess: (sender, args) =>
+                    {
+                        if (sender is InputBox inputBox && float.TryParse(inputBox.TextValue, out float newPercentage))
+                        {
+                            newPercentage = Math.Clamp(newPercentage, 0f, 100f);
+                            PacketSender.SendUpdateGuildXpContribution(newPercentage);
+                            PacketSender.SendChatMsg($"Has cambiado tu contribución de XP a {newPercentage}%.",5);
+                        }
+                    }
+                );
+            };
             #endregion
 
             // 2) Crear contenedor para el logo
@@ -325,7 +345,12 @@ namespace Intersect.Client.Interface.Game
             }
 
             // Refrescar el logo
-            UpdateLogo();
+            if (Globals.Me?.GuildBackgroundFile != mBackgroundLogo.Texture?.Name ||
+                Globals.Me?.GuildSymbolFile != mSymbolLogo.Texture?.Name)
+            {
+                UpdateLogo();
+            }
+         
         }
 
         public override void Hide()
@@ -340,37 +365,33 @@ namespace Intersect.Client.Interface.Game
         {
             _listGuildMembers.Clear();
 
+            // Añadir encabezado
+            var header = _listGuildMembers.AddRow("Nombre", "Rango", "Nivel", "% XP");
+            header.SetTextColor(Color.White);
+            header.RenderColor = new Color(80, 80, 80, 255);
+
+            // Añadir miembros del gremio
             foreach (var member in Globals.Me?.GuildMembers ?? [])
             {
-                var str = member.Online ? Strings.Guilds.OnlineListEntry : Strings.Guilds.OfflineListEntry;
-                var row = _listGuildMembers.AddRow(str.ToString(Options.Instance.Guild.Ranks[member.Rank].Title, member.Name, member.Map));
-                row.Name = "GuildMemberRow";
-                row.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer?.GetResolutionString());
-                row.SetToolTipText(Strings.Guilds.Tooltip.ToString(member.Level, member.Class));
+                var row = _listGuildMembers.AddRow(
+                    member.Name,
+                    Options.Instance.Guild.Ranks[member.Rank].Title,
+                    member.Level.ToString(),
+                    $"{member.ExperiencePerc}%"
+                );
+
                 row.UserData = member;
                 row.Clicked += member_Clicked;
                 row.RightClicked += member_RightClicked;
 
-                if (member.Online == true)
-                {
-                    row.SetTextColor(Color.Green);
-                }
-                else
-                {
-                    row.SetTextColor(Color.Red);
-                }
-
-                row.RenderColor = new Color(50, 255, 255, 255);
+                row.SetTextColor(member.Online ? Color.Green : Color.Red);
+                row.RenderColor = _listGuildMembers.RowCount % 2 == 0
+                    ? new Color(210, 210, 210, 255)
+                    : new Color(190, 190, 190, 255);
             }
-
-            var isInviteDenied = Globals.Me == null || Globals.Me.GuildRank == null || !Globals.Me.GuildRank.Permissions.Invite;
-
-            //Determina si podemos invitar
-            _buttonAdd.IsHidden = isInviteDenied || !_addButtonUsed;
-            _textboxContainer.IsHidden = isInviteDenied || !_addButtonUsed;
-            _buttonAddPopup.IsHidden = isInviteDenied || !_addPopupButtonUsed;
-            _buttonLeave.IsHidden = Globals.Me != null && Globals.Me.Rank == 0;
         }
+
+
 
         void member_Clicked(Base sender, ClickedEventArgs arguments)
         {
@@ -387,22 +408,16 @@ namespace Intersect.Client.Interface.Game
         private void member_RightClicked(Base sender, ClickedEventArgs arguments)
         {
             if (sender is not ListBoxRow row || row.UserData is not GuildMember member)
-            {
                 return;
-            }
 
-            if (Globals.Me == default || member.Id == Globals.Me.Id)
-            {
+            if (Globals.Me == null)
                 return;
-            }
 
             _selectedMember = member;
 
-            var rank = Globals.Me.GuildRank ?? default;
+            var rank = Globals.Me.GuildRank;
             if (rank == null)
-            {
                 return;
-            }
 
             foreach (var child in _contextMenu.Children.ToArray())
             {
@@ -412,48 +427,60 @@ namespace Intersect.Client.Interface.Game
             var rankIndex = Globals.Me.Rank;
             var isOwner = rankIndex == 0;
 
-            if (_selectedMember.Online)
+            // Mensaje privado solo si no es uno mismo
+            if (_selectedMember.Online && member.Id != Globals.Me.Id)
             {
                 _contextMenu.AddChild(_privateMessageOption);
             }
 
-            //Promote Options
-            foreach (var opt in _promoteOptions)
+            // Promote y Demote opciones (solo si no es uno mismo)
+            if (member.Id != Globals.Me.Id)
             {
-                var isAllowed = (isOwner || rank.Permissions.Promote);
-                var hasLowerRank = (int)opt.UserData > rankIndex;
-                var canRankChange = (int)opt.UserData < member.Rank && member.Rank > rankIndex;
-
-                if (isAllowed && hasLowerRank && canRankChange)
+                //Promote Options
+                foreach (var opt in _promoteOptions)
                 {
-                    _contextMenu.AddChild(opt);
+                    var isAllowed = (isOwner || rank.Permissions.Promote);
+                    var hasLowerRank = (int)opt.UserData > rankIndex;
+                    var canRankChange = (int)opt.UserData < member.Rank && member.Rank > rankIndex;
+
+                    if (isAllowed && hasLowerRank && canRankChange)
+                    {
+                        _contextMenu.AddChild(opt);
+                    }
+                }
+
+                //Demote Options
+                foreach (var opt in _demoteOptions)
+                {
+                    var isAllowed = (isOwner || rank.Permissions.Demote);
+                    var hasLowerRank = (int)opt.UserData > rankIndex;
+                    var canRankChange = (int)opt.UserData > member.Rank && member.Rank > rankIndex;
+
+                    if (isAllowed && hasLowerRank && canRankChange)
+                    {
+                        _contextMenu.AddChild(opt);
+                    }
+                }
+
+                // Kick y Transfer solo si no es uno mismo
+                if ((rank.Permissions.Kick || isOwner) && member.Rank > rankIndex)
+                {
+                    _contextMenu.AddChild(_kickOption);
+                }
+
+                if (isOwner)
+                {
+                    _contextMenu.AddChild(_transferOption);
                 }
             }
 
-            //Demote Options
-            foreach (var opt in _demoteOptions)
-            {
-                var isAllowed = (isOwner || rank.Permissions.Demote);
-                var hasLowerRank = (int)opt.UserData > rankIndex;
-                var canRankChange = (int)opt.UserData > member.Rank && member.Rank > rankIndex;
-
-                if (isAllowed && hasLowerRank && canRankChange)
-                {
-                    _contextMenu.AddChild(opt);
-                }
-            }
-
-            if ((rank.Permissions.Kick || isOwner) && member.Rank > rankIndex)
-            {
-                _contextMenu.AddChild(_kickOption);
-            }
-
+            // El Guild Master puede modificar la contribución de XP de cualquier miembro, incluyéndose a sí mismo.
             if (isOwner)
             {
-                _contextMenu.AddChild(_transferOption);
+                _contextMenu.AddChild(_expContributionOption);
             }
 
-            _ = _contextMenu.SizeToChildren();
+            _contextMenu.SizeToChildren();
             _contextMenu.Open(Framework.Gwen.Pos.None);
         }
 

@@ -2456,5 +2456,18 @@ internal sealed partial class PacketHandler
         // Por ejemplo, notificar a la interfaz gráfica de que se actualizó la guild
         //Interface.Interface.GameUi.NotifyUpdateGuild();
     }
- 
+    public void HandlePacket(IPacketSender packetSender, GuildExpPercentagePacket packet)
+    {
+        if (Globals.Me == null) return;
+
+        // Establecemos el nuevo porcentaje de donación a la guild
+        Globals.Me.GuildXpContribution = Math.Clamp(packet.Percentage, 0f, 100f);
+
+        // Mostramos un mensaje al jugador
+        ChatboxMsg.AddMessage(new ChatboxMsg($"Ahora donas {Globals.Me.GuildXpContribution}% de tu XP a la guild.",Color.ForestGreen, ChatMessageType.Notice));
+
+        // Enviamos la actualización al servidor
+        PacketSender.SendUpdateGuildXpContribution(Globals.Me.GuildXpContribution);
+    }
+
 }

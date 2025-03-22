@@ -87,6 +87,8 @@ public partial class Player
 
     public int GuildSymbolPosY { get; set; } = 0;
     public float GuildSymbolScale { get; set; } = 1.0f;
+    public float GuildXpContribution { get; set; }
+
     public void GetLogo(
      string backgroundFile,
      byte backgroundR,

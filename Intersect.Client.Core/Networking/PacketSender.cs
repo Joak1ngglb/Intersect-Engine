@@ -564,4 +564,9 @@ public static partial class PacketSender
             symbolFile, symbolR, symbolG, symbolB, symbolPosY, symbolScale));
         SendChatMsg("Guild window updated", 5);
     }
+
+    public static void SendUpdateGuildXpContribution(float contribution)
+    {
+        Network.SendPacket(new GuildExpPercentagePacket(contribution));
+    }
 }

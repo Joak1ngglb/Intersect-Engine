@@ -2536,4 +2536,14 @@ public static partial class PacketSender
         );
         player.SendPacket(guildUpdatePacket);
     }
+
+    public static void UpdateExpPercent(Player player)
+    {
+        if (player == null)
+        {
+            return;
+        }
+        var expPercent = player.GuildExpPercentage;
+        player.SendPacket(new GuildExpPacketResponse(expPercent));
+    }
 }

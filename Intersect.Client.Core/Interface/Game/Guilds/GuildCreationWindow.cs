@@ -27,7 +27,7 @@ namespace Intersect.Client.Interface.Game.Guilds
         private Button mBackgroundButton;
         private ScrollControl mSymbolPanel;    // Lista de símbolos
         private ScrollControl mBackgroundPanel; // Lista de fondos
-                                             // Botón para CREAR el gremio
+     private ColorPicker mBgColorPicker;
         private Button mCreateGuildButton;
         // Panel de previsualización
         private ImagePanel mLogoCompositionPanel;
@@ -57,7 +57,7 @@ namespace Intersect.Client.Interface.Game.Guilds
         private HorizontalSlider mSymRedSlider, mSymGreenSlider, mSymBlueSlider;
         private TextBoxNumeric mSymRedText, mSymGreenText, mSymBlueText;
 
-        private byte symR = 255, symG = 255, symB = 255; // Color actual del símbolo (por defecto blanco)
+        private byte symR = 0, symG = 0, symB = 0; // Color actual del símbolo (por defecto blanco)
 
         // =============================
         //  Sliders para mover (solo Y) y escalar el símbolo
@@ -79,7 +79,7 @@ namespace Intersect.Client.Interface.Game.Guilds
             // 1) Ventana principal
             mCreateGuildWindow = new WindowControl(gameCanvas, Strings.Inventory.Title, false, "GuildCreationWindow");
             mCreateGuildWindow.DisableResizing();
-            mCreateGuildWindow.SetSize(850, 700);
+            mCreateGuildWindow.SetSize(850, 400);
 
             // 2) Campo de texto: Nombre del gremio
             mGuildNameTextbox = new TextBox(mCreateGuildWindow, "GuildNameTextbox");

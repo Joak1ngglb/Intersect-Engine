@@ -128,13 +128,13 @@ public partial class Player
         GuildSymbolPosY = symbolPosY;
         GuildSymbolScale = symbolScale;
 
-        // Mensaje de depuración (opcional)
+       /* // Mensaje de depuración (opcional)
         PacketSender.SendChatMsg(
             $"Logo procesado:\n" +
             $"Fondo={backgroundFile} (R={backgroundR},G={backgroundG},B={backgroundB}),\n" +
             $"Símbolo={symbolFile} (R={symbolR},G={symbolG},B={symbolB}),\n" +
             $"PosY={symbolPosY}, Escala={symbolScale}.",
             5
-        );
+        );*/
     }
 }

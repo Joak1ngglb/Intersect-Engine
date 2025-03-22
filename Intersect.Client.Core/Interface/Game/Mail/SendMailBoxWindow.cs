@@ -159,7 +159,7 @@ namespace Intersect.Client.Interface.Game.Mail
                     i / (mItemContainer.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Height + yPadding) + yPadding
                 );
                 Items[i].Container.DoubleClicked += (sender, args) => SelectItem(Items[i], i);
-                Items[i].Container.RightClicked += (sender, args) => SelectItem(Items[i], i);
+
             }
         }
         public void Update()

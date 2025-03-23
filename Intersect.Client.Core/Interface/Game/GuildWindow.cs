@@ -529,13 +529,11 @@ namespace Intersect.Client.Interface.Game
                 }
             }
 
-            // Verificamos si el miembro actual tiene permiso de cambiar su contribución de XP
-          
-            if (_selectedMember?.Id == Globals.Me?.Id && rank != null && rank.Permissions.ChangeXP)
+            // El Guild Master puede modificar la contribución de XP de cualquier miembro, incluyéndose a sí mismo.
+            if (_selectedMember?.Id == Globals.Me?.Id)
             {
                 _contextMenu.AddChild(_expContributionOption);
             }
-
 
             _contextMenu.SizeToChildren();
             _contextMenu.Open(Framework.Gwen.Pos.None);

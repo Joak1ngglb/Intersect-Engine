@@ -2629,7 +2629,7 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        const int logoSize = 25;
+        const int logoSize = 20;
         int posX = baseX - (int)Math.Ceiling(guildNameWidth / 2f) - logoSize - 5;
         int posY = baseY;
         // === Dibujar Fondo ===

@@ -557,13 +557,7 @@ public static partial class PacketSender
         Network.SendPacket(new CreateGuildPacket(name, logoBackground, backgroundR, backgroundG, backgroundB, 
             logoSymbol, symbolR, symbolG, symbolB, symbolPosY, symbolScale));
     }
-    public static void SendUpdatateGuildWindow(string backgroundFile, byte backgroundR, byte backgroundG, byte backgroundB, 
-        string symbolFile, byte symbolR, byte symbolG, byte symbolB, int symbolPosY, float symbolScale)
-    {
-        Network.SendPacket(new RequestGuildPacket(backgroundFile, backgroundR, backgroundG, backgroundB, 
-            symbolFile, symbolR, symbolG, symbolB, symbolPosY, symbolScale));
-        SendChatMsg("Guild window updated", 5);
-    }
+
 
     public static void SendUpdateGuildXpContribution(float contribution)
     {

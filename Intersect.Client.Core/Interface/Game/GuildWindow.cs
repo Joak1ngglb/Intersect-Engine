@@ -1,5 +1,6 @@
 using System;
 using Intersect.Client.Core;
+using Intersect.Client.Entities;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Gwen.Control;
@@ -51,64 +52,57 @@ namespace Intersect.Client.Interface.Game
         private ImagePanel mBackgroundLogo; // Panel para el fondo
         private ImagePanel mSymbolLogo;     // Panel para el símbolo
 
+        public Label guildLevelLabel;
+        private Label GuildExpTitle;
+        private ImagePanel GuildExpBackground;
+        private ImagePanel GuildExpBar;
+        private Label GuildExpLabel;
+
         public GuildWindow(Canvas gameCanvas) : base(gameCanvas, Globals.Me?.Guild, false, nameof(GuildWindow))
         {
             DisableResizing();
             // Ajusta el tamaño de la ventana a tu gusto
             this.SetSize(600, 400);
 
-            // 1) Panel principal o contenedor (ya en la Window).
-           
-           _panelSearchArea = new ImagePanel(this, "SearchArea");
-         
-
-            // Textbox Search
+            // Área de búsqueda y botones (superior derecha)
             _textboxContainer = new ImagePanel(this, "SearchContainer");
-            _textboxContainer.SetBounds(10, 5, 300, 30);
+            _textboxContainer.SetBounds(120, 10, 400, 30);
 
             _textboxSearch = new TextBox(_textboxContainer, "SearchTextbox");
-            _textboxSearch.SetBounds(0, 0, 300, 30);
+            _textboxSearch.SetBounds(0, 0, 400, 30);
             Interface.FocusElements.Add(_textboxSearch);
 
-            // List of Guild Members
-    
-            _listGuildMembers = new ListBox(this, "GuildMembers");
-            _listGuildMembers.SetBounds(2, 60, 300, 300);
+            // Lista de miembros amplia (parte inferior)
+            _listGuildMembers = new ListBox(this, "GuildMembers") { ColumnCount = 5 };
+            _listGuildMembers.SetColumnWidth(0, 150); // Nombre
+            _listGuildMembers.SetColumnWidth(1, 100); // Rango
+            _listGuildMembers.SetColumnWidth(2, 50);  // Nivel
+            _listGuildMembers.SetColumnWidth(3, 50);  // % XP
+            _listGuildMembers.SetColumnWidth(4, 150); // Mapa
+            _listGuildMembers.SetBounds(10, 120, 620, 270);
+
 
             #region Action Buttons
             // Acciones (Invitar, Salir, etc.)
             _panelActions = new ImagePanel(this, "ActionsPanel");
             _panelActions.SetBounds(320, 5, 270, 70);
 
-            // Add Button
-            _buttonAdd = new Button(_panelActions, "InviteButton")
-            {
-                Text = Strings.Guilds.Add
-            };
-            _buttonAdd.SetBounds(0, 0, 80, 30);
-            _buttonAdd.Clicked += (s, e) =>
-            {
+            _buttonAdd = new Button(this, "InviteButton") { Text = Strings.Guilds.Add };
+            _buttonAdd.SetBounds(530, 10, 100, 30);
+            _buttonAdd.Clicked += (s, e) => {
                 if (_textboxSearch.Text.Trim().Length >= 3)
-                {
                     PacketSender.SendInviteGuild(_textboxSearch.Text);
-                }
             };
 
-            // Leave Button
-            _buttonLeave = new Button(_panelActions, "LeaveButton")
-            {
-                Text = Strings.Guilds.Leave
-            };
-            _buttonLeave.SetBounds(90, 0, 80, 30);
-            _buttonLeave.Clicked += (s, e) =>
-            {
-                _ = new InputBox(
-                    title: Strings.Guilds.LeaveTitle,
-                    prompt: Strings.Guilds.LeavePrompt.ToString(Globals.Me?.Guild),
-                    inputType: InputBox.InputType.YesNo,
-                    onSuccess: (s, e) => PacketSender.SendLeaveGuild()
-                );
-            };
+            _buttonLeave = new Button(this, "LeaveButton") { Text = Strings.Guilds.Leave };
+            _buttonLeave.SetBounds(530, 50, 100, 30);
+            _buttonLeave.Clicked += (s, e) => new InputBox(
+                title: Strings.Guilds.LeaveTitle,
+                prompt: Strings.Guilds.LeavePrompt.ToString(Globals.Me?.Guild),
+                inputType: InputBox.InputType.YesNo,
+                onSuccess: (s, e) => PacketSender.SendLeaveGuild()
+            );
+
 
             // Add Popup Button
             _buttonAddPopup = new Button(_panelActions, "InvitePopupButton")
@@ -183,40 +177,71 @@ namespace Intersect.Client.Interface.Game
             _expContributionOption = _contextMenu.AddItem("Modificar contribución de XP");
             _expContributionOption.Clicked += (s, e) =>
             {
+                // Convertimos el valor actual a int (puede estar como float)
+                int currentValue = (int)Math.Round(Globals.Me.GuildXpContribution);
+
                 _ = new InputBox(
                     title: "Configurar Contribución de XP",
-                    prompt: "Ingresa el porcentaje de XP que deseas donar al gremio:",
-                    inputType: InputBox.InputType.NumericInput,
-                    userData: null,
+                    prompt: $"Selecciona el porcentaje de XP que deseas donar al gremio (actual: {currentValue}%)",
+                    inputType: InputBox.InputType.NumericSliderInput,
                     onSuccess: (sender, args) =>
                     {
-                        if (sender is InputBox inputBox && float.TryParse(inputBox.TextValue, out float newPercentage))
+                        if (sender is InputBox inputBox)
                         {
-                            newPercentage = Math.Clamp(newPercentage, 0f, 100f);
+                            int newPercentage = (int)Math.Clamp(inputBox.Value, 0, 100);
                             PacketSender.SendUpdateGuildXpContribution(newPercentage);
-                            PacketSender.SendChatMsg($"Has cambiado tu contribución de XP a {newPercentage}%.",5);
+                            PacketSender.SendChatMsg($"Has cambiado tu contribución de XP a {newPercentage}%.", 5);
                         }
-                    }
+                    },
+                    quantity: currentValue,      // Valor inicial del slider
+                    maxQuantity: 100             // Máximo del slider
                 );
             };
+
             #endregion
 
-            // 2) Crear contenedor para el logo
+            // Contenedor principal para el logo del gremio (superior izquierda)
             mLogoContainer = new ImagePanel(this, "GuildLogoContainer");
-            // Ajusta su posición: lo ponemos a la derecha.
-            mLogoContainer.SetBounds(320, 80, 270, 260);
+            mLogoContainer.SetBounds(10, 10, 100, 100);
 
-            // Panel para el fondo
             mBackgroundLogo = new ImagePanel(mLogoContainer, "GuildBackgroundLogo");
-            // Ejemplo: 128×128 en el contenedor
-           
+            mBackgroundLogo.SetBounds(0, 0, 100, 100);
             mBackgroundLogo.Show();
 
-            // Panel para el símbolo
             mSymbolLogo = new ImagePanel(mBackgroundLogo, "GuildSymbolLogo");
-        
+            mSymbolLogo.SetBounds(0, 0, 100, 100);
             mSymbolLogo.Show();
+            // Nivel del gremio al lado del logo
+             guildLevelLabel = new Label(this, "GuildLevelLabel")
+            {
+                Text = $"Nivel: {Guild.GuildLevel}",
+                TextColor = Color.White             
+            };
+            guildLevelLabel.SetBounds(80, 10, 150, 25);
 
+            // Título de experiencia del gremio
+            GuildExpTitle = new Label(this, "GuildExpTitle");
+            GuildExpTitle.SetText("Exp:");
+            GuildExpTitle.SetBounds(80, 40, 150, 20);
+            GuildExpTitle.RenderColor = Color.FromArgb(255, 255, 255, 255);
+
+            // Fondo de la barra de experiencia del gremio
+            GuildExpBackground = new ImagePanel(this, "GuildExpBackground");
+            GuildExpBackground.SetBounds(80, 65, 150, 20);
+            GuildExpBackground.RenderColor = Color.FromArgb(255, 100, 100, 100);
+
+            // Barra de experiencia actual
+            GuildExpBar = new ImagePanel(GuildExpBackground, "GuildExpBar");
+            float percentage = (float)Guild.GuildExp / Guild.GuildExpToNextLevel;
+            GuildExpBar.SetBounds(0, 0, (int)(200 * percentage), 20);
+            GuildExpBar.RenderColor = Color.FromArgb(255, 50, 150, 50);
+
+            // Label con texto Exp/ExpTNL centrado en la barra
+          GuildExpLabel = new Label(GuildExpBackground, "GuildExpLabel");
+            GuildExpLabel.SetText($"{Guild.GuildExp} / {Guild.GuildExpToNextLevel}");
+            GuildExpLabel.SetBounds(0, 0, 200, 20);
+            GuildExpLabel.Alignment = Pos.Center;
+            GuildExpLabel.RenderColor = Color.White;
             // Llama a UpdateList() para cargar la lista
             UpdateList();
             UpdateLogo();
@@ -247,7 +272,7 @@ namespace Intersect.Client.Interface.Game
             if (mBackgroundLogo.Texture != null)
             {
                 // Escalar la imagen para caber en 48x48 manteniendo proporción
-                var (scaledW, scaledH) = ScaleToFit(mBackgroundLogo.Texture.Width, mBackgroundLogo.Texture.Height, 48, 48);
+                var (scaledW, scaledH) = ScaleToFit(mBackgroundLogo.Texture.Width, mBackgroundLogo.Texture.Height, 80, 80);
                 mBackgroundLogo.SetSize(scaledW, scaledH);
                 mBackgroundLogo.AddAlignment(Alignments.Center);
                 // Aplicar color guardado
@@ -287,10 +312,10 @@ namespace Intersect.Client.Interface.Game
             if (mSymbolLogo.Texture != null)
             {
                 // Escalar la imagen para caber en 48x48 manteniendo proporción
-                var (scaledW, scaledH) = ScaleToFit(mSymbolLogo.Texture.Width, mSymbolLogo.Texture.Height,48, 48);
+                var (scaledW, scaledH) = ScaleToFit(mSymbolLogo.Texture.Width, mSymbolLogo.Texture.Height,80, 80);
                 mSymbolLogo.SetSize(scaledW, scaledH);
                 // Escalar
-                int baseSize = 32;
+                int baseSize = 50;
                 int newW = (int)(baseSize * Globals.Me.GuildSymbolScale);
                 int newH = (int)(baseSize * Globals.Me.GuildSymbolScale);
                 mSymbolLogo.SetSize(newW, newH);
@@ -350,7 +375,16 @@ namespace Intersect.Client.Interface.Game
             {
                 UpdateLogo();
             }
-         
+            // Actualizar Nivel del gremio
+
+            if (guildLevelLabel != null)
+            {
+                guildLevelLabel.Text = $"Level: {Guild.GuildLevel}";
+            }
+            GuildExpBar.SetSize((int)(200 * (float)Guild.GuildExp / Guild.GuildExpToNextLevel), 20);
+            GuildExpLabel.SetText($"{Guild.GuildExp} / {Guild.GuildExpToNextLevel}");
+            GuildExpBar.Width = (int)(GuildExpBackground.Width * ((float)Guild.GuildExp / Guild.GuildExpToNextLevel));
+            GuildExpBar.SetTextureRect(0, 0, (int)(200 * (float)Guild.GuildExp / Guild.GuildExpToNextLevel), 20);
         }
 
         public override void Hide()
@@ -360,38 +394,59 @@ namespace Intersect.Client.Interface.Game
         }
 
         #region "Member List"
-
         public void UpdateList()
         {
             _listGuildMembers.Clear();
 
-            // Añadir encabezado
-            var header = _listGuildMembers.AddRow("Nombre", "Rango", "Nivel", "% XP");
+            // Encabezado claro y organizado
+            var header = _listGuildMembers.AddRow("Nombre", "Rango", "Nivel", "% XP", "Mapa");
             header.SetTextColor(Color.White);
             header.RenderColor = new Color(80, 80, 80, 255);
 
             // Añadir miembros del gremio
             foreach (var member in Globals.Me?.GuildMembers ?? [])
             {
+                // Manejo del nombre del mapa según estado online
+                string mapName = "-";
+                if (member.Online && !string.IsNullOrEmpty(member.Map))
+                {
+                    var mapSplit = member.Map.Split('-');
+                    mapName = mapSplit.Length > 1 ? mapSplit[1].Trim() : member.Map;
+                }
+
+                // Crear fila completa con datos del miembro
                 var row = _listGuildMembers.AddRow(
                     member.Name,
                     Options.Instance.Guild.Ranks[member.Rank].Title,
                     member.Level.ToString(),
-                    $"{member.ExperiencePerc}%"
+                    $"{member.ExperiencePerc}%",
+                    mapName
                 );
 
+                // Añadir tooltip informativo (nivel y clase)
+                row.SetToolTipText(Strings.Guilds.Tooltip.ToString(member.Level, member.Class));
+
+                // Manejo de eventos para clics
                 row.UserData = member;
                 row.Clicked += member_Clicked;
                 row.RightClicked += member_RightClicked;
 
+                // Colorear según estado en línea
                 row.SetTextColor(member.Online ? Color.Green : Color.Red);
+
+                // Alternar colores de fondo por filas
                 row.RenderColor = _listGuildMembers.RowCount % 2 == 0
                     ? new Color(210, 210, 210, 255)
                     : new Color(190, 190, 190, 255);
             }
+
+            // Actualización de visibilidad botones según permisos
+            var isInviteDenied = Globals.Me == null || Globals.Me.GuildRank == null || !Globals.Me.GuildRank.Permissions.Invite;
+            _buttonAdd.IsHidden = isInviteDenied || !_addButtonUsed;
+            _textboxContainer.IsHidden = isInviteDenied || !_addButtonUsed;
+            _buttonAddPopup.IsHidden = isInviteDenied || !_addPopupButtonUsed;
+            _buttonLeave.IsHidden = Globals.Me != null && Globals.Me.Rank == 0;
         }
-
-
 
         void member_Clicked(Base sender, ClickedEventArgs arguments)
         {
@@ -474,11 +529,13 @@ namespace Intersect.Client.Interface.Game
                 }
             }
 
-            // El Guild Master puede modificar la contribución de XP de cualquier miembro, incluyéndose a sí mismo.
-            if (isOwner)
+            // Verificamos si el miembro actual tiene permiso de cambiar su contribución de XP
+          
+            if (_selectedMember?.Id == Globals.Me?.Id && rank != null && rank.Permissions.ChangeXP)
             {
                 _contextMenu.AddChild(_expContributionOption);
             }
+
 
             _contextMenu.SizeToChildren();
             _contextMenu.Open(Framework.Gwen.Pos.None);

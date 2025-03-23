@@ -3,13 +3,13 @@ using MessagePack;
 
 namespace Intersect.Network.Packets.Server;
 [MessagePackObject]
-public partial class GuildExpPacketResponse: IntersectPacket
+public partial class GuildExperienceUpdatePacket: IntersectPacket
 
 {
-    public GuildExpPacketResponse()
+    public GuildExperienceUpdatePacket()
     {
     }
-    public GuildExpPacketResponse(float experience)
+    public GuildExperienceUpdatePacket(float experience)
     {
         Experience = experience;
     }

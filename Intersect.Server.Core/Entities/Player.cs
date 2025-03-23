@@ -1293,34 +1293,29 @@ public partial class Player : Entity
     {
         if (amount <= 0) return;
 
-        // Aplicar bonificación de equipo a la experiencia ganada
         long totalExp = (long)Math.Round(amount + (amount * (GetEquipmentBonusEffect(ItemEffect.EXP) / 100f)));
 
-        // Calcular la cantidad de experiencia que va al gremio y al jugador
-        long guildExp = (long)(totalExp * GuildExpPercentage);
+        long guildExp = (long)(totalExp * (GuildExpPercentage / 100f));
         long playerExp = totalExp - guildExp;
 
-        // Si el jugador pertenece a un gremio, donar la XP correspondiente
         if (IsInGuild && guildExp > 0)
         {
             DonateGuildExperience(guildExp);
         }
 
-        // Agregar la experiencia restante al jugador
         Exp += (int)playerExp;
 
-        // Asegurar que la experiencia no sea negativa
         if (Exp < 0)
         {
             Exp = 0;
         }
 
-        // Verificar si el jugador sube de nivel
         if (!CheckLevelUp())
         {
             PacketSender.SendExperience(this);
         }
     }
+
 
     public void TakeExperience(long amount)
     {

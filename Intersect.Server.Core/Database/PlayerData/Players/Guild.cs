@@ -208,7 +208,7 @@ public partial class Guild
                 member.Value.Level = plyr.Level;
                 member.Value.Map = plyr.MapName;
                 member.Value.Rank = plyr.GuildRank;
-
+                member.Value.ExperiencePerc=plyr.GuildExpPercentage;
                 online.Add(plyr);
             }
         }

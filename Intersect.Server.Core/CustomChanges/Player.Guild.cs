@@ -13,31 +13,22 @@ namespace Intersect.Server.Entities
     public partial class Player : Entity
     {
 
-        [JsonIgnore]
-        [NotMapped]
-        public float GuildExpPercentage { get; set; } = 0.0f;
+       [NotMapped]
+        public float GuildExpPercentage { get; set; } = 10f;
 
         public void SetGuildExpPercentage(float percentage)
         {
-            GuildExpPercentage = Math.Clamp(percentage, 0.0f, 1.0f); // Asegura que esté entre 0% y 100%
+            GuildExpPercentage = Math.Clamp(percentage, 0.0f, 100.0f);
+            PacketSender.SendChatMsg(this, $"Has cambiado tu contribución de experiencia al gremio a {GuildExpPercentage}%.", ChatMessageType.Guild);
 
-            PacketSender.SendChatMsg(this, $"Has cambiado tu contribución de experiencia al gremio a {GuildExpPercentage * 100}%.", ChatMessageType.Guild);
-        }
-
-
-        public void GiveExperienceWithGuildShare(long amount)
-        {
-            if (amount <= 0) return;
-
-            long guildExp = (long)(amount * GuildExpPercentage);
-            long playerExp = amount - guildExp;
-
-            if (IsInGuild && guildExp > 0)
+            // ACTUALIZAR EL VALOR EN Guild.Members (si existe)
+            if (Guild != null && Guild.Members.TryGetValue(this.Id, out var member))
             {
-                DonateGuildExperience(guildExp);
+                member.ExperiencePerc = GuildExpPercentage;
             }
 
-            GiveExperience(playerExp);
+            // Notificar a todos los miembros del gremio
+            Guild?.UpdateMemberList();
         }
 
         private void DonateGuildExperience(long amount)

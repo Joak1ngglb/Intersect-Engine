@@ -2532,18 +2532,22 @@ public static partial class PacketSender
             guild.SymbolG,
             guild.SymbolB,
             guild.SymbolPosY,
-            guild.SymbolScale
+            guild.SymbolScale,
+            guild.Level,
+            guild.Experience,
+            guild.ExperienceToNextLevel
         );
         player.SendPacket(guildUpdatePacket);
     }
 
     public static void UpdateExpPercent(Player player)
     {
-        if (player == null)
-        {
-            return;
-        }
-        var expPercent = player.GuildExpPercentage;
-        player.SendPacket(new GuildExpPacketResponse(expPercent));
+        if (player == null) return;
+
+        player.SendPacket(new GuildExperienceUpdatePacket(player.GuildExpPercentage));
     }
+   
+
+
+
 }

@@ -2249,37 +2249,29 @@ internal sealed partial class PacketHandler
             return;
         }
 
-        var updatedGuildMembers = packet.Members.OrderByDescending(m => m.Online).ThenBy(m => m.Rank)
-            .ThenBy(m => m.Name).ToArray();
+        var updatedGuildMembers = packet.Members
+            .OrderByDescending(m => m.Online)
+            .ThenBy(m => m.Rank)
+            .ThenBy(m => m.Name)
+            .ToArray();
 
         var currentGuildMembers = Globals.Me.GuildMembers;
         var hasUpdates = currentGuildMembers?.Length != updatedGuildMembers.Length;
+
         if (!hasUpdates)
         {
             for (var index = 0; index < currentGuildMembers.Length; ++index)
             {
-                var currentGuildMember = currentGuildMembers[index];
-                var updatedGuildMember = updatedGuildMembers[index];
+                var current = currentGuildMembers[index];
+                var updated = updatedGuildMembers[index];
 
-                if (currentGuildMember.Id != updatedGuildMember.Id)
-                {
-                    hasUpdates = true;
-                    break;
-                }
-
-                if (currentGuildMember.Online != updatedGuildMember.Online)
-                {
-                    hasUpdates = true;
-                    break;
-                }
-
-                if (currentGuildMember.Rank != updatedGuildMember.Rank)
-                {
-                    hasUpdates = true;
-                    break;
-                }
-
-                if (!string.Equals(currentGuildMember.Name, updatedGuildMember.Name))
+                if (current.Id != updated.Id ||
+                    current.Online != updated.Online ||
+                    current.Rank != updated.Rank ||
+                    current.Name != updated.Name ||
+                    current.Level != updated.Level ||
+                    !string.Equals(current.Map, updated.Map) ||
+                    Math.Abs(current.ExperiencePerc - updated.ExperiencePerc) > 0.01f)
                 {
                     hasUpdates = true;
                     break;
@@ -2293,6 +2285,7 @@ internal sealed partial class PacketHandler
             Interface.Interface.GameUi.NotifyUpdateGuildList();
         }
     }
+
     public void HandlePacket (IPacketHandler packetsender, GuildUpdate packet)
     {
         if (Globals.Me == null || Globals.Me.Guild == null)
@@ -2452,22 +2445,24 @@ internal sealed partial class PacketHandler
         Globals.Me.GuildBackgroundB = packet.BackgroundB;
         Globals.Me.GuildBackgroundR = packet.BackgroundR;
         Globals.Me.GuildBackgroundG = packet.BackgroundG;
-        
+        Guild.GuildLevel = packet.GuildLevel;
+        Guild.GuildExp = packet.GuildExp;
+        Guild.GuildExpToNextLevel = packet.GuildExpToNextLevel;
         // Por ejemplo, notificar a la interfaz gráfica de que se actualizó la guild
         //Interface.Interface.GameUi.NotifyUpdateGuild();
     }
-    public void HandlePacket(IPacketSender packetSender, GuildExpPercentagePacket packet)
+    public void HandlePacket(IPacketSender packetSender, GuildExperienceUpdatePacket packet)
     {
         if (Globals.Me == null) return;
 
         // Establecemos el nuevo porcentaje de donación a la guild
-        Globals.Me.GuildXpContribution = Math.Clamp(packet.Percentage, 0f, 100f);
+        Globals.Me.GuildXpContribution = Math.Clamp(packet.Experience, 0f, 100f);
 
         // Mostramos un mensaje al jugador
         ChatboxMsg.AddMessage(new ChatboxMsg($"Ahora donas {Globals.Me.GuildXpContribution}% de tu XP a la guild.",Color.ForestGreen, ChatMessageType.Notice));
 
-        // Enviamos la actualización al servidor
-        PacketSender.SendUpdateGuildXpContribution(Globals.Me.GuildXpContribution);
+       
     }
+   
 
 }

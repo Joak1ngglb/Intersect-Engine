@@ -54,7 +54,8 @@ public partial class GuildOptions
                 Promote = true,
                 BankDeposit = true,
                 BankMove = true,
-                BankRetrieve = true
+                BankRetrieve = true,
+                ChangeXP=true
             }
         },
         new GuildRank()
@@ -69,7 +70,8 @@ public partial class GuildOptions
                 Promote = true,
                 BankDeposit = true,
                 BankMove = true,
-                BankRetrieve = true
+                BankRetrieve = true,
+                ChangeXP=true
             }
         },
         new GuildRank()
@@ -84,7 +86,8 @@ public partial class GuildOptions
                 Promote = false,
                 BankDeposit = true,
                 BankMove = false,
-                BankRetrieve = false
+                BankRetrieve = false,
+                ChangeXP=true
             }
         },
         new GuildRank()
@@ -99,7 +102,8 @@ public partial class GuildOptions
                 Promote = false,
                 BankDeposit = false,
                 BankMove = false,
-                BankRetrieve = false
+                BankRetrieve = false,
+                ChangeXP=true
             }
         }
 

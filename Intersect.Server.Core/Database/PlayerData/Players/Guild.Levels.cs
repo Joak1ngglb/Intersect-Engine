@@ -25,8 +25,8 @@ namespace Intersect.Server.Database.PlayerData.Players;
 public partial class Guild
 {
     // Nuevo sistema de niveles
-    public int Level { get; private set; } = 1;
-    public long Experience { get; private set; } = 0;
+    public int Level { get;  set; } = 1;
+    public long Experience { get; set; } = 0;
     public long ExperienceToNextLevel => CalculateRequiredExperience(Level);
     public int MaxMembers => CalculateMaxMembers(Level);
     /// <summary>
@@ -78,32 +78,71 @@ public partial class Guild
     /// </summary>
     public void AddExperience(long amount)
     {
+        if (amount <= 0)
+            return;
+
         Experience += amount;
 
-        while (Experience >= ExperienceToNextLevel)
+        if (CheckLevelUp())
         {
-            LevelUp();
+            UpdateMemberList(); // Refrescar visualmente en los clientes
         }
 
-        Save();
+        Save(); // Guardar en DB
+    }
+    private bool CheckLevelUp()
+    {
+        var levelUps = 0;
+
+        while (Experience >= CalculateRequiredExperience(Level + levelUps) &&
+                CalculateRequiredExperience(Level + levelUps) > 0)
+        {
+            Experience -= CalculateRequiredExperience(Level + levelUps);
+            levelUps++;
+        }
+
+        if (levelUps <= 0)
+            return false;
+
+        LevelUp(false, levelUps);
+        return true;
     }
 
-    /// <summary>
-    /// Incrementa el nivel del gremio y ajusta la experiencia requerida para el siguiente nivel.
-    /// </summary>
-    private void LevelUp()
+    public void LevelUp(bool resetExperience = false, int levels = 1)
     {
-        Level++;
-        Experience -= ExperienceToNextLevel; // Resta la XP usada para subir de nivel
+        if (levels <= 0)
+            return;
 
-        // Notificar a los miembros del gremio sobre el nivel aumentado
-        foreach (var member in FindOnlineMembers())
+        for (int i = 0; i < levels; i++)
         {
-            PacketSender.SendChatMsg(member, "¡El gremio ha subido al nivel " + Level + "!", ChatMessageType.Guild);
+            Level++;
+            if (resetExperience)
+            {
+                Experience = 0;
+            }
+
+            // Mensaje a todos los miembros online
+            foreach (var member in FindOnlineMembers())
+            {
+                PacketSender.SendChatMsg(member, $"¡El gremio ha subido al nivel {Level}!", ChatMessageType.Guild);
+            }
         }
 
         UpdateMemberList();
         Save();
     }
+    public void SetLevel(int level, bool resetExperience = false)
+    {
+        if (level < 1)
+            return;
+
+        Level = level;
+        if (resetExperience)
+            Experience = 0;
+
+        UpdateMemberList();
+        Save();
+    }
+
 }
 

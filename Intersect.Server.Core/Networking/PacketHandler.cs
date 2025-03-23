@@ -725,6 +725,8 @@ internal sealed partial class PacketHandler
         if (player == null) return;
 
         player.SetGuildExpPercentage(packet.Percentage);
+        PacketSender.UpdateExpPercent(player);
+
     }
     #region "Client Packets"
 

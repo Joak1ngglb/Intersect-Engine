@@ -57,9 +57,7 @@ public partial class Player : Entity, IPlayer
     public long Experience { get; set; } = 0;
 
     public long ExperienceToNextLevel { get; set; } = 0;
-    private GameTexture _guildBackgroundTexture;
-    private GameTexture _guildSymbolTexture;
-    private bool _logoLoaded = false;
+    
     IReadOnlyList<IFriendInstance> IPlayer.Friends => Friends;
 
     public List<IFriendInstance> Friends { get; set; } = [];

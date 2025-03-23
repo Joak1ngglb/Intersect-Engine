@@ -17,7 +17,7 @@ namespace Intersect.Network.Packets.Server
             string symbolFile,
             byte symR, byte symG, byte symB,
             int symbolPosY,
-            float symbolScale)
+            float symbolScale,int level,long exp,long expToNextLevel)
         {
             Name = name;
             LogoBackground = backgroundFile ?? string.Empty;
@@ -30,6 +30,9 @@ namespace Intersect.Network.Packets.Server
             SymbolB = symB;
             SymbolPosY = symbolPosY;
             SymbolScale = symbolScale;
+            GuildLevel = level;
+            GuildExp = exp;
+            GuildExpToNextLevel = expToNextLevel;
         }
 
         [Key(0)]
@@ -62,5 +65,13 @@ namespace Intersect.Network.Packets.Server
 
         [Key(10)]
         public float SymbolScale { get; set; }
+        [Key(11)]
+        public int GuildLevel { get; set; }
+        [Key(12)]
+
+        public long GuildExp { get; set; }
+        [Key(13)]
+        public long GuildExpToNextLevel { get; set; }
+
     }
 }

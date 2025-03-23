@@ -322,7 +322,9 @@ public partial class FrmNpc : EditorForm
             cmbAttackAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.AttackAnimationId) + 1;
             cmbAttackSpeedModifier.SelectedIndex = mEditorItem.AttackSpeedModifier;
             nudAttackSpeedValue.Value = mEditorItem.AttackSpeedValue;
-
+            //Vitals
+            nudHp.Value = mEditorItem.MaxVital[(int)Vital.Health];
+            nudMana.Value = mEditorItem.MaxVital[(int)Vital.Mana];
             //Regen
             nudHpRegen.Value = mEditorItem.VitalRegen[(int)Vital.Health];
             nudMpRegen.Value = mEditorItem.VitalRegen[(int)Vital.Mana];

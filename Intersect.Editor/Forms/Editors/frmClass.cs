@@ -155,11 +155,12 @@ public partial class FrmClass : EditorForm
             nudARP.Value = mEditorItem.BaseStat[(int)Stat.ArmorPenetration];
             nudVit.Value = mEditorItem.BaseStat[(int)Stat.Vitality];
             nudWis.Value = mEditorItem.BaseStat[(int)Stat.Wisdom];
+            nudBaseMana.Value = mEditorItem.BaseVital[(int)Vital.Mana];
             nudBaseHP.Value = Math.Max(
                 Math.Min(mEditorItem.BaseVital[(int) Vital.Health], nudBaseHP.Maximum), nudBaseHP.Minimum
             );
 
-            nudBaseMana.Value = mEditorItem.BaseVital[(int) Vital.Mana];
+         
             nudPoints.Value = mEditorItem.BasePoints;
             chkLocked.Checked = Convert.ToBoolean(mEditorItem.Locked);
 

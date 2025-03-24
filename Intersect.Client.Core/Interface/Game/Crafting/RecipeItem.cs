@@ -7,8 +7,9 @@ using Intersect.Client.Interface.Game.Job;
 using Intersect.Client.Interface.Game.Spells;
 using Intersect.Client.Networking;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Crafting;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Crafting;
 
 namespace Intersect.Client.Interface.Game.Crafting;
 
@@ -16,9 +17,9 @@ namespace Intersect.Client.Interface.Game.Crafting;
 public partial class RecipeItem
 {
 
-    public ImagePanel Container;
+    public ImagePanel? Container;
 
-    public ItemDescriptionWindow DescWindow;
+    public ItemDescriptionWindow? DescWindow;
 
     public bool IsDragging;
 
@@ -28,11 +29,12 @@ public partial class RecipeItem
     //References
     private CraftingWindow mCraftingWindow;
 
-    private Draggable mDragIcon;
     private JobsWindow mJobsWindow;
 
+    private Draggable? mDragIcon;
+
     //Slot info
-    CraftIngredient mIngredient;
+    CraftingRecipeIngredient mIngredient;
 
     //Mouse Event Variables
     private bool mMouseOver;
@@ -41,9 +43,9 @@ public partial class RecipeItem
 
     private int mMouseY = -1;
 
-    public ImagePanel Pnl;
+    public ImagePanel? Pnl;
 
-    public RecipeItem(CraftingWindow craftingWindow, CraftIngredient ingredient)
+    public RecipeItem(CraftingWindow craftingWindow, CraftingRecipeIngredient ingredient)
     {
         mCraftingWindow = craftingWindow;
         mIngredient = ingredient;
@@ -66,7 +68,8 @@ public partial class RecipeItem
 
     public void LoadItem()
     {
-        var item = ItemBase.Get(mIngredient.ItemId);
+        var item = ItemDescriptor.Get(mIngredient.ItemId);
+
         if (item != null)
         {
             if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
@@ -77,9 +80,7 @@ public partial class RecipeItem
             {
                 Container.RenderColor = Color.White;
             }
-        }
-        if (item != null)
-        {
+            
             var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);
             if (itemTex != null)
             {
@@ -122,7 +123,7 @@ public partial class RecipeItem
 
         mMouseOver = true;
         mCanDrag = true;
-        if (Globals.InputManager.MouseButtonDown(MouseButtons.Left))
+        if (Globals.InputManager.IsMouseButtonDown(MouseButton.Left))
         {
             mCanDrag = false;
 
@@ -135,7 +136,7 @@ public partial class RecipeItem
             DescWindow = null;
         }
 
-        if (mIngredient != null && ItemBase.TryGet(mIngredient.ItemId, out var itemDescriptor))
+        if (mIngredient != null && ItemDescriptor.TryGet(mIngredient.ItemId, out var itemDescriptor))
         {
             DescWindow = new ItemDescriptionWindow(
                 itemDescriptor, mIngredient.Quantity, mCraftingWindow.X, mCraftingWindow.Y, null

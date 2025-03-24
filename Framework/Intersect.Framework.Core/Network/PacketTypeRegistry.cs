@@ -1,6 +1,8 @@
-﻿using Intersect.Collections;
-using Intersect.Logging;
+﻿using System.Globalization;
+using Intersect.Collections;
 using System.Reflection;
+using Intersect.Framework.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Network;
 
@@ -23,10 +25,10 @@ public sealed partial class PacketTypeRegistry
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _builtinAssembly = builtinAssembly;
 
-        BuiltInTypesInternal = new List<Type>();
+        BuiltInTypesInternal = [];
         BuiltInTypes = BuiltInTypesInternal.WrapReadOnly();
 
-        TypesInternal = new List<Type>();
+        TypesInternal = [];
         Types = TypesInternal.WrapReadOnly();
     }
 
@@ -54,7 +56,10 @@ public sealed partial class PacketTypeRegistry
                     );
                 }
             )
-            .OrderBy(type => type.ToString());
+            .OrderBy(
+                type => type.GetName(qualified: true),
+                CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.Ordinal)
+            );
         BuiltInTypesInternal.AddRange(definedPacketTypes);
         return BuiltInTypesInternal.All(TryRegister) && BuiltInTypesInternal.Count > 0;
     }
@@ -76,7 +81,11 @@ public sealed partial class PacketTypeRegistry
                 case ArgumentNullException _:
                 case ArgumentException _:
                 case InvalidOperationException _:
-                    Logger.Error(exception);
+                    Logger.LogError(
+                        exception,
+                        "Failed to register packet type {Type}",
+                        packetType.GetName(qualified: true)
+                    );
                     return false;
 
                 default:

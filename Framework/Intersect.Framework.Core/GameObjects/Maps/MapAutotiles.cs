@@ -1,6 +1,7 @@
-﻿using Intersect.Logging;
+﻿using Intersect.Core;
+using Microsoft.Extensions.Logging;
 
-namespace Intersect.GameObjects.Maps;
+namespace Intersect.Framework.Core.GameObjects.Maps;
 
 public partial class MapAutotiles
 {
@@ -60,45 +61,45 @@ public partial class MapAutotiles
 
     public const byte XPW = 10;
 
-    public static PointStruct[] AutoCxp = new PointStruct[6];
+    public static Point16i[] AutoCxp = new Point16i[6];
 
-    public static PointStruct[] AutoExp = new PointStruct[6];
+    public static Point16i[] AutoExp = new Point16i[6];
 
-    public static PointStruct[] AutoInner = new PointStruct[6];
+    public static Point16i[] AutoInner = new Point16i[6];
 
     // XP autotiling
-    public static PointStruct[] AutoInnerXp = new PointStruct[6];
+    public static Point16i[] AutoInnerXp = new Point16i[6];
 
-    public static PointStruct[] AutoNe = new PointStruct[6];
+    public static Point16i[] AutoNe = new Point16i[6];
 
-    public static PointStruct[] AutoNeXp = new PointStruct[6];
+    public static Point16i[] AutoNeXp = new Point16i[6];
 
-    public static PointStruct[] AutoNw = new PointStruct[6];
+    public static Point16i[] AutoNw = new Point16i[6];
 
-    public static PointStruct[] AutoNwXp = new PointStruct[6];
+    public static Point16i[] AutoNwXp = new Point16i[6];
 
-    public static PointStruct[] AutoNxp = new PointStruct[6];
+    public static Point16i[] AutoNxp = new Point16i[6];
 
-    public static PointStruct[] AutoSe = new PointStruct[6];
+    public static Point16i[] AutoSe = new Point16i[6];
 
-    public static PointStruct[] AutoSeXp = new PointStruct[6];
+    public static Point16i[] AutoSeXp = new Point16i[6];
 
-    public static PointStruct[] AutoSw = new PointStruct[6];
+    public static Point16i[] AutoSw = new Point16i[6];
 
-    public static PointStruct[] AutoSwXp = new PointStruct[6];
+    public static Point16i[] AutoSwXp = new Point16i[6];
 
-    public static PointStruct[] AutoSxp = new PointStruct[6];
+    public static Point16i[] AutoSxp = new Point16i[6];
 
-    public static PointStruct[] AutoWxp = new PointStruct[6];
+    public static Point16i[] AutoWxp = new Point16i[6];
 
     // autotiling
     private static bool sLoadedTemplates = false;
 
-    private readonly MapBase mMyMap;
+    private readonly MapDescriptor mMyMap;
 
-    public Dictionary<string, QuarterTileCls[,]> Layers;
+    public Dictionary<string, Autotile[,]> Layers;
 
-    public MapAutotiles(MapBase map)
+    public MapAutotiles(MapDescriptor map)
     {
         mMyMap = map;
         if (!sLoadedTemplates)
@@ -112,281 +113,281 @@ public partial class MapAutotiles
     {
         // Inner tiles (Top right subtile region)
         // NW - a
-        AutoInner[1].X = (Int16) Options.TileWidth;
+        AutoInner[1].X = (Int16) Options.Instance.Map.TileWidth;
         AutoInner[1].Y = 0;
 
         // NE - b
-        AutoInner[2].X = (Int16) (2 * Options.TileWidth - Options.TileWidth / 2);
+        AutoInner[2].X = (Int16) (2 * Options.Instance.Map.TileWidth - Options.Instance.Map.TileWidth / 2);
         AutoInner[2].Y = 0;
 
         // SW - c
-        AutoInner[3].X = (Int16) Options.TileWidth;
-        AutoInner[3].Y = (Int16) (Options.TileHeight / 2);
+        AutoInner[3].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoInner[3].Y = (Int16) (Options.Instance.Map.TileHeight / 2);
 
         // SE - d
-        AutoInner[4].X = (Int16) (2 * Options.TileWidth - Options.TileWidth / 2);
-        AutoInner[4].Y = (Int16) (Options.TileHeight / 2);
+        AutoInner[4].X = (Int16) (2 * Options.Instance.Map.TileWidth - Options.Instance.Map.TileWidth / 2);
+        AutoInner[4].Y = (Int16) (Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - NW (bottom subtile region)
         // NW - e
         AutoNw[1].X = 0;
-        AutoNw[1].Y = (Int16) Options.TileHeight;
+        AutoNw[1].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // NE - f
-        AutoNw[2].X = (Int16) (Options.TileWidth / 2);
-        AutoNw[2].Y = (Int16) Options.TileHeight;
+        AutoNw[2].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoNw[2].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // SW - g
         AutoNw[3].X = 0;
-        AutoNw[3].Y = (Int16) (2 * Options.TileHeight - Options.TileHeight / 2);
+        AutoNw[3].Y = (Int16) (2 * Options.Instance.Map.TileHeight - Options.Instance.Map.TileHeight / 2);
 
         // SE - h
-        AutoNw[4].X = (Int16) (Options.TileWidth / 2);
-        AutoNw[4].Y = (Int16) (2 * Options.TileHeight - Options.TileHeight / 2);
+        AutoNw[4].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoNw[4].Y = (Int16) (2 * Options.Instance.Map.TileHeight - Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - NE (bottom subtile region)
         // NW - i
-        AutoNe[1].X = (Int16) Options.TileWidth;
-        AutoNe[1].Y = (Int16) Options.TileHeight;
+        AutoNe[1].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoNe[1].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // NE - g
-        AutoNe[2].X = (Int16) (2 * Options.TileWidth - Options.TileWidth / 2);
-        AutoNe[2].Y = (Int16) Options.TileHeight;
+        AutoNe[2].X = (Int16) (2 * Options.Instance.Map.TileWidth - Options.Instance.Map.TileWidth / 2);
+        AutoNe[2].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // SW - k
-        AutoNe[3].X = (Int16) Options.TileWidth;
-        AutoNe[3].Y = (Int16) (2 * Options.TileHeight - Options.TileHeight / 2);
+        AutoNe[3].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoNe[3].Y = (Int16) (2 * Options.Instance.Map.TileHeight - Options.Instance.Map.TileHeight / 2);
 
         // SE - l
-        AutoNe[4].X = (Int16) (2 * Options.TileWidth - Options.TileWidth / 2);
-        AutoNe[4].Y = (Int16) (2 * Options.TileHeight - Options.TileHeight / 2);
+        AutoNe[4].X = (Int16) (2 * Options.Instance.Map.TileWidth - Options.Instance.Map.TileWidth / 2);
+        AutoNe[4].Y = (Int16) (2 * Options.Instance.Map.TileHeight - Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - SW (bottom subtile region)
         // NW - m
         AutoSw[1].X = 0;
-        AutoSw[1].Y = (Int16) (2 * Options.TileHeight);
+        AutoSw[1].Y = (Int16) (2 * Options.Instance.Map.TileHeight);
 
         // NE - n
-        AutoSw[2].X = (Int16) (Options.TileWidth / 2);
-        AutoSw[2].Y = (Int16) (2 * Options.TileHeight);
+        AutoSw[2].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoSw[2].Y = (Int16) (2 * Options.Instance.Map.TileHeight);
 
         // SW - o
         AutoSw[3].X = 0;
-        AutoSw[3].Y = (Int16) (2 * Options.TileHeight + Options.TileHeight / 2);
+        AutoSw[3].Y = (Int16) (2 * Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // SE - p
-        AutoSw[4].X = (Int16) (Options.TileWidth / 2);
-        AutoSw[4].Y = (Int16) (2 * Options.TileHeight + Options.TileHeight / 2);
+        AutoSw[4].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoSw[4].Y = (Int16) (2 * Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - SE (bottom subtile region)
         // NW - q
-        AutoSe[1].X = (Int16) Options.TileWidth;
-        AutoSe[1].Y = (Int16) (2 * Options.TileHeight);
+        AutoSe[1].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoSe[1].Y = (Int16) (2 * Options.Instance.Map.TileHeight);
 
         // NE - r
-        AutoSe[2].X = (Int16) (2 * Options.TileWidth - Options.TileWidth / 2);
-        AutoSe[2].Y = (Int16) (2 * Options.TileHeight);
+        AutoSe[2].X = (Int16) (2 * Options.Instance.Map.TileWidth - Options.Instance.Map.TileWidth / 2);
+        AutoSe[2].Y = (Int16) (2 * Options.Instance.Map.TileHeight);
 
         // SW - s
-        AutoSe[3].X = (Int16) Options.TileWidth;
-        AutoSe[3].Y = (Int16) (2 * Options.TileHeight + Options.TileHeight / 2);
+        AutoSe[3].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoSe[3].Y = (Int16) (2 * Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // SE - t
-        AutoSe[4].X = (Int16) (2 * Options.TileWidth - Options.TileWidth / 2);
-        AutoSe[4].Y = (Int16) (2 * Options.TileHeight + Options.TileHeight / 2);
+        AutoSe[4].X = (Int16) (2 * Options.Instance.Map.TileWidth - Options.Instance.Map.TileWidth / 2);
+        AutoSe[4].Y = (Int16) (2 * Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
     }
 
     private void InitXpAutotileTemplate()
     {
         // Inner tiles (Top right subtile region)
         // NW - a
-        AutoInnerXp[1].X = (Int16) (Options.TileWidth * 2);
+        AutoInnerXp[1].X = (Int16) (Options.Instance.Map.TileWidth * 2);
         AutoInnerXp[1].Y = 0;
 
         // NE - b
-        AutoInnerXp[2].X = (Int16) (2 * Options.TileWidth + Options.TileWidth / 2);
+        AutoInnerXp[2].X = (Int16) (2 * Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
         AutoInnerXp[2].Y = 0;
 
         // SW - c
-        AutoInnerXp[3].X = (Int16) (Options.TileWidth * 2);
-        AutoInnerXp[3].Y = (Int16) (Options.TileHeight / 2);
+        AutoInnerXp[3].X = (Int16) (Options.Instance.Map.TileWidth * 2);
+        AutoInnerXp[3].Y = (Int16) (Options.Instance.Map.TileHeight / 2);
 
         // SE - d
-        AutoInnerXp[4].X = (Int16) (2 * Options.TileWidth + Options.TileWidth / 2);
-        AutoInnerXp[4].Y = (Int16) (Options.TileHeight / 2);
+        AutoInnerXp[4].X = (Int16) (2 * Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoInnerXp[4].Y = (Int16) (Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - NW (bottom subtile region)
         // NW - e
         AutoNwXp[1].X = 0;
-        AutoNwXp[1].Y = (Int16) Options.TileHeight;
+        AutoNwXp[1].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // NE - f
-        AutoNwXp[2].X = (Int16) (Options.TileWidth / 2);
-        AutoNwXp[2].Y = (Int16) Options.TileHeight;
+        AutoNwXp[2].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoNwXp[2].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // SW - g
         AutoNwXp[3].X = 0;
-        AutoNwXp[3].Y = (Int16) (Options.TileHeight + Options.TileHeight / 2);
+        AutoNwXp[3].Y = (Int16) (Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // SE - h
-        AutoNwXp[4].X = (Int16) (Options.TileWidth / 2);
-        AutoNwXp[4].Y = (Int16) (Options.TileHeight + Options.TileHeight / 2);
+        AutoNwXp[4].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoNwXp[4].Y = (Int16) (Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - NE (bottom subtile region)
         // NW - i
-        AutoNeXp[1].X = (Int16) (Options.TileWidth * 2);
-        AutoNeXp[1].Y = (Int16) Options.TileHeight;
+        AutoNeXp[1].X = (Int16) (Options.Instance.Map.TileWidth * 2);
+        AutoNeXp[1].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // NE - g
-        AutoNeXp[2].X = (Int16) (2 * Options.TileWidth + Options.TileWidth / 2);
-        AutoNeXp[2].Y = (Int16) Options.TileHeight;
+        AutoNeXp[2].X = (Int16) (2 * Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoNeXp[2].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // SW - k
-        AutoNeXp[3].X = (Int16) (Options.TileWidth * 2);
-        AutoNeXp[3].Y = (Int16) (Options.TileHeight + Options.TileHeight / 2);
+        AutoNeXp[3].X = (Int16) (Options.Instance.Map.TileWidth * 2);
+        AutoNeXp[3].Y = (Int16) (Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // SE - l
-        AutoNeXp[4].X = (Int16) (2 * Options.TileWidth + Options.TileWidth / 2);
-        AutoNeXp[4].Y = (Int16) (Options.TileHeight + Options.TileHeight / 2);
+        AutoNeXp[4].X = (Int16) (2 * Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoNeXp[4].Y = (Int16) (Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - SW (bottom subtile region)
         // NW - m
         AutoSwXp[1].X = 0;
-        AutoSwXp[1].Y = (Int16) (3 * Options.TileHeight);
+        AutoSwXp[1].Y = (Int16) (3 * Options.Instance.Map.TileHeight);
 
         // NE - n
-        AutoSwXp[2].X = (Int16) (Options.TileWidth / 2);
-        AutoSwXp[2].Y = (Int16) (3 * Options.TileHeight);
+        AutoSwXp[2].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoSwXp[2].Y = (Int16) (3 * Options.Instance.Map.TileHeight);
 
         // SW - o
         AutoSwXp[3].X = 0;
-        AutoSwXp[3].Y = (Int16) (3 * Options.TileHeight + Options.TileHeight / 2);
+        AutoSwXp[3].Y = (Int16) (3 * Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // SE - p
-        AutoSwXp[4].X = (Int16) (Options.TileWidth / 2);
-        AutoSwXp[4].Y = (Int16) (3 * Options.TileHeight + Options.TileHeight / 2);
+        AutoSwXp[4].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoSwXp[4].Y = (Int16) (3 * Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - SE (bottom subtile region)
         // NW - q
-        AutoSeXp[1].X = (Int16) (Options.TileWidth * 2);
-        AutoSeXp[1].Y = (Int16) (3 * Options.TileHeight);
+        AutoSeXp[1].X = (Int16) (Options.Instance.Map.TileWidth * 2);
+        AutoSeXp[1].Y = (Int16) (3 * Options.Instance.Map.TileHeight);
 
         // NE - r
-        AutoSeXp[2].X = (Int16) (2 * Options.TileWidth + Options.TileWidth / 2);
-        AutoSeXp[2].Y = (Int16) (3 * Options.TileHeight);
+        AutoSeXp[2].X = (Int16) (2 * Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoSeXp[2].Y = (Int16) (3 * Options.Instance.Map.TileHeight);
 
         // SW - s
-        AutoSeXp[3].X = (Int16) (Options.TileWidth * 2);
-        AutoSeXp[3].Y = (Int16) (3 * Options.TileHeight + Options.TileHeight / 2);
+        AutoSeXp[3].X = (Int16) (Options.Instance.Map.TileWidth * 2);
+        AutoSeXp[3].Y = (Int16) (3 * Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // SE - t
-        AutoSeXp[4].X = (Int16) (2 * Options.TileWidth + Options.TileWidth / 2);
-        AutoSeXp[4].Y = (Int16) (3 * Options.TileHeight + Options.TileHeight / 2);
+        AutoSeXp[4].X = (Int16) (2 * Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoSeXp[4].Y = (Int16) (3 * Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // Center Tiles - C
         // NW - A
-        AutoCxp[1].X = (Int16) Options.TileWidth;
-        AutoCxp[1].Y = (Int16) (Options.TileHeight * 2);
+        AutoCxp[1].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoCxp[1].Y = (Int16) (Options.Instance.Map.TileHeight * 2);
 
         // NE - B
-        AutoCxp[2].X = (Int16) (Options.TileWidth + Options.TileWidth / 2);
-        AutoCxp[2].Y = (Int16) (Options.TileHeight * 2);
+        AutoCxp[2].X = (Int16) (Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoCxp[2].Y = (Int16) (Options.Instance.Map.TileHeight * 2);
 
         // SW - C
-        AutoCxp[3].X = (Int16) Options.TileWidth;
-        AutoCxp[3].Y = (Int16) (Options.TileHeight * 2 + Options.TileHeight / 2);
+        AutoCxp[3].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoCxp[3].Y = (Int16) (Options.Instance.Map.TileHeight * 2 + Options.Instance.Map.TileHeight / 2);
 
         // SE - D
-        AutoCxp[4].X = (Int16) (Options.TileWidth + Options.TileWidth / 2);
-        AutoCxp[4].Y = (Int16) (Options.TileHeight * 2 + Options.TileHeight / 2);
+        AutoCxp[4].X = (Int16) (Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoCxp[4].Y = (Int16) (Options.Instance.Map.TileHeight * 2 + Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - N (North Horizontal region)
         // NW - E
-        AutoNxp[1].X = (Int16) Options.TileWidth;
-        AutoNxp[1].Y = (Int16) Options.TileHeight;
+        AutoNxp[1].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoNxp[1].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // NE - F
-        AutoNxp[2].X = (Int16) (Options.TileWidth + Options.TileWidth / 2);
-        AutoNxp[2].Y = (Int16) Options.TileHeight;
+        AutoNxp[2].X = (Int16) (Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoNxp[2].Y = (Int16) Options.Instance.Map.TileHeight;
 
         // SW - G
-        AutoNxp[3].X = (Int16) Options.TileWidth;
-        AutoNxp[3].Y = (Int16) (Options.TileHeight + Options.TileHeight / 2);
+        AutoNxp[3].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoNxp[3].Y = (Int16) (Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // SE - H
-        AutoNxp[4].X = (Int16) (Options.TileWidth + Options.TileWidth / 2);
-        AutoNxp[4].Y = (Int16) (Options.TileHeight + Options.TileHeight / 2);
+        AutoNxp[4].X = (Int16) (Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoNxp[4].Y = (Int16) (Options.Instance.Map.TileHeight + Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - E (East Vertical region)
         // NW - I
-        AutoExp[1].X = (Int16) (Options.TileWidth * 2);
-        AutoExp[1].Y = (Int16) (Options.TileHeight * 2);
+        AutoExp[1].X = (Int16) (Options.Instance.Map.TileWidth * 2);
+        AutoExp[1].Y = (Int16) (Options.Instance.Map.TileHeight * 2);
 
         // NE - J
-        AutoExp[2].X = (Int16) (Options.TileWidth * 2 + Options.TileWidth / 2);
-        AutoExp[2].Y = (Int16) (Options.TileHeight * 2);
+        AutoExp[2].X = (Int16) (Options.Instance.Map.TileWidth * 2 + Options.Instance.Map.TileWidth / 2);
+        AutoExp[2].Y = (Int16) (Options.Instance.Map.TileHeight * 2);
 
         // SW - K
-        AutoExp[3].X = (Int16) (Options.TileWidth * 2);
-        AutoExp[3].Y = (Int16) (Options.TileHeight * 2 + Options.TileHeight / 2);
+        AutoExp[3].X = (Int16) (Options.Instance.Map.TileWidth * 2);
+        AutoExp[3].Y = (Int16) (Options.Instance.Map.TileHeight * 2 + Options.Instance.Map.TileHeight / 2);
 
         // SE - L
-        AutoExp[4].X = (Int16) (Options.TileWidth * 2 + Options.TileWidth / 2);
-        AutoExp[4].Y = (Int16) (Options.TileHeight * 2 + Options.TileHeight / 2);
+        AutoExp[4].X = (Int16) (Options.Instance.Map.TileWidth * 2 + Options.Instance.Map.TileWidth / 2);
+        AutoExp[4].Y = (Int16) (Options.Instance.Map.TileHeight * 2 + Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - W (West Vertical region)
         // NW - M
         AutoWxp[1].X = 0;
-        AutoWxp[1].Y = (Int16) (Options.TileHeight * 2);
+        AutoWxp[1].Y = (Int16) (Options.Instance.Map.TileHeight * 2);
 
         // NE - N
-        AutoWxp[2].X = (Int16) (Options.TileWidth / 2);
-        AutoWxp[2].Y = (Int16) (Options.TileHeight * 2);
+        AutoWxp[2].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoWxp[2].Y = (Int16) (Options.Instance.Map.TileHeight * 2);
 
         // SW - O
         AutoWxp[3].X = 0;
-        AutoWxp[3].Y = (Int16) (Options.TileHeight * 2 + Options.TileHeight / 2);
+        AutoWxp[3].Y = (Int16) (Options.Instance.Map.TileHeight * 2 + Options.Instance.Map.TileHeight / 2);
 
         // SE - P
-        AutoWxp[4].X = (Int16) (Options.TileWidth / 2);
-        AutoWxp[4].Y = (Int16) (Options.TileHeight * 2 + Options.TileHeight / 2);
+        AutoWxp[4].X = (Int16) (Options.Instance.Map.TileWidth / 2);
+        AutoWxp[4].Y = (Int16) (Options.Instance.Map.TileHeight * 2 + Options.Instance.Map.TileHeight / 2);
 
         // Outer Tiles - S (South Horizontal region)
         // NW - Q
-        AutoSxp[1].X = (Int16) Options.TileWidth;
-        AutoSxp[1].Y = (Int16) (Options.TileHeight * 3);
+        AutoSxp[1].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoSxp[1].Y = (Int16) (Options.Instance.Map.TileHeight * 3);
 
         // NE - R
-        AutoSxp[2].X = (Int16) (Options.TileWidth + Options.TileWidth / 2);
-        AutoSxp[2].Y = (Int16) (Options.TileHeight * 3);
+        AutoSxp[2].X = (Int16) (Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoSxp[2].Y = (Int16) (Options.Instance.Map.TileHeight * 3);
 
         // SW - S
-        AutoSxp[3].X = (Int16) Options.TileWidth;
-        AutoSxp[3].Y = (Int16) (Options.TileHeight * 3 + Options.TileHeight / 2);
+        AutoSxp[3].X = (Int16) Options.Instance.Map.TileWidth;
+        AutoSxp[3].Y = (Int16) (Options.Instance.Map.TileHeight * 3 + Options.Instance.Map.TileHeight / 2);
 
         // SE - T
-        AutoSxp[4].X = (Int16) (Options.TileWidth + Options.TileWidth / 2);
-        AutoSxp[4].Y = (Int16) (Options.TileHeight * 3 + Options.TileHeight / 2);
+        AutoSxp[4].X = (Int16) (Options.Instance.Map.TileWidth + Options.Instance.Map.TileWidth / 2);
+        AutoSxp[4].Y = (Int16) (Options.Instance.Map.TileHeight * 3 + Options.Instance.Map.TileHeight / 2);
     }
 
     private void CreateFields()
     {
-        Layers = new Dictionary<string, QuarterTileCls[,]>();
-        foreach (var layerName in Options.Instance.MapOpts.Layers.All)
+        Layers = new Dictionary<string, Autotile[,]>();
+        foreach (var layerName in Options.Instance.Map.Layers.All)
         {
-            var layer = new QuarterTileCls[Options.MapWidth, Options.MapHeight];
-            for (var x = 0; x < Options.MapWidth; x++)
+            var layer = new Autotile[Options.Instance.Map.MapWidth, Options.Instance.Map.MapHeight];
+            for (var x = 0; x < Options.Instance.Map.MapWidth; x++)
             {
-                for (var y = 0; y < Options.MapHeight; y++)
+                for (var y = 0; y < Options.Instance.Map.MapHeight; y++)
                 {
-                    layer[x, y] = new QuarterTileCls() { QuarterTile = new PointStruct[5] };
+                    layer[x, y] = new Autotile() { QuarterTile = new Point16i[5] };
                 }
             }
             Layers.Add(layerName, layer);
         }
     }
 
-    public void InitAutotiles(MapBase[,] surroundingMaps)
+    public void InitAutotiles(MapDescriptor[,] surroundingMaps)
     {
         lock (mMyMap.MapLock)
         {
@@ -395,11 +396,11 @@ public partial class MapAutotiles
                 CreateFields();
             }
 
-            foreach (var layerName in Options.Instance.MapOpts.Layers.All)
+            foreach (var layerName in Options.Instance.Map.Layers.All)
             {
-                for (var x = 0; x < Options.MapWidth; x++)
+                for (var x = 0; x < Options.Instance.Map.MapWidth; x++)
                 {
-                    for (var y = 0; y < Options.MapHeight; y++)
+                    for (var y = 0; y < Options.Instance.Map.MapHeight; y++)
                     {
                         // calculate the subtile positions and place them
                         CalculateAutotile(x, y, layerName, surroundingMaps);
@@ -412,23 +413,23 @@ public partial class MapAutotiles
         }
     }
 
-    public bool UpdateAutoTiles(int x, int y, MapBase[,] surroundingMaps)
+    public bool UpdateAutoTiles(int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var changed = false;
         lock (mMyMap.MapLock)
         {
-            foreach (var layer in Options.Instance.MapOpts.Layers.All)
+            foreach (var layer in Options.Instance.Map.Layers.All)
             {
                 for (var x1 = x - 1; x1 < x + 2; x1++)
                 {
-                    if (x1 < 0 || x1 >= Options.MapWidth)
+                    if (x1 < 0 || x1 >= Options.Instance.Map.MapWidth)
                     {
                         continue;
                     }
 
                     for (var y1 = y - 1; y1 < y + 2; y1++)
                     {
-                        if (y1 < 0 || y1 >= Options.MapHeight)
+                        if (y1 < 0 || y1 >= Options.Instance.Map.MapHeight)
                         {
                             continue;
                         }
@@ -452,20 +453,20 @@ public partial class MapAutotiles
         return changed;
     }
 
-    public void UpdateAutoTiles(int x, int y, string layerName, MapBase[,] surroundingMaps)
+    public void UpdateAutoTiles(int x, int y, string layerName, MapDescriptor[,] surroundingMaps)
     {
         lock (mMyMap.MapLock)
         {
             for (var x1 = x - 1; x1 < x + 2; x1++)
             {
-                if (x1 < 0 || x1 >= Options.MapWidth)
+                if (x1 < 0 || x1 >= Options.Instance.Map.MapWidth)
                 {
                     continue;
                 }
 
                 for (var y1 = y - 1; y1 < y + 2; y1++)
                 {
-                    if (y1 < 0 || y1 >= Options.MapHeight)
+                    if (y1 < 0 || y1 >= Options.Instance.Map.MapHeight)
                     {
                         continue;
                     }
@@ -480,7 +481,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void UpdateCliffAutotiles(MapBase curMap, string layerName)
+    public void UpdateCliffAutotiles(MapDescriptor curMap, string layerName)
     {
         if (!curMap.Layers.ContainsKey(layerName))
         {
@@ -491,9 +492,9 @@ public partial class MapAutotiles
         {
             if (map != null)
             {
-                for (var x1 = 0; x1 < Options.MapWidth; x1++)
+                for (var x1 = 0; x1 < Options.Instance.Map.MapWidth; x1++)
                 {
-                    for (var y1 = 0; y1 < Options.MapHeight; y1++)
+                    for (var y1 = 0; y1 < Options.Instance.Map.MapHeight; y1++)
                     {
                         if (map.Layers[layerName][x1, y1].Autotile == AUTOTILE_CLIFF)
                         {
@@ -506,9 +507,9 @@ public partial class MapAutotiles
         }
     }
 
-    public bool UpdateAutoTile(int x, int y, string layerName, MapBase[,] surroundingMaps)
+    public bool UpdateAutoTile(int x, int y, string layerName, MapDescriptor[,] surroundingMaps)
     {
-        if (x < 0 || x >= Options.MapWidth || y < 0 || y >= Options.MapHeight)
+        if (x < 0 || x >= Options.Instance.Map.MapWidth || y < 0 || y >= Options.Instance.Map.MapHeight)
         {
             return false;
         }
@@ -529,21 +530,21 @@ public partial class MapAutotiles
     public void CacheRenderState(int x, int y, string layerName)
     {
         // exit out early
-        if (x < 0 || x > Options.MapWidth || y < 0 || y > Options.MapHeight)
+        if (x < 0 || x > Options.Instance.Map.MapWidth || y < 0 || y > Options.Instance.Map.MapHeight)
         {
             return;
         }
 
         if (mMyMap == null)
         {
-            LegacyLogging.Logger?.Error($"{nameof(mMyMap)}=null");
+            ApplicationContext.Context.Value?.Logger.LogError($"{nameof(mMyMap)}=null");
 
             return;
         }
 
         if (mMyMap.Layers == null)
         {
-            LegacyLogging.Logger?.Error($"{nameof(mMyMap.Layers)}=null");
+            ApplicationContext.Context.Value?.Logger.LogError($"{nameof(mMyMap.Layers)}=null");
 
             return;
         }
@@ -556,7 +557,7 @@ public partial class MapAutotiles
         var layer = mMyMap.Layers[layerName];
         if (mMyMap.Layers[layerName] == null)
         {
-            LegacyLogging.Logger?.Error($"{nameof(layer)}=null");
+            ApplicationContext.Context.Value?.Logger.LogError($"{nameof(layer)}=null");
 
             return;
         }
@@ -580,14 +581,14 @@ public partial class MapAutotiles
             int quarterNum;
             for (quarterNum = 1; quarterNum < 5; quarterNum++)
             {
-                autotile.QuarterTile[quarterNum].X = (short) (tile.X * Options.TileWidth + autotile.QuarterTile[quarterNum].X);
+                autotile.QuarterTile[quarterNum].X = (short) (tile.X * Options.Instance.Map.TileWidth + autotile.QuarterTile[quarterNum].X);
 
-                autotile.QuarterTile[quarterNum].Y = (short) (tile.Y * Options.TileHeight + autotile.QuarterTile[quarterNum].Y);
+                autotile.QuarterTile[quarterNum].Y = (short) (tile.Y * Options.Instance.Map.TileHeight + autotile.QuarterTile[quarterNum].Y);
             }
         }
     }
 
-    public void CalculateAutotile(int x, int y, string layerName, MapBase[,] surroundingMaps)
+    public void CalculateAutotile(int x, int y, string layerName, MapDescriptor[,] surroundingMaps)
     {
         // Right, so we//ve split the tile block in to an easy to remember
         // collection of letters. We now need to do the calculations to find
@@ -601,14 +602,14 @@ public partial class MapAutotiles
         // Exit out if we don//t have an auatotile
         if (mMyMap == null)
         {
-            LegacyLogging.Logger?.Error($"{nameof(mMyMap)}=null");
+            ApplicationContext.Context.Value?.Logger.LogError($"{nameof(mMyMap)}=null");
 
             return;
         }
 
         if (mMyMap.Layers == null)
         {
-            LegacyLogging.Logger?.Error($"{nameof(mMyMap.Layers)}=null");
+            ApplicationContext.Context.Value?.Logger.LogError($"{nameof(mMyMap.Layers)}=null");
 
             return;
         }
@@ -621,7 +622,7 @@ public partial class MapAutotiles
         var layer = mMyMap.Layers[layerName];
         if (mMyMap.Layers[layerName] == null)
         {
-            LegacyLogging.Logger?.Error($"{nameof(layer)}=null");
+            ApplicationContext.Context.Value?.Logger.LogError($"{nameof(layer)}=null");
 
             return;
         }
@@ -685,7 +686,7 @@ public partial class MapAutotiles
                 var rangeHeight = cliffHeight;
 
                 var x1 = x - 1;
-                while (x1 > -Options.MapWidth && CheckTileMatch(layerName, x, y, x1, cliffStart, surroundingMaps))
+                while (x1 > -Options.Instance.Map.MapWidth && CheckTileMatch(layerName, x, y, x1, cliffStart, surroundingMaps))
                 {
                     var adjStart = 0;
                     var height = CalculateCliffHeight(layerName, x1, cliffStart, surroundingMaps, out adjStart);
@@ -705,7 +706,7 @@ public partial class MapAutotiles
                 }
 
                 x1 = x + 1;
-                while (x1 < Options.MapWidth * 2 && CheckTileMatch(layerName, x, y, x1, cliffStart, surroundingMaps))
+                while (x1 < Options.Instance.Map.MapWidth * 2 && CheckTileMatch(layerName, x, y, x1, cliffStart, surroundingMaps))
                 {
                     var adjStart = 0;
                     var height = CalculateCliffHeight(layerName, x1, cliffStart, surroundingMaps, out adjStart);
@@ -730,7 +731,7 @@ public partial class MapAutotiles
                 //if (assumeInteriorEast || assumeInteriorWest)
                 //{
                 //    var x1 = x - 1;
-                //    while (x1 > -Options.MapWidth && CheckTileMatch(layerName, x, y, x1, cliffStart, surroundingMaps))
+                //    while (x1 > -Options.Instance.Map.MapWidth && CheckTileMatch(layerName, x, y, x1, cliffStart, surroundingMaps))
                 //    {
                 //        var adjStart = 0;
                 //        var height = CalculateCliffHeight(layerName, x1, cliffStart, surroundingMaps, out adjStart);
@@ -742,7 +743,7 @@ public partial class MapAutotiles
                 //    if (lowestCliffBottom <= cliffStart + cliffHeight)
                 //    {
                 //        x1 = x + 1;
-                //        while (x1 < Options.MapWidth * 2 && CheckTileMatch(layerName, x, y, x1, cliffStart, surroundingMaps))
+                //        while (x1 < Options.Instance.Map.MapWidth * 2 && CheckTileMatch(layerName, x, y, x1, cliffStart, surroundingMaps))
                 //        {
                 //            var adjStart = 0;
                 //            var height = CalculateCliffHeight(layerName, x1, cliffStart, surroundingMaps, out adjStart);
@@ -828,7 +829,7 @@ public partial class MapAutotiles
     }
 
     // Normal autotiling
-    public void CalculateNW_Normal(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateNW_Normal(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = new bool[4];
         byte situation = 1;
@@ -907,7 +908,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateNE_Normal(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateNE_Normal(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = new bool[4];
         byte situation = 1;
@@ -986,7 +987,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateSW_Normal(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateSW_Normal(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = new bool[4];
         byte situation = 1;
@@ -1065,7 +1066,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateSE_Normal(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateSE_Normal(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = new bool[4];
         byte situation = 1;
@@ -1145,7 +1146,7 @@ public partial class MapAutotiles
     }
 
     // Waterfall autotiling
-    public void CalculateNW_Waterfall(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateNW_Waterfall(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = CheckTileMatch(layerName, x, y, x - 1, y, surroundingMaps);
 
@@ -1162,7 +1163,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateNE_Waterfall(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateNE_Waterfall(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = CheckTileMatch(layerName, x, y, x + 1, y, surroundingMaps);
 
@@ -1179,7 +1180,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateSW_Waterfall(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateSW_Waterfall(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = CheckTileMatch(layerName, x, y, x - 1, y, surroundingMaps);
 
@@ -1196,7 +1197,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateSE_Waterfall(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateSE_Waterfall(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = CheckTileMatch(layerName, x, y, x + 1, y, surroundingMaps);
 
@@ -1218,7 +1219,7 @@ public partial class MapAutotiles
         string layerName,
         int x,
         int y,
-        MapBase[,] surroundingMaps,
+        MapDescriptor[,] surroundingMaps,
         int cliffStart,
         int cliffHeight,
         int adjacentStart,
@@ -1317,7 +1318,7 @@ public partial class MapAutotiles
         string layerName,
         int x,
         int y,
-        MapBase[,] surroundingMaps,
+        MapDescriptor[,] surroundingMaps,
         int cliffStart,
         int cliffHeight,
         int adjacentStart,
@@ -1415,7 +1416,7 @@ public partial class MapAutotiles
         string layerName,
         int x,
         int y,
-        MapBase[,] surroundingMaps,
+        MapDescriptor[,] surroundingMaps,
         int cliffStart,
         int cliffHeight,
         int adjacentStart,
@@ -1520,7 +1521,7 @@ public partial class MapAutotiles
         string layerName,
         int x,
         int y,
-        MapBase[,] surroundingMaps,
+        MapDescriptor[,] surroundingMaps,
         int cliffStart,
         int cliffHeight,
         int adjacentStart,
@@ -1622,7 +1623,7 @@ public partial class MapAutotiles
     }
 
     // Normal autotiling
-    public void CalculateNW_XP(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateNW_XP(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = new bool[4, 4];
         byte situation = 1;
@@ -1744,7 +1745,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateNE_XP(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateNE_XP(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = new bool[4, 4];
         byte situation = 1;
@@ -1872,7 +1873,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateSW_XP(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateSW_XP(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = new bool[4, 4];
         byte situation = 1;
@@ -2000,7 +2001,7 @@ public partial class MapAutotiles
         }
     }
 
-    public void CalculateSE_XP(string layerName, int x, int y, MapBase[,] surroundingMaps)
+    public void CalculateSE_XP(string layerName, int x, int y, MapDescriptor[,] surroundingMaps)
     {
         var tmpTile = new bool[4, 4];
         byte situation = 1;
@@ -2140,7 +2141,7 @@ public partial class MapAutotiles
         }
     }
 
-    public bool CheckTileMatch(string layerName, int x1, int y1, int x2, int y2, MapBase[,] surroundingMaps)
+    public bool CheckTileMatch(string layerName, int x1, int y1, int x2, int y2, MapDescriptor[,] surroundingMaps)
     {
         Tile targetTile;
         targetTile.TilesetId = Guid.Empty;
@@ -2153,25 +2154,25 @@ public partial class MapAutotiles
         if (x2 < 0)
         {
             gridX = -1;
-            x2 += Options.MapWidth;
+            x2 += Options.Instance.Map.MapWidth;
         }
 
         if (y2 < 0)
         {
             gridY = -1;
-            y2 += Options.MapHeight;
+            y2 += Options.Instance.Map.MapHeight;
         }
 
-        if (x2 >= Options.MapWidth)
+        if (x2 >= Options.Instance.Map.MapWidth)
         {
             gridX = 1;
-            x2 -= Options.MapWidth;
+            x2 -= Options.Instance.Map.MapWidth;
         }
 
-        if (y2 >= Options.MapHeight)
+        if (y2 >= Options.Instance.Map.MapHeight)
         {
             gridY = 1;
-            y2 -= Options.MapHeight;
+            y2 -= Options.Instance.Map.MapHeight;
         }
 
         if (surroundingMaps[gridX + 1, gridY + 1] != null)
@@ -2228,7 +2229,7 @@ public partial class MapAutotiles
         return true;
     }
 
-    private int CalculateCliffHeight(string layerName, int x, int y, MapBase[,] surroundingMaps, out int cliffStart)
+    private int CalculateCliffHeight(string layerName, int x, int y, MapDescriptor[,] surroundingMaps, out int cliffStart)
     {
         Tile sourceTile;
         sourceTile.TilesetId = Guid.Empty;
@@ -2243,25 +2244,25 @@ public partial class MapAutotiles
         if (x < 0)
         {
             gridX = -1;
-            x += Options.MapWidth;
+            x += Options.Instance.Map.MapWidth;
         }
 
         if (y < 0)
         {
             gridY = -1;
-            y += Options.MapHeight;
+            y += Options.Instance.Map.MapHeight;
         }
 
-        if (x >= Options.MapWidth)
+        if (x >= Options.Instance.Map.MapWidth)
         {
             gridX = 1;
-            x -= Options.MapWidth;
+            x -= Options.Instance.Map.MapWidth;
         }
 
-        if (y >= Options.MapHeight)
+        if (y >= Options.Instance.Map.MapHeight)
         {
             gridY = 1;
-            y -= Options.MapHeight;
+            y -= Options.Instance.Map.MapHeight;
         }
 
         if (surroundingMaps[gridX + 1, gridY + 1] != null)
@@ -2275,7 +2276,7 @@ public partial class MapAutotiles
         {
             var height = 1;
             var i = y - 1;
-            while (i > -Options.MapHeight)
+            while (i > -Options.Instance.Map.MapHeight)
             {
                 if (CheckTileMatch(layerName, x, y, x, i, surroundingMaps))
                 {
@@ -2291,7 +2292,7 @@ public partial class MapAutotiles
             }
 
             i = y + 1;
-            while (i < Options.MapHeight * 2)
+            while (i < Options.Instance.Map.MapHeight * 2)
             {
                 if (CheckTileMatch(layerName, x, y, x, i, surroundingMaps))
                 {
@@ -2313,7 +2314,7 @@ public partial class MapAutotiles
 
     public void PlaceAutotile(string layerName, int x, int y, byte tileQuarter, string autoTileLetter)
     {
-        var quarterTile = new PointStruct();
+        var quarterTile = new Point16i();
         switch (autoTileLetter)
         {
             case "a":
@@ -2422,7 +2423,7 @@ public partial class MapAutotiles
 
     public void PlaceAutotileXp(string layerName, int x, int y, byte tileQuarter, string autoTileLetter)
     {
-        var quarterTile = new PointStruct();
+        var quarterTile = new Point16i();
         switch (autoTileLetter)
         {
             case "a":
@@ -2629,60 +2630,5 @@ public partial class MapAutotiles
                 break;
         }
         Layers[layerName][x, y].QuarterTile[tileQuarter] = quarterTile;
-    }
-}
-
-public partial struct PointStruct
-{
-    public Int16 X;
-
-    public Int16 Y;
-}
-
-public partial class QuarterTileCls
-{
-    public PointStruct[] QuarterTile = new PointStruct[5];
-
-    public byte RenderState;
-
-    public QuarterTileCls Copy()
-    {
-        var autotile = new QuarterTileCls();
-
-        autotile.RenderState = RenderState;
-
-        for (var z = 0; z < 5; z++)
-        {
-            autotile.QuarterTile[z] = new PointStruct()
-            {
-                X = QuarterTile[z].X,
-                Y = QuarterTile[z].Y
-            };
-        }
-
-        return autotile;
-    }
-
-    public bool Equals(QuarterTileCls quarterTile)
-    {
-        if (quarterTile.RenderState != RenderState)
-        {
-            return false;
-        }
-
-        for (var z = 0; z < 5; z++)
-        {
-            if (quarterTile.QuarterTile[z].X != QuarterTile[z].X)
-            {
-                return false;
-            }
-
-            if (quarterTile.QuarterTile[z].Y != QuarterTile[z].Y)
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

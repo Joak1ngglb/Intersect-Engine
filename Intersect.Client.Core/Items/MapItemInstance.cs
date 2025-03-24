@@ -1,4 +1,5 @@
 using Intersect.Client.Framework.Items;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.Network.Packets.Server;
 using Newtonsoft.Json;
 
@@ -17,7 +18,7 @@ public partial class MapItemInstance : Item, IMapItemInstance
 
     public int Y { get; set; }
 
-    [JsonIgnore] public int TileIndex => Y * Options.MapWidth + X;
+    [JsonIgnore] public int TileIndex => Y * Options.Instance.Map.MapWidth + X;
 
     public MapItemInstance() : base()
     {
@@ -26,8 +27,8 @@ public partial class MapItemInstance : Item, IMapItemInstance
     public MapItemInstance(int tileIndex, Guid uniqueId, Guid itemId, Guid? bagId, int quantity, ItemProperties itemProperties) : base()
     {
         Id = uniqueId;
-        X = tileIndex % Options.MapWidth;
-        Y = (int)Math.Floor(tileIndex / (float)Options.MapWidth);
+        X = tileIndex % Options.Instance.Map.MapWidth;
+        Y = (int)Math.Floor(tileIndex / (float)Options.Instance.Map.MapWidth);
         ItemId = itemId;
         BagId = bagId;
         Quantity = quantity;

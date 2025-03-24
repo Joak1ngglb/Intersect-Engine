@@ -3,13 +3,16 @@ name: Pull Requests
 on:
   pull_request:
     branches: [ "main" ]
-    paths-ignore:
-      - '.github/**'
-      - 'Documentation/**'
-      - '.gitignore'
-      - '*.DotSettings'
-      - '*.json'
-      - '*.md'
+    paths:
+      - 'Framework/**'
+      - 'Intersect*/**'
+      - '!Intersect.Tests*/**'
+      - '!launchSettings.json'
+      - '!*.md'
+      - '!Examples/**'
+      - '!Documentation/**'
+      - '!.git*'
+      - '!*.DotSettings'
   workflow_dispatch:
     inputs:
       forceBuild:
@@ -23,6 +26,7 @@ on:
 
 env:
   VERSION_PREFIX: 0.8.0
+  VERSION_SUFFIX_NAME: pr${{ github.event.number }}
   VERSION_SUFFIX: -pr${{ github.event.number }}
   PARENT_VERSION_SUFFIX: -beta
 
@@ -38,10 +42,10 @@ jobs:
         submodules: recursive
 
     - name: Cache binaries
-      uses: actions/cache@v4.1.2
+      uses: actions/cache@v4.2.0
       id: cache-binaries
       with:
-        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('Intersect*/**/*.cs*') }}
+        key: ${{ runner.os }}-binaries-${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/**/*.cs*', 'Framework/**/*.cs*') }}
         path: |
           Intersect*/bin/Release/**/*
 
@@ -52,11 +56,11 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Cache NuGet dependencies
-      uses: actions/cache@v4.1.2
+      uses: actions/cache@v4.2.0
       id: cache-nuget
       if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
       with:
-        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.PARENT_VERSION_SUFFIX }}-${{ hashFiles('Intersect*/*.csproj') }}
+        key: ${{ runner.os }}-nuget-${{ env.VERSION_PREFIX }}${{ env.PARENT_VERSION_SUFFIX }}-${{ hashFiles('/*.props', 'Intersect*/*.csproj', 'Framework/*/*.csproj') }}
         path: |
           ~/.nuget/packages
           Intersect*/obj/
@@ -70,10 +74,10 @@ jobs:
     - name: Build solution
       if: steps.cache-binaries.outputs.cache-hit != 'true' || inputs.forceBuild == true || inputs.forceRestore == true
       run: |
-        dotnet publish Intersect.sln -r win-x64   -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }}
-        git apply disable-windows-editor.patch
-        dotnet publish Intersect.sln -r linux-x64 -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }}
-        dotnet publish Intersect.sln -r osx-x64   -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }}
+        dotnet publish Intersect.sln -r win-x64   -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }} -p:CommitSha=${{ github.sha }} -p:BuildNumber=${{ github.run_number }} -p:VersionNameSuffix=${{ env.VERSION_SUFFIX_NAME }}
+        git apply disable-windows-only.patch
+        dotnet publish Intersect.sln -r linux-x64 -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }} -p:CommitSha=${{ github.sha }} -p:BuildNumber=${{ github.run_number }} -p:VersionNameSuffix=${{ env.VERSION_SUFFIX_NAME }}
+        dotnet publish Intersect.sln -r osx-x64   -p:Configuration=Release -p:PackageVersion=${{ env.VERSION_PREFIX }}${{ env.VERSION_SUFFIX }}.${{ github.run_number }}+build.${{ github.sha }} -p:Version=${{ env.VERSION_PREFIX }}.${{ github.run_number }} -p:CommitSha=${{ github.sha }} -p:BuildNumber=${{ github.run_number }} -p:VersionNameSuffix=${{ env.VERSION_SUFFIX_NAME }}
 
     - name: Package artifacts
       uses: AscensionGameDev/actions@a573cea975b37832c9fe4a9ee880e22af93696de
@@ -85,7 +89,7 @@ jobs:
     #   run: ls -R ./dist
 
     - name: Upload linux-x64 artifacts
-      uses: actions/upload-artifact@v4.4.3
+      uses: actions/upload-artifact@v4.5.0
       with:
         if-no-files-found: error
         path: "dist/linux-x64/**/*"
@@ -93,7 +97,7 @@ jobs:
         retention-days: 1
 
     - name: Upload osx-x64 artifacts
-      uses: actions/upload-artifact@v4.4.3
+      uses: actions/upload-artifact@v4.5.0
       with:
         if-no-files-found: error
         path: "dist/osx-x64/**/*"
@@ -101,7 +105,7 @@ jobs:
         retention-days: 1
 
     - name: Upload win-x64 artifacts
-      uses: actions/upload-artifact@v4.4.3
+      uses: actions/upload-artifact@v4.5.0
       with:
         if-no-files-found: error
         path: "dist/win-x64/**/*"

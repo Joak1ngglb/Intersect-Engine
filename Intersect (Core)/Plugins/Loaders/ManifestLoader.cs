@@ -1,11 +1,12 @@
-﻿using Intersect.Logging;
+﻿
 using Intersect.Plugins.Interfaces;
 using Intersect.Plugins.Manifests;
-
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using Intersect.Core;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Plugins.Loaders;
 
@@ -26,11 +27,11 @@ public static partial class ManifestLoader
     /// <summary>
     /// Currently registered manifest loading functions.
     /// </summary>
-    public static readonly List<ManifestLoaderDelegate> ManifestLoaderDelegates = new List<ManifestLoaderDelegate>
-    {
+    public static readonly List<ManifestLoaderDelegate> ManifestLoaderDelegates =
+    [
         LoadJsonManifestFrom,
-        LoadVirtualManifestFrom
-    };
+        LoadVirtualManifestFrom,
+    ];
 
     /// <summary>
     /// Locates manifests in the assembly with priority order declared by <see cref="ManifestLoaderDelegates"/>.
@@ -66,7 +67,7 @@ public static partial class ManifestLoader
         }
         catch (Exception exception)
         {
-            Log.Error(exception, "Exception thrown by manifest loader delegate.");
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Exception thrown by manifest loader delegate");
         }
 
         return default;
@@ -132,14 +133,14 @@ public static partial class ManifestLoader
 
             if (mismatchedType != null)
             {
-                Log.Debug($"Expected: {ManifestType.AssemblyQualifiedName} in {ManifestType.Assembly.Location}");
-                Log.Debug($"Loaded: {mismatchedType.AssemblyQualifiedName} in {mismatchedType.Assembly.Location}");
+                ApplicationContext.Context.Value?.Logger.LogDebug($"Expected: {ManifestType.AssemblyQualifiedName} in {ManifestType.Assembly.Location}");
+                ApplicationContext.Context.Value?.Logger.LogDebug($"Loaded: {mismatchedType.AssemblyQualifiedName} in {mismatchedType.Assembly.Location}");
 
                 if (!string.Equals(
                     ManifestType.Assembly.Location, mismatchedType.Assembly.Location, StringComparison.Ordinal
                 ))
                 {
-                    Log.Warn(
+                    ApplicationContext.Context.Value?.Logger.LogWarning(
                         $"Manifest loaded the core library from the wrong location." +
                         $"\n\tExpected: {ManifestType.Assembly.Location}" +
                         $"\n\t  Actual: {mismatchedType.Assembly.Location}"
@@ -161,7 +162,7 @@ public static partial class ManifestLoader
             return true;
         }
 
-        Log.Debug($"'{type.Name}' is missing a default constructor.");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"'{type.Name}' is missing a default constructor.");
         return false;
     }
 
@@ -172,10 +173,7 @@ public static partial class ManifestLoader
     /// <returns>an instance of <see cref="IManifestHelper"/> or null if not found or an error occurred</returns>
     public static IManifestHelper LoadVirtualManifestFrom(Assembly assembly)
     {
-        if (default == assembly)
-        {
-            throw new ArgumentNullException(nameof(assembly));
-        }
+        ArgumentNullException.ThrowIfNull(assembly);
 
         try
         {

@@ -1,55 +1,54 @@
+using System.ComponentModel;
 using Intersect.Config;
 using Intersect.Config.Guilds;
 using Intersect.Framework.Core.Config;
 using Intersect.Logging;
+using Intersect.Core;
+using Intersect.Framework.Annotations;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect;
 
-public partial class Options
+public partial record Options
 {
-    //Caching Json
-    private static string optionsCompressed = "";
+    private static readonly JsonSerializerSettings PrivateIndentedSerializerSettings = new()
+    {
+        ContractResolver = new OptionsContractResolver(true, false),
+        Formatting = Formatting.Indented,
+    };
 
-    [JsonProperty("AdminOnly", Order = -3)]
-    protected bool _adminOnly = false;
+    private static readonly JsonSerializerSettings PrivateSerializerSettings = new()
+    {
+        ContractResolver = new OptionsContractResolver(true, false),
+    };
 
-    //Constantly Animated Sprites
-    [JsonProperty("AnimatedSprites")]
-    protected List<string> _animatedSprites = new List<string>();
+    private static readonly JsonSerializerSettings PublicSerializerSettings = new()
+    {
+        ContractResolver = new OptionsContractResolver(false, true),
+    };
 
-    [JsonProperty("BlockClientRegistrations", Order = -2)]
-    protected bool _blockClientRegistrations = false;
+    #region Constants
 
-    [JsonProperty("ValidPasswordResetTimeMinutes")]
-    protected ushort _passResetExpirationMin = 30;
+    public const string DefaultGameName = "Intersect";
 
-    [JsonProperty("OpenPortChecker", Order = 0)]
-    protected bool _portChecker = true;
+    public const int DefaultServerPort = 5400;
 
-    [JsonProperty(NullValueHandling = NullValueHandling.Include)]
-    public string? PortCheckerUrl { get; set; }
+    public const string CategoryCore = nameof(CategoryCore);
 
-    [JsonProperty("MaxClientConnections")]
-    public int MaxClientConnections { get; set; }= 100;
+    public const string CategoryDatabase = nameof(CategoryDatabase);
 
-    [JsonProperty("MaximumLoggedinUsers")]
-    protected int _maxUsers = 50;
+    public const string CategoryGameAccess = nameof(CategoryGameAccess);
 
-    [JsonProperty("UPnP", Order = -1)]
-    protected bool _upnp = true;
+    public const string CategoryLoggingAndMetrics = nameof(CategoryLoggingAndMetrics);
 
-    [JsonProperty("Chat")]
-    public ChatOptions ChatOpts = new ChatOptions();
+    public const string CategoryNetworkVisibility = nameof(CategoryNetworkVisibility);
 
-    [JsonProperty("Combat")]
-    public CombatOptions CombatOpts = new CombatOptions();
+    public const string CategorySecurity = nameof(CategorySecurity);
 
-    [JsonProperty("Equipment")]
-    public EquipmentOptions EquipmentOpts = new EquipmentOptions();
+    #endregion
 
-    [JsonProperty("EventWatchdogKillThreshold")]
-    public int EventKillTheshhold = 5000;
+    #region Static Properties
 
     [JsonProperty("Map")]
     public MapOptions MapOpts = new MapOptions();
@@ -100,41 +99,98 @@ public partial class Options
 
     public static Options Instance { get; private set; }
 
-    [JsonIgnore]
-    public bool SendingToClient { get; set; } = true;
+    public static Options? PendingChanges { get; private set; }
 
-    //Public Getters
-    public static ushort ServerPort
-    {
-        get => Instance._serverPort;
-        set => Instance._serverPort = value;
-    }
+    public static bool IsLoaded => Instance != null;
+
+    #endregion Static Properties
+
+    #region Transient Properties
+
+    [Ignore]
+    [JsonIgnore]
+    public string OptionsData { get; private set; } = string.Empty;
+
+    [Ignore]
+    public bool SmtpValid { get; private set; }
+
+    #endregion Transient Properties
+
+    #region Configuration Properties
+
+    #region Game Core
+
+    [Category(CategoryCore)]
+    [JsonProperty(Order = -100)]
+    [RequiresRestart]
+    public string GameName { get; set; } = DefaultGameName;
+
+    [Category(CategoryCore)]
+    [JsonProperty(Order = -100)]
+    [RequiresRestart]
+    public ushort ServerPort { get; set; } = DefaultServerPort;
+
+    #endregion Game Core
+
+    #region Game Access
+
+    [Category(CategoryGameAccess)]
+    [JsonProperty(Order = -99)]
+    public bool AdminOnly { get; set; }
+
+
+    [Category(CategoryGameAccess)]
+    [JsonProperty(Order = -99)]
+    public bool BlockClientRegistrations { get; set; }
+
+
+    [Category(CategoryGameAccess)]
+    [JsonProperty(Order = -99)]
+    public int MaxClientConnections { get; set; } = 100;
 
     /// <summary>
-    /// Defines the maximum amount of logged in users our server is allowed to handle.
+    /// Defines the maximum amount of logged-in users our server is allowed to handle.
     /// </summary>
-    public static int MaxLoggedinUsers => Instance._maxUsers;
+    [Category(CategoryGameAccess)]
+    [JsonProperty(Order = -99)]
+    public int MaximumLoggedInUsers { get; set; } = 50;
 
-    public static int MaxStatValue => Instance.PlayerOpts.MaxStat;
+    #endregion Game Access
 
     public static int MaxLevel => Instance.PlayerOpts.MaxLevel;
     public static int MaxInvItems => Instance.PlayerOpts.MaxInventory;
+    #region Network Visibility
 
-    public static int MaxCharacters => Instance.PlayerOpts.MaxCharacters;
+    [Category(CategoryNetworkVisibility)]
+    [JsonProperty(Order = -91)]
+    [RequiresRestart]
+    public bool UPnP { get; set; } = true;
 
-    public static int ItemDropChance => Instance.PlayerOpts.ItemDropChance;
+    [Category(CategoryNetworkVisibility)]
+    [JsonProperty(Order = -91)]
+    [RequiresRestart]
+    public bool OpenPortChecker { get; set; } = true;
 
-    public static int RequestTimeout => Instance.PlayerOpts.RequestTimeout;
+    [Category(CategoryNetworkVisibility)]
+    [JsonProperty(Order = -91, NullValueHandling = NullValueHandling.Include)]
+    [RequiresRestart]
+    public string? PortCheckerUrl { get; set; }
 
-    public static int TradeRange => Instance.PlayerOpts.TradeRange;
+    #endregion Network Visibility
 
-    public static int WeaponIndex => Instance.EquipmentOpts.WeaponSlot;
+    #region Logging and Metrics
 
-    public static int ShieldIndex => Instance.EquipmentOpts.ShieldSlot;
+    [Category(CategoryLoggingAndMetrics)]
+    [JsonProperty(Order = -80)]
+    public LoggingOptions Logging { get; set; } = new();
 
-    public static List<string> EquipmentSlots => Instance.EquipmentOpts.Slots;
+    [Category(CategoryLoggingAndMetrics)]
+    [JsonProperty(Order = -80)]
+    public MetricsOptions Metrics { get; set; } = new();
 
-    public static List<string>[] PaperdollOrder => Instance.EquipmentOpts.Paperdoll.Directions;
+    #endregion Logging and Metrics
+
+    #region Database
 
     public static bool CombatFlashes => Instance.CombatOpts.CombatFlashes;
     public static float CriticalHitFlashIntensity => Instance.CombatOpts.CriticalHitFlashIntensity;
@@ -150,32 +206,55 @@ public partial class Options
     public static string CriticalHitDealtSound => Instance.CombatOpts.CriticalHitDealtSound;
 
     public static List<string> ToolTypes => Instance.EquipmentOpts.ToolTypes;
+    [Category(CategoryDatabase)]
+    [JsonProperty(Order = -70)]
+    [RequiresRestart]
+    public DatabaseOptions GameDatabase { get; set; } = new();
 
-    public static List<string> AnimatedSprites => Instance._animatedSprites;
+    [Category(CategoryDatabase)]
+    [JsonProperty(Order = -70)]
+    [RequiresRestart]
+    public DatabaseOptions LoggingDatabase { get; set; } = new();
 
-    public static int RegenTime => Instance.CombatOpts.RegenTime;
+    [Category(CategoryDatabase)]
+    [JsonProperty(Order = -70)]
+    [RequiresRestart]
+    public DatabaseOptions PlayerDatabase { get; set; } = new();
 
-    public static int CombatTime => Instance.CombatOpts.CombatTime;
+    #endregion Database
 
-    public static int MinAttackRate => Instance.CombatOpts.MinAttackRate;
+    #region Security
 
-    public static int MaxAttackRate => Instance.CombatOpts.MaxAttackRate;
+    [Category(CategorySecurity)]
+    [JsonProperty(Order = -60)]
+    [RequiresRestart]
+    public SecurityOptions Security { get; set; } = new();
 
-    public static int BlockingSlow => Instance.CombatOpts.BlockingSlow;
+    [Category(CategorySecurity)]
+    [JsonProperty(Order = -60)]
+    [RequiresRestart]
+    public SmtpSettings SmtpSettings { get; set; } = new();
 
-    public static int MaxDashSpeed => Instance.CombatOpts.MaxDashSpeed;
+    #endregion Security
 
-    public static int GameBorderStyle => Instance.MapOpts.GameBorderStyle;
+    #region Other Game Properties
 
-    public static bool ZDimensionVisible => Instance.MapOpts.ZDimensionVisible;
+    [RequiresRestart]
+    public List<string> AnimatedSprites { get; set; } = [];
 
-    public static int MapWidth => Instance?.MapOpts?.MapWidth ?? 32;
+    [RequiresRestart]
+    public PacketOptions Packets { get; set; } = new();
 
-    public static int MapHeight => Instance?.MapOpts?.MapHeight ?? 26;
+    public ChatOptions Chat { get; set; } = new();
 
-    public static int TileWidth => Instance.MapOpts.TileWidth;
+    [RequiresRestart]
+    public CombatOptions Combat { get; set; } = new();
 
-    public static int TileHeight => Instance.MapOpts.TileHeight;
+    [RequiresRestart]
+    public EquipmentOptions Equipment { get; set; } = new();
+
+    [RequiresRestart]
+    public int EventWatchdogKillThreshold { get; set; } = 5000;
 
     public static int EventWatchdogKillThreshhold => Instance.EventKillTheshhold;
 
@@ -235,115 +314,127 @@ public partial class Options
     /// <summary>
     /// Passability configuration by map zone
     /// </summary>
-    public Passability Passability { get; } = new Passability();
+    public PassabilityOptions Passability { get; set; } = new();
 
-    public bool SmtpValid { get; set; }
+    public ushort ValidPasswordResetTimeMinutes { get; set; } = 30;
 
-    public static string OptionsData => optionsCompressed;
+    public MapOptions Map { get; set; } = new();
+
+    public PlayerOptions Player { get; set; } = new();
+
+    public PartyOptions Party { get; set; } = new();
+
+    public LootOptions Loot { get; set; } = new();
+
+    public ProcessingOptions Processing { get; set; } = new();
+
+    public SpriteOptions Sprites { get; set; } = new();
+
+    public NpcOptions Npc { get; set; } = new();
+
+    public QuestOptions Quest { get; set; } = new();
+
+    public GuildOptions Guild { get; set; } = new();
+
+    public BankOptions Bank { get; set; } = new();
+
+    public InstancingOptions Instancing { get; set; } = new();
+
+    public ItemOptions Items { get; set; } = new();
+
+    #endregion Other Game Properties
+
+    #endregion Configuration Properties
 
     public void FixAnimatedSprites()
     {
-        for (var i = 0; i < _animatedSprites.Count; i++)
+        for (var i = 0; i < AnimatedSprites.Count; i++)
         {
-            _animatedSprites[i] = _animatedSprites[i].ToLower();
+            AnimatedSprites[i] = AnimatedSprites[i].ToLower();
         }
     }
 
-    public static string ResourcesDirectory { get; set; } = "resources";
-
     public static bool LoadFromDisk()
     {
-        Instance = new Options();
+        var instance = EnsureCreated();
+
+        var pathToServerConfig = Path.Combine(ResourcesDirectory, "config.json");
+        if (!Directory.Exists(ResourcesDirectory))
+        {
+            Directory.CreateDirectory(ResourcesDirectory);
+        }
+        else if (File.Exists(pathToServerConfig))
+        {
+            var rawJson = File.ReadAllText(pathToServerConfig);
+            instance = JsonConvert.DeserializeObject<Options>(rawJson, PrivateSerializerSettings) ?? instance;
+            Instance = instance;
+        }
+
+        instance.SmtpValid = instance.SmtpSettings.IsValid();
+        instance.FixAnimatedSprites();
+
+        SaveToDisk();
+
+        return true;
+    }
+
+    internal static Options EnsureCreated()
+    {
+        Options instance = new();
+        Instance = instance;
+        return instance;
+    }
+
+    public static void SaveToDisk()
+    {
+        if (Instance is not { } instance)
+        {
+            ApplicationContext.Context.Value?.Logger.LogError("Tried to save null instance to disk");
+            return;
+        }
+
         if (!Directory.Exists(ResourcesDirectory))
         {
             Directory.CreateDirectory(ResourcesDirectory);
         }
 
-        var configPath = Path.Combine(ResourcesDirectory, "config.json");
+        var pathToServerConfig = Path.Combine(ResourcesDirectory, "config.json");
 
-        if (File.Exists(configPath))
+        try
         {
-            Instance = JsonConvert.DeserializeObject<Options>(
-                File.ReadAllText(configPath)
+            var serializedPrivateConfiguration = JsonConvert.SerializeObject(instance, PrivateIndentedSerializerSettings);
+            File.WriteAllText(pathToServerConfig, serializedPrivateConfiguration);
+        }
+        catch (Exception exception)
+        {
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Failed to save options to {OptionsPath}",
+                pathToServerConfig
             );
         }
 
-        Instance.SmtpValid = Instance.SmtpSettings.IsValid();
-        Instance.SendingToClient = false;
-        Instance.FixAnimatedSprites();
-        File.WriteAllText(configPath, JsonConvert.SerializeObject(Instance, Formatting.Indented));
-        Instance.SendingToClient = true;
-        optionsCompressed = JsonConvert.SerializeObject(Instance);
-
-        return true;
-    }
-
-    public static void SaveToDisk()
-    {
-        Instance.SendingToClient = false;
-        File.WriteAllText(
-            Path.Combine(ResourcesDirectory, "config.json"),
-            JsonConvert.SerializeObject(Instance, Formatting.Indented)
-        );
-        Instance.SendingToClient = true;
-        optionsCompressed = JsonConvert.SerializeObject(Instance);
+        instance.OptionsData = JsonConvert.SerializeObject(instance, PublicSerializerSettings);
     }
 
     public static void LoadFromServer(string data)
     {
-        Instance = JsonConvert.DeserializeObject<Options>(data);
+        try
+        {
+            var loadedOptions = JsonConvert.DeserializeObject<Options>(data, PublicSerializerSettings);
+            Instance = loadedOptions;
+            OptionsLoaded?.Invoke(loadedOptions);
+        }
+        catch (Exception exception)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(exception, "Failed to load options from server");
+            throw;
+        }
     }
 
-    // ReSharper disable once UnusedMember.Global
-    public bool ShouldSerializeGameDatabase()
-    {
-        return !SendingToClient;
-    }
+    public static event OptionsLoadedEventHandler? OptionsLoaded;
 
-    // ReSharper disable once UnusedMember.Global
-    public bool ShouldSerializeLoggingDatabase()
-    {
-        return !SendingToClient;
-    }
-
-    // ReSharper disable once UnusedMember.Global
-    public bool ShouldSerializeLogging()
-    {
-        return !SendingToClient;
-    }
-
-    // ReSharper disable once UnusedMember.Global
-    public bool ShouldSerializePlayerDatabase()
-    {
-        return !SendingToClient;
-    }
-
-    // ReSharper disable once UnusedMember.Global
-    public bool ShouldSerializeSmtpSettings()
-    {
-        return !SendingToClient;
-    }
-
-    // ReSharper disable once UnusedMember.Global
-    public bool ShouldSerializeSmtpValid()
-    {
-        return SendingToClient;
-    }
-
-    // ReSharper disable once UnusedMember.Global
-    public bool ShouldSerializeSecurityOpts()
-    {
-        return !SendingToClient;
-    }
-
-    #region Constants
-
-    // TODO: Clean these up
-    //Values that cannot easily be changed:
-
-    public const string DEFAULT_GAME_NAME = "Intersect";
-
-    public const int DEFAULT_SERVER_PORT = 5400;
-
-    #endregion
+    public Options DeepClone() => JsonConvert.DeserializeObject<Options>(
+        JsonConvert.SerializeObject(this, PrivateSerializerSettings)
+    );
 }

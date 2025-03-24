@@ -1,178 +1,199 @@
+using Intersect.Client.Core;
+using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.GenericClasses;
+using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
+using Intersect.Client.Framework.Gwen.DragDrop;
 using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Game.DescriptionWindows;
+using Intersect.Client.Interface.Game.Inventory;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Configuration;
 using Intersect.Enums;
-using Intersect.GameObjects;
-using Intersect.Utilities;
+using Intersect.Framework.Core.GameObjects.Items;
 
 namespace Intersect.Client.Interface.Game.Bank;
 
-
-public partial class BankItem
+public partial class BankItem : SlotItem
 {
+    // Controls
+    private readonly Label _quantityLabel;
+    private BankWindow _bankWindow;
+    private ItemDescriptionWindow? _descriptionWindow;
 
-    private static int sItemXPadding = 4;
+    // Context Menu Handling
+    private MenuItem _withdrawContextItem;
 
-    private static int sItemYPadding = 4;
-
-    public ImagePanel Container;
-
-    public bool IsDragging;
-
-    //Drag/Drop References
-    private BankWindow mBankWindow;
-
-    //Dragging
-    private bool mCanDrag;
-
-    private long mClickTime;
-
-    private Guid mCurrentItemId;
-
-    private ItemDescriptionWindow mDescWindow;
-
-    private Draggable mDragIcon;
-
-    //Mouse Event Variables
-    private bool mMouseOver;
-
-    private int mMouseX = -1;
-
-    private int mMouseY = -1;
-
-    //Slot info
-    private int mMySlot;
-
-    public ImagePanel Pnl;
-
-    public BankItem(BankWindow bankWindow, int index)
+    public BankItem(BankWindow bankWindow, Base parent, int index, ContextMenu contextMenu) :
+        base(parent, nameof(BankItem), index, contextMenu)
     {
-        mBankWindow = bankWindow;
-        mMySlot = index;
-    }
+        _bankWindow = bankWindow;
+        TextureFilename = "bankitem.png";
 
-    public void Setup()
-    {
-        Pnl = new ImagePanel(Container, "BankItemIcon");
-        Pnl.HoverEnter += pnl_HoverEnter;
-        Pnl.HoverLeave += pnl_HoverLeave;
-        Pnl.RightClicked += Pnl_RightClicked;
-        Pnl.DoubleClicked += Pnl_DoubleClicked;
-        Pnl.Clicked += pnl_Clicked;
-    }
+        Icon.HoverEnter += Icon_HoverEnter;
+        Icon.HoverLeave += Icon_HoverLeave;
+        Icon.Clicked += Icon_Clicked;
+        Icon.DoubleClicked += Icon_DoubleClicked;
 
-    private void Pnl_RightClicked(Base sender, ClickedEventArgs arguments)
-    {
-        if (ClientConfiguration.Instance.EnableContextMenus)
+        _quantityLabel = new Label(this, "Quantity")
         {
-            mBankWindow.OpenContextMenu(mMySlot);
-        }
-        else
-        {
-            Pnl_DoubleClicked(sender, arguments);
-        }
+            Alignment = [Alignments.Bottom, Alignments.Right],
+            BackgroundTemplateName = "quantity.png",
+            FontName = "sourcesansproblack",
+            FontSize = 8,
+            Padding = new Padding(2),
+        };
+
+        LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+
+        contextMenu.ClearChildren();
+        _withdrawContextItem = contextMenu.AddItem(Strings.BankContextMenu.Withdraw);
+        _withdrawContextItem.Clicked += _withdrawMenuItem_Clicked;
+        contextMenu.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
     }
 
-    private void Pnl_DoubleClicked(Base sender, ClickedEventArgs arguments)
+    #region Context Menu
+
+    protected override void OnContextMenuOpening(ContextMenu contextMenu)
     {
-        if (Globals.InBank)
+        if (Globals.BankSlots is not { Length: > 0 } bankSlots)
         {
-            if (Globals.InputManager.KeyDown(Keys.Shift))
-            {
-                Globals.Me.TryWithdrawItem(
-                    mMySlot,
-                    skipPrompt: true
-                );
-            }
-            else
-            {
-                var slot = Globals.Bank[mMySlot];
-                Globals.Me.TryWithdrawItem(
-                    mMySlot,
-                    slot,
-                    quantityHint: slot.Quantity,
-                    skipPrompt: false
-                );
-            }
+            return;
         }
-    }
 
-    void pnl_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        mClickTime = Timing.Global.MillisecondsUtc + 500;
-    }
-
-    void pnl_HoverLeave(Base sender, EventArgs arguments)
-    {
-        mMouseOver = false;
-        mMouseX = -1;
-        mMouseY = -1;
-        if (mDescWindow != null)
+        if (!ItemDescriptor.TryGet(bankSlots[SlotIndex].ItemId, out var item))
         {
-            mDescWindow.Dispose();
-            mDescWindow = null;
+            return;
         }
+
+        // Clear the context menu and add the withdraw item with updated item name
+        contextMenu.ClearChildren();
+        contextMenu.AddChild(_withdrawContextItem);
+        _withdrawContextItem.SetText(Strings.BankContextMenu.Withdraw.ToString(item.Name));
+
+        base.OnContextMenuOpening(contextMenu);
     }
 
-    void pnl_HoverEnter(Base sender, EventArgs arguments)
+    private void _withdrawMenuItem_Clicked(Base sender, MouseButtonState arguments)
+    {
+        Globals.Me?.TryRetrieveItemFromBank(SlotIndex);
+    }
+
+    #endregion
+
+    #region Mouse Events
+
+    private void Icon_HoverEnter(Base? sender, EventArgs? arguments)
     {
         if (InputHandler.MouseFocus != null)
         {
             return;
         }
 
-        mMouseOver = true;
-        mCanDrag = true;
-        if (Globals.InputManager.MouseButtonDown(MouseButtons.Left))
+        if (Globals.InputManager.IsMouseButtonDown(MouseButton.Left))
         {
-            mCanDrag = false;
-
             return;
         }
 
-        if (mDescWindow != null)
+
+        _descriptionWindow?.Dispose();
+        _descriptionWindow = null;
+
+        if (Globals.BankSlots is not { Length: > 0 } bankSlots)
         {
-            mDescWindow.Dispose();
-            mDescWindow = null;
+            return;
         }
 
-        if (Globals.Bank[mMySlot]?.Base != null)
+        if (bankSlots[SlotIndex] is not { Descriptor: not null } or { Quantity: <= 0 })
         {
-            mDescWindow = new ItemDescriptionWindow(
-                Globals.Bank[mMySlot].Base, Globals.Bank[mMySlot].Quantity, mBankWindow.X, mBankWindow.Y,
-                Globals.Bank[mMySlot].ItemProperties
+            return;
+        }
+
+        var item = bankSlots[SlotIndex];
+        _descriptionWindow = new ItemDescriptionWindow(
+            item.Descriptor,
+            item.Quantity,
+            _bankWindow.X,
+            _bankWindow.Y,
+            item.ItemProperties
+        );
+    }
+
+    private void Icon_HoverLeave(Base sender, EventArgs arguments)
+    {
+        _descriptionWindow?.Dispose();
+        _descriptionWindow = default;
+    }
+
+    private void Icon_Clicked(Base sender, MouseButtonState arguments)
+    {
+        if (arguments.MouseButton is MouseButton.Right)
+        {
+            if (ClientConfiguration.Instance.EnableContextMenus)
+            {
+                OpenContextMenu();
+            }
+            else
+            {
+                Icon_DoubleClicked(sender, arguments);
+            }
+        }
+    }
+
+    private void Icon_DoubleClicked(Base sender, MouseButtonState arguments)
+    {
+        if (arguments.MouseButton is not MouseButton.Left)
+        {
+            return;
+        }
+
+        if (Globals.BankSlots is not { Length: > 0 } bankSlots)
+        {
+            return;
+        }
+
+        if (bankSlots[SlotIndex] is not { Quantity: > 0 } slot)
+        {
+            return;
+        }
+
+        if (Globals.InputManager.IsKeyDown(Keys.Shift))
+        {
+            Globals.Me?.TryRetrieveItemFromBank(SlotIndex, skipPrompt: true);
+        }
+        else
+        {
+            Globals.Me?.TryRetrieveItemFromBank(
+                SlotIndex,
+                slot,
+                quantityHint: slot.Quantity,
+                skipPrompt: false
             );
         }
     }
 
-    public FloatRect RenderBounds()
-    {
-        var rect = new FloatRect()
-        {
-            X = Pnl.LocalPosToCanvas(new Point(0, 0)).X,
-            Y = Pnl.LocalPosToCanvas(new Point(0, 0)).Y,
-            Width = Pnl.Width,
-            Height = Pnl.Height
-        };
+    #endregion
 
-        return rect;
-    }
+    #region Drag and Drop
 
-    public void Update()
+    public override bool DragAndDrop_HandleDrop(Package package, int x, int y)
     {
-        if (Globals.Bank[mMySlot].ItemId != mCurrentItemId)
+        if (Globals.Me is not { } player)
         {
-            mCurrentItemId = Globals.Bank[mMySlot].ItemId;
-            var item = ItemBase.Get(Globals.Bank[mMySlot].ItemId);
-            if (item != null)
+            return false;
+        }
+
+        var rank = player.GuildRank;
+        var isInGuild = !string.IsNullOrWhiteSpace(player.Guild);
+
+        if (Globals.IsGuildBank)
+        {
+            if (!isInGuild || (player.Rank != 0 && rank?.Permissions.BankDeposit == false))
             {
                 // Obtener el color de la rareza del ítem
                 if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
@@ -183,6 +204,16 @@ public partial class BankItem
                 {
                     Container.RenderColor = Color.White; // Color por defecto
                 }
+                
+                ChatboxMsg.AddMessage(
+                    new ChatboxMsg(
+                        Strings.Guilds.NotAllowedSwap.ToString(player.Guild),
+                        CustomColors.Alerts.Error,
+                        ChatMessageType.Bank
+                    )
+                );
+
+                return false;
             }
             if (item != null)
             {
@@ -209,150 +240,99 @@ public partial class BankItem
             }
         }
 
-        if (!IsDragging)
+        var targetNode = Interface.FindComponentUnderCursor();
+
+        // Find the first parent acceptable in that tree that can accept the package
+        while (targetNode != default)
         {
-            if (mMouseOver)
+            switch (targetNode)
             {
-                if (!Globals.InputManager.MouseButtonDown(MouseButtons.Left))
-                {
-                    mCanDrag = true;
-                    mMouseX = -1;
-                    mMouseY = -1;
-                    if (Timing.Global.MillisecondsUtc < mClickTime)
-                    {
-                        //Globals.Me.TryUseItem(_mySlot);
-                        mClickTime = 0;
-                    }
-                }
-                else
-                {
-                    if (mCanDrag && Draggable.Active == null)
-                    {
-                        if (mMouseX == -1 || mMouseY == -1)
-                        {
-                            mMouseX = InputHandler.MousePosition.X - Pnl.LocalPosToCanvas(new Point(0, 0)).X;
-                            mMouseY = InputHandler.MousePosition.Y - Pnl.LocalPosToCanvas(new Point(0, 0)).Y;
-                        }
-                        else
-                        {
-                            var xdiff = mMouseX -
-                                        (InputHandler.MousePosition.X - Pnl.LocalPosToCanvas(new Point(0, 0)).X);
+                case BankItem bankItem:
+                    PacketSender.SendMoveBankItems(SlotIndex, bankItem.SlotIndex);
+                    return true;
 
-                            var ydiff = mMouseY -
-                                        (InputHandler.MousePosition.Y - Pnl.LocalPosToCanvas(new Point(0, 0)).Y);
+                case InventoryItem inventoryItem:
 
-                            if (Math.Sqrt(Math.Pow(xdiff, 2) + Math.Pow(ydiff, 2)) > 5)
-                            {
-                                IsDragging = true;
-                                mDragIcon = new Draggable(
-                                    Pnl.LocalPosToCanvas(new Point(0, 0)).X + mMouseX,
-                                    Pnl.LocalPosToCanvas(new Point(0, 0)).X + mMouseY, Pnl.Texture, Pnl.RenderColor
-                                );
-                            }
-                        }
+                    if (Globals.BankSlots is not { Length: > 0 } bankSlots)
+                    {
+                        return false;
                     }
-                }
+
+                    if (bankSlots[SlotIndex] is not { Quantity: > 0 } slot)
+                    {
+                        return false;
+                    }
+
+                    player.TryRetrieveItemFromBank(
+                        SlotIndex,
+                        inventorySlotIndex: inventoryItem.SlotIndex,
+                        quantityHint: slot.Quantity,
+                        skipPrompt: true
+                    );
+                    return true;
+
+                default:
+                    targetNode = targetNode.Parent;
+                    break;
             }
+        }
+
+        // If we've reached the top of the tree, we can't drop here, so cancel drop
+        return false;
+    }
+
+    #endregion
+
+    public override void Update()
+    {
+        if (Globals.Me == default)
+        {
+            return;
+        }
+
+        if (Globals.BankSlots is not { Length: > 0 } bankSlots)
+        {
+            return;
+        }
+
+        if (bankSlots[SlotIndex] is not { Descriptor: not null } or { Quantity: <= 0 })
+        {
+            _quantityLabel.IsVisibleInParent = false;
+            Icon.Texture = default;
+            return;
+        }
+
+        var bankSlot = bankSlots[SlotIndex];
+        var descriptor = bankSlot.Descriptor;
+
+        _quantityLabel.IsVisibleInParent = !Icon.IsDragging && descriptor.IsStackable && bankSlot.Quantity > 1;
+        if (_quantityLabel.IsVisibleInParent)
+        {
+            _quantityLabel.Text = Strings.FormatQuantityAbbreviated(bankSlot.Quantity);
+        }
+
+        if (Icon.TextureFilename == descriptor.Icon)
+        {
+            return;
+        }
+
+        var itemTexture = GameContentManager.Current.GetTexture(Framework.Content.TextureType.Item, descriptor.Icon);
+        if (itemTexture != default)
+        {
+            Icon.Texture = itemTexture;
+            Icon.RenderColor = descriptor.Color;
+            Icon.IsVisibleInParent = true;
         }
         else
         {
-            if (mDragIcon.Update())
+            if (Icon.Texture != default)
             {
-                //Drug the item and now we stopped
-                IsDragging = false;
-                var dragRect = new FloatRect(
-                    mDragIcon.X - sItemXPadding / 2, mDragIcon.Y - sItemYPadding / 2, sItemXPadding / 2 + 32,
-                    sItemYPadding / 2 + 32
-                );
-
-                float bestIntersect = 0;
-                var bestIntersectIndex = -1;
-
-                //So we picked up an item and then dropped it. Lets see where we dropped it to.
-                //Check inventory first.
-                if (mBankWindow.RenderBounds().IntersectsWith(dragRect))
-                {
-                    for (var i = 0; i < Globals.BankSlots; i++)
-                    {
-                        if (mBankWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
-                        {
-                            if (FloatRect.Intersect(mBankWindow.Items[i].RenderBounds(), dragRect).Width *
-                                FloatRect.Intersect(mBankWindow.Items[i].RenderBounds(), dragRect).Height >
-                                bestIntersect)
-                            {
-                                bestIntersect =
-                                    FloatRect.Intersect(mBankWindow.Items[i].RenderBounds(), dragRect).Width *
-                                    FloatRect.Intersect(mBankWindow.Items[i].RenderBounds(), dragRect).Height;
-
-                                bestIntersectIndex = i;
-                            }
-                        }
-                    }
-
-                    if (bestIntersectIndex > -1)
-                    {
-                        if (mMySlot != bestIntersectIndex)
-                        {
-                            var allowed = true;
-
-                            //Permission Check
-                            if (Globals.GuildBank)
-                            {
-                                var rank = Globals.Me.GuildRank;
-                                if (string.IsNullOrWhiteSpace(Globals.Me.Guild) || (!rank.Permissions.BankDeposit && Globals.Me.Rank != 0))
-                                {
-                                    ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Guilds.NotAllowedSwap.ToString(Globals.Me.Guild), CustomColors.Alerts.Error, ChatMessageType.Bank));
-                                    allowed = false;
-                                }
-                            }
-
-                            if (allowed)
-                            {
-                                PacketSender.SendMoveBankItems(mMySlot, bestIntersectIndex);
-                            }
-
-                            //Globals.Me.SwapItems(bestIntersectIndex, _mySlot);
-                        }
-                    }
-                }
-                else
-                {
-                    var invWindow = Interface.GameUi.GameMenu.GetInventoryWindow();
-                    if (invWindow.RenderBounds().IntersectsWith(dragRect))
-                    {
-                        for (var i = 0; i < Globals.Me.Inventory.Length; i++)
-                        {
-                            if (invWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
-                            {
-                                if (FloatRect.Intersect(invWindow.Items[i].RenderBounds(), dragRect).Width *
-                                    FloatRect.Intersect(invWindow.Items[i].RenderBounds(), dragRect).Height >
-                                    bestIntersect)
-                                {
-                                    bestIntersect =
-                                        FloatRect.Intersect(invWindow.Items[i].RenderBounds(), dragRect).Width *
-                                        FloatRect.Intersect(invWindow.Items[i].RenderBounds(), dragRect).Height;
-
-                                    bestIntersectIndex = i;
-                                }
-                            }
-                        }
-
-                        if (bestIntersectIndex > -1)
-                        {
-                            var slot = Globals.Bank[mMySlot];
-                            Globals.Me.TryWithdrawItem(
-                                mMySlot,
-                                inventorySlotIndex: bestIntersectIndex,
-                                quantityHint: slot.Quantity,
-                                skipPrompt: true
-                            );
-                        }
-                    }
-                }
-
-                mDragIcon.Dispose();
+                Icon.Texture = default;
+                Icon.IsVisibleInParent = false;
             }
         }
-    }
 
+        _descriptionWindow?.Dispose();
+        _descriptionWindow = default;
+    }
 }

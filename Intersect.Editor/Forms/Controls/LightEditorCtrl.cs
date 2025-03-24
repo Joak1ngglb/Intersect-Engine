@@ -1,7 +1,7 @@
 using Intersect.Editor.General;
 using Intersect.Editor.Localization;
+using Intersect.Framework.Core.GameObjects.Lighting;
 using Intersect.GameObjects;
-
 using Graphics = Intersect.Editor.Core.Graphics;
 
 namespace Intersect.Editor.Forms.Controls;
@@ -12,9 +12,9 @@ public partial class LightEditorCtrl : UserControl
 
     public bool CanClose = true;
 
-    private LightBase mBackupLight;
+    private LightDescriptor mBackupLight;
 
-    private LightBase mEditingLight;
+    private LightDescriptor mEditingLight;
 
     private ToolTip _tooltip = new ToolTip();
 
@@ -27,10 +27,10 @@ public partial class LightEditorCtrl : UserControl
         }
     }
 
-    public void LoadEditor(LightBase tmpLight)
+    public void LoadEditor(LightDescriptor tmpLight)
     {
         mEditingLight = tmpLight;
-        mBackupLight = new LightBase(tmpLight);
+        mBackupLight = new LightDescriptor(tmpLight);
         nudIntensity.Value = tmpLight.Intensity;
         nudSize.Value = tmpLight.Size;
         nudOffsetX.Value = tmpLight.OffsetX;

@@ -3,11 +3,11 @@ using Intersect.Server.Core.CommandParsing.Arguments;
 using Intersect.Server.Localization;
 using Intersect.Server.Database;
 using Intersect.Enums;
-using System;
 using Intersect.Server.Database.GameData;
 using Intersect.Server.Entities;
 using System.Globalization;
-using Intersect.GameObjects;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Variables;
 
 namespace Intersect.Server.Core.Commands
 {
@@ -39,7 +39,7 @@ namespace Intersect.Server.Core.Commands
                 throw new ArgumentNullException(Strings.Commands.Arguments.VariableValue.Name, $"No value specified for server variable '{serverVariableNameOrId}'");
             }
 
-            ServerVariableBase variable;
+            ServerVariableDescriptor variable;
             if (Guid.TryParse(serverVariableNameOrId, out Guid serverVariableId))
             {
                 variable = GameContext.Queries.ServerVariableById(serverVariableId);
@@ -66,11 +66,11 @@ namespace Intersect.Server.Core.Commands
                     break;
 
                 case VariableDataType.Integer:
-                    variable.Value.Integer = int.Parse(rawServerVariableValue, NumberStyles.Integer, CultureInfo.CurrentCulture);
+                    variable.Value.Integer = int.Parse(rawServerVariableValue, NumberStyles.Integer, CultureInfo.CurrentUICulture);
                     break;
 
                 case VariableDataType.Number:
-                    variable.Value.Number = double.Parse(rawServerVariableValue, NumberStyles.Float, CultureInfo.CurrentCulture);
+                    variable.Value.Number = double.Parse(rawServerVariableValue, NumberStyles.Float, CultureInfo.CurrentUICulture);
                     break;
 
                 case VariableDataType.String:

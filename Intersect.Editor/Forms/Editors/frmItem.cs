@@ -1,14 +1,15 @@
 using System.Drawing.Imaging;
 using DarkUI.Forms;
-
 using Intersect.Editor.Content;
 using Intersect.Editor.Core;
 using Intersect.Editor.General;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Networking;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
 using Intersect.Localization;
 using Intersect.Utilities;
 using Graphics = System.Drawing.Graphics;
@@ -19,11 +20,11 @@ namespace Intersect.Editor.Forms.Editors;
 public partial class FrmItem : EditorForm
 {
 
-    private List<ItemBase> mChanged = new List<ItemBase>();
+    private List<ItemDescriptor> mChanged = new List<ItemDescriptor>();
 
     private string mCopiedItem;
 
-    private ItemBase mEditorItem;
+    private ItemDescriptor mEditorItem;
 
     private List<string> mKnownFolders = new List<string>();
 
@@ -38,20 +39,20 @@ public partial class FrmItem : EditorForm
         Icon = Program.Icon;
 
         cmbEquipmentSlot.Items.Clear();
-        cmbEquipmentSlot.Items.AddRange(Options.EquipmentSlots.ToArray());
+        cmbEquipmentSlot.Items.AddRange(Options.Instance.Equipment.Slots.ToArray());
         cmbToolType.Items.Clear();
         cmbToolType.Items.Add(Strings.General.None);
-        cmbToolType.Items.AddRange(Options.ToolTypes.ToArray());
+        cmbToolType.Items.AddRange(Options.Instance.Equipment.ToolTypes.ToArray());
 
         cmbProjectile.Items.Clear();
         cmbProjectile.Items.Add(Strings.General.None);
-        cmbProjectile.Items.AddRange(ProjectileBase.Names);
+        cmbProjectile.Items.AddRange(ProjectileDescriptor.Names);
 
         lstGameObjects.Init(UpdateToolStripItems, AssignEditorItem, toolStripItemNew_Click, toolStripItemCopy_Click, toolStripItemUndo_Click, toolStripItemPaste_Click, toolStripItemDelete_Click);
     }
     private void AssignEditorItem(Guid id)
     {
-        mEditorItem = ItemBase.Get(id);
+        mEditorItem = ItemDescriptor.Get(id);
         UpdateEditor();
     }
 
@@ -60,7 +61,7 @@ public partial class FrmItem : EditorForm
         if (type == GameObjectType.Item)
         {
             InitEditor();
-            if (mEditorItem != null && !ItemBase.Lookup.Values.Contains(mEditorItem))
+            if (mEditorItem != null && !ItemDescriptor.Lookup.Values.Contains(mEditorItem))
             {
                 mEditorItem = null;
                 UpdateEditor();
@@ -117,7 +118,7 @@ public partial class FrmItem : EditorForm
         );
         cmbAttackAnimation.Items.Clear();
         cmbAttackAnimation.Items.Add(Strings.General.None);
-        cmbAttackAnimation.Items.AddRange(AnimationBase.Names);
+        cmbAttackAnimation.Items.AddRange(AnimationDescriptor.Names);
         cmbScalingStat.Items.Clear();
         for (var x = 0; x < Enum.GetValues<Stat>().Length; x++)
         {
@@ -126,15 +127,15 @@ public partial class FrmItem : EditorForm
 
         cmbAnimation.Items.Clear();
         cmbAnimation.Items.Add(Strings.General.None);
-        cmbAnimation.Items.AddRange(AnimationBase.Names);
+        cmbAnimation.Items.AddRange(AnimationDescriptor.Names);
         cmbEquipmentAnimation.Items.Clear();
         cmbEquipmentAnimation.Items.Add(Strings.General.None);
-        cmbEquipmentAnimation.Items.AddRange(AnimationBase.Names);
+        cmbEquipmentAnimation.Items.AddRange(AnimationDescriptor.Names);
         cmbTeachSpell.Items.Clear();
         cmbTeachSpell.Items.Add(Strings.General.None);
-        cmbTeachSpell.Items.AddRange(SpellBase.Names);
+        cmbTeachSpell.Items.AddRange(SpellDescriptor.Names);
 
-        var events = EventBase.Names;
+        var events = EventDescriptor.Names;
         var eventElements = new List<ComboBox>() { cmbEvent, cmbEventTriggers };
         foreach (var element in eventElements)
         {
@@ -156,21 +157,22 @@ public partial class FrmItem : EditorForm
             cmbFemalePaperdoll.Items.Add(paperdollnames[i]);
         }
 
-        nudStr.Maximum = Options.MaxStatValue;
-        nudMag.Maximum = Options.MaxStatValue;
-        nudDef.Maximum = Options.MaxStatValue;
-        nudMR.Maximum = Options.MaxStatValue;
-        nudSpd.Maximum = Options.MaxStatValue;
-        nudARP.Maximum = Options.MaxStatValue;
+        nudStr.Maximum = Options.Instance.Player.MaxStat;
+        nudMag.Maximum = Options.Instance.Player.MaxStat;
+        nudDef.Maximum = Options.Instance.Player.MaxStat;
+        nudMR.Maximum = Options.Instance.Player.MaxStat;
+        nudSpd.Maximum = Options.Instance.Player.MaxStat;
+        nudARP.Maximum = Options.Instance.Player.MaxStatValue;
 
-        nudStr.Minimum = -Options.MaxStatValue;
-        nudMag.Minimum = -Options.MaxStatValue;
-        nudDef.Minimum = -Options.MaxStatValue;
-        nudMR.Minimum = -Options.MaxStatValue;
-        nudSpd.Minimum = -Options.MaxStatValue;
-        nudARP.Minimum = -Options.MaxStatValue;
-        nudVit.Minimum = -Options.MaxStatValue;
-        nudWis.Minimum = -Options.MaxStatValue;
+
+        nudStr.Minimum = -Options.Instance.Player.MaxStat;
+        nudMag.Minimum = -Options.Instance.Player.MaxStat;
+        nudDef.Minimum = -Options.Instance.Player.MaxStat;
+        nudMR.Minimum = -Options.Instance.Player.MaxStat;
+        nudSpd.Minimum = -Options.Instance.Player.MaxStat;
+        nudARP.Minimum = -Options.Instance.Player.MaxStatValue;
+        nudVit.Minimum = -Options.Instance.Player.MaxStatValue;
+        nudWis.Minimum = -Options.Instance.Player.MaxStatValue;
 
         InitLocalization();
         UpdateEditor();
@@ -350,9 +352,16 @@ public partial class FrmItem : EditorForm
             nudRgbaG.Value = mEditorItem.Color.G;
             nudRgbaB.Value = mEditorItem.Color.B;
             nudRgbaA.Value = mEditorItem.Color.A;
-            cmbEquipmentAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.EquipmentAnimationId) + 1;
+            cmbEquipmentAnimation.SelectedIndex = AnimationDescriptor.ListIndex(mEditorItem.EquipmentAnimationId) + 1;
             nudPrice.Value = mEditorItem.Price;
-            cmbRarity.Select(mEditorItem.Rarity, 1);
+            if (mEditorItem.Rarity < cmbRarity.Items.Count)
+            {
+                cmbRarity.SelectedIndex = mEditorItem.Rarity;
+            }
+            else if (cmbRarity.Items.Count > 0)
+            {
+                cmbRarity.SelectedIndex = 0;
+            }
 
             nudStr.Value = mEditorItem.StatsGiven[0];
             nudMag.Value = mEditorItem.StatsGiven[1];
@@ -399,7 +408,7 @@ public partial class FrmItem : EditorForm
             nudDeathDropChance.Value = mEditorItem.DropChanceOnDeath;
             nudItemDespawnTime.Value = mEditorItem.DespawnTime;
             cmbToolType.SelectedIndex = mEditorItem.Tool + 1;
-            cmbAttackAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.AttackAnimationId) + 1;
+            cmbAttackAnimation.SelectedIndex = AnimationDescriptor.ListIndex(mEditorItem.AttackAnimationId) + 1;
             cmbWeaponSprite.SelectedIndex = cmbWeaponSprite.FindString(
                     TextUtils.NullToNone(mEditorItem.WeaponSpriteOverride)
             );
@@ -447,8 +456,8 @@ public partial class FrmItem : EditorForm
             cmbScalingStat.SelectedIndex = mEditorItem.ScalingStat;
 
             //External References
-            cmbProjectile.SelectedIndex = ProjectileBase.ListIndex(mEditorItem.ProjectileId) + 1;
-            cmbAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.AnimationId) + 1;
+            cmbProjectile.SelectedIndex = ProjectileDescriptor.ListIndex(mEditorItem.ProjectileId) + 1;
+            cmbAnimation.SelectedIndex = AnimationDescriptor.ListIndex(mEditorItem.AnimationId) + 1;
 
             nudCooldown.Value = mEditorItem.Cooldown;
             cmbCooldownGroup.Text = mEditorItem.CooldownGroup;
@@ -506,14 +515,14 @@ public partial class FrmItem : EditorForm
         }
         else if (cmbType.SelectedIndex == (int)ItemType.Spell)
         {
-            cmbTeachSpell.SelectedIndex = SpellBase.ListIndex(mEditorItem.SpellId) + 1;
+            cmbTeachSpell.SelectedIndex = SpellDescriptor.ListIndex(mEditorItem.SpellId) + 1;
             chkQuickCast.Checked = mEditorItem.QuickCast;
             chkSingleUseSpell.Checked = mEditorItem.SingleUse;
             grpSpell.Visible = true;
         }
         else if (cmbType.SelectedIndex == (int)ItemType.Event)
         {
-            cmbEvent.SelectedIndex = EventBase.ListIndex(mEditorItem.EventId) + 1;
+            cmbEvent.SelectedIndex = EventDescriptor.ListIndex(mEditorItem.EventId) + 1;
             chkSingleUseEvent.Checked = mEditorItem.SingleUse;
             grpEvent.Visible = true;
         }
@@ -563,9 +572,9 @@ public partial class FrmItem : EditorForm
         lstEventTriggers.SelectedIndex = -1;
 
         // Some event triggers aren't valid for some item types - setup filters here
-        var invalidNonEquipOperations = new List<ItemEventTriggers>() { ItemEventTriggers.OnEquip, ItemEventTriggers.OnUnequip, ItemEventTriggers.OnHit, ItemEventTriggers.OnDamageReceived };
+        var invalidNonEquipOperations = new List<ItemEventTrigger>() { ItemEventTrigger.OnEquip, ItemEventTrigger.OnUnequip, ItemEventTrigger.OnHit, ItemEventTrigger.OnDamageReceived };
 
-        var invalidEventOperations = new List<ItemEventTriggers>() { ItemEventTriggers.OnUse };
+        var invalidEventOperations = new List<ItemEventTrigger>() { ItemEventTrigger.OnUse };
         invalidEventOperations.AddRange(invalidNonEquipOperations);
 
         foreach (var triggerMapping in Strings.ItemEditor.EventTriggerSelections)
@@ -576,7 +585,7 @@ public partial class FrmItem : EditorForm
             Strings.ItemEditor.EventTriggerNames.TryGetValue(trigger, out var triggerName);
             if (string.IsNullOrEmpty(triggerName))
             {
-                triggerName = EventBase.Deleted;
+                triggerName = EventDescriptor.Deleted;
             }
 
             var evt = mEditorItem.GetEventTrigger(trigger);
@@ -648,12 +657,12 @@ public partial class FrmItem : EditorForm
     private void cmbEquipmentSlot_SelectedIndexChanged(object sender, EventArgs e)
     {
         mEditorItem.EquipmentSlot = cmbEquipmentSlot.SelectedIndex;
-        if (cmbEquipmentSlot.SelectedIndex == Options.WeaponIndex)
+        if (cmbEquipmentSlot.SelectedIndex == Options.Instance.Equipment.WeaponSlot)
         {
             grpShieldProperties.Hide();
             grpWeaponProperties.Show();
         }
-        else if (cmbEquipmentSlot.SelectedIndex == Options.ShieldIndex)
+        else if (cmbEquipmentSlot.SelectedIndex == Options.Instance.Equipment.ShieldSlot)
         {
             grpWeaponProperties.Hide();
             grpShieldProperties.Show();
@@ -781,7 +790,7 @@ public partial class FrmItem : EditorForm
     private void cmbAttackAnimation_SelectedIndexChanged(object sender, EventArgs e)
     {
         mEditorItem.AttackAnimation =
-            AnimationBase.Get(AnimationBase.IdFromList(cmbAttackAnimation.SelectedIndex - 1));
+            AnimationDescriptor.Get(AnimationDescriptor.IdFromList(cmbAttackAnimation.SelectedIndex - 1));
     }
 
     private void cmbDamageType_SelectedIndexChanged(object sender, EventArgs e)
@@ -796,7 +805,7 @@ public partial class FrmItem : EditorForm
 
     private void cmbProjectile_SelectedIndexChanged(object sender, EventArgs e)
     {
-        mEditorItem.Projectile = ProjectileBase.Get(ProjectileBase.IdFromList(cmbProjectile.SelectedIndex - 1));
+        mEditorItem.Projectile = ProjectileDescriptor.Get(ProjectileDescriptor.IdFromList(cmbProjectile.SelectedIndex - 1));
     }
 
     private void btnEditRequirements_Click(object sender, EventArgs e)
@@ -807,17 +816,17 @@ public partial class FrmItem : EditorForm
 
     private void cmbAnimation_SelectedIndexChanged(object sender, EventArgs e)
     {
-        mEditorItem.Animation = AnimationBase.Get(AnimationBase.IdFromList(cmbAnimation.SelectedIndex - 1));
+        mEditorItem.Animation = AnimationDescriptor.Get(AnimationDescriptor.IdFromList(cmbAnimation.SelectedIndex - 1));
     }
 
     private void cmbEvent_SelectedIndexChanged(object sender, EventArgs e)
     {
-        mEditorItem.Event = EventBase.Get(EventBase.IdFromList(cmbEvent.SelectedIndex - 1));
+        mEditorItem.Event = EventDescriptor.Get(EventDescriptor.IdFromList(cmbEvent.SelectedIndex - 1));
     }
 
     private void cmbTeachSpell_SelectedIndexChanged(object sender, EventArgs e)
     {
-        mEditorItem.Spell = SpellBase.Get(SpellBase.IdFromList(cmbTeachSpell.SelectedIndex - 1));
+        mEditorItem.Spell = SpellDescriptor.Get(SpellDescriptor.IdFromList(cmbTeachSpell.SelectedIndex - 1));
     }
 
     private void nudPrice_ValueChanged(object sender, EventArgs e)
@@ -1046,7 +1055,7 @@ public partial class FrmItem : EditorForm
     private void cmbEquipmentAnimation_SelectedIndexChanged(object sender, EventArgs e)
     {
         mEditorItem.EquipmentAnimation =
-            AnimationBase.Get(AnimationBase.IdFromList(cmbEquipmentAnimation.SelectedIndex - 1));
+            AnimationDescriptor.Get(AnimationDescriptor.IdFromList(cmbEquipmentAnimation.SelectedIndex - 1));
     }
 
     private void cmbAttackSpeedModifier_SelectedIndexChanged(object sender, EventArgs e)
@@ -1090,7 +1099,7 @@ public partial class FrmItem : EditorForm
 
     private void btnAddCooldownGroup_Click(object sender, EventArgs e)
     {
-        var cdGroupName = "";
+        var cdGroupName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.ItemEditor.CooldownGroupPrompt, Strings.ItemEditor.CooldownGroupTitle, ref cdGroupName,
             DarkDialogButton.OkCancel
@@ -1282,34 +1291,34 @@ public partial class FrmItem : EditorForm
     {
         //Collect folders and cooldown groups
         var mFolders = new List<string>();
-        foreach (var itm in ItemBase.Lookup)
+        foreach (var itm in ItemDescriptor.Lookup)
         {
-            if (!string.IsNullOrEmpty(((ItemBase)itm.Value).Folder) &&
-                !mFolders.Contains(((ItemBase)itm.Value).Folder))
+            if (!string.IsNullOrEmpty(((ItemDescriptor)itm.Value).Folder) &&
+                !mFolders.Contains(((ItemDescriptor)itm.Value).Folder))
             {
-                mFolders.Add(((ItemBase)itm.Value).Folder);
-                if (!mKnownFolders.Contains(((ItemBase)itm.Value).Folder))
+                mFolders.Add(((ItemDescriptor)itm.Value).Folder);
+                if (!mKnownFolders.Contains(((ItemDescriptor)itm.Value).Folder))
                 {
-                    mKnownFolders.Add(((ItemBase)itm.Value).Folder);
+                    mKnownFolders.Add(((ItemDescriptor)itm.Value).Folder);
                 }
             }
 
-            if (!string.IsNullOrWhiteSpace(((ItemBase)itm.Value).CooldownGroup) &&
-                !mKnownCooldownGroups.Contains(((ItemBase)itm.Value).CooldownGroup))
+            if (!string.IsNullOrWhiteSpace(((ItemDescriptor)itm.Value).CooldownGroup) &&
+                !mKnownCooldownGroups.Contains(((ItemDescriptor)itm.Value).CooldownGroup))
             {
-                mKnownCooldownGroups.Add(((ItemBase)itm.Value).CooldownGroup);
+                mKnownCooldownGroups.Add(((ItemDescriptor)itm.Value).CooldownGroup);
             }
         }
 
         // Do we add spell cooldown groups as well?
-        if (Options.Combat.LinkSpellAndItemCooldowns)
+        if (Options.Instance.Combat.LinkSpellAndItemCooldowns)
         {
-            foreach (var itm in SpellBase.Lookup)
+            foreach (var itm in SpellDescriptor.Lookup)
             {
-                if (!string.IsNullOrWhiteSpace(((SpellBase)itm.Value).CooldownGroup) &&
-                !mKnownCooldownGroups.Contains(((SpellBase)itm.Value).CooldownGroup))
+                if (!string.IsNullOrWhiteSpace(((SpellDescriptor)itm.Value).CooldownGroup) &&
+                !mKnownCooldownGroups.Contains(((SpellDescriptor)itm.Value).CooldownGroup))
                 {
-                    mKnownCooldownGroups.Add(((SpellBase)itm.Value).CooldownGroup);
+                    mKnownCooldownGroups.Add(((SpellDescriptor)itm.Value).CooldownGroup);
                 }
             }
         }
@@ -1325,14 +1334,14 @@ public partial class FrmItem : EditorForm
         cmbFolder.Items.Add("");
         cmbFolder.Items.AddRange(mKnownFolders.ToArray());
 
-        var items = ItemBase.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
-            new KeyValuePair<string, string>(((ItemBase)pair.Value)?.Name ?? Models.DatabaseObject<ItemBase>.Deleted, ((ItemBase)pair.Value)?.Folder ?? ""))).ToArray();
+        var items = ItemDescriptor.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
+            new KeyValuePair<string, string>(((ItemDescriptor)pair.Value)?.Name ?? Models.DatabaseObject<ItemDescriptor>.Deleted, ((ItemDescriptor)pair.Value)?.Folder ?? ""))).ToArray();
         lstGameObjects.Repopulate(items, mFolders, btnAlphabetical.Checked, CustomSearch(), txtSearch.Text);
     }
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.ItemEditor.folderprompt, Strings.ItemEditor.foldertitle, ref folderName,
             DarkDialogButton.OkCancel
@@ -1456,9 +1465,9 @@ public partial class FrmItem : EditorForm
         get => Enum.IsDefined((Stat)lstStatRanges.SelectedIndex) ? (Stat)(lstStatRanges.SelectedIndex) : null;
     }
 
-    private ItemEventTriggers? SelectedEventTrigger
+    private ItemEventTrigger? SelectedEventTrigger
     {
-        get => Enum.IsDefined((ItemEventTriggers)lstEventTriggers.SelectedIndex) ? (ItemEventTriggers)(lstEventTriggers.SelectedIndex) : null;
+        get => Enum.IsDefined((ItemEventTrigger)lstEventTriggers.SelectedIndex) ? (ItemEventTrigger)(lstEventTriggers.SelectedIndex) : null;
     }
 
     private void lstBonusEffects_SelectedIndexChanged(object sender, EventArgs e)
@@ -1557,7 +1566,7 @@ public partial class FrmItem : EditorForm
             return;
         }
 
-        cmbEventTriggers.SelectedIndex = EventBase.ListIndex(trigger.Id) + 1;
+        cmbEventTriggers.SelectedIndex = EventDescriptor.ListIndex(trigger.Id) + 1;
     }
 
     private void cmbEventTriggers_SelectedIndexChanged(object sender, EventArgs e)
@@ -1567,7 +1576,7 @@ public partial class FrmItem : EditorForm
             return;
         }
 
-        mEditorItem.EventTriggers[SelectedEventTrigger.Value] = EventBase.IdFromList(cmbEventTriggers.SelectedIndex - 1);
+        mEditorItem.EventTriggers[SelectedEventTrigger.Value] = EventDescriptor.IdFromList(cmbEventTriggers.SelectedIndex - 1);
 
         PopulateEventTriggerList(lstEventTriggers.SelectedIndex);
     }

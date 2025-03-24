@@ -1,10 +1,10 @@
 ﻿using Newtonsoft.Json;
 
-namespace Intersect.GameObjects.Events;
+namespace Intersect.Framework.Core.GameObjects.Events;
 
 public partial class EventMoveRoute
 {
-    public List<MoveRouteAction> Actions { get; set; } = new List<MoveRouteAction>();
+    public List<MoveRouteAction> Actions { get; set; } = [];
 
     public bool IgnoreIfBlocked { get; set; }
 

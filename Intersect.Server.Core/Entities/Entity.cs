@@ -1,12 +1,16 @@
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using Intersect.Collections.Slotting;
+using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps.Attributes;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Maps;
-using Intersect.Logging;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData.Players;
@@ -19,6 +23,7 @@ using Intersect.Server.Localization;
 using Intersect.Server.Maps;
 using Intersect.Server.Networking;
 using Intersect.Utilities;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Stat = Intersect.Enums.Stat;
 
@@ -32,11 +37,23 @@ public abstract partial class Entity : IEntity
     [NotMapped]
     public Guid MapInstanceId { get; set; } = Guid.Empty;
 
-    [JsonProperty("MaxVitals"), NotMapped] private long[] _maxVital = new long[Enum.GetValues<Vital>().Length];
+    [NotMapped] private long[] _maxVital = new long[Enum.GetValues<Vital>().Length];
+
+    [JsonProperty("MaxVitals"), NotMapped]
+    public IReadOnlyDictionary<Vital, long> MaxVitalsLookup => GetMaxVitals().Select((value, index) => (value, index))
+        .ToDictionary(t => (Vital)t.index, t => t.value).AsReadOnly();
 
     [NotMapped, JsonIgnore] public Combat.Stat[] Stat = new Combat.Stat[Enum.GetValues<Stat>().Length];
 
-    [NotMapped, JsonIgnore] public Entity Target { get; set; } = null;
+    [JsonProperty("Stats"), NotMapped]
+    public IReadOnlyDictionary<Stat, int> StatsLookup => Stat.Select((computedStat, index) => (computedStat, index))
+        .ToDictionary(t => (Stat)t.index, t => t.computedStat.Value()).AsReadOnly();
+
+    [JsonProperty("Vitals"), NotMapped]
+    public IReadOnlyDictionary<Vital, long> VitalsLookup => _vitals.Select((value, index) => (value, index))
+        .ToDictionary(t => (Vital)t.index, t => t.value).AsReadOnly();
+
+    [NotMapped, JsonIgnore] public Entity? Target { get; set; }
 
     public Entity() : this(Guid.NewGuid(), Guid.Empty)
     {
@@ -102,12 +119,12 @@ public abstract partial class Entity : IEntity
     [JsonIgnore, Column("Vitals")]
     public string VitalsJson
     {
-        get => DatabaseUtils.SaveLongArray(mVitals, Enum.GetValues<Vital>().Length);
-        set => mVitals = DatabaseUtils.LoadLongArray(value, Enum.GetValues<Vital>().Length);
+        get => DatabaseUtils.SaveLongArray(_vitals, Enum.GetValues<Vital>().Length);
+        set => _vitals = DatabaseUtils.LoadLongArray(value, Enum.GetValues<Vital>().Length);
     }
 
-    [JsonProperty("Vitals"), NotMapped]
-    private long[] mVitals { get; set; } = new long[Enum.GetValues<Vital>().Length];
+    [NotMapped]
+    private long[] _vitals { get; set; } = new long[Enum.GetValues<Vital>().Length];
 
     [JsonIgnore, NotMapped]
     private long[] mOldVitals { get; set; } = new long[Enum.GetValues<Vital>().Length];
@@ -138,16 +155,15 @@ public abstract partial class Entity : IEntity
     public int[] StatPointAllocations { get; set; } = new int[Enum.GetValues<Stat>().Length];
 
     //Inventory
-    [JsonIgnore]
     public virtual SlotList<InventorySlot> Items { get; set; } = new(
-        Options.Instance.PlayerOpts.MaxInventory,
+        Options.Instance.Player.MaxInventory,
         InventorySlot.Create
     );
 
     //Spells
     [JsonIgnore]
     public virtual SlotList<SpellSlot> Spells { get; set; } = new(
-        Options.Instance.PlayerOpts.MaxSpells,
+        Options.Instance.Player.MaxSpells,
         SpellSlot.Create
     );
 
@@ -186,7 +202,7 @@ public abstract partial class Entity : IEntity
     }
 
     [NotMapped]
-    public bool Dead { get; set; }
+    public bool IsDead { get; set; }
 
     //Combat
     [NotMapped, JsonIgnore]
@@ -197,6 +213,9 @@ public abstract partial class Entity : IEntity
 
     [NotMapped, JsonIgnore]
     public Entity CastTarget { get; set; }
+
+    [NotMapped, JsonIgnore]
+    public bool SoftRetargetOnSelfCast { get; set; }
 
     [NotMapped, JsonIgnore]
     public Guid CollisionIndex { get; set; }
@@ -215,7 +234,7 @@ public abstract partial class Entity : IEntity
     public bool IsCasting => CastTime > Timing.Global.Milliseconds;
 
     [NotMapped, JsonIgnore]
-    public bool IsTurnAroundWhileCastingDisabled => !Options.Instance.CombatOpts.EnableTurnAroundWhileCasting && IsCasting;
+    public bool IsTurnAroundWhileCastingDisabled => !Options.Instance.Combat.EnableTurnAroundWhileCasting && IsCasting;
 
     //Visuals
     [NotMapped, JsonIgnore]
@@ -225,14 +244,13 @@ public abstract partial class Entity : IEntity
     public bool HideEntity { get; set; } = false;
 
     [NotMapped, JsonIgnore]
-    public List<Guid> Animations { get; set; } = new List<Guid>();
+    public List<Guid> Animations { get; set; } = [];
 
     //DoT/HoT Spells
-    [NotMapped, JsonIgnore]
-    public ConcurrentDictionary<Guid, DoT> DoT { get; set; } = new ConcurrentDictionary<Guid, DoT>();
+    // TODO: Are DoTs from the same source entity not stackable? This should be configurable
+    [NotMapped, JsonIgnore] public ConcurrentDictionary<Guid, DamageOverTimeEffect> DamageOverTimeEffects { get; } = [];
 
-    [NotMapped, JsonIgnore]
-    public DoT[] CachedDots { get; set; } = new DoT[0];
+    [NotMapped, JsonIgnore] public DamageOverTimeEffect[] CachedDamageOverTimeEffects { get; set; } = [];
 
     [NotMapped, JsonIgnore]
     public EventMoveRoute MoveRoute { get; set; } = null;
@@ -254,7 +272,7 @@ public abstract partial class Entity : IEntity
 
     //Status effects
     [NotMapped, JsonIgnore]
-    public ConcurrentDictionary<SpellBase, Status> Statuses { get; } = new ConcurrentDictionary<SpellBase, Status>();
+    public ConcurrentDictionary<SpellDescriptor, Status> Statuses { get; } = new ConcurrentDictionary<SpellDescriptor, Status>();
 
     [JsonIgnore, NotMapped]
     public Status[] CachedStatuses = new Status[0];
@@ -308,6 +326,8 @@ public abstract partial class Entity : IEntity
         }
     }
 
+    public bool HasStatusEffect(SpellEffect spellEffect) => CachedStatuses.Any(s => s.Type == spellEffect);
+
     public virtual void Update(long timeMs)
     {
         var lockObtained = false;
@@ -330,7 +350,7 @@ public abstract partial class Entity : IEntity
                 }
 
                 //DoT/HoT timers
-                foreach (var dot in CachedDots)
+                foreach (var dot in CachedDamageOverTimeEffects)
                 {
                     dot.Tick();
                 }
@@ -345,7 +365,7 @@ public abstract partial class Entity : IEntity
                         if (stat == default)
                         {
                             var allStats = string.Join(",\n", Stat.Select(s => s == default ? "\tnull" : $"\t{s}"));
-                            Log.Error($"Stat[{i}] == default for '{GetType().FullName}', Stat=[\n{allStats}\n]");
+                            ApplicationContext.Context.Value?.Logger.LogError($"Stat[{i}] == default for '{GetType().FullName}', Stat=[\n{allStats}\n]");
                         }
                         statsUpdated |= stat.Update(statTime);
                     }
@@ -357,13 +377,13 @@ public abstract partial class Entity : IEntity
                 }
 
                 //Regen Timers and regen in combat validation
-                if ((timeMs > CombatTimer || Options.Instance.CombatOpts.RegenVitalsInCombat) && timeMs > RegenTimer)
+                if ((timeMs > CombatTimer || Options.Instance.Combat.RegenVitalsInCombat) && timeMs > RegenTimer)
                 {
                     if (!this.IsDead())
                     {
                         ProcessRegen();
                     }
-                    RegenTimer = timeMs + Options.RegenTime;
+                    RegenTimer = timeMs + Options.Instance.Combat.RegenTime;
                 }
 
                 //Status timers
@@ -391,17 +411,17 @@ public abstract partial class Entity : IEntity
     }
 
     /// <summary>
-    ///     Updates the entity's spell cooldown for the specified <paramref name="spellBase"/>.
+    ///     Updates the entity's spell cooldown for the specified <paramref name="spellDescriptor"/>.
     ///     <para> This method is called when a spell is casted by an entity. </para>
     /// </summary>
-    public virtual void UpdateSpellCooldown(SpellBase spellBase, int spellSlot)
+    public virtual void UpdateSpellCooldown(SpellDescriptor spellDescriptor, int spellSlot)
     {
-        if (spellSlot < 0 || spellSlot >= Options.Instance.PlayerOpts.MaxSpells)
+        if (spellSlot < 0 || spellSlot >= Options.Instance.Player.MaxSpells)
         {
             return;
         }
 
-        SpellCooldowns[Spells[spellSlot].SpellId] = Timing.Global.MillisecondsUtc + spellBase.CooldownDuration;
+        SpellCooldowns[Spells[spellSlot].SpellId] = Timing.Global.MillisecondsUtc + spellDescriptor.CooldownDuration;
     }
 
     /// <summary>
@@ -522,7 +542,7 @@ public abstract partial class Entity : IEntity
             return false;
         }
 
-        var enableCrossingDiagonalBlocks = Options.Instance.MapOpts.EnableCrossingDiagonalBlocks;
+        var enableCrossingDiagonalBlocks = Options.Instance.Map.EnableCrossingDiagonalBlocks;
         if (!enableCrossingDiagonalBlocks && direction.IsDiagonal())
         {
             MovementBlockerType componentBlockerType = default;
@@ -621,7 +641,7 @@ public abstract partial class Entity : IEntity
 
     private bool IsBlockedByMapAttribute(
         Direction direction,
-        Intersect.GameObjects.Maps.MapAttribute mapAttribute,
+        MapAttribute mapAttribute,
         out MovementBlockerType blockerType
     )
     {
@@ -1030,7 +1050,7 @@ public abstract partial class Entity : IEntity
 
         if (IsBlocking)
         {
-            time += time * Options.BlockingSlow;
+            time += time * Options.Instance.Combat.BlockingSlow;
         }
 
         return Math.Min(1000f, time);
@@ -1044,14 +1064,14 @@ public abstract partial class Entity : IEntity
     public virtual void Move(Direction moveDir, Player forPlayer, bool doNotUpdate = false,
         bool correction = false)
     {
-        if (Timing.Global.Milliseconds < MoveTimer || (!Options.Combat.MovementCancelsCast && IsCasting))
+        if (Timing.Global.Milliseconds < MoveTimer || (!Options.Instance.Combat.MovementCancelsCast && IsCasting))
         {
             return;
         }
 
         lock (EntityLock)
         {
-            if (this is Player && IsCasting && Options.Combat.MovementCancelsCast)
+            if (this is Player && IsCasting && Options.Instance.Combat.MovementCancelsCast)
             {
                 CastTime = 0;
                 CastTarget = null;
@@ -1099,8 +1119,13 @@ public abstract partial class Entity : IEntity
                     break;
 
                 default:
-                    Log.Warn(
-                        new ArgumentOutOfRangeException(nameof(moveDir), $@"Bogus move attempt in direction {moveDir}.")
+                    ApplicationContext.Context.Value?.Logger.LogWarning(
+                        new ArgumentOutOfRangeException(
+                            nameof(moveDir),
+                            $@"Bogus move attempt in direction {moveDir}."
+                        ),
+                        "Invalid move in {Direction}",
+                        moveDir
                     );
 
                     return;
@@ -1288,9 +1313,9 @@ public abstract partial class Entity : IEntity
     // Change the dimension if the player is on a gateway
     public bool TryToChangeDimension()
     {
-        if (X < Options.MapWidth && X >= 0)
+        if (X < Options.Instance.Map.MapWidth && X >= 0)
         {
-            if (Y < Options.MapHeight && Y >= 0)
+            if (Y < Options.Instance.Map.MapHeight && Y >= 0)
             {
                 var attribute = MapController.Get(MapId).Attributes[X, Y];
                 if (attribute != null && attribute.Type == MapAttributeType.ZDimension)
@@ -1335,8 +1360,8 @@ public abstract partial class Entity : IEntity
                 if (grid.MapIdGrid[x, y] != Guid.Empty &&
                     grid.MapIdGrid[x, y] == target.MapId)
                 {
-                    xDiff = (x - map.MapGridX) * Options.MapWidth + target.X - X;
-                    yDiff = (y - map.MapGridY) * Options.MapHeight + target.Y - Y;
+                    xDiff = (x - map.MapGridX) * Options.Instance.Map.MapWidth + target.X - X;
+                    yDiff = (y - map.MapGridY) * Options.Instance.Map.MapHeight + target.Y - Y;
                     if (Math.Abs(xDiff) > Math.Abs(yDiff))
                     {
                         if (xDiff < 0)
@@ -1371,10 +1396,10 @@ public abstract partial class Entity : IEntity
     //Combat
     public virtual int CalculateAttackTime()
     {
-        return (int)(Options.MaxAttackRate +
-                      (Options.MinAttackRate - Options.MaxAttackRate) *
-                      (((float)Options.MaxStatValue - Stat[(int)Enums.Stat.Speed].Value()) /
-                       Options.MaxStatValue));
+        return (int)(Options.Instance.Combat.MaxAttackRate +
+                      (Options.Instance.Combat.MinAttackRate - Options.Instance.Combat.MaxAttackRate) *
+                      (((float)Options.Instance.Player.MaxStat - Stat[(int)Enums.Stat.Speed].Value()) /
+                       Options.Instance.Player.MaxStat));
     }
 
     public void TryBlock(bool blocking)
@@ -1399,7 +1424,25 @@ public abstract partial class Entity : IEntity
         return 0;
     }
 
-    public virtual bool CanAttack(Entity entity, SpellBase spell) => !IsCasting;
+    public virtual bool CanAttack(Entity entity, SpellDescriptor spell) => !IsCasting;
+
+    public virtual bool CanTarget(Entity? entity)
+    {
+        if (entity == null)
+        {
+            // If it's not an entity we can't target it
+            return false;
+        }
+
+        if (IsAllyOf(entity))
+        {
+            // If it's an ally we can always target them
+            return true;
+        }
+
+        // If it's not an ally we can't target it if it's stealthed
+        return !entity.HasStatusEffect(SpellEffect.Stealth);
+    }
 
     public virtual void ProcessRegen()
     {
@@ -1407,13 +1450,13 @@ public abstract partial class Entity : IEntity
 
     public long GetVital(int vital)
     {
-        return mVitals[vital];
+        return _vitals[vital];
     }
 
     public long[] GetVitals()
     {
         var vitals = new long[Enum.GetValues<Vital>().Length];
-        Array.Copy(mVitals, 0, vitals, 0, Enum.GetValues<Vital>().Length);
+        Array.Copy(_vitals, 0, vitals, 0, Enum.GetValues<Vital>().Length);
 
         return vitals;
     }
@@ -1435,7 +1478,7 @@ public abstract partial class Entity : IEntity
             value = GetMaxVital(vital);
         }
 
-        mVitals[vital] = value;
+        _vitals[vital] = value;
     }
 
     public void SetVital(Vital vital, long value)
@@ -1563,9 +1606,9 @@ public abstract partial class Entity : IEntity
 
     //Attacking with projectile
     public virtual void TryAttack(Entity target,
-        ProjectileBase projectile,
-        SpellBase parentSpell,
-        ItemBase parentItem,
+        ProjectileDescriptor projectile,
+        SpellDescriptor parentSpell,
+        ItemDescriptor parentItem,
         Direction projectileDir)
     {
         if (target is Resource && parentSpell != null)
@@ -1634,7 +1677,7 @@ public abstract partial class Entity : IEntity
             }
         }
 
-        if (targetPlayer == null && !(target is Npc) || target.IsDead())
+        if (targetPlayer == null && !(target is Npc) || target.IsDead)
         {
             return;
         }
@@ -1663,10 +1706,10 @@ public abstract partial class Entity : IEntity
 
                         if (grid.MapIdGrid[x, y] == target.MapId)
                         {
-                            int targetAbsoluteX = target.X + (x * Options.MapWidth);
-                            int targetAbsoluteY = target.Y + (y * Options.MapHeight);
-                            int playerAbsoluteX = X + (Map.MapGridX * Options.MapWidth);
-                            int playerAbsoluteY = Y + (Map.MapGridY * Options.MapHeight);
+                            int targetAbsoluteX = target.X + (x * Options.Instance.Map.MapWidth);
+                            int targetAbsoluteY = target.Y + (y * Options.Instance.Map.MapHeight);
+                            int playerAbsoluteX = X + (Map.MapGridX * Options.Instance.Map.MapWidth);
+                            int playerAbsoluteY = Y + (Map.MapGridY * Options.Instance.Map.MapHeight);
 
                             angle = Math.Atan2(targetAbsoluteY - playerAbsoluteY, targetAbsoluteX - playerAbsoluteX);
                             angleFound = true;
@@ -1714,7 +1757,7 @@ public abstract partial class Entity : IEntity
         }
 
         // If there is knock-back: knock them backwards.
-        if (projectile.Knockback > 0 && ((int)projectileDir < Options.Instance.MapOpts.MovementDirections) && !target.Immunities.Contains(SpellEffect.Knockback))
+        if (projectile.Knockback > 0 && ((int)projectileDir < Options.Instance.Map.MovementDirections) && !target.Immunities.Contains(SpellEffect.Knockback))
         {
             var dash = new Dash(target, projectile.Knockback, projectileDir, false, false, false, false);
         }
@@ -1723,7 +1766,7 @@ public abstract partial class Entity : IEntity
     //Attacking with spell
     public virtual void TryAttack(
         Entity target,
-        SpellBase spellBase,
+        SpellDescriptor spellDescriptor,
         bool onHitTrigger = false,
         bool trapTrigger = false
     )
@@ -1733,7 +1776,7 @@ public abstract partial class Entity : IEntity
             return;
         }
 
-        if (spellBase == null)
+        if (spellDescriptor == null)
         {
             return;
         }
@@ -1742,11 +1785,11 @@ public abstract partial class Entity : IEntity
         var aliveAnimations = new List<KeyValuePair<Guid, Direction>>();
 
         //Only count safe zones and friendly fire if its a dangerous spell! (If one has been used)
-        if (!spellBase.Combat.Friendly &&
-            (spellBase.Combat.TargetType != (int)SpellTargetType.Self || onHitTrigger))
+        if (!spellDescriptor.Combat.Friendly &&
+            (spellDescriptor.Combat.TargetType != (int)SpellTargetType.Self || onHitTrigger))
         {
             //If about to hit self with an unfriendly spell (maybe aoe?) return
-            if (target == this && spellBase.Combat.Effect != SpellEffect.OnHit)
+            if (target == this && spellDescriptor.Combat.Effect != SpellEffect.OnHit)
             {
                 return;
             }
@@ -1754,7 +1797,7 @@ public abstract partial class Entity : IEntity
             //Check for parties and safe zones, friendly fire off (unless its healing)
             if (target is Npc && this is Npc npc)
             {
-                if (!npc.CanNpcCombat(target, spellBase.Combat.Friendly))
+                if (!npc.CanNpcCombat(target, spellDescriptor.Combat.Friendly))
                 {
                     return;
                 }
@@ -1779,7 +1822,7 @@ public abstract partial class Entity : IEntity
                 }
             }
 
-            if (!CanAttack(target, spellBase))
+            if (!CanAttack(target, spellDescriptor))
             {
                 return;
             }
@@ -1791,7 +1834,7 @@ public abstract partial class Entity : IEntity
             {
                 case Player targetPlayer
                     when this is Player player && !IsAllyOf(targetPlayer) && this != target:
-                case Npc _ when this is Npc npc && !npc.CanNpcCombat(target, spellBase.Combat.Friendly):
+                case Npc _ when this is Npc npc && !npc.CanNpcCombat(target, spellDescriptor.Combat.Friendly):
                     return;
             }
 
@@ -1801,56 +1844,56 @@ public abstract partial class Entity : IEntity
             }
         }
 
-        if (spellBase.HitAnimationId != Guid.Empty &&
-            (spellBase.Combat.Effect != SpellEffect.OnHit || onHitTrigger))
+        if (spellDescriptor.HitAnimationId != Guid.Empty &&
+            (spellDescriptor.Combat.Effect != SpellEffect.OnHit || onHitTrigger))
         {
-            deadAnimations.Add(new KeyValuePair<Guid, Direction>(spellBase.HitAnimationId, Direction.Up));
-            aliveAnimations.Add(new KeyValuePair<Guid, Direction>(spellBase.HitAnimationId, Direction.Up));
+            deadAnimations.Add(new KeyValuePair<Guid, Direction>(spellDescriptor.HitAnimationId, Direction.Up));
+            aliveAnimations.Add(new KeyValuePair<Guid, Direction>(spellDescriptor.HitAnimationId, Direction.Up));
         }
 
         var statBuffTime = -1;
-        var expireTime = Timing.Global.Milliseconds + spellBase.Combat.Duration;
+        var expireTime = Timing.Global.Milliseconds + spellDescriptor.Combat.Duration;
         for (var i = 0; i < Enum.GetValues<Stat>().Length; i++)
         {
             target.Stat[i]
                 .AddBuff(
-                    new Buff(spellBase, spellBase.Combat.StatDiff[i], spellBase.Combat.PercentageStatDiff[i], expireTime)
+                    new Buff(spellDescriptor, spellDescriptor.Combat.StatDiff[i], spellDescriptor.Combat.PercentageStatDiff[i], expireTime)
                 );
 
-            if (spellBase.Combat.StatDiff[i] != 0 || spellBase.Combat.PercentageStatDiff[i] != 0)
+            if (spellDescriptor.Combat.StatDiff[i] != 0 || spellDescriptor.Combat.PercentageStatDiff[i] != 0)
             {
-                statBuffTime = spellBase.Combat.Duration;
+                statBuffTime = spellDescriptor.Combat.Duration;
             }
         }
 
         if (statBuffTime == -1)
         {
-            if (spellBase.Combat.HoTDoT && spellBase.Combat.HotDotInterval > 0)
+            if (spellDescriptor.Combat.HoTDoT && spellDescriptor.Combat.HotDotInterval > 0)
             {
-                statBuffTime = spellBase.Combat.Duration;
+                statBuffTime = spellDescriptor.Combat.Duration;
             }
         }
 
-        var damageHealth = spellBase.Combat.VitalDiff[(int)Vital.Health];
-        var damageMana = spellBase.Combat.VitalDiff[(int)Vital.Mana];
+        var damageHealth = spellDescriptor.Combat.VitalDiff[(int)Vital.Health];
+        var damageMana = spellDescriptor.Combat.VitalDiff[(int)Vital.Mana];
 
-        if ((spellBase.Combat.Effect != SpellEffect.OnHit || onHitTrigger) &&
-            spellBase.Combat.Effect != SpellEffect.Shield)
+        if ((spellDescriptor.Combat.Effect != SpellEffect.OnHit || onHitTrigger) &&
+            spellDescriptor.Combat.Effect != SpellEffect.Shield)
         {
             Attack(
-                target, damageHealth, damageMana, (DamageType)spellBase.Combat.DamageType,
-                (Stat)spellBase.Combat.ScalingStat, spellBase.Combat.Scaling, spellBase.Combat.CritChance,
-                spellBase.Combat.CritMultiplier, deadAnimations, aliveAnimations, false
+                target, damageHealth, damageMana, (DamageType)spellDescriptor.Combat.DamageType,
+                (Stat)spellDescriptor.Combat.ScalingStat, spellDescriptor.Combat.Scaling, spellDescriptor.Combat.CritChance,
+                spellDescriptor.Combat.CritMultiplier, deadAnimations, aliveAnimations, false
             );
         }
 
-        if (spellBase.Combat.Effect > 0) //Handle status effects
+        if (spellDescriptor.Combat.Effect > 0) //Handle status effects
         {
             //Check for onhit effect to avoid the onhit effect recycling.
-            if (!(onHitTrigger && spellBase.Combat.Effect == SpellEffect.OnHit))
+            if (!(onHitTrigger && spellDescriptor.Combat.Effect == SpellEffect.OnHit))
             {
                 // If the entity is immune to some status, then just inform the client of such
-                if (target.Immunities.Contains(spellBase.Combat.Effect))
+                if (target.Immunities.Contains(spellDescriptor.Combat.Effect))
                 {
                     PacketSender.SendActionMsg(
                         target, Strings.Combat.ImmuneToEffect, CustomColors.Combat.Status
@@ -1860,8 +1903,8 @@ public abstract partial class Entity : IEntity
                 {
                     // Else, apply the status
                     new Status(
-                        target, this, spellBase, spellBase.Combat.Effect, spellBase.Combat.Duration,
-                        spellBase.Combat.TransformSprite
+                        target, this, spellDescriptor, spellDescriptor.Combat.Effect, spellDescriptor.Combat.Duration,
+                        spellDescriptor.Combat.TransformSprite
                     );
 
                     if (target is Npc npc)
@@ -1870,11 +1913,11 @@ public abstract partial class Entity : IEntity
                     }
 
                     PacketSender.SendActionMsg(
-                        target, Strings.Combat.Status[(int)spellBase.Combat.Effect], CustomColors.Combat.Status
+                        target, Strings.Combat.Status[(int)spellDescriptor.Combat.Effect], CustomColors.Combat.Status
                     );
 
                     //If an onhit or shield status bail out as we don't want to do any damage.
-                    if (spellBase.Combat.Effect == SpellEffect.OnHit || spellBase.Combat.Effect == SpellEffect.Shield)
+                    if (spellDescriptor.Combat.Effect == SpellEffect.OnHit || spellDescriptor.Combat.Effect == SpellEffect.Shield)
                     {
                         Animate(target, aliveAnimations);
 
@@ -1887,9 +1930,9 @@ public abstract partial class Entity : IEntity
         {
             if (statBuffTime > -1)
             {
-                if (!target.Immunities.Contains(spellBase.Combat.Effect))
+                if (!target.Immunities.Contains(spellDescriptor.Combat.Effect))
                 {
-                    new Status(target, this, spellBase, spellBase.Combat.Effect, statBuffTime, "");
+                    new Status(target, this, spellDescriptor, spellDescriptor.Combat.Effect, statBuffTime, "");
 
                     if (target is Npc npc)
                     {
@@ -1904,17 +1947,21 @@ public abstract partial class Entity : IEntity
         }
 
         //Handle DoT/HoT spells]
-        if (spellBase.Combat.HoTDoT)
+        if (spellDescriptor.Combat.HoTDoT)
         {
-            foreach (var dot in target.CachedDots)
+            foreach (var dot in target.CachedDamageOverTimeEffects)
             {
-                if (dot.SpellBase.Id == spellBase.Id && dot.Attacker == this)
+                if (dot.SpellDescriptor.Id == spellDescriptor.Id && dot.Attacker == this)
                 {
                     dot.Expire();
                 }
             }
 
-            new DoT(this, spellBase.Id, target);
+            if (DamageOverTimeEffect.TryCreate(this, spellDescriptor, target, out var damageOverTimeEffect))
+            {
+                target.DamageOverTimeEffects.TryAdd(damageOverTimeEffect.Id, damageOverTimeEffect);
+                target.CachedDamageOverTimeEffects = target.DamageOverTimeEffects.Values.ToArray();
+            }
         }
     }
 
@@ -1942,7 +1989,7 @@ public abstract partial class Entity : IEntity
         double critMultiplier,
         List<KeyValuePair<Guid, Direction>> deadAnimations = null,
         List<KeyValuePair<Guid, Direction>> aliveAnimations = null,
-        ItemBase weapon = null)
+        ItemDescriptor weapon = null)
     {
         if (IsAttacking)
         {
@@ -2059,7 +2106,7 @@ public abstract partial class Entity : IEntity
         //Check on each attack if the enemy is a player AND if they are blocking.
         if (enemy is Player player && player.IsBlocking)
         {
-            if (player.TryGetEquipmentSlot(Options.ShieldIndex, out var slot) && player.TryGetItemAt(slot, out var itm))
+            if (player.TryGetEquipmentSlot(Options.Instance.Equipment.ShieldSlot, out var slot) && player.TryGetItemAt(slot, out var itm))
             {
                 var item = itm.Descriptor;
                 var originalBaseDamage = baseDamage;
@@ -2211,8 +2258,8 @@ public abstract partial class Entity : IEntity
         }
 
         // Set combat timers!
-        enemy.CombatTimer = Timing.Global.Milliseconds + Options.CombatTime;
-        CombatTimer = Timing.Global.Milliseconds + Options.CombatTime;
+        enemy.CombatTimer = Timing.Global.Milliseconds + Options.Instance.Combat.CombatTime;
+        CombatTimer = Timing.Global.Milliseconds + Options.Instance.Combat.CombatTime;
 
         var thisPlayer = this as Player;
 
@@ -2294,7 +2341,7 @@ public abstract partial class Entity : IEntity
             else
             {
                 //PVP Kill common events
-                if (!enemy.Dead && enemy is Player enemyPlayer && this is Player)
+                if (!enemy.IsDead && enemy is Player enemyPlayer && this is Player)
                 {
                     thisPlayer.StartCommonEventsWithTrigger(CommonEventTrigger.PVPKill, "", enemy.Name);
                     enemyPlayer.StartCommonEventsWithTrigger(CommonEventTrigger.PVPDeath, "", this.Name);
@@ -2342,7 +2389,7 @@ public abstract partial class Entity : IEntity
 
     protected virtual void CheckForOnhitAttack(Entity enemy, bool isAutoAttack)
     {
-        if (isAutoAttack && !enemy.IsDead()) //Ignore spell damage.
+        if (isAutoAttack && !enemy.IsDead) //Ignore spell damage.
         {
             foreach (var status in CachedStatuses)
             {
@@ -2458,7 +2505,13 @@ public abstract partial class Entity : IEntity
     {
     }
 
-    public virtual bool CanCastSpell(SpellBase spell, Entity target, bool checkVitalReqs, out SpellCastFailureReason reason)
+    public virtual bool CanCastSpell(
+        SpellDescriptor spell,
+        Entity target,
+        bool checkVitalReqs,
+        bool softRetargetOnSelfCast,
+        out SpellCastFailureReason reason
+    )
     {
         // Is this a valid spell?
         if (spell == null)
@@ -2567,12 +2620,12 @@ public abstract partial class Entity : IEntity
 
     public virtual void CastSpell(Guid spellId, int spellSlot = -1)
     {
-        if (!SpellBase.TryGet(spellId, out var spellBase))
+        if (!SpellDescriptor.TryGet(spellId, out var spellBase))
         {
             return;
         }
 
-        if (!CanCastSpell(spellBase, CastTarget, false, out _))
+        if (!CanCastSpell(spellBase, CastTarget, false, SoftRetargetOnSelfCast, out _))
         {
             return;
         }
@@ -2784,7 +2837,7 @@ public abstract partial class Entity : IEntity
         Entity spellTarget
     )
     {
-        var spellBase = SpellBase.Get(spellId);
+        var spellBase = SpellDescriptor.Get(spellId);
         if (spellBase != null)
         {
             var startMap = MapController.Get(startMapId);
@@ -2835,8 +2888,8 @@ public abstract partial class Entity : IEntity
                         int newX = x + row;
                         int newY = y + col;
 
-                        if (newX >= 0 && newX <= Options.MapWidth &&
-                            newY >= 0 && newY <= Options.MapHeight &&
+                        if (newX >= 0 && newX <= Options.Instance.Map.MapWidth &&
+                            newY >= 0 && newY <= Options.Instance.Map.MapHeight &&
                             !instance.TileBlocked(newX, newY))
                         {
                             validPosition.Add(new int[] { newX, newY });
@@ -2861,8 +2914,8 @@ public abstract partial class Entity : IEntity
                         int newY = y + col;
 
                         // Tile must not be the target position
-                        if (newX >= 0 && newX <= Options.MapWidth &&
-                            newY >= 0 && newY <= Options.MapHeight &&
+                        if (newX >= 0 && newX <= Options.Instance.Map.MapWidth &&
+                            newY >= 0 && newY <= Options.Instance.Map.MapHeight &&
                             !(x + row == x && y + col == y) &&
                             !instance.TileBlocked(newX, newY))
                         {
@@ -2921,7 +2974,7 @@ public abstract partial class Entity : IEntity
             return true;
         }
 
-        if (Options.Instance.MapOpts.EnableDiagonalMovement)
+        if (Options.Instance.Map.EnableDiagonalMovement)
         {
             myTile.Translate(-2, -1); // Target UpLeft
             if (myTile.Matches(enemyTile))
@@ -2965,14 +3018,14 @@ public abstract partial class Entity : IEntity
             return false;
         }
 
-        var originY = Y + originMapController.MapGridY * Options.MapHeight;
-        var originX = X + originMapController.MapGridX * Options.MapWidth;
-        var targetY = target.Y + targetMapController.MapGridY * Options.MapHeight;
-        var targetX = target.X + targetMapController.MapGridX * Options.MapWidth;
+        var originY = Y + originMapController.MapGridY * Options.Instance.Map.MapHeight;
+        var originX = X + originMapController.MapGridX * Options.Instance.Map.MapWidth;
+        var targetY = target.Y + targetMapController.MapGridY * Options.Instance.Map.MapHeight;
+        var targetX = target.X + targetMapController.MapGridX * Options.Instance.Map.MapWidth;
 
         var xDiff = targetX - originX;
         var yDiff = targetY - originY;
-        var diagonalMovement = Options.Instance.MapOpts.EnableDiagonalMovement;
+        var diagonalMovement = Options.Instance.Map.EnableDiagonalMovement;
 
         switch (xDiff)
         {
@@ -3011,12 +3064,12 @@ public abstract partial class Entity : IEntity
         ) //Make sure both maps exist and that they are in the same dimension
         {
             //Calculate World Tile of Me
-            var x1 = xTileA + mapA.MapGridX * Options.MapWidth;
-            var y1 = yTileA + mapA.MapGridY * Options.MapHeight;
+            var x1 = xTileA + mapA.MapGridX * Options.Instance.Map.MapWidth;
+            var y1 = yTileA + mapA.MapGridY * Options.Instance.Map.MapHeight;
 
             //Calculate world tile of target
-            var x2 = xTileB + mapB.MapGridX * Options.MapWidth;
-            var y2 = yTileB + mapB.MapGridY * Options.MapHeight;
+            var x2 = xTileB + mapB.MapGridX * Options.Instance.Map.MapWidth;
+            var y2 = yTileB + mapB.MapGridY * Options.Instance.Map.MapHeight;
 
             return (int)Math.Sqrt(Math.Pow(x1 - x2, 2) + Math.Pow(y1 - y2, 2));
         }
@@ -3052,16 +3105,21 @@ public abstract partial class Entity : IEntity
             return Dir;
         }
 
+        if (en.CachedStatuses.Any(status => status.Type == SpellEffect.Stealth))
+        {
+            return Dir;
+        }
+
         if (!MapController.TryGet(MapId, out var originMapController) ||
             !MapController.TryGet(en.MapId, out var targetMapController))
         {
             return Dir;
         }
 
-        var originY = Y + originMapController.MapGridY * Options.MapHeight;
-        var originX = X + originMapController.MapGridX * Options.MapWidth;
-        var targetY = en.Y + targetMapController.MapGridY * Options.MapHeight;
-        var targetX = en.X + targetMapController.MapGridX * Options.MapWidth;
+        var originY = Y + originMapController.MapGridY * Options.Instance.Map.MapHeight;
+        var originX = X + originMapController.MapGridX * Options.Instance.Map.MapWidth;
+        var targetY = en.Y + targetMapController.MapGridY * Options.Instance.Map.MapHeight;
+        var targetX = en.X + targetMapController.MapGridX * Options.Instance.Map.MapWidth;
 
         var yDiff = originY - targetY;
         var xDiff = originX - targetX;
@@ -3073,7 +3131,7 @@ public abstract partial class Entity : IEntity
         }
 
         // If X offset is 0 or If diagonal movement is disabled, direction is determined by Y offset.
-        if (xDiff == 0 || !Options.Instance.MapOpts.EnableDiagonalMovement)
+        if (xDiff == 0 || !Options.Instance.Map.EnableDiagonalMovement)
         {
             return yDiff > 0 ? Direction.Up : Direction.Down;
         }
@@ -3104,10 +3162,10 @@ public abstract partial class Entity : IEntity
         }
 
         // Adjust coordinates based on map grid positions.
-        var originY = Y + originMapController.MapGridY * Options.MapHeight;
-        var originX = X + originMapController.MapGridX * Options.MapWidth;
-        var targetY = y + targetMapController.MapGridY * Options.MapHeight;
-        var targetX = x + targetMapController.MapGridX * Options.MapWidth;
+        var originY = Y + originMapController.MapGridY * Options.Instance.Map.MapHeight;
+        var originX = X + originMapController.MapGridX * Options.Instance.Map.MapWidth;
+        var targetY = y + targetMapController.MapGridY * Options.Instance.Map.MapHeight;
+        var targetX = x + targetMapController.MapGridX * Options.Instance.Map.MapWidth;
 
         // Calculate the absolute differences in coordinates.
         var yDiff = Math.Abs(originY - targetY);
@@ -3115,13 +3173,13 @@ public abstract partial class Entity : IEntity
 
         // Check if entities are one block away.
         return (xDiff == 1 && yDiff == 0) || (xDiff == 0 && yDiff == 1) ||
-               (Options.Instance.MapOpts.EnableDiagonalMovement && xDiff == 1 && yDiff == 1);
+               (Options.Instance.Map.EnableDiagonalMovement && xDiff == 1 && yDiff == 1);
     }
 
     //Spawning/Dying
     public virtual void Die(bool dropItems = true, Entity killer = null)
     {
-        if (Dead || Items == null)
+        if (IsDead || Items == null)
         {
             return;
         }
@@ -3133,7 +3191,7 @@ public abstract partial class Entity : IEntity
         {
             var lootGenerated = new List<Player>();
             // If this is an NPC, drop loot for every single player that participated in the fight.
-            if (this is Npc npc && npc.Base.IndividualizedLoot)
+            if (this is Npc npc && npc.Descriptor.IndividualizedLoot)
             {
                 // Generate loot for every player that has helped damage this monster, as well as their party members.
                 // Keep track of who already got loot generated for them though, or this gets messy!
@@ -3147,7 +3205,7 @@ public abstract partial class Entity : IEntity
                         var party = player.Party.ToArray();
 
                         // is this player in a party?
-                        if (party.Length > 0 && Options.Instance.LootOpts.IndividualizedLootAutoIncludePartyMembers)
+                        if (party.Length > 0 && Options.Instance.Loot.IndividualizedLootAutoIncludePartyMembers)
                         {
                             // They are, so check for all party members and drop if still eligible!
                             foreach (var partyMember in party)
@@ -3188,16 +3246,16 @@ public abstract partial class Entity : IEntity
             instance.ClearEntityTargetsOf(this);
         }
 
-        DoT?.Clear();
-        CachedDots = new DoT[0];
+        DamageOverTimeEffects?.Clear();
+        CachedDamageOverTimeEffects = new DamageOverTimeEffect[0];
         Statuses?.Clear();
         CachedStatuses = new Status[0];
         Stat?.ToList().ForEach(stat => stat?.Reset());
 
-        Dead = true;
+        IsDead = true;
     }
 
-    protected virtual bool ShouldDropItem(Entity killer, ItemBase itemDescriptor, Item item, float dropRateModifier, out Guid lootOwner)
+    protected virtual bool ShouldDropItem(Entity killer, ItemDescriptor itemDescriptor, Item item, float dropRateModifier, out Guid lootOwner)
     {
         lootOwner = default;
 
@@ -3217,7 +3275,7 @@ public abstract partial class Entity : IEntity
 
     protected virtual void DropItems(Entity killer, bool sendUpdate = true)
     {
-        if (this is Player && Options.Instance.MapOpts.DisablePlayerDropsInArenaMaps && Map.ZoneType == MapZone.Arena)
+        if (this is Player && Options.Instance.Map.DisablePlayerDropsInArenaMaps && Map.ZoneType == MapZone.Arena)
         {
             return;
         }
@@ -3233,7 +3291,7 @@ public abstract partial class Entity : IEntity
             // Don't mess with the actual object.
             var drop = slot.Clone();
 
-            var itemDescriptor = ItemBase.Get(drop.ItemId);
+            var itemDescriptor = ItemDescriptor.Get(drop.ItemId);
             if (itemDescriptor == default)
             {
                 continue;
@@ -3272,7 +3330,15 @@ public abstract partial class Entity : IEntity
             RestoreVital((Vital)i);
         }
 
-        Dead = false;
+        // Remove any damage over time effects
+        DamageOverTimeEffects.Clear();
+        CachedDamageOverTimeEffects = [];
+        Statuses.Clear();
+        CachedStatuses = [];
+
+        CombatTimer = 0;
+
+        IsDead = false;
     }
 
     //Empty virtual functions for players
@@ -3309,9 +3375,7 @@ public abstract partial class Entity : IEntity
         packet.Color = Color;
         packet.Face = Face;
         packet.Level = Level;
-        packet.X = (byte)X;
-        packet.Y = (byte)Y;
-        packet.Z = (byte)Z;
+        packet.Position = new Vector3(X, Y, Z);
         packet.Dir = (byte)Dir;
         packet.Passable = Passable;
         packet.HideName = HideName;

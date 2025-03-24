@@ -6,6 +6,7 @@ using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.General;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
 
 namespace Intersect.Client.Interface.Game.Trades;
@@ -45,7 +46,7 @@ public partial class TradingWindow
         );
 
         mTradeWindow.DisableResizing();
-        Interface.InputBlockingElements.Add(mTradeWindow);
+        Interface.InputBlockingComponents.Add(mTradeWindow);
 
         mYourOffer = new Label(mTradeWindow, "YourOfferLabel")
         {
@@ -83,21 +84,21 @@ public partial class TradingWindow
         mContextMenu.IsHidden = true;
         mContextMenu.IconMarginDisabled = true;
         //TODO: Is this a memory leak?
-        mContextMenu.Children.Clear();
+        mContextMenu.ClearChildren();
         mWithdrawContextItem = mContextMenu.AddItem(Strings.TradeContextMenu.Withdraw);
         mWithdrawContextItem.Clicked += MWithdrawContextItem_Clicked;
         mContextMenu.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
     }
 
-    private void MWithdrawContextItem_Clicked(Base sender, ClickedEventArgs arguments)
+    private void MWithdrawContextItem_Clicked(Base sender, MouseButtonState arguments)
     {
         var slot = (int) sender.Parent.UserData;
-        Globals.Me.TryRevokeItem(slot);
+        Globals.Me.TryCancelOfferToTradeItem(slot);
     }
 
     public void OpenContextMenu(int side, int slot)
     {
-        var item = ItemBase.Get(Globals.Trade[side, slot].ItemId);
+        var item = ItemDescriptor.Get(Globals.Trade[side, slot].ItemId);
 
         // No point showing a menu for blank space.
         if (item == null)
@@ -150,11 +151,11 @@ public partial class TradingWindow
 
         for (var n = 0; n < 2; n++)
         {
-            for (var i = 0; i < Options.MaxInvItems; i++)
+            for (var i = 0; i < Options.Instance.Player.MaxInventory; i++)
             {
                 if (Globals.Trade[n, i] != null && Globals.Trade[n, i].ItemId != Guid.Empty)
                 {
-                    var item = ItemBase.Get(Globals.Trade[n, i].ItemId);
+                    var item = ItemDescriptor.Get(Globals.Trade[n, i].ItemId);
                     if (item == null)
                     {
                         continue;
@@ -199,8 +200,8 @@ public partial class TradingWindow
     {
         var rect = new FloatRect()
         {
-            X = mTradeWindow.LocalPosToCanvas(new Point(0, 0)).X - sItemXPadding / 2,
-            Y = mTradeWindow.LocalPosToCanvas(new Point(0, 0)).Y - sItemYPadding / 2,
+            X = mTradeWindow.ToCanvas(new Point(0, 0)).X - sItemXPadding / 2,
+            Y = mTradeWindow.ToCanvas(new Point(0, 0)).Y - sItemYPadding / 2,
             Width = mTradeWindow.Width + sItemXPadding,
             Height = mTradeWindow.Height + sItemYPadding
         };
@@ -209,7 +210,7 @@ public partial class TradingWindow
     }
 
     //Trade the item
-    void trade_Clicked(Base sender, ClickedEventArgs arguments)
+    void trade_Clicked(Base sender, MouseButtonState arguments)
     {
         mTrade.Text = Strings.Trading.Pending;
         mTrade.IsDisabled = true;

@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
-using Intersect.GameObjects;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.Server.Entities;
-
 using Newtonsoft.Json;
 
 namespace Intersect.Server.Database.PlayerData.Players;
@@ -18,7 +17,7 @@ public partial class PlayerVariable : Variable, IPlayerOwned
     }
 
     [NotMapped]
-    public string VariableName => PlayerVariableBase.GetName(VariableId);
+    public string VariableName => PlayerVariableDescriptor.GetName(VariableId);
 
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     [JsonIgnore]

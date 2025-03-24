@@ -1,11 +1,11 @@
 ﻿using CommandLine;
-
 using Intersect.Factories;
 using Intersect.Plugins.Helpers;
 using Intersect.Plugins.Interfaces;
 using Intersect.Properties;
 using System.Globalization;
 using System.Reflection;
+using Intersect.Framework.Reflection;
 
 namespace Intersect.Plugins.Contexts;
 
@@ -17,35 +17,37 @@ public sealed partial class PluginBootstrapContext : IPluginBootstrapContext
     /// <summary>
     /// Creates a <see cref="IFactory{TValue}"/> for <see cref="IPluginBootstrapContext"/>.
     /// </summary>
+    /// <param name="hostPluginContextType">The <see cref="System.Type"/> of the plugin context that will be created by the plugin host.</param>
     /// <param name="args">the startup arguments that were parsed</param>
     /// <param name="parser">the <see cref="Parser"/> used to parse <paramref name="args"/></param>
     /// <param name="packetHelper"></param>
     /// <returns>a <see cref="IFactory{TValue}"/> instance</returns>
     public static IFactory<IPluginBootstrapContext>
-        CreateFactory(string[] args, Parser parser, IPacketHelper packetHelper) => new Factory(args, parser, packetHelper);
+        CreateFactory(Type hostPluginContextType, string[] args, Parser parser, IPacketHelper packetHelper) => new Factory(hostPluginContextType, args, parser, packetHelper);
 
     /// <summary>
     /// Factory implementation for <see cref="IPluginBootstrapContext"/>.
     /// </summary>
     private sealed partial class Factory : IFactory<IPluginBootstrapContext>
     {
-        private readonly string[] mArgs;
-
-        private readonly Parser mParser;
-
-        private readonly IPacketHelper mPacketHelper;
+        private readonly Type _hostPluginContextType;
+        private readonly string[] _args;
+        private readonly Parser _parser;
+        private readonly IPacketHelper _packetHelper;
 
         /// <summary>
         /// Initializes a <see cref="Factory"/> for <see cref="IPluginBootstrapContext"/>.
         /// </summary>
+        /// <param name="hostPluginContextType">The <see cref="System.Type"/> of the plugin context that will be created by the plugin host.</param>
         /// <param name="args">the startup arguments that were parsed</param>
         /// <param name="parser">the <see cref="Parser"/> used to parse <paramref name="args"/></param>
         /// <param name="packetHelper"></param>
-        public Factory(string[] args, Parser parser, IPacketHelper packetHelper)
+        public Factory(Type hostPluginContextType, string[] args, Parser parser, IPacketHelper packetHelper)
         {
-            mArgs = args;
-            mParser = parser;
-            mPacketHelper = packetHelper;
+            _hostPluginContextType = hostPluginContextType;
+            _args = args;
+            _parser = parser;
+            _packetHelper = packetHelper;
         }
 
         /// <inheritdoc />
@@ -53,20 +55,26 @@ public sealed partial class PluginBootstrapContext : IPluginBootstrapContext
         {
             if (args.Length != 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(args), $"{nameof(args)} should have 1 argument.");
-            }
-
-            if (!(args[0] is Plugin plugin))
-            {
+                var qualifiedPluginTypeName = typeof(Plugin).GetName(qualified: true);
                 throw new ArgumentException(
-                    string.Format(
-                        CultureInfo.CurrentCulture, ExceptionMessages.PluginBootstrapContextMissingPluginArgument,
-                        nameof(Plugin)
-                    ), nameof(args)
+                    $"`{nameof(args)}` should have 1 exactly argument (a {qualifiedPluginTypeName}).",
+                    nameof(args)
                 );
             }
 
-            return new PluginBootstrapContext(mArgs, mParser, plugin, mPacketHelper);
+            if (args[0] is not Plugin plugin)
+            {
+                throw new ArgumentException(
+                    string.Format(
+                        CultureInfo.CurrentUICulture,
+                        ExceptionMessages.PluginBootstrapContextMissingPluginArgument,
+                        nameof(Plugin)
+                    ),
+                    nameof(args)
+                );
+            }
+
+            return new PluginBootstrapContext(_hostPluginContextType, _args, _parser, plugin, _packetHelper);
         }
     }
 
@@ -87,14 +95,17 @@ public sealed partial class PluginBootstrapContext : IPluginBootstrapContext
     /// <inheritdoc />
     public IEmbeddedResourceHelper EmbeddedResources { get; }
 
+    public Type HostPluginContextType { get; }
+
     /// <inheritdoc />
     public ILoggingHelper Logging => Plugin.Logging;
 
     /// <inheritdoc />
     public IManifestHelper Manifest => Plugin.Manifest;
 
-    private PluginBootstrapContext(string[] args, Parser parser, Plugin plugin, IPacketHelper parentPacketHelper)
+    private PluginBootstrapContext(Type hostPluginContextType, string[] args, Parser parser, Plugin plugin, IPacketHelper parentPacketHelper)
     {
+        HostPluginContextType = hostPluginContextType;
         Plugin = plugin;
 
         CommandLine = new CommandLineHelper(plugin.Logging.Plugin, args, parser);

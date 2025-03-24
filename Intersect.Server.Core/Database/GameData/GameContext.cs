@@ -1,8 +1,15 @@
 using Intersect.Extensions;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Crafting;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
+using Intersect.Framework.Core.GameObjects.NPCs;
+using Intersect.Framework.Core.GameObjects.PlayerClass;
+using Intersect.Framework.Core.GameObjects.Resources;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Crafting;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Maps.MapList;
 using Intersect.Server.Database.GameData.Migrations;
 using Intersect.Server.Maps;
 using Microsoft.EntityFrameworkCore;
@@ -18,21 +25,21 @@ public abstract partial class GameContext : IntersectDbContext<GameContext>, IGa
     protected GameContext(DatabaseContextOptions databaseContextOptions) : base(databaseContextOptions) { }
 
     //Animations
-    public DbSet<AnimationBase> Animations { get; set; }
+    public DbSet<AnimationDescriptor> Animations { get; set; }
 
     //Crafting
-    public DbSet<CraftBase> Crafts { get; set; }
+    public DbSet<CraftingRecipeDescriptor> Crafts { get; set; }
 
-    public DbSet<CraftingTableBase> CraftingTables { get; set; }
+    public DbSet<CraftingTableDescriptor> CraftingTables { get; set; }
 
     //Classes
-    public DbSet<ClassBase> Classes { get; set; }
+    public DbSet<ClassDescriptor> Classes { get; set; }
 
     //Events
-    public DbSet<EventBase> Events { get; set; }
+    public DbSet<EventDescriptor> Events { get; set; }
 
     //Items
-    public DbSet<ItemBase> Items { get; set; }
+    public DbSet<ItemDescriptor> Items { get; set; }
 
     //Equipment Properties of Items
     public DbSet<EquipmentProperties> Items_EquipmentProperties { get; set; }
@@ -43,37 +50,37 @@ public abstract partial class GameContext : IntersectDbContext<GameContext>, IGa
     public DbSet<MapList> MapFolders { get; set; }
 
     //NPCs
-    public DbSet<NpcBase> Npcs { get; set; }
+    public DbSet<NPCDescriptor> Npcs { get; set; }
 
     //Projectiles
-    public DbSet<ProjectileBase> Projectiles { get; set; }
+    public DbSet<ProjectileDescriptor> Projectiles { get; set; }
 
     //Quests
-    public DbSet<QuestBase> Quests { get; set; }
+    public DbSet<QuestDescriptor> Quests { get; set; }
 
     //Resources
-    public DbSet<ResourceBase> Resources { get; set; }
+    public DbSet<ResourceDescriptor> Resources { get; set; }
 
     //Shops
-    public DbSet<ShopBase> Shops { get; set; }
+    public DbSet<ShopDescriptor> Shops { get; set; }
 
     //Spells
-    public DbSet<SpellBase> Spells { get; set; }
+    public DbSet<SpellDescriptor> Spells { get; set; }
 
     //Variables
-    public DbSet<PlayerVariableBase> PlayerVariables { get; set; }
+    public DbSet<PlayerVariableDescriptor> PlayerVariables { get; set; }
 
-    public DbSet<ServerVariableBase> ServerVariables { get; set; }
+    public DbSet<ServerVariableDescriptor> ServerVariables { get; set; }
 
-    public DbSet<GuildVariableBase> GuildVariables { get; set; }
+    public DbSet<GuildVariableDescriptor> GuildVariables { get; set; }
 
-    public DbSet<UserVariableBase> UserVariables { get; set; }
+    public DbSet<UserVariableDescriptor> UserVariables { get; set; }
 
     //Tilesets
-    public DbSet<TilesetBase> Tilesets { get; set; }
+    public DbSet<TilesetDescriptor> Tilesets { get; set; }
 
     //Time
-    public DbSet<TimeBase> Time { get; set; }
+    public DbSet<DaylightCycleDescriptor> Time { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -109,13 +116,13 @@ public abstract partial class GameContext : IntersectDbContext<GameContext>, IGa
 
     internal static partial class Queries
     {
-        internal static readonly Func<Guid, ServerVariableBase> ServerVariableById =
-            (Guid id) => (ServerVariableBase)ServerVariableBase.Lookup.FirstOrDefault(variable => variable.Key == id).Value;
+        internal static readonly Func<Guid, ServerVariableDescriptor> ServerVariableById =
+            (Guid id) => (ServerVariableDescriptor)ServerVariableDescriptor.Lookup.FirstOrDefault(variable => variable.Key == id).Value;
 
-        internal static readonly Func<string, ServerVariableBase> ServerVariableByName =
-            (string name) => (ServerVariableBase)ServerVariableBase.Lookup.FirstOrDefault(variable => string.Equals(variable.Value.Name, name, StringComparison.OrdinalIgnoreCase)).Value;
+        internal static readonly Func<string, ServerVariableDescriptor> ServerVariableByName =
+            (string name) => (ServerVariableDescriptor)ServerVariableDescriptor.Lookup.FirstOrDefault(variable => string.Equals(variable.Value.Name, name, StringComparison.OrdinalIgnoreCase)).Value;
 
-        internal static readonly Func<int, int, IEnumerable<ServerVariableBase>> ServerVariables =
-            (int page, int count) => ServerVariableBase.Lookup.Select(v => (ServerVariableBase)v.Value).OrderBy(v => v.Id.ToString()).Skip(page * count).Take(count);
+        internal static readonly Func<int, int, IEnumerable<ServerVariableDescriptor>> ServerVariables =
+            (int page, int count) => ServerVariableDescriptor.Lookup.Select(v => (ServerVariableDescriptor)v.Value).OrderBy(v => v.Id.ToString()).Skip(page * count).Take(count);
     }
 }

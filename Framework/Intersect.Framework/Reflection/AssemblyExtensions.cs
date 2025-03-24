@@ -1,6 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection;
 using System.Resources;
+using System.Text.RegularExpressions;
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace Intersect.Framework.Reflection;
@@ -47,6 +50,55 @@ public static partial class AssemblyExtensions
         throw new InvalidOperationException(
             string.Format(ReflectionStrings.AssemblyExtensions_FailedToCreateInstance, typeof(TParentType).FullName)
         );
+    }
+
+    public static string GetMetadataVersion(this Assembly assembly, bool excludeCommitSha = false)
+    {
+        var assemblyName = assembly.GetName();
+        return GetMetadataVersionFrom(assembly, assemblyName, excludeCommitSha);
+    }
+
+    public static string GetMetadataVersionName(this Assembly assembly, bool excludeCommitSha = false) =>
+        $"v{GetMetadataVersion(assembly: assembly, excludeCommitSha: excludeCommitSha)}";
+
+    private static string GetMetadataVersionFrom(Assembly assembly, AssemblyName assemblyName, bool excludeCommitSha)
+    {
+        var assemblyVersion = assemblyName.Version ?? new Version(0, 0, 0, 0);
+        var assemblyMetadata = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .ToDictionary(attribute => attribute.Key, attribute => attribute.Value);
+
+        if (assemblyMetadata.TryGetValue("BuildNumber", out var rawBuildNumber))
+        {
+            if (int.TryParse(rawBuildNumber, CultureInfo.InvariantCulture, out var buildNumber))
+            {
+                assemblyVersion = new Version(
+                    assemblyVersion.Major,
+                    assemblyVersion.Minor,
+                    assemblyVersion.Build,
+                    buildNumber
+                );
+            }
+        }
+
+        var metadataVersion = $"{assemblyVersion.ToString()}";
+        if (assemblyMetadata.TryGetValue("VersionNameSuffix", out var versionNameSuffix))
+        {
+            metadataVersion = $"{metadataVersion}-{versionNameSuffix}";
+        }
+
+        if (!excludeCommitSha && assemblyMetadata.TryGetValue("CommitSha", out var commitSha))
+        {
+            metadataVersion = $"{metadataVersion}+{commitSha}";
+        }
+
+        return metadataVersion;
+    }
+
+    public static string GetMetadataName(this Assembly assembly, bool excludeCommitSha = false)
+    {
+        var assemblyName = assembly.GetName();
+        var prettyName = $"{assemblyName.Name} v{GetMetadataVersionFrom(assembly, assemblyName, excludeCommitSha)}";
+        return prettyName;
     }
 
     public static string GetVersionName(this Assembly assembly)
@@ -100,6 +152,20 @@ public static partial class AssemblyExtensions
 
     public static IEnumerable<Type> FindValueSubtypesOf<TParentType>(this Assembly assembly) =>
         assembly.FindValueSubtypesOf(typeof(TParentType));
+
+    public static string[] FindMatchingResources(this Assembly assembly, string search)
+    {
+        return assembly.IsDynamic
+            ? []
+            : assembly.GetManifestResourceNames().Where(name => name.Contains(search)).ToArray();
+    }
+
+    public static string[] FindMatchingResources(this Assembly assembly, Regex regex)
+    {
+        return assembly.IsDynamic
+            ? []
+            : assembly.GetManifestResourceNames().Where(name => regex.IsMatch(name)).ToArray();
+    }
 
     public static bool TryFindResource(
         this Assembly assembly,

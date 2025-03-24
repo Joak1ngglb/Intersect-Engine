@@ -1,9 +1,11 @@
 using Intersect.Client.Core;
 using Intersect.Client.Framework.File_Management;
+using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Interface.Shared;
+using Intersect.Framework;
+using Intersect.Framework.Core;
 using Intersect.Network;
-using Intersect.Utilities;
 
 namespace Intersect.Client.Interface.Menu;
 
@@ -11,46 +13,103 @@ public partial class MainMenu : MutableInterface
 {
     private readonly Canvas _menuCanvas;
     private readonly MainMenuWindow _mainMenuWindow;
-    private readonly LoginWindow _loginWindow;
-    private readonly RegistrationWindow _registerWindow;
-    private readonly ForgotPasswordWindow _forgotPasswordWindow;
-    private readonly ResetPasswordWindow _resetPasswordWindow;
-    private readonly CreateCharacterWindow _createCharacterWindow;
-    private readonly SettingsWindow _settingsWindow;
-    private readonly CreditsWindow _creditsWindow;
 
-    public readonly SelectCharacterWindow SelectCharacterWindow;
+    private bool _shouldOpenCharacterCreation;
+    private bool _shouldOpenCharacterSelection;
+    private bool _forceCharacterCreation;
 
-    //Character creation feild check
-    private bool mShouldOpenCharacterCreation;
-    private bool mShouldOpenCharacterSelection;
+    private string? _username;
 
     // Network status
-    public static NetworkStatus ActiveNetworkStatus;
+    public static NetworkStatus ActiveNetworkStatus { get; set; }
+
     public delegate void NetworkStatusHandler();
-    public static NetworkStatusHandler? NetworkStatusChanged;
+
+    public static event NetworkStatusHandler? NetworkStatusChanged;
     internal static event EventHandler? ReceivedConfiguration;
 
     public static long LastNetworkStatusChangeTime { get; private set; }
 
+    private LoginWindow? _loginWindow;
+
+    private LoginWindow LoginWindow => _loginWindow ??= new LoginWindow(_menuCanvas, this)
+    {
+        Alignment = [Alignments.CenterH],
+        Y = 480,
+        IsVisibleInTree = false,
+    };
+
+    private RegistrationWindow? _registrationWindow;
+
+    private RegistrationWindow RegistrationWindow => _registrationWindow ??= new RegistrationWindow(_menuCanvas, this)
+    {
+        Alignment = [Alignments.CenterH],
+        Y = 480,
+        IsVisibleInTree = false,
+    };
+
+    private ForgotPasswordWindow? _forgotPasswordWindow;
+
+    private ForgotPasswordWindow ForgotPasswordWindow => _forgotPasswordWindow ??= new ForgotPasswordWindow(_menuCanvas)
+    {
+        // Alignment = [Alignments.CenterH],
+        // Y = 480,
+        // IsVisible = false,
+    };
+
+    private PasswordChangeWindow? _passwordChangeWindow;
+
+    private CharacterCreationWindow? _characterCreationWindow;
+
+    private CharacterCreationWindow CharacterCreationWindow => _characterCreationWindow ??= new CharacterCreationWindow(_menuCanvas, this, SelectCharacterWindow)
+    {
+        Alignment = [Alignments.CenterH],
+        Y = 480,
+        IsVisibleInTree = false,
+    };
+
+    private CreditsWindow? _creditsWindow;
+
+    private CreditsWindow CreditsWindow => _creditsWindow ??= new CreditsWindow(_menuCanvas, this)
+    {
+        Alignment = [Alignments.CenterH],
+        Y = 480,
+        IsVisibleInTree = false,
+    };
+
+    private SelectCharacterWindow? _selectCharacterWindow;
+
+    public SelectCharacterWindow SelectCharacterWindow => _selectCharacterWindow ??=
+        new SelectCharacterWindow(_menuCanvas, this)
+        {
+            Alignment = [Alignments.CenterH],
+            Y = 480,
+            IsVisibleInTree = false,
+        };
+
+    private SettingsWindow? _settingsWindow;
+
+    private SettingsWindow SettingsWindow => _settingsWindow ??= new SettingsWindow(_menuCanvas)
+    {
+        Alignment = [Alignments.CenterH],
+        Y = 480,
+        IsVisibleInTree = false,
+    };
+
     public MainMenu(Canvas menuCanvas) : base(menuCanvas)
     {
         _menuCanvas = menuCanvas;
-        _mainMenuWindow = new MainMenuWindow(_menuCanvas, this);
+        _mainMenuWindow = new MainMenuWindow(_menuCanvas, this)
+        {
+            Alignment = [Alignments.CenterH],
+            Y = 480,
+            IsVisibleInTree = true,
+        };
 
         var logo = new ImagePanel(menuCanvas, "Logo");
-        logo.LoadJsonUi(GameContentManager.UI.Menu, Graphics.Renderer?.GetResolutionString());
+        logo.LoadJsonUi(GameContentManager.UI.Menu, Graphics.Renderer.GetResolutionString());
 
         NetworkStatusChanged += HandleNetworkStatusChanged;
-
-        _loginWindow = new LoginWindow(_menuCanvas, this);
-        _registerWindow = new RegistrationWindow(_menuCanvas, this);
-        _forgotPasswordWindow = new ForgotPasswordWindow(_menuCanvas, this);
-        _resetPasswordWindow = new ResetPasswordWindow(_menuCanvas, this);
-        SelectCharacterWindow = new SelectCharacterWindow(_menuCanvas, this);
-        _createCharacterWindow = new CreateCharacterWindow(_menuCanvas, this, SelectCharacterWindow);
-        _settingsWindow = new SettingsWindow(_menuCanvas, this, null);
-        _creditsWindow = new CreditsWindow(_menuCanvas, this);
     }
 
     ~MainMenu()
@@ -65,55 +124,62 @@ public partial class MainMenu : MutableInterface
     }
 
     //Methods
-    public void Update()
+    public void Update(TimeSpan elapsed, TimeSpan total)
     {
-        if (_mainMenuWindow.IsVisible)
+        if (_mainMenuWindow.IsVisibleInTree)
         {
             _mainMenuWindow.Update();
         }
 
-        if (mShouldOpenCharacterSelection)
+        if (_shouldOpenCharacterSelection)
         {
             CreateCharacterSelection();
         }
 
-        if (mShouldOpenCharacterCreation)
+        if (_shouldOpenCharacterCreation)
         {
             CreateCharacterCreation();
         }
 
-        if (!_loginWindow.IsHidden)
+        if (_loginWindow is { IsVisibleInTree: true } loginWindow)
         {
-            _loginWindow.Update();
+            loginWindow.Update();
         }
 
-        if (!_createCharacterWindow.IsHidden)
+        if (_characterCreationWindow is { IsVisibleInTree: true } characterCreationWindow)
         {
-            _createCharacterWindow.Update();
+            characterCreationWindow.Update();
         }
 
-        if (!_registerWindow.IsHidden)
+        if (_registrationWindow is { IsVisibleInTree: true } registrationWindow)
         {
-            _registerWindow.Update();
+            registrationWindow.Update();
         }
 
-        if (!SelectCharacterWindow.IsHidden)
+        if (_selectCharacterWindow is { IsVisibleInTree: true } selectCharacterWindow)
         {
-            SelectCharacterWindow.Update();
+            selectCharacterWindow.Update();
         }
 
-        _settingsWindow.Update();
+        if (_settingsWindow is { IsVisibleInTree: true } settingsWindow)
+        {
+            settingsWindow.Update();
+        }
     }
 
     public void Reset()
     {
-        _loginWindow.Hide();
-        _registerWindow.Hide();
-        _settingsWindow.Hide();
-        _creditsWindow.Hide();
-        _forgotPasswordWindow.Hide();
-        _resetPasswordWindow.Hide();
-        _createCharacterWindow.Hide();
+        _settingsWindow = null;
+
+        LoginWindow.Hide();
+        RegistrationWindow.Hide();
+        CreditsWindow.Hide();
+        ForgotPasswordWindow.Hide();
+
+        _passwordChangeWindow?.DelayedDelete();
+        _passwordChangeWindow = null;
+
+        CharacterCreationWindow.Hide();
         SelectCharacterWindow.Hide();
         _mainMenuWindow.Show();
         _mainMenuWindow.Reset();
@@ -121,59 +187,97 @@ public partial class MainMenu : MutableInterface
 
     public void Show() => _mainMenuWindow.Show();
 
-    public void Hide() => _mainMenuWindow.Hide();
+    private void Hide() => _mainMenuWindow.Hide();
 
-    public void NotifyOpenCharacterSelection(List<Character> characters)
+    public void NotifyOpenCharacterSelection(
+        List<CharacterSelectionPreviewMetadata> characterSelectionPreviews,
+        string username
+    )
     {
-        mShouldOpenCharacterSelection = true;
-        SelectCharacterWindow.Characters = [.. characters];
+        _username = username;
+        _shouldOpenCharacterSelection = true;
+        SelectCharacterWindow.CharacterSelectionPreviews = [..characterSelectionPreviews];
     }
 
     public void NotifyOpenForgotPassword()
     {
         Reset();
         Hide();
-        _forgotPasswordWindow.Show();
+        ForgotPasswordWindow.Show();
     }
 
     public void NotifyOpenLogin()
     {
         Reset();
         Hide();
-        _loginWindow.Show();
+        LoginWindow.Show();
     }
 
-    public void OpenResetPassword(string nameEmail)
+    public void OpenPasswordChangeWindow(string? identifier, PasswordChangeMode changeMode, Window? previousWindow)
     {
         Reset();
         Hide();
-        _resetPasswordWindow.Target = nameEmail;
-        _resetPasswordWindow.Show();
+
+        _passwordChangeWindow?.Dispose();
+
+        identifier ??= _username;
+
+        previousWindow ??= changeMode switch
+        {
+            PasswordChangeMode.ResetToken => LoginWindow,
+            PasswordChangeMode.ExistingPassword => SelectCharacterWindow,
+            _ => throw Exceptions.UnreachableInvalidEnum(changeMode),
+        };
+
+        _passwordChangeWindow = new PasswordChangeWindow(
+            _menuCanvas,
+            this,
+            previousWindow,
+            changeMode
+        )
+        {
+            // Alignment = [Alignments.CenterH],
+            // Y = 480,
+            // IsVisible = false,
+            Target = identifier,
+        };
+        _passwordChangeWindow.Disposed += PasswordChangeWindowOnDisposed;
     }
 
-    public void CreateCharacterSelection()
+    private void PasswordChangeWindowOnDisposed(Base sender, EventArgs _)
+    {
+        if (sender == _passwordChangeWindow)
+        {
+            _passwordChangeWindow = null;
+        }
+    }
+
+    private void CreateCharacterSelection()
     {
         Hide();
-        _loginWindow.Hide();
-        _registerWindow.Hide();
-        _settingsWindow.Hide();
-        _createCharacterWindow.Hide();
+        LoginWindow.Hide();
+        RegistrationWindow.Hide();
+        SettingsWindow.Hide();
+        CharacterCreationWindow.Hide();
         SelectCharacterWindow.Show();
-        mShouldOpenCharacterSelection = false;
+        _shouldOpenCharacterSelection = false;
     }
 
-    public void NotifyOpenCharacterCreation() => mShouldOpenCharacterCreation = true;
+    public void NotifyOpenCharacterCreation(bool force = false)
+    {
+        _forceCharacterCreation = force;
+        _shouldOpenCharacterCreation = true;
+    }
 
-    public void CreateCharacterCreation()
+    private void CreateCharacterCreation()
     {
         Hide();
-        _loginWindow.Hide();
-        _registerWindow.Hide();
-        _settingsWindow.Hide();
+        LoginWindow.Hide();
+        RegistrationWindow.Hide();
+        SettingsWindow.Hide();
         SelectCharacterWindow.Hide();
-        _createCharacterWindow.Show();
-        _createCharacterWindow.Init();
-        mShouldOpenCharacterCreation = false;
+        CharacterCreationWindow.Show(force: _forceCharacterCreation);
+        _shouldOpenCharacterCreation = false;
     }
 
     internal void SwitchToWindow<TMainMenuWindow>() where TMainMenuWindow : IMainMenuWindow
@@ -181,22 +285,22 @@ public partial class MainMenu : MutableInterface
         _mainMenuWindow.Hide();
         if (typeof(TMainMenuWindow) == typeof(LoginWindow))
         {
-            _loginWindow.Show();
+            LoginWindow.Show();
         }
         else if (typeof(TMainMenuWindow) == typeof(RegistrationWindow))
         {
-            _registerWindow.Show();
+            RegistrationWindow.Show();
         }
         else if (typeof(TMainMenuWindow) == typeof(CreditsWindow))
         {
-            _creditsWindow.Show();
+            CreditsWindow.Show();
         }
     }
 
     internal void SettingsButton_Clicked()
     {
         Hide();
-        _settingsWindow.Show(true);
+        SettingsWindow.Show(_mainMenuWindow);
     }
 
     private void HandleNetworkStatusChanged() => _mainMenuWindow.UpdateDisabled();

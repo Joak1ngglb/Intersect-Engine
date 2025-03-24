@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Collections.Immutable;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -9,16 +8,22 @@ using System.Text;
 using Amib.Threading;
 using Intersect.Collections;
 using Intersect.Config;
+using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Crafting;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
+using Intersect.Framework.Core.GameObjects.NPCs;
+using Intersect.Framework.Core.GameObjects.PlayerClass;
+using Intersect.Framework.Core.GameObjects.Resources;
+using Intersect.Framework.Core.GameObjects.Variables;
+using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Crafting;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Maps;
-using Intersect.GameObjects.Maps.MapList;
-using Intersect.Logging;
-using Intersect.Logging.Output;
 using Intersect.Models;
-using Intersect.Reflection;
 using Intersect.Server.Core;
 using Intersect.Server.Database.GameData;
 using Intersect.Server.Database.Logging;
@@ -30,12 +35,13 @@ using Intersect.Server.General;
 using Intersect.Server.Localization;
 using Intersect.Server.Maps;
 using Intersect.Server.Networking;
-
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.Extensions.Logging;
 using MySqlConnector;
-using LogLevel = Intersect.Logging.LogLevel;
+using Serilog;
+using Serilog.Events;
+using Serilog.Extensions.Logging;
 
 namespace Intersect.Server.Database;
 
@@ -63,19 +69,15 @@ public static partial class DbInterface
 
     private static string PlayersDbFilename => Path.Combine(ServerContext.ResourceDirectory, "playerdata.db");
 
-    private static Logger _gameDatabaseLogger { get; set; }
+    public static Dictionary<string, ServerVariableDescriptor> ServerVariableEventTextLookup = new();
 
-    private static Logger _playerDatabaseLogger { get; set; }
+    public static Dictionary<string, PlayerVariableDescriptor> PlayerVariableEventTextLookup = new();
 
-    public static Dictionary<string, ServerVariableBase> ServerVariableEventTextLookup = new();
+    public static Dictionary<string, GuildVariableDescriptor> GuildVariableEventTextLookup = new();
 
-    public static Dictionary<string, PlayerVariableBase> PlayerVariableEventTextLookup = new();
+    public static Dictionary<string, UserVariableDescriptor> UserVariableEventTextLookup = new();
 
-    public static Dictionary<string, GuildVariableBase> GuildVariableEventTextLookup = new();
-
-    public static Dictionary<string, UserVariableBase> UserVariableEventTextLookup = new();
-
-    public static ConcurrentDictionary<Guid, ServerVariableBase> UpdatedServerVariables = new();
+    public static ConcurrentDictionary<Guid, ServerVariableDescriptor> UpdatedServerVariables = new();
 
     private static List<MapGrid> mapGrids = new();
 
@@ -96,9 +98,7 @@ public static partial class DbInterface
         ExplicitLoad = explicitLoad,
         KillServerOnConcurrencyException = Options.Instance.GameDatabase.KillServerOnConcurrencyException,
         LazyLoading = lazyLoading,
-#if DEBUG
-        LoggerFactory = new IntersectLoggerFactory(nameof(GameContext)),
-#endif
+        LoggerFactory = CreateLoggerFactory<GameContext>(Options.Instance.GameDatabase),
         QueryTrackingBehavior = queryTrackingBehavior,
         ReadOnly = readOnly,
     });
@@ -120,9 +120,7 @@ public static partial class DbInterface
         ExplicitLoad = explicitLoad,
         KillServerOnConcurrencyException = Options.Instance.LoggingDatabase.KillServerOnConcurrencyException,
         LazyLoading = lazyLoading,
-#if DEBUG
-        LoggerFactory = new IntersectLoggerFactory(nameof(LoggingContext)),
-#endif
+        LoggerFactory = CreateLoggerFactory<LoggingContext>(Options.Instance.LoggingDatabase),
         QueryTrackingBehavior = queryTrackingBehavior,
         ReadOnly = readOnly,
     });
@@ -149,43 +147,10 @@ public static partial class DbInterface
         ExplicitLoad = explicitLoad,
         KillServerOnConcurrencyException = Options.Instance.PlayerDatabase.KillServerOnConcurrencyException,
         LazyLoading = lazyLoading,
-#if DEBUG
-        LoggerFactory = new IntersectLoggerFactory(nameof(PlayerContext)),
-#endif
+        LoggerFactory = CreateLoggerFactory<PlayerContext>(Options.Instance.PlayerDatabase),
         QueryTrackingBehavior = queryTrackingBehavior,
         ReadOnly = readOnly,
     });
-
-    public static void InitializeDbLoggers()
-    {
-        if (Options.Instance.GameDatabase.LogLevel > LogLevel.None)
-        {
-            _gameDatabaseLogger = new Logger(
-                new LogConfiguration
-                {
-                    Tag = "GAMEDB",
-                    LogLevel = Options.Instance.GameDatabase.LogLevel,
-                    Outputs = ImmutableList.Create<ILogOutput>(
-                        new FileOutput(Log.SuggestFilename(null, "gamedb"), LogLevel.Debug)
-                    )
-                }
-            );
-        }
-
-        if (Options.Instance.PlayerDatabase.LogLevel > LogLevel.None)
-        {
-            _playerDatabaseLogger = new Logger(
-                new LogConfiguration
-                {
-                    Tag = "PLAYERDB",
-                    LogLevel = Options.Instance.PlayerDatabase.LogLevel,
-                    Outputs = ImmutableList.Create<ILogOutput>(
-                        new FileOutput(Log.SuggestFilename(null, "playerdb"), LogLevel.Debug)
-                    )
-                }
-            );
-        }
-    }
 
     //Check Directories
     public static void CheckDirectories()
@@ -249,18 +214,18 @@ public static partial class DbInterface
     {
         if (!context.HasPendingMigrations)
         {
-            Log.Verbose("No pending migrations, skipping...");
+            ApplicationContext.Context.Value?.Logger.LogDebug($"No pending migrations for {context.GetType().GetName(qualified: true)}, skipping...");
             return;
         }
 
-        Log.Verbose($"Pending schema migrations for {typeof(TContext).Name}:\n\t{string.Join("\n\t", context.PendingSchemaMigrations)}");
-        Log.Verbose($"Pending data migrations for {typeof(TContext).Name}:\n\t{string.Join("\n\t", context.PendingDataMigrationNames)}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"Pending schema migrations for {typeof(TContext).Name}:\n\t{string.Join("\n\t", context.PendingSchemaMigrations)}");
+        ApplicationContext.Context.Value?.Logger.LogDebug($"Pending data migrations for {typeof(TContext).Name}:\n\t{string.Join("\n\t", context.PendingDataMigrationNames)}");
 
         var migrationScheduler = new MigrationScheduler<TContext>(context);
-        Log.Verbose("Scheduling pending migrations...");
+        ApplicationContext.Context.Value?.Logger.LogDebug("Scheduling pending migrations...");
         migrationScheduler.SchedulePendingMigrations();
 
-        Log.Verbose("Applying scheduled migrations...");
+        ApplicationContext.Context.Value?.Logger.LogDebug("Applying scheduled migrations...");
         migrationScheduler.ApplyScheduledMigrations();
 
         var remainingPendingSchemaMigrations = context.PendingSchemaMigrations.ToList();
@@ -270,45 +235,66 @@ public static partial class DbInterface
         context.OnSchemaMigrationsProcessed(processedSchemaMigrations.ToArray());
     }
 
+    internal static ILoggerFactory CreateLoggerFactory<TDBContext>(DatabaseOptions databaseOptions)
+        where TDBContext : IntersectDbContext<TDBContext>
+    {
+        var contextName = typeof(TDBContext).Name;
+        var configuration = new LoggerConfiguration()
+            .Enrich.FromLogContext()
+            .MinimumLevel.Is(LevelConvert.ToSerilogLevel(databaseOptions.LogLevel))
+            .WriteTo.Console(restrictedToMinimumLevel: Debugger.IsAttached ? LogEventLevel.Warning : LogEventLevel.Error)
+            .WriteTo.File(path: $"logs/db-{contextName}.log").WriteTo.File(
+                path: $"logs/db-errors-{contextName}.log",
+                restrictedToMinimumLevel: LogEventLevel.Error,
+                rollOnFileSizeLimit: true,
+                retainedFileTimeLimit: TimeSpan.FromDays(30)
+            );
+
+        return new SerilogLoggerFactory(configuration.CreateLogger());
+    }
+
     private static bool EnsureUpdated(IServerContext serverContext)
     {
-        Log.Verbose("Creating game context...");
+        var gameDatabaseOptions = Options.Instance.GameDatabase;
+        ApplicationContext.Context.Value?.Logger.LogInformation($"Creating game context using {gameDatabaseOptions.Type}...");
         using var gameContext = GameContext.Create(new DatabaseContextOptions
         {
-            ConnectionStringBuilder = Options.Instance.GameDatabase.Type.CreateConnectionStringBuilder(
-                Options.Instance.GameDatabase,
+            ConnectionStringBuilder = gameDatabaseOptions.Type.CreateConnectionStringBuilder(
+                gameDatabaseOptions,
                 GameDbFilename
             ),
-            DatabaseType = Options.Instance.GameDatabase.Type,
+            DatabaseType = gameDatabaseOptions.Type,
             EnableDetailedErrors = true,
             EnableSensitiveDataLogging = true,
-            LoggerFactory = new IntersectLoggerFactory(nameof(GameContext)),
+            LoggerFactory = CreateLoggerFactory<GameContext>(gameDatabaseOptions),
         });
 
-        Log.Verbose("Creating player context...");
+        var playerDatabaseOptions = Options.Instance.PlayerDatabase;
+        ApplicationContext.Context.Value?.Logger.LogInformation($"Creating player context using {playerDatabaseOptions.Type}...");
         using var playerContext = PlayerContext.Create(new DatabaseContextOptions
         {
-            ConnectionStringBuilder = Options.Instance.PlayerDatabase.Type.CreateConnectionStringBuilder(
-                Options.Instance.PlayerDatabase,
+            ConnectionStringBuilder = playerDatabaseOptions.Type.CreateConnectionStringBuilder(
+                playerDatabaseOptions,
                 PlayersDbFilename
             ),
-            DatabaseType = Options.Instance.PlayerDatabase.Type,
+            DatabaseType = playerDatabaseOptions.Type,
             EnableDetailedErrors = true,
             EnableSensitiveDataLogging = true,
-            LoggerFactory = new IntersectLoggerFactory(nameof(PlayerContext)),
+            LoggerFactory = CreateLoggerFactory<PlayerContext>(playerDatabaseOptions),
         });
 
-        Log.Verbose("Creating logging context...");
+        var loggingDatabaseOptions = Options.Instance.LoggingDatabase;
+        ApplicationContext.Context.Value?.Logger.LogInformation($"Creating logging context using {loggingDatabaseOptions.Type}...");
         using var loggingContext = LoggingContext.Create(new DatabaseContextOptions
         {
-            ConnectionStringBuilder = Options.Instance.LoggingDatabase.Type.CreateConnectionStringBuilder(
-                Options.Instance.LoggingDatabase,
+            ConnectionStringBuilder = loggingDatabaseOptions.Type.CreateConnectionStringBuilder(
+                loggingDatabaseOptions,
                 LoggingDbFilename
             ),
-            DatabaseType = Options.Instance.LoggingDatabase.Type,
+            DatabaseType = loggingDatabaseOptions.Type,
             EnableDetailedErrors = true,
             EnableSensitiveDataLogging = true,
-            LoggerFactory = new IntersectLoggerFactory(nameof(LoggingContext)),
+            LoggerFactory = CreateLoggerFactory<LoggingContext>(loggingDatabaseOptions),
         });
 
         // We don't want anyone running the old migration tool accidentally
@@ -353,7 +339,9 @@ public static partial class DbInterface
             if (serverContext.StartupOptions.MigrateAutomatically)
             {
                 Console.WriteLine(Strings.Database.MigratingAutomatically);
-                Log.Default.Write("Skipping user prompt for database migration...");
+                ApplicationContext.Context.Value?.Logger.LogInformation(
+                    "Skipping user prompt for database migration..."
+                );
             }
             else
             {
@@ -397,7 +385,7 @@ public static partial class DbInterface
         }
         else
         {
-            Console.WriteLine("No migrations pending, skipping...");
+            Console.WriteLine("No migrations pending that require user acceptance, skipping prompt...");
         }
 
         var contexts = new List<DbContext> { gameContext, playerContext, loggingContext };
@@ -424,6 +412,9 @@ public static partial class DbInterface
         Console.WriteLine("Loading game data...");
 
         LoadAllGameObjects();
+
+        ValidateMapEvents();
+
         LoadTime();
         OnClassesLoaded();
         OnMapsLoaded();
@@ -432,25 +423,73 @@ public static partial class DbInterface
         CacheGuildVariableEventTextLookups();
         CacheUserVariableEventTextLookups();
 
+        CheckPlayerDatabaseCaseInsensitiveCollisions();
+
         return true;
     }
 
-    public static Client GetPlayerClient(string username)
+    private static void CheckPlayerDatabaseCaseInsensitiveCollisions()
     {
-        //Try to fetch a player entity by username, online or offline.
-        //Check Online First
-        lock (Globals.ClientLock)
+        using var playerContext = CreatePlayerContext();
+        var conflictingUsersByName =
+            (from u1 in playerContext.Users
+                join u2 in playerContext.Users on u1.Name equals u2.Name
+                where u1.Id != u2.Id
+                select u1).Distinct()
+            .ToArray();
+        if (conflictingUsersByName.Length > 0)
         {
-            foreach (var client in Globals.Clients)
-            {
-                if (client.Entity != null && client.Name.ToLower() == username.ToLower())
-                {
-                    return client;
-                }
-            }
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "There are {Count} users with conflicting names (they only differ by case):\nThis needs to be resolved but cannot be handled automatically!\n{Users}",
+                conflictingUsersByName.Length,
+                string.Join('\n', conflictingUsersByName.Select(u => $"\t{u.Id}"))
+            );
         }
 
-        return null;
+        var conflictingUsersByEmail =
+            (from u1 in playerContext.Users
+                join u2 in playerContext.Users on u1.Email equals u2.Email
+                where u1.Id != u2.Id
+                select u1).Distinct()
+            .ToArray();
+        if (conflictingUsersByEmail.Length > 0)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "There are {Count} users with conflicting emails (they only differ by case):\nThis needs to be resolved but cannot be handled automatically!\n{Users}",
+                conflictingUsersByEmail.Length,
+                string.Join('\n', conflictingUsersByName.Select(u => $"\t{u.Id}"))
+            );
+        }
+
+        var conflictingPlayersByName =
+            (from p1 in playerContext.Players
+                join p2 in playerContext.Players on p1.Name equals p2.Name
+                where p1.Id != p2.Id
+                select p1).Distinct()
+            .ToArray();
+        if (conflictingPlayersByName.Length > 0)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "There are {Count} players with conflicting names (they only differ by case):\nThis needs to be resolved but cannot be handled automatically!\n{Players}",
+                conflictingPlayersByName.Length,
+                string.Join('\n', conflictingPlayersByName.Select(p => $"\t{p.Id}"))
+            );
+        }
+
+        var conflictingGuildsByName =
+            (from g1 in playerContext.Guilds
+                join g2 in playerContext.Guilds on g1.Name equals g2.Name
+                where g1.Id != g2.Id
+                select g1).Distinct()
+            .ToArray();
+        if (conflictingGuildsByName.Length > 0)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "There are {Count} guilds with conflicting names (they only differ by case):\nThis needs to be resolved but cannot be handled automatically!\n{Guilds}",
+                conflictingGuildsByName.Length,
+                string.Join('\n', conflictingGuildsByName.Select(g => $"\t{g.Id}"))
+            );
+        }
     }
 
     public static void SetPlayerPower(string username, UserRights power)
@@ -527,7 +566,12 @@ public static partial class DbInterface
             catch (Exception exception)
             {
                 Debugger.Break();
-                Log.Error(exception);
+                ApplicationContext.Context.Value?.Logger.LogError(
+                    exception,
+                    "Failed to load relationships for user {UserId}'s player {PlayerId}",
+                    user.Id,
+                    playerId
+                );
                 throw new Exception($"Error during explicit load of player {BitConverter.ToString(playerId.ToByteArray()).Replace("-", string.Empty)}", exception);
             }
 
@@ -571,7 +615,11 @@ public static partial class DbInterface
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error while registering '{Username}'",
+                username
+            );
             user = default;
             return false;
         }
@@ -607,19 +655,12 @@ public static partial class DbInterface
         client?.SetUser(user);
     }
 
-    public static void ResetPass(User user, string password)
+    public static void UpdatePassword(User user, string password)
     {
-        var sha = new SHA256Managed();
-
-        //Generate a Salt
-        var rng = new RNGCryptoServiceProvider();
-        var buff = new byte[20];
-        rng.GetBytes(buff);
-        var salt = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(Convert.ToBase64String(buff))))
-            .Replace("-", "");
-
+        var salt = User.GenerateSalt();
+        var saltedPasswordHash = User.SaltPasswordHash(password, salt);
         user.Salt = salt;
-        user.Password = User.SaltPasswordHash(password, salt);
+        user.Password = saltedPasswordHash;
         user.Save();
     }
 
@@ -629,7 +670,7 @@ public static partial class DbInterface
         {
             if (bag.Slots[i] != null)
             {
-                var item = ItemBase.Get(bag.Slots[i].ItemId);
+                var item = ItemDescriptor.Get(bag.Slots[i].ItemId);
                 if (item != null)
                 {
                     return false;
@@ -661,77 +702,77 @@ public static partial class DbInterface
         switch (type)
         {
             case GameObjectType.Animation:
-                AnimationBase.Lookup.Clear();
+                AnimationDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Class:
-                ClassBase.Lookup.Clear();
+                ClassDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Item:
-                ItemBase.Lookup.Clear();
+                ItemDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Npc:
-                NpcBase.Lookup.Clear();
+                NPCDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Projectile:
-                ProjectileBase.Lookup.Clear();
+                ProjectileDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Quest:
-                QuestBase.Lookup.Clear();
+                QuestDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Resource:
-                ResourceBase.Lookup.Clear();
+                ResourceDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Shop:
-                ShopBase.Lookup.Clear();
+                ShopDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Spell:
-                SpellBase.Lookup.Clear();
+                SpellDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.CraftTables:
-                CraftingTableBase.Lookup.Clear();
+                CraftingTableDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Crafts:
-                CraftBase.Lookup.Clear();
+                CraftingRecipeDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Map:
-                MapBase.Lookup.Clear();
+                MapDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Event:
-                EventBase.Lookup.Clear();
+                EventDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.PlayerVariable:
-                PlayerVariableBase.Lookup.Clear();
+                PlayerVariableDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.ServerVariable:
-                ServerVariableBase.Lookup.Clear();
+                ServerVariableDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Tileset:
-                TilesetBase.Lookup.Clear();
+                TilesetDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.Time:
                 break;
             case GameObjectType.GuildVariable:
-                GuildVariableBase.Lookup.Clear();
+                GuildVariableDescriptor.Lookup.Clear();
 
                 break;
             case GameObjectType.UserVariable:
-                UserVariableBase.Lookup.Clear();
+                UserVariableDescriptor.Lookup.Clear();
 
                 break;
             default:
@@ -751,14 +792,14 @@ public static partial class DbInterface
                     case GameObjectType.Animation:
                         foreach (var anim in context.Animations) // TODO: fix "The data is NULL at ordinal 2"
                         {
-                            AnimationBase.Lookup.Set(anim.Id, anim);
+                            AnimationDescriptor.Lookup.Set(anim.Id, anim);
                         }
 
                         break;
                     case GameObjectType.Class:
                         foreach (var cls in context.Classes)
                         {
-                            ClassBase.Lookup.Set(cls.Id, cls);
+                            ClassDescriptor.Lookup.Set(cls.Id, cls);
                         }
 
                         break;
@@ -769,63 +810,63 @@ public static partial class DbInterface
 
                         foreach (var itm in loadedItems)
                         {
-                            ItemBase.Lookup.Set(itm.Id, itm);
+                            ItemDescriptor.Lookup.Set(itm.Id, itm);
                         }
 
                         break;
                     case GameObjectType.Npc:
                         foreach (var npc in context.Npcs)
                         {
-                            NpcBase.Lookup.Set(npc.Id, npc);
+                            NPCDescriptor.Lookup.Set(npc.Id, npc);
                         }
 
                         break;
                     case GameObjectType.Projectile:
                         foreach (var proj in context.Projectiles)
                         {
-                            ProjectileBase.Lookup.Set(proj.Id, proj);
+                            ProjectileDescriptor.Lookup.Set(proj.Id, proj);
                         }
 
                         break;
                     case GameObjectType.Quest:
                         foreach (var qst in context.Quests)
                         {
-                            QuestBase.Lookup.Set(qst.Id, qst);
+                            QuestDescriptor.Lookup.Set(qst.Id, qst);
                         }
 
                         break;
                     case GameObjectType.Resource:
                         foreach (var res in context.Resources)
                         {
-                            ResourceBase.Lookup.Set(res.Id, res);
+                            ResourceDescriptor.Lookup.Set(res.Id, res);
                         }
 
                         break;
                     case GameObjectType.Shop:
                         foreach (var shp in context.Shops)
                         {
-                            ShopBase.Lookup.Set(shp.Id, shp);
+                            ShopDescriptor.Lookup.Set(shp.Id, shp);
                         }
 
                         break;
                     case GameObjectType.Spell:
                         foreach (var spl in context.Spells)
                         {
-                            SpellBase.Lookup.Set(spl.Id, spl);
+                            SpellDescriptor.Lookup.Set(spl.Id, spl);
                         }
 
                         break;
                     case GameObjectType.CraftTables:
                         foreach (var craft in context.CraftingTables)
                         {
-                            CraftingTableBase.Lookup.Set(craft.Id, craft);
+                            CraftingTableDescriptor.Lookup.Set(craft.Id, craft);
                         }
 
                         break;
                     case GameObjectType.Crafts:
                         foreach (var craft in context.Crafts)
                         {
-                            CraftBase.Lookup.Set(craft.Id, craft);
+                            CraftingRecipeDescriptor.Lookup.Set(craft.Id, craft);
                         }
 
                         break;
@@ -833,7 +874,7 @@ public static partial class DbInterface
                         foreach (var map in context.Maps)
                         {
                             MapController.Lookup.Set(map.Id, map);
-                            if (Options.Instance.MapOpts.Layers.DestroyOrphanedLayers)
+                            if (Options.Instance.Map.Layers.DestroyOrphanedLayers)
                             {
                                 map.DestroyOrphanedLayers();
                             }
@@ -843,28 +884,28 @@ public static partial class DbInterface
                     case GameObjectType.Event:
                         foreach (var evt in context.Events)
                         {
-                            EventBase.Lookup.Set(evt.Id, evt);
+                            EventDescriptor.Lookup.Set(evt.Id, evt);
                         }
 
                         break;
                     case GameObjectType.PlayerVariable:
                         foreach (var psw in context.PlayerVariables)
                         {
-                            PlayerVariableBase.Lookup.Set(psw.Id, psw);
+                            PlayerVariableDescriptor.Lookup.Set(psw.Id, psw);
                         }
 
                         break;
                     case GameObjectType.ServerVariable:
                         foreach (var psw in context.ServerVariables)
                         {
-                            ServerVariableBase.Lookup.Set(psw.Id, psw);
+                            ServerVariableDescriptor.Lookup.Set(psw.Id, psw);
                         }
 
                         break;
                     case GameObjectType.Tileset:
                         foreach (var psw in context.Tilesets)
                         {
-                            TilesetBase.Lookup.Set(psw.Id, psw);
+                            TilesetDescriptor.Lookup.Set(psw.Id, psw);
                         }
 
                         break;
@@ -873,14 +914,14 @@ public static partial class DbInterface
                     case GameObjectType.GuildVariable:
                         foreach (var psw in context.GuildVariables)
                         {
-                            GuildVariableBase.Lookup.Set(psw.Id, psw);
+                            GuildVariableDescriptor.Lookup.Set(psw.Id, psw);
                         }
 
                         break;
                     case GameObjectType.UserVariable:
                         foreach (var psw in context.UserVariables)
                         {
-                            UserVariableBase.Lookup.Set(psw.Id, psw);
+                            UserVariableDescriptor.Lookup.Set(psw.Id, psw);
                         }
 
                         break;
@@ -889,11 +930,116 @@ public static partial class DbInterface
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error while loading game objects of type {GameObjectType}",
+                gameObjectType
+            );
             throw;
         }
+    }
+
+    private static void ValidateMapEvents()
+    {
+        var missingEvents = 0;
+        var correctedEvents = 0;
+
+        foreach (var (mapId, databaseObject) in MapController.Lookup)
+        {
+            if (databaseObject is not MapDescriptor mapDescriptor)
+            {
+                ApplicationContext.CurrentContext.Logger.LogError(
+                    "Found an invalid database object in the MapDescriptor lookup ({InvalidObjectType}, {InvalidObjectId}, '{InvalidObjectName}'",
+                    databaseObject.GetType().GetName(qualified: true),
+                    databaseObject.Id,
+                    databaseObject.Name
+                );
+                continue;
+            }
+
+            var actualMapId = mapDescriptor.Id;
+            if (mapId != actualMapId)
+            {
+                ApplicationContext.CurrentContext.Logger.LogError(
+                    "Map with ID {ActualMapId} was recorded in the lookup under the ID {ExpectedMapId}, this needs to be investigated",
+                    actualMapId,
+                    mapId
+                );
+            }
+
+            foreach (var eventId in mapDescriptor.EventIds)
+            {
+                if (!EventDescriptor.TryGet(eventId, out var eventDescriptor))
+                {
+                    ApplicationContext.CurrentContext.Logger.LogWarning(
+                        "Map {MapId} references missing event {EventId}, unexpected behavior may occur",
+                        mapId,
+                        eventId
+                    );
+                    ++missingEvents;
+                    continue;
+                }
+
+                // Ignore common events
+                if (eventDescriptor is not { CommonEvent: false })
+                {
+                    continue;
+                }
+
+                // The map ID is correct, no validation necessary
+                var referencedMapId = eventDescriptor.MapId;
+                if (referencedMapId == mapId)
+                {
+                    continue;
+                }
+
+                // If the event is 1) not common and 2) is not using this map's ID, fix it. It was copied wrong in the editor
+                string referencedMapName = $"deleted map {referencedMapId}";
+                if (MapController.TryGet(referencedMapId, out var referencedMapDescriptor))
+                {
+                    referencedMapName = referencedMapDescriptor.Name;
+                }
+
+                if (string.IsNullOrWhiteSpace(referencedMapName))
+                {
+                    referencedMapName = "(unnamed map)";
+                }
+
+                eventDescriptor.MapId = mapId;
+                ++correctedEvents;
+
+                var eventName = eventDescriptor.Name?.Trim();
+                if (string.IsNullOrWhiteSpace(eventName))
+                {
+                    eventName = "(unnamed event)";
+                }
+
+                var mapName = mapDescriptor.Name;
+                if (string.IsNullOrWhiteSpace(mapName))
+                {
+                    mapName = "(unnamed map)";
+                }
+
+
+                ApplicationContext.CurrentContext.Logger.LogWarning(
+                    "Event '{EventName}' ({EventId}) on the map '{MapName}'({MapId}) was pointing to '{ReferencedMapName}' ({ReferencedMapId}) and while this has been corrected, the correction will not be saved until the event is resaved",
+                    eventName,
+                    eventId,
+                    mapName,
+                    mapId,
+                    referencedMapName,
+                    referencedMapId
+                );
+            }
+        }
+
+        ApplicationContext.CurrentContext.Logger.LogWarning(
+            "Finished validating map events on all maps, there were {MissingEvents} missing events and {CorrectedEvents} corrected events",
+            missingEvents,
+            correctedEvents
+        );
     }
 
     public static IDatabaseObject AddGameObject(GameObjectType gameObjectType)
@@ -912,43 +1058,43 @@ public static partial class DbInterface
         switch (gameObjectType)
         {
             case GameObjectType.Animation:
-                dbObj = new AnimationBase(predefinedid);
+                dbObj = new AnimationDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Class:
-                dbObj = new ClassBase(predefinedid);
+                dbObj = new ClassDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Item:
-                dbObj = new ItemBase(predefinedid);
+                dbObj = new ItemDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Npc:
-                dbObj = new NpcBase(predefinedid);
+                dbObj = new NPCDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Projectile:
-                dbObj = new ProjectileBase(predefinedid);
+                dbObj = new ProjectileDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Resource:
-                dbObj = new ResourceBase(predefinedid);
+                dbObj = new ResourceDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Shop:
-                dbObj = new ShopBase(predefinedid);
+                dbObj = new ShopDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Spell:
-                dbObj = new SpellBase(predefinedid);
+                dbObj = new SpellDescriptor(predefinedid);
 
                 break;
             case GameObjectType.CraftTables:
-                dbObj = new CraftingTableBase(predefinedid);
+                dbObj = new CraftingTableDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Crafts:
-                dbObj = new CraftBase(predefinedid);
+                dbObj = new CraftingRecipeDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Map:
@@ -956,40 +1102,40 @@ public static partial class DbInterface
 
                 break;
             case GameObjectType.Event:
-                dbObj = new EventBase(predefinedid);
+                dbObj = new EventDescriptor(predefinedid);
 
                 break;
             case GameObjectType.PlayerVariable:
-                dbObj = new PlayerVariableBase(predefinedid);
+                dbObj = new PlayerVariableDescriptor(predefinedid);
 
                 break;
             case GameObjectType.ServerVariable:
-                dbObj = new ServerVariableBase(predefinedid);
+                dbObj = new ServerVariableDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Tileset:
-                dbObj = new TilesetBase(predefinedid);
+                dbObj = new TilesetDescriptor(predefinedid);
 
                 break;
             case GameObjectType.Time:
                 break;
 
             case GameObjectType.Quest:
-                dbObj = new QuestBase(predefinedid);
-                ((QuestBase)dbObj).StartEvent = (EventBase)AddGameObject(GameObjectType.Event);
-                ((QuestBase)dbObj).EndEvent = (EventBase)AddGameObject(GameObjectType.Event);
-                ((QuestBase)dbObj).StartEvent.CommonEvent = false;
-                ((QuestBase)dbObj).EndEvent.CommonEvent = false;
+                dbObj = new QuestDescriptor(predefinedid);
+                ((QuestDescriptor)dbObj).StartEvent = (EventDescriptor)AddGameObject(GameObjectType.Event);
+                ((QuestDescriptor)dbObj).EndEvent = (EventDescriptor)AddGameObject(GameObjectType.Event);
+                ((QuestDescriptor)dbObj).StartEvent.CommonEvent = false;
+                ((QuestDescriptor)dbObj).EndEvent.CommonEvent = false;
 
                 break;
 
             case GameObjectType.GuildVariable:
-                dbObj = new GuildVariableBase(predefinedid);
+                dbObj = new GuildVariableDescriptor(predefinedid);
 
                 break;
 
             case GameObjectType.UserVariable:
-                dbObj = new UserVariableBase(predefinedid);
+                dbObj = new UserVariableDescriptor(predefinedid);
 
                 break;
             default:
@@ -1009,67 +1155,67 @@ public static partial class DbInterface
                 switch (gameObjectType)
                 {
                     case GameObjectType.Animation:
-                        context.Animations.Add((AnimationBase)dbObj);
-                        AnimationBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Animations.Add((AnimationDescriptor)dbObj);
+                        AnimationDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Class:
-                        context.Classes.Add((ClassBase)dbObj);
-                        ClassBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Classes.Add((ClassDescriptor)dbObj);
+                        ClassDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Item:
-                        context.Items.Add((ItemBase)dbObj);
-                        ItemBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Items.Add((ItemDescriptor)dbObj);
+                        ItemDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
                     case GameObjectType.Npc:
-                        context.Npcs.Add((NpcBase)dbObj);
-                        NpcBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Npcs.Add((NPCDescriptor)dbObj);
+                        NPCDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Projectile:
-                        context.Projectiles.Add((ProjectileBase)dbObj);
-                        ProjectileBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Projectiles.Add((ProjectileDescriptor)dbObj);
+                        ProjectileDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Quest:
-                        context.Quests.Add((QuestBase)dbObj);
-                        QuestBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Quests.Add((QuestDescriptor)dbObj);
+                        QuestDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Resource:
-                        context.Resources.Add((ResourceBase)dbObj);
-                        ResourceBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Resources.Add((ResourceDescriptor)dbObj);
+                        ResourceDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Shop:
-                        context.Shops.Add((ShopBase)dbObj);
-                        ShopBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Shops.Add((ShopDescriptor)dbObj);
+                        ShopDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Spell:
-                        context.Spells.Add((SpellBase)dbObj);
-                        SpellBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Spells.Add((SpellDescriptor)dbObj);
+                        SpellDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.CraftTables:
-                        context.CraftingTables.Add((CraftingTableBase)dbObj);
-                        CraftingTableBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.CraftingTables.Add((CraftingTableDescriptor)dbObj);
+                        CraftingTableDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Crafts:
-                        context.Crafts.Add((CraftBase)dbObj);
-                        CraftBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Crafts.Add((CraftingRecipeDescriptor)dbObj);
+                        CraftingRecipeDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
@@ -1080,26 +1226,26 @@ public static partial class DbInterface
                         break;
 
                     case GameObjectType.Event:
-                        context.Events.Add((EventBase)dbObj);
-                        EventBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Events.Add((EventDescriptor)dbObj);
+                        EventDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.PlayerVariable:
-                        context.PlayerVariables.Add((PlayerVariableBase)dbObj);
-                        PlayerVariableBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.PlayerVariables.Add((PlayerVariableDescriptor)dbObj);
+                        PlayerVariableDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.ServerVariable:
-                        context.ServerVariables.Add((ServerVariableBase)dbObj);
-                        ServerVariableBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.ServerVariables.Add((ServerVariableDescriptor)dbObj);
+                        ServerVariableDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.Tileset:
-                        context.Tilesets.Add((TilesetBase)dbObj);
-                        TilesetBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.Tilesets.Add((TilesetDescriptor)dbObj);
+                        TilesetDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
@@ -1107,14 +1253,14 @@ public static partial class DbInterface
                         break;
 
                     case GameObjectType.GuildVariable:
-                        context.GuildVariables.Add((GuildVariableBase)dbObj);
-                        GuildVariableBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.GuildVariables.Add((GuildVariableDescriptor)dbObj);
+                        GuildVariableDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
                     case GameObjectType.UserVariable:
-                        context.UserVariables.Add((UserVariableBase)dbObj);
-                        UserVariableBase.Lookup.Set(dbObj.Id, dbObj);
+                        context.UserVariables.Add((UserVariableDescriptor)dbObj);
+                        UserVariableDescriptor.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
 
@@ -1129,9 +1275,13 @@ public static partial class DbInterface
 
             return dbObj;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error adding a {GameObjectType}",
+                gameObjectType
+            );
             throw;
         }
     }
@@ -1145,79 +1295,79 @@ public static partial class DbInterface
                 switch (gameObject.Type)
                 {
                     case GameObjectType.Animation:
-                        context.Animations.Remove((AnimationBase)gameObject);
+                        context.Animations.Remove((AnimationDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Class:
-                        context.Classes.Remove((ClassBase)gameObject);
+                        context.Classes.Remove((ClassDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Item:
-                        context.Items.Remove((ItemBase)gameObject);
+                        context.Items.Remove((ItemDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Npc:
-                        context.Npcs.Remove((NpcBase)gameObject);
+                        context.Npcs.Remove((NPCDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Projectile:
-                        context.Projectiles.Remove((ProjectileBase)gameObject);
+                        context.Projectiles.Remove((ProjectileDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Quest:
 
-                        if (((QuestBase)gameObject).StartEvent != null)
+                        if (((QuestDescriptor)gameObject).StartEvent != null)
                         {
-                            context.Events.Remove(((QuestBase)gameObject).StartEvent);
-                            context.Entry(((QuestBase)gameObject).StartEvent).State = EntityState.Deleted;
-                            EventBase.Lookup.Delete(((QuestBase)gameObject).StartEvent);
+                            context.Events.Remove(((QuestDescriptor)gameObject).StartEvent);
+                            context.Entry(((QuestDescriptor)gameObject).StartEvent).State = EntityState.Deleted;
+                            EventDescriptor.Lookup.Delete(((QuestDescriptor)gameObject).StartEvent);
                         }
 
-                        if (((QuestBase)gameObject).EndEvent != null)
+                        if (((QuestDescriptor)gameObject).EndEvent != null)
                         {
-                            context.Events.Remove(((QuestBase)gameObject).EndEvent);
-                            context.Entry(((QuestBase)gameObject).EndEvent).State = EntityState.Deleted;
-                            EventBase.Lookup.Delete(((QuestBase)gameObject).EndEvent);
+                            context.Events.Remove(((QuestDescriptor)gameObject).EndEvent);
+                            context.Entry(((QuestDescriptor)gameObject).EndEvent).State = EntityState.Deleted;
+                            EventDescriptor.Lookup.Delete(((QuestDescriptor)gameObject).EndEvent);
                         }
 
-                        foreach (var tsk in ((QuestBase)gameObject).Tasks)
+                        foreach (var tsk in ((QuestDescriptor)gameObject).Tasks)
                         {
                             if (tsk.CompletionEvent != null)
                             {
                                 context.Events.Remove(tsk.CompletionEvent);
                                 context.Entry(tsk.CompletionEvent).State = EntityState.Deleted;
-                                EventBase.Lookup.Delete(tsk.CompletionEvent);
+                                EventDescriptor.Lookup.Delete(tsk.CompletionEvent);
                             }
                         }
 
-                        context.Quests.Remove((QuestBase)gameObject);
+                        context.Quests.Remove((QuestDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Resource:
-                        context.Resources.Remove((ResourceBase)gameObject);
+                        context.Resources.Remove((ResourceDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Shop:
-                        context.Shops.Remove((ShopBase)gameObject);
+                        context.Shops.Remove((ShopDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Spell:
-                        context.Spells.Remove((SpellBase)gameObject);
+                        context.Spells.Remove((SpellDescriptor)gameObject);
 
                         break;
                     case GameObjectType.CraftTables:
-                        context.CraftingTables.Remove((CraftingTableBase)gameObject);
+                        context.CraftingTables.Remove((CraftingTableDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Crafts:
-                        context.Crafts.Remove((CraftBase)gameObject);
+                        context.Crafts.Remove((CraftingRecipeDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Map:
                         //Delete all map events first
                         foreach (var evtId in ((MapController)gameObject).EventIds)
                         {
-                            var evt = EventBase.Get(evtId);
+                            var evt = EventDescriptor.Get(evtId);
                             if (evt != null)
                             {
                                 DeleteGameObject(evt);
@@ -1228,29 +1378,29 @@ public static partial class DbInterface
 
                         break;
                     case GameObjectType.Event:
-                        context.Events.Remove((EventBase)gameObject);
+                        context.Events.Remove((EventDescriptor)gameObject);
 
                         break;
                     case GameObjectType.PlayerVariable:
-                        context.PlayerVariables.Remove((PlayerVariableBase)gameObject);
+                        context.PlayerVariables.Remove((PlayerVariableDescriptor)gameObject);
 
                         break;
                     case GameObjectType.ServerVariable:
-                        context.ServerVariables.Remove((ServerVariableBase)gameObject);
+                        context.ServerVariables.Remove((ServerVariableDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Tileset:
-                        context.Tilesets.Remove((TilesetBase)gameObject);
+                        context.Tilesets.Remove((TilesetDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Time:
                         break;
                     case GameObjectType.GuildVariable:
-                        context.GuildVariables.Remove((GuildVariableBase)gameObject);
+                        context.GuildVariables.Remove((GuildVariableDescriptor)gameObject);
 
                         break;
                     case GameObjectType.UserVariable:
-                        context.UserVariables.Remove((UserVariableBase)gameObject);
+                        context.UserVariables.Remove((UserVariableDescriptor)gameObject);
 
                         break;
                 }
@@ -1268,9 +1418,15 @@ public static partial class DbInterface
                 context.SaveChanges();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error deleting {GameObjectType} {GameObjectId} '{GameObjectName}'",
+                gameObject.Type,
+                gameObject.Id,
+                gameObject.Name
+            );
             throw;
         }
     }
@@ -1285,16 +1441,16 @@ public static partial class DbInterface
                 switch (gameObject.Type)
                 {
                     case GameObjectType.Animation:
-                        context.Animations.Update((AnimationBase)gameObject);
+                        context.Animations.Update((AnimationDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Class:
-                        context.Classes.Update((ClassBase)gameObject);
+                        context.Classes.Update((ClassDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Item:
                     {
-                        if (gameObject is not ItemBase itemDescriptor)
+                        if (gameObject is not ItemDescriptor itemDescriptor)
                         {
                             throw new InvalidOperationException();
                         }
@@ -1322,26 +1478,26 @@ public static partial class DbInterface
                         break;
                     }
                     case GameObjectType.Npc:
-                        context.Npcs.Update((NpcBase)gameObject);
+                        context.Npcs.Update((NPCDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Projectile:
-                        context.Projectiles.Update((ProjectileBase)gameObject);
+                        context.Projectiles.Update((ProjectileDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Quest:
 
-                        if (((QuestBase)gameObject).StartEvent != null)
+                        if (((QuestDescriptor)gameObject).StartEvent != null)
                         {
-                            context.Events.Update(((QuestBase)gameObject).StartEvent);
+                            context.Events.Update(((QuestDescriptor)gameObject).StartEvent);
                         }
 
-                        if (((QuestBase)gameObject).EndEvent != null)
+                        if (((QuestDescriptor)gameObject).EndEvent != null)
                         {
-                            context.Events.Update(((QuestBase)gameObject).EndEvent);
+                            context.Events.Update(((QuestDescriptor)gameObject).EndEvent);
                         }
 
-                        foreach (var tsk in ((QuestBase)gameObject).Tasks)
+                        foreach (var tsk in ((QuestDescriptor)gameObject).Tasks)
                         {
                             if (tsk.CompletionEvent != null)
                             {
@@ -1349,27 +1505,27 @@ public static partial class DbInterface
                             }
                         }
 
-                        context.Quests.Update((QuestBase)gameObject);
+                        context.Quests.Update((QuestDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Resource:
-                        context.Resources.Update((ResourceBase)gameObject);
+                        context.Resources.Update((ResourceDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Shop:
-                        context.Shops.Update((ShopBase)gameObject);
+                        context.Shops.Update((ShopDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Spell:
-                        context.Spells.Update((SpellBase)gameObject);
+                        context.Spells.Update((SpellDescriptor)gameObject);
 
                         break;
                     case GameObjectType.CraftTables:
-                        context.CraftingTables.Update((CraftingTableBase)gameObject);
+                        context.CraftingTables.Update((CraftingTableDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Crafts:
-                        context.Crafts.Update((CraftBase)gameObject);
+                        context.Crafts.Update((CraftingRecipeDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Map:
@@ -1377,29 +1533,29 @@ public static partial class DbInterface
 
                         break;
                     case GameObjectType.Event:
-                        context.Events.Update((EventBase)gameObject);
+                        context.Events.Update((EventDescriptor)gameObject);
 
                         break;
                     case GameObjectType.PlayerVariable:
-                        context.PlayerVariables.Update((PlayerVariableBase)gameObject);
+                        context.PlayerVariables.Update((PlayerVariableDescriptor)gameObject);
 
                         break;
                     case GameObjectType.ServerVariable:
-                        context.ServerVariables.Update((ServerVariableBase)gameObject);
+                        context.ServerVariables.Update((ServerVariableDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Tileset:
-                        context.Tilesets.Update((TilesetBase)gameObject);
+                        context.Tilesets.Update((TilesetDescriptor)gameObject);
 
                         break;
                     case GameObjectType.Time:
                         break;
                     case GameObjectType.GuildVariable:
-                        context.GuildVariables.Update((GuildVariableBase)gameObject);
+                        context.GuildVariables.Update((GuildVariableDescriptor)gameObject);
 
                         break;
                     case GameObjectType.UserVariable:
-                        context.UserVariables.Update((UserVariableBase)gameObject);
+                        context.UserVariables.Update((UserVariableDescriptor)gameObject);
 
                         break;
                 }
@@ -1408,9 +1564,15 @@ public static partial class DbInterface
                 context.SaveChanges();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error saving {GameObjectType} {GameObjectId} '{GameObjectName}'",
+                gameObject.Type,
+                gameObject.Id,
+                gameObject.Name
+            );
             throw;
         }
     }
@@ -1418,7 +1580,7 @@ public static partial class DbInterface
     //Post Loading Functions
     private static void OnMapsLoaded()
     {
-        if (MapBase.Lookup.Count == 0)
+        if (MapDescriptor.Lookup.Count == 0)
         {
             Console.WriteLine(Strings.Database.NoMaps);
             AddGameObject(GameObjectType.Map);
@@ -1436,10 +1598,10 @@ public static partial class DbInterface
 
     private static void OnClassesLoaded()
     {
-        if (ClassBase.Lookup.Count == 0)
+        if (ClassDescriptor.Lookup.Count == 0)
         {
             Console.WriteLine(Strings.Database.NoClasses);
-            var cls = (ClassBase)AddGameObject(GameObjectType.Class);
+            var cls = (ClassDescriptor)AddGameObject(GameObjectType.Class);
             cls.Name = Strings.Database.Default;
             var defaultMale = new ClassSprite()
             {
@@ -1470,9 +1632,9 @@ public static partial class DbInterface
 
     public static void CachePlayerVariableEventTextLookups()
     {
-        var lookup = new Dictionary<string, PlayerVariableBase>();
+        var lookup = new Dictionary<string, PlayerVariableDescriptor>();
         var addedIds = new HashSet<string>();
-        foreach (PlayerVariableBase variable in PlayerVariableBase.Lookup.Values)
+        foreach (PlayerVariableDescriptor variable in PlayerVariableDescriptor.Lookup.Values)
         {
             if (!string.IsNullOrWhiteSpace(variable.TextId) && !addedIds.Contains(variable.TextId))
             {
@@ -1486,9 +1648,9 @@ public static partial class DbInterface
 
     public static void CacheServerVariableEventTextLookups()
     {
-        var lookup = new Dictionary<string, ServerVariableBase>();
+        var lookup = new Dictionary<string, ServerVariableDescriptor>();
         var addedIds = new HashSet<string>();
-        foreach (ServerVariableBase variable in ServerVariableBase.Lookup.Values)
+        foreach (ServerVariableDescriptor variable in ServerVariableDescriptor.Lookup.Values)
         {
             if (!string.IsNullOrWhiteSpace(variable.TextId) && !addedIds.Contains(variable.TextId))
             {
@@ -1502,9 +1664,9 @@ public static partial class DbInterface
 
     public static void CacheGuildVariableEventTextLookups()
     {
-        var lookup = new Dictionary<string, GuildVariableBase>();
+        var lookup = new Dictionary<string, GuildVariableDescriptor>();
         var addedIds = new HashSet<string>();
-        foreach (GuildVariableBase variable in GuildVariableBase.Lookup.Values)
+        foreach (GuildVariableDescriptor variable in GuildVariableDescriptor.Lookup.Values)
         {
             if (!string.IsNullOrWhiteSpace(variable.TextId) && !addedIds.Contains(variable.TextId))
             {
@@ -1517,9 +1679,9 @@ public static partial class DbInterface
 
     public static void CacheUserVariableEventTextLookups()
     {
-        var lookup = new Dictionary<string, UserVariableBase>();
+        var lookup = new Dictionary<string, UserVariableDescriptor>();
         var addedIds = new HashSet<string>();
-        foreach (UserVariableBase variable in UserVariableBase.Lookup.Values)
+        foreach (UserVariableDescriptor variable in UserVariableDescriptor.Lookup.Values)
         {
             if (!string.IsNullOrWhiteSpace(variable.TextId) && !addedIds.Contains(variable.TextId))
             {
@@ -1689,21 +1851,21 @@ public static partial class DbInterface
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error loading map folders");
             throw;
         }
 
-        foreach (var map in MapBase.Lookup)
+        foreach (var map in MapDescriptor.Lookup)
         {
             if (MapList.List.FindMap(map.Value.Id) == null)
             {
-                MapList.List.AddMap(map.Value.Id, map.Value.TimeCreated, MapBase.Lookup);
+                MapList.List.AddMap(map.Value.Id, map.Value.TimeCreated, MapDescriptor.Lookup);
             }
         }
 
-        MapList.List.PostLoad(MapBase.Lookup, true, true);
+        MapList.List.PostLoad(MapDescriptor.Lookup, true, true);
         PacketSender.SendMapListToAll();
     }
 
@@ -1718,9 +1880,9 @@ public static partial class DbInterface
                 context.SaveChanges();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error saving map list");
             throw;
         }
     }
@@ -1735,20 +1897,20 @@ public static partial class DbInterface
                 var time = context.Time.OrderBy(t => t.Id).FirstOrDefault();
                 if (time == null)
                 {
-                    context.Time.Add(TimeBase.GetTimeBase());
+                    context.Time.Add(DaylightCycleDescriptor.Instance);
                     context.ChangeTracker.DetectChanges();
                     context.SaveChanges();
                 }
                 else
                 {
-                    TimeBase.SetStaticTime(time);
+                    DaylightCycleDescriptor.Instance = time;
                 }
             }
             Time.Init();
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error loading time objects");
             throw;
         }
     }
@@ -1759,14 +1921,14 @@ public static partial class DbInterface
         {
             using (var context = CreateGameContext(readOnly: false))
             {
-                context.Time.Update(TimeBase.GetTimeBase());
+                context.Time.Update(DaylightCycleDescriptor.Instance);
                 context.ChangeTracker.DetectChanges();
                 context.SaveChanges();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error saving time objects");
             throw;
         }
     }
@@ -1784,7 +1946,7 @@ public static partial class DbInterface
                     {
                         context.ServerVariables.Update(variable.Value);
                     }
-                    UpdatedServerVariables.TryRemove(variable.Key, out ServerVariableBase obj);
+                    UpdatedServerVariables.TryRemove(variable.Key, out ServerVariableDescriptor obj);
                 }
                 context.SaveChanges();
             }
@@ -1906,7 +2068,11 @@ public static partial class DbInterface
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error processing migration for {SelectedContextType}",
+                selectedContextType
+            );
             throw;
         }
     }
@@ -1940,9 +2106,9 @@ public static partial class DbInterface
             DatabaseType = fromDatabaseOptions.Type,
             ExplicitLoad = false,
             LazyLoading = false,
-            LoggerFactory = default,
+            LoggerFactory = CreateLoggerFactory<TContext>(fromDatabaseOptions),
             QueryTrackingBehavior = default,
-            ReadOnly = false
+            ReadOnly = false,
         };
 
         DatabaseOptions toDatabaseOptions;
@@ -2000,7 +2166,8 @@ public static partial class DbInterface
                             Port = port,
                             Database = database,
                             Username = username,
-                            Password = password
+                            Password = password,
+                            LogLevel = fromDatabaseOptions.LogLevel,
                         };
                         toContextOptions = new()
                         {
@@ -2008,7 +2175,8 @@ public static partial class DbInterface
                                 toDatabaseOptions,
                                 default
                             ),
-                            DatabaseType = toDatabaseType
+                            DatabaseType = toDatabaseType,
+                            LoggerFactory = CreateLoggerFactory<TContext>(toDatabaseOptions),
                         };
 
                         try
@@ -2018,7 +2186,7 @@ public static partial class DbInterface
                         }
                         catch (Exception exception)
                         {
-                            Log.Error(Strings.Migration.MySqlConnectionError.ToString(exception));
+                            ApplicationContext.Context.Value?.Logger.LogError(Strings.Migration.MySqlConnectionError.ToString(exception));
                             Console.WriteLine();
                             Console.WriteLine(Strings.Migration.MySqlTryAgain);
                             var input = Console.ReadLine();
@@ -2036,7 +2204,7 @@ public static partial class DbInterface
                                 continue;
                             }
 
-                            Log.Info(Strings.Migration.MigrationCanceled);
+                            ApplicationContext.Context.Value?.Logger.LogInformation(Strings.Migration.MigrationCanceled);
                             return;
                         }
                     }
@@ -2069,27 +2237,32 @@ public static partial class DbInterface
                     {
                         // If it does, check if it is OK to overwrite
                         Console.WriteLine();
-                        Log.Error(Strings.Migration.DatabaseFileAlreadyExists.ToString(dbFileName));
+                        ApplicationContext.Context.Value?.Logger.LogError(Strings.Migration.DatabaseFileAlreadyExists.ToString(dbFileName));
                         var input = Console.ReadLine();
                         var key = input.Length > 0 ? input[0] : ' ';
                         Console.WriteLine();
                         if (key.ToString() != Strings.Migration.ConfirmCharacter)
                         {
-                            Log.Info(Strings.Migration.MigrationCanceled);
+                            ApplicationContext.Context.Value?.Logger.LogInformation(Strings.Migration.MigrationCanceled);
                             return;
                         }
 
                         File.Delete(dbFileName);
                     }
 
-                    toDatabaseOptions = new() { Type = toDatabaseType };
+                    toDatabaseOptions = new()
+                    {
+                        LogLevel = fromDatabaseOptions.LogLevel,
+                        Type = toDatabaseType,
+                    };
                     toContextOptions = new()
                     {
                         ConnectionStringBuilder = toDatabaseType.CreateConnectionStringBuilder(
                             toDatabaseOptions,
                             dbFileName
                         ),
-                        DatabaseType = toDatabaseType
+                        DatabaseType = toDatabaseType,
+                        LoggerFactory = CreateLoggerFactory<TContext>(toDatabaseOptions),
                     };
 
                     break;
@@ -2100,7 +2273,7 @@ public static partial class DbInterface
         }
 
         // Shut down server, start migration.
-        Log.Info(Strings.Migration.StoppingServer);
+        ApplicationContext.Context.Value?.Logger.LogInformation(Strings.Migration.StoppingServer);
 
         //This variable will end the server loop and save any pending changes
         ServerContext.Instance.DisposeWithoutExiting = true;
@@ -2111,7 +2284,7 @@ public static partial class DbInterface
             Thread.Sleep(100);
         }
 
-        Log.Info(Strings.Migration.StartingMigration);
+        ApplicationContext.Context.Value?.Logger.LogInformation(Strings.Migration.StartingMigration);
         var migrationService = new DatabaseTypeMigrationService();
         if (await migrationService.TryMigrate<TContext>(fromContextOptions, toContextOptions))
         {
@@ -2134,13 +2307,13 @@ public static partial class DbInterface
 
             Options.SaveToDisk();
 
-            Log.Info(Strings.Migration.MigrationComplete);
+            ApplicationContext.Context.Value?.Logger.LogInformation(Strings.Migration.MigrationComplete);
             Bootstrapper.Context.WaitForConsole();
             ServerContext.Exit(0);
         }
         else
         {
-            Log.Error($"Error migrating context type: {typeof(TContext).FullName}");
+            ApplicationContext.Context.Value?.Logger.LogError($"Error migrating context type: {typeof(TContext).FullName}");
             ServerContext.Exit(1);
         }
     }
@@ -2158,7 +2331,7 @@ public static partial class DbInterface
     //https://stackoverflow.com/questions/3404421/password-masking-console-application
     public static string GetPassword()
     {
-        var pwd = "";
+        var pwd = string.Empty;
         while (true)
         {
             var i = Console.ReadKey(true);

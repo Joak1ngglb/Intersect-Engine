@@ -3,31 +3,25 @@ using Intersect.Server.Core;
 using Intersect.Server.Entities;
 using Intersect.Server.Localization;
 using Intersect.Utilities;
-
 using NCalc;
-
 using Newtonsoft.Json;
 
 namespace Intersect.Server.General;
 
-
 public partial class Formulas
 {
+    private const string DefaultFormulaMagicDamage = "Random(((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * .975, ((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * 1.025) * (100 / (100 + V_MagicResist))";
+    private const string DefaultFormulaPhysicalDamage = "Random(((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * .975, ((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * 1.025) * (100 / (100 + V_Defense))";
+    private const string DefaultFormulaTrueDamage = "Random(((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * .975, ((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * 1.025)";
 
-    private static string FORMULAS_FILE => Path.Combine(ServerContext.ResourceDirectory, "formulas.json");
+    private static readonly string FormulasFile = Path.Combine(ServerContext.ResourceDirectory, "formulas.json");
+    private static Formulas? _formulas;
 
-    private static Formulas mFormulas;
+    public Formula ExpFormula = new("BaseExp * Power(Gain, Level)");
 
-    public Formula ExpFormula = new Formula("BaseExp * Power(Gain, Level)");
-
-    public string MagicDamage =
-        "Random(((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * .975, ((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * 1.025) * (100 / (100 + V_MagicResist))";
-
-    public string PhysicalDamage =
-        "Random(((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * .975, ((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * 1.025) * (100 / (100 + V_Defense))";
-
-    public string TrueDamage =
-        "Random(((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * .975, ((BaseDamage + (ScalingStat * ScaleFactor))) * CritMultiplier * 1.025)";
+    public string MagicDamage = DefaultFormulaMagicDamage;
+    public string PhysicalDamage = DefaultFormulaPhysicalDamage;
+    public string TrueDamage = DefaultFormulaTrueDamage;
 
     public static void LoadFormulas()
     {
@@ -35,13 +29,13 @@ public partial class Formulas
 
         try
         {
-            mFormulas = new Formulas();
-            if (File.Exists(FORMULAS_FILE))
+            _formulas = new Formulas();
+            if (File.Exists(FormulasFile))
             {
-                mFormulas = JsonConvert.DeserializeObject<Formulas>(File.ReadAllText(FORMULAS_FILE));
+                _formulas = JsonConvert.DeserializeObject<Formulas>(File.ReadAllText(FormulasFile)) ?? _formulas;
             }
 
-            File.WriteAllText(FORMULAS_FILE, JsonConvert.SerializeObject(mFormulas, Formatting.Indented));
+            File.WriteAllText(FormulasFile, JsonConvert.SerializeObject(_formulas, Formatting.Indented));
 
             Expression.CacheEnabled = false;
         }
@@ -61,58 +55,38 @@ public partial class Formulas
         Entity victim
     )
     {
-        if (mFormulas == null)
+        if (_formulas == null)
         {
-            throw new ArgumentNullException(nameof(mFormulas));
+            throw new InvalidOperationException("Formulas not yet initialized");
         }
 
-        if (attacker == null)
-        {
-            throw new ArgumentNullException(nameof(attacker));
-        }
+        ArgumentNullException.ThrowIfNull(attacker, nameof(attacker));
+        ArgumentNullException.ThrowIfNull(victim);
 
         if (attacker.Stat == null)
         {
-            throw new ArgumentNullException(
-                nameof(attacker.Stat), $@"{nameof(attacker)}.{nameof(attacker.Stat)} is null"
+            throw new ArgumentException(
+                $@"{nameof(attacker)}.{nameof(attacker.Stat)} is null",
+                nameof(attacker)
             );
-        }
-
-        if (victim == null)
-        {
-            throw new ArgumentNullException(nameof(victim));
         }
 
         if (victim.Stat == null)
         {
-            throw new ArgumentNullException(
-                nameof(victim.Stat), $@"{nameof(victim)}.{nameof(victim.Stat)} is null"
-            );
+            throw new ArgumentException($@"{nameof(victim)}.{nameof(victim.Stat)} is null", nameof(victim));
         }
 
-        string expressionString;
-        switch (damageType)
+        var expressionString = damageType switch
         {
-            case DamageType.Physical:
-                expressionString = mFormulas.PhysicalDamage;
-
-                break;
-            case DamageType.Magic:
-                expressionString = mFormulas.MagicDamage;
-
-                break;
-            case DamageType.True:
-                expressionString = mFormulas.TrueDamage;
-
-                break;
-            default:
-                expressionString = mFormulas.TrueDamage;
-
-                break;
-        }
+            DamageType.Physical => _formulas.PhysicalDamage,
+            DamageType.Magic => _formulas.MagicDamage,
+            DamageType.True => _formulas.TrueDamage,
+            _ => _formulas.TrueDamage,
+        };
 
         var expression = new Expression(expressionString);
         var negate = false;
+
         if (baseDamage < 0)
         {
             baseDamage = Math.Abs(baseDamage);
@@ -138,6 +112,7 @@ public partial class Formulas
             expression.Parameters["A_ArmorPenetration"] = attacker.Stat[(int)Stat.ArmorPenetration].Value();
             expression.Parameters["A_Vitality"] = attacker.Stat[(int)Stat.Vitality].Value();
             expression.Parameters["A_Wisdom"] = attacker.Stat[(int)Stat.Wisdom].Value();
+            expression.Parameters["A_Level"] = attacker.Level;
             expression.Parameters["V_Attack"] = victim.Stat[(int)Stat.Attack].Value();
             expression.Parameters["V_Defense"] = victim.Stat[(int)Stat.Defense].Value();
             expression.Parameters["V_Speed"] = victim.Stat[(int)Stat.Speed].Value();
@@ -146,12 +121,12 @@ public partial class Formulas
             expression.Parameters["V_ArmorPenetration"] = victim.Stat[(int)Stat.ArmorPenetration].Value();
             expression.Parameters["V_Vitality"] = victim.Stat[(int)Stat.Vitality].Value();
             expression.Parameters["V_Wisdom"] = victim.Stat[(int)Stat.Wisdom].Value();
+            expression.Parameters["V_Level"] = victim.Level;
             expression.EvaluateFunction += delegate (string name, FunctionArgs args)
+
+            expression.EvaluateFunction += delegate(string name, FunctionArgs args)
             {
-                if (args == null)
-                {
-                    throw new ArgumentNullException(nameof(args));
-                }
+                ArgumentNullException.ThrowIfNull(args);
 
                 if (name == "Random")
                 {
@@ -193,10 +168,9 @@ public partial class Formulas
         );
 
         var max = (int)Math.Round(
-            (double)(parameters[1] ?? throw new NullReferenceException("First parameter is null."))
+            (double)(parameters[1] ?? throw new NullReferenceException("Second parameter is null."))
         );
 
         return min >= max ? min : Randomization.Next(min, max + 1);
     }
-
 }

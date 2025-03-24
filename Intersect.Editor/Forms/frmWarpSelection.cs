@@ -4,7 +4,7 @@ using Intersect.Editor.General;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Maps;
 using Intersect.Editor.Networking;
-using Intersect.GameObjects.Maps.MapList;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
 using Graphics = System.Drawing.Graphics;
 
 namespace Intersect.Editor.Forms;
@@ -23,7 +23,7 @@ public partial class FrmWarpSelection : Form
 
     private Image mMapImage;
 
-    private List<Guid> mRestrictMaps;
+    private List<Guid>? mRestrictMaps;
 
     private bool mResult;
 
@@ -36,8 +36,8 @@ public partial class FrmWarpSelection : Form
 
         InitLocalization();
         mapTreeList1.UpdateMapList(mCurrentMapId);
-        pnlMap.Width = Options.TileWidth * Options.MapWidth;
-        pnlMap.Height = Options.TileHeight * Options.MapHeight;
+        pnlMap.Width = Options.Instance.Map.TileWidth * Options.Instance.Map.MapWidth;
+        pnlMap.Height = Options.Instance.Map.TileHeight * Options.Instance.Map.MapHeight;
         pnlMap.BackColor = System.Drawing.Color.Black;
         mapTreeList1.SetSelect(NodeDoubleClick);
 
@@ -47,7 +47,7 @@ public partial class FrmWarpSelection : Form
         );
     }
 
-    public void InitForm(bool tileSelection = true, List<Guid> restrictMaps = null)
+    public void InitForm(bool tileSelection = true, List<Guid>? restrictMaps = null)
     {
         mapTreeList1.UpdateMapList(mCurrentMapId, restrictMaps);
         mRestrictMaps = restrictMaps;
@@ -136,8 +136,8 @@ public partial class FrmWarpSelection : Form
                 g.DrawRectangle(
                     new Pen(System.Drawing.Color.White, 2f),
                     new Rectangle(
-                        mCurrentX * Options.TileWidth, mCurrentY * Options.TileHeight, Options.TileWidth,
-                        Options.TileHeight
+                        mCurrentX * Options.Instance.Map.TileWidth, mCurrentY * Options.Instance.Map.TileHeight, Options.Instance.Map.TileWidth,
+                        Options.Instance.Map.TileHeight
                     )
                 );
             }
@@ -197,8 +197,8 @@ public partial class FrmWarpSelection : Form
             return;
         }
 
-        mCurrentX = (int) Math.Floor((double) e.X / Options.TileWidth);
-        mCurrentY = (int) Math.Floor((double) e.Y / Options.TileHeight);
+        mCurrentX = (int) Math.Floor((double) e.X / Options.Instance.Map.TileWidth);
+        mCurrentY = (int) Math.Floor((double) e.Y / Options.Instance.Map.TileHeight);
         UpdatePreview();
     }
 

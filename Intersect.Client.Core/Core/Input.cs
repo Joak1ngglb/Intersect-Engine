@@ -1,8 +1,9 @@
 using Intersect.Admin.Actions;
-using Intersect.Client.Core.Controls;
 using Intersect.Client.Entities;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Graphics;
+using Intersect.Client.Framework.Gwen.DragDrop;
+using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface;
@@ -12,9 +13,11 @@ using Intersect.Client.Maps;
 using Intersect.Client.Networking;
 using Intersect.Configuration;
 using Intersect.Enums;
-using Intersect.Utilities;
+using Intersect.Framework.Core;
 
 namespace Intersect.Client.Core;
+
+public delegate bool MouseButtonEventInterceptor(Keys modifier, MouseButton mouseButton);
 
 public static partial class Input
 {
@@ -36,22 +39,28 @@ public static partial class Input
 
     public static HandleKeyEvent? MouseUp { get => _mouseUp; set => _mouseUp = value; }
 
-    private static void HandleZoomOut()
+    public static void HandleZoomOut(bool wrap = true)
     {
-        Globals.Database.WorldZoom /= 2;
-        if (Globals.Database.WorldZoom < Graphics.BaseWorldScale)
+        var nextZoom = Globals.Database.WorldZoom / 2;
+
+        if (nextZoom < Graphics.MinimumWorldScale)
         {
-            Globals.Database.WorldZoom = Graphics.BaseWorldScale * 4;
+            nextZoom = wrap ? Graphics.MaximumWorldScale : Graphics.MinimumWorldScale;
         }
+
+        Globals.Database.WorldZoom = nextZoom;
     }
 
-    private static void HandleZoomIn()
+    public static void HandleZoomIn(bool wrap = true)
     {
-        Globals.Database.WorldZoom *= 2;
-        if (Globals.Database.WorldZoom > Graphics.BaseWorldScale * 4)
+        var nextZoom = Globals.Database.WorldZoom * 2;
+
+        if (nextZoom > Graphics.MaximumWorldScale)
         {
-            Globals.Database.WorldZoom = Graphics.BaseWorldScale;
+            nextZoom = wrap ? Graphics.MinimumWorldScale : Graphics.MaximumWorldScale;
         }
+
+        Globals.Database.WorldZoom = nextZoom;
     }
 
     public static void OnKeyPressed(Keys modifier, Keys key)
@@ -61,14 +70,16 @@ public static partial class Input
             return;
         }
 
+        var currentGameState = Globals.GameState;
         var consumeKey = false;
         bool canFocusChat = true;
 
         KeyDown?.Invoke(modifier, key);
+
         switch (key)
         {
             case Keys.Escape:
-                if (Globals.GameState != GameStates.Intro)
+                if (currentGameState != GameStates.Intro)
                 {
                     break;
                 }
@@ -79,14 +90,16 @@ public static partial class Input
                 return;
 
             case Keys.Enter:
-
-                for (int i = Interface.Interface.InputBlockingElements.Count - 1; i >= 0; i--)
+                var components = Interface.Interface.InputBlockingComponents.ToArray();
+                for (int i = components.Length - 1; i >= 0; i--)
                 {
+                    var inputBlockingComponent = components[i];
                     try
                     {
-                        if (Interface.Interface.InputBlockingElements[i] is InputBox inputBox && !inputBox.IsHidden)
+                        if (inputBlockingComponent is InputBox { IsHidden: false } inputBox)
                         {
                             inputBox.SubmitInput();
+                            consumeKey = true;
                             canFocusChat = false;
                             break;
                         }
@@ -95,10 +108,10 @@ public static partial class Input
 
                     try
                     {
-                        var eventWindow = (EventWindow)Interface.Interface.InputBlockingElements[i];
-                        if (eventWindow != null && !eventWindow.IsHidden && Globals.EventDialogs.Count > 0)
+                        if (inputBlockingComponent is EventWindow { IsHidden: false } eventWindow && Globals.EventDialogs.Count > 0)
                         {
                             eventWindow.CloseEventResponse(EventResponseType.OneOption);
+                            consumeKey = true;
                             canFocusChat = false;
 
                             break;
@@ -107,29 +120,45 @@ public static partial class Input
                     catch { }
                 }
 
+                if (!consumeKey)
+                {
+
+                }
                 break;
         }
 
         if (Controls.Controls.ControlHasKey(Control.OpenMenu, modifier, key))
         {
-            if (Globals.GameState != GameStates.InGame)
+            if (currentGameState != GameStates.InGame)
             {
                 return;
             }
 
+            if (!Interface.Interface.HasInGameUI)
+            {
+                return;
+            }
+
+            if (DragAndDrop.IsDragging)
+            {
+                return;
+            }
+
+            var gameUi = Interface.Interface.GameUi;
+
             // First try and unfocus chat then close all UI elements, then untarget our target.. and THEN open the escape menu.
             // Most games do this, why not this?
-            if (Interface.Interface.GameUi != null && Interface.Interface.GameUi.ChatFocussed)
+            if (gameUi.ChatFocussed)
             {
-                Interface.Interface.GameUi.UnfocusChat = true;
+                gameUi.UnfocusChat = true;
             }
-            else if (Interface.Interface.GameUi != null && Interface.Interface.GameUi.CloseAllWindows())
+            else if (gameUi.CloseAllWindows())
             {
                 // We've closed our windows, don't do anything else. :)
             }
-            else if (Globals.Me != null && Globals.Me.TargetIndex != Guid.Empty && !Globals.Me.Status.Any(s => s.Type == Enums.SpellEffect.Taunt))
+            else if (Globals.Me is { } me && me.TargetId != default && me.Status.All(s => s.Type != SpellEffect.Taunt))
             {
-                _ = Globals.Me.ClearTarget();
+                _ = me.ClearTarget();
             }
             else
             {
@@ -137,11 +166,18 @@ public static partial class Input
 
                 if (simplifiedEscapeMenuSetting)
                 {
-                    Interface.Interface.GameUi?.GameMenu?.ToggleSimplifiedEscapeMenu();
+                    if (gameUi.EscapeMenu.IsVisibleInTree)
+                    {
+                        gameUi.EscapeMenu.ToggleHidden();
+                    }
+                    else
+                    {
+                        gameUi.GameMenu.ToggleSimplifiedEscapeMenu();
+                    }
                 }
                 else
                 {
-                    Interface.Interface.GameUi?.EscapeMenu?.ToggleHidden();
+                    gameUi.EscapeMenu.ToggleHidden();
                 }
             }
         }
@@ -151,238 +187,196 @@ public static partial class Input
             return;
         }
 
-        Controls.Controls.GetControlsFor(modifier, key)
-            ?.ForEach(
-                control =>
-                {
-                    if (consumeKey)
+        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+        foreach (var control in Controls.Controls.GetControlsFor(modifier, key))
+        {
+            if (consumeKey)
+            {
+                continue;
+            }
+
+            switch (control)
+            {
+                case Control.Screenshot:
+                    Graphics.Renderer?.RequestScreenshot();
+                    break;
+
+                case Control.ToggleGui:
+                    if (currentGameState == GameStates.InGame && !DragAndDrop.IsDragging)
                     {
-                        return;
+                        Interface.Interface.HideUi = !Interface.Interface.HideUi;
+                    }
+                    break;
+
+                case Control.HoldToZoomIn:
+                case Control.ToggleZoomIn:
+                    {
+                        HandleZoomIn();
+                        break;
                     }
 
-                    if (IsModifier(key))
+                case Control.HoldToZoomOut:
+                case Control.ToggleZoomOut:
                     {
-                        return;
+                        HandleZoomOut();
+                        break;
+                    }
+
+                case Control.ToggleFullscreen:
+                    {
+                        if (Graphics.Renderer == default)
+                        {
+                            break;
+                        }
+
+                        Globals.Database.FullScreen = !Globals.Database.FullScreen;
+                        Globals.Database.SavePreferences();
+                        Graphics.Renderer.OverrideResolution = Resolution.Empty;
+                        Graphics.Renderer.Init();
+                        break;
+                    }
+
+                case Control.OpenDebugger:
+                    Interface.Interface.CurrentInterface.ToggleDebug();
+                    break;
+            }
+
+            switch (currentGameState)
+            {
+                case GameStates.Intro:
+                    break;
+
+                case GameStates.Menu:
+                    break;
+
+                case GameStates.InGame:
+                    if (!Interface.Interface.HasInGameUI)
+                    {
+                        break;
+                    }
+
+                    if (DragAndDrop.IsDragging)
+                    {
+                        break;
                     }
 
                     switch (control)
                     {
-                        case Control.Screenshot:
-                            Graphics.Renderer?.RequestScreenshot();
-
+                        case Control.Block:
+                            _ = (Globals.Me?.TryBlock());
                             break;
 
-                        case Control.ToggleGui:
-                            if (Globals.GameState == GameStates.InGame)
+                        case Control.AutoTarget:
+                            Globals.Me?.AutoTarget();
+                            break;
+
+                        case Control.HoldToSoftRetargetOnSelfCast:
+                            Globals.HoldToSoftRetargetOnSelfCast = true;
+                            break;
+
+                        case Control.ToggleAutoSoftRetargetOnSelfCast:
+                            Globals.Database.AutoSoftRetargetOnSelfCast = !Globals.Database.AutoSoftRetargetOnSelfCast;
+                            break;
+
+                        case Control.PickUp:
+                            if (Globals.Me != default && Globals.Me.MapInstance != default)
                             {
-                                Interface.Interface.HideUi = !Interface.Interface.HideUi;
+                                _ = Player.TryPickupItem(
+                                    Globals.Me.MapInstance.Id,
+                                    Globals.Me.Y * Options.Instance.Map.MapWidth + Globals.Me.X
+                                );
                             }
-
                             break;
 
-                        case Control.HoldToZoomIn:
-                        case Control.ToggleZoomIn:
-                        {
-                            HandleZoomIn();
-                            break;
-                        }
-
-                        case Control.HoldToZoomOut:
-                        case Control.ToggleZoomOut:
-                        {
-                            HandleZoomOut();
-                            break;
-                        }
-
-                        case Control.ToggleFullscreen:
-                        {
-                            if (Graphics.Renderer == default)
+                        case Control.Enter:
+                            if (canFocusChat)
                             {
-                                break;
+                                Interface.Interface.GameUi.FocusChat = true;
+                                consumeKey = true;
                             }
+                            continue;
 
-                            Globals.Database.FullScreen = !Globals.Database.FullScreen;
-                            Globals.Database.SavePreferences();
-                            Graphics.Renderer.OverrideResolution = Resolution.Empty;
-                            Graphics.Renderer.Init();
+                        case Control.OpenInventory:
+                            Interface.Interface.GameUi.GameMenu?.ToggleInventoryWindow();
                             break;
-                        }
 
-                        case Control.OpenDebugger:
-                            _ = MutableInterface.ToggleDebug();
+                        case Control.OpenQuests:
+                            Interface.Interface.GameUi.GameMenu?.ToggleQuestsWindow();
+                            break;
+
+                        case Control.OpenCharacterInfo:
+                            Interface.Interface.GameUi.GameMenu?.ToggleCharacterWindow();
+                            break;
+
+                        case Control.OpenParties:
+                            Interface.Interface.GameUi.GameMenu?.TogglePartyWindow();
+                            break;
+
+                        case Control.OpenSpells:
+                            Interface.Interface.GameUi.GameMenu?.ToggleSpellsWindow();
+                            break;
+
+                        case Control.OpenFriends:
+                            _ = (Interface.Interface.GameUi.GameMenu?.ToggleFriendsWindow());
+                            break;
+
+                        case Control.OpenSettings:
+                            Interface.Interface.GameUi.EscapeMenu?.OpenSettingsWindow();
+                            break;
+
+                        case Control.OpenAdminPanel:
+                            if (Interface.Interface.GameUi.ToggleAdminWindow())
+                            {
+                                PacketSender.SendOpenAdminWindow();
+                            }
+                            break;
+
+                        case Control.OpenGuild:
+                            _ = Interface.Interface.GameUi.GameMenu?.ToggleGuildWindow();
+                            break;
+                        //TARGET PARTY CONTROLS
+                        case Control.TargetParty1:
+                            Globals.Me?.TargetPartyMember(0);
+                            break;
+
+                        case Control.TargetParty2:
+                            Globals.Me?.TargetPartyMember(1);
+                            break;
+
+                        case Control.TargetParty3:
+                            Globals.Me?.TargetPartyMember(2);
+                            break;
+
+                        case Control.TargetParty4:
+                            Globals.Me?.TargetPartyMember(3);
+                            break;
+
+                        case Control.TargetParty5:
+                            Globals.Me?.TargetPartyMember(4);
+                            break;
+
+                        case Control.TargetParty6:
+                            Globals.Me?.TargetPartyMember(5);
+                            break;
+
+                        case Control.TargetParty7:
+                            Globals.Me?.TargetPartyMember(6);
                             break;
                     }
+                    break;
 
-                    switch (Globals.GameState)
-                    {
-                        case GameStates.Intro:
-                            break;
+                case GameStates.Loading:
+                    break;
 
-                        case GameStates.Menu:
-                            var selectCharacterWindow = Interface.Interface.MenuUi.MainMenu.SelectCharacterWindow;
+                case GameStates.Error:
+                    break;
 
-                            switch (control)
-                            {
-                                case Control.Enter:
-                                    if (!selectCharacterWindow.IsHidden && selectCharacterWindow.Characters[selectCharacterWindow.mSelectedChar] != null)
-                                    {
-                                        selectCharacterWindow.ButtonPlay_Clicked(null, null);
-                                        consumeKey = true;
-                                    }
-
-                                    break;
-                            }
-
-                            break;
-
-                        case GameStates.InGame:
-                            switch (control)
-                            {
-                                case Control.MoveUp:
-                                    break;
-
-                                case Control.MoveLeft:
-                                    break;
-
-                                case Control.MoveDown:
-                                    break;
-
-                                case Control.MoveRight:
-                                    break;
-
-                                case Control.AttackInteract:
-                                    break;
-
-                                case Control.Block:
-                                    _ = (Globals.Me?.TryBlock());
-
-                                    break;
-
-                                case Control.AutoTarget:
-                                    Globals.Me?.AutoTarget();
-
-                                    break;
-
-                                case Control.PickUp:
-                                    if (Globals.Me != default && Globals.Me.MapInstance != default)
-                                    {
-                                        _ = Player.TryPickupItem(
-                                                Globals.Me.MapInstance.Id,
-                                                Globals.Me.Y * Options.MapWidth + Globals.Me.X
-                                            );
-                                    }
-
-                                    break;
-
-                                case Control.Enter:
-                                    if (canFocusChat && Interface.Interface.GameUi != default)
-                                    {
-                                        Interface.Interface.GameUi.FocusChat = true;
-                                        consumeKey = true;
-                                    }
-
-                                    return;
-
-                                case Control.Hotkey1:
-                                case Control.Hotkey2:
-                                case Control.Hotkey3:
-                                case Control.Hotkey4:
-                                case Control.Hotkey5:
-                                case Control.Hotkey6:
-                                case Control.Hotkey7:
-                                case Control.Hotkey8:
-                                case Control.Hotkey9:
-                                case Control.Hotkey0:
-                                    break;
-
-                                case Control.OpenInventory:
-                                    Interface.Interface.GameUi?.GameMenu?.ToggleInventoryWindow();
-
-                                    break;
-
-                                case Control.OpenQuests:
-                                    Interface.Interface.GameUi?.GameMenu?.ToggleQuestsWindow();
-
-                                    break;
-
-                                case Control.OpenCharacterInfo:
-                                    Interface.Interface.GameUi?.GameMenu?.ToggleCharacterWindow();
-
-                                    break;
-
-                                case Control.OpenParties:
-                                    Interface.Interface.GameUi?.GameMenu?.TogglePartyWindow();
-
-                                    break;
-
-                                case Control.OpenSpells:
-                                    Interface.Interface.GameUi?.GameMenu?.ToggleSpellsWindow();
-
-                                    break;
-
-                                case Control.OpenFriends:
-                                    _ = (Interface.Interface.GameUi?.GameMenu?.ToggleFriendsWindow());
-
-                                    break;
-
-                                case Control.OpenSettings:
-                                    Interface.Interface.GameUi?.EscapeMenu?.OpenSettingsWindow();
-
-                                    break;
-
-                                case Control.OpenAdminPanel:
-                                    PacketSender.SendOpenAdminWindow();
-
-                                    break;
-
-                                case Control.OpenGuild:
-                                    _ = (Interface.Interface.GameUi?.GameMenu.ToggleGuildWindow());
-                                    break;
-
-                                case Control.TargetParty1:
-                                    Globals.Me?.TargetPartyMember(0);
-                                    break;
-
-                                case Control.TargetParty2:
-                                    Globals.Me?.TargetPartyMember(1);
-                                    break;
-
-                                case Control.TargetParty3:
-                                    Globals.Me?.TargetPartyMember(2);
-                                    break;
-
-                                case Control.TargetParty4:
-                                    Globals.Me?.TargetPartyMember(3);
-                                    break;
-
-                                case Control.TargetParty5:
-                                    Globals.Me?.TargetPartyMember(4);
-                                    break;
-
-                                case Control.TargetParty6:
-                                    Globals.Me?.TargetPartyMember(5);
-                                    break;
-
-                                case Control.TargetParty7:
-                                    Globals.Me?.TargetPartyMember(6);
-                                    break;
-                            }
-
-                            break;
-
-                        case GameStates.Loading:
-                            break;
-
-                        case GameStates.Error:
-                            break;
-
-                        default:
-                            throw new ArgumentOutOfRangeException(
-                                nameof(Globals.GameState), Globals.GameState, null
-                            );
-                    }
-                }
-            );
+                default:
+                    throw new NotImplementedException(
+                        $"{nameof(GameStates)} '{currentGameState}' not yet implemented"
+                    );
+            }
+        }
     }
 
     public static void OnKeyReleased(Keys modifier, Keys key)
@@ -403,36 +397,62 @@ public static partial class Input
             HandleZoomIn();
         }
 
+        if (Controls.Controls.ControlHasKey(Control.HoldToSoftRetargetOnSelfCast, modifier, key))
+        {
+            Globals.HoldToSoftRetargetOnSelfCast = false;
+        }
+
         if (Globals.Me == null)
         {
             return;
         }
     }
 
-    public static void OnMouseDown(Keys modifier, MouseButtons btn)
+    public static event MouseButtonEventInterceptor? MouseDownIntercept;
+
+    public static event MouseButtonEventInterceptor? MouseUpIntercept;
+
+    private static bool InvokeMouseButtonInterceptors(
+        MulticastDelegate? multicastDelegate,
+        Keys modifier,
+        MouseButton mouseButton
+    )
+    {
+        var rawInvocationList = multicastDelegate?.GetInvocationList() ?? [];
+        var invocationList = rawInvocationList.OfType<MouseButtonEventInterceptor>().ToArray();
+        return invocationList.Any(interceptor => interceptor(modifier, mouseButton));
+    }
+
+    public static bool TestInterceptMouse(Keys modifier, MouseButton mouseButton, bool down)
+    {
+        return modifier != Keys.Alt &&
+               InvokeMouseButtonInterceptors(down ? MouseDownIntercept : MouseUpIntercept, modifier, mouseButton);
+    }
+
+    public static void OnMouseDown(Keys modifier, MouseButton mouseButton)
     {
         var key = Keys.None;
-        switch (btn)
+        switch (mouseButton)
         {
-            case MouseButtons.Left:
+            case MouseButton.Left:
                 key = Keys.LButton;
 
                 break;
 
-            case MouseButtons.Right:
+            case MouseButton.Right:
                 key = Keys.RButton;
 
                 break;
 
-            case MouseButtons.Middle:
+            case MouseButton.Middle:
                 key = Keys.MButton;
 
                 break;
-            case MouseButtons.X1:
+            case MouseButton.X1:
                 key = Keys.XButton1;
 
                 break;
-            case MouseButtons.X2:
+            case MouseButton.X2:
                 key = Keys.XButton2;
 
                 break;
@@ -459,7 +479,7 @@ public static partial class Input
             return;
         }
 
-        if (modifier == Keys.None && btn == MouseButtons.Left && Globals.Me.TryTarget())
+        if (modifier == Keys.None && mouseButton == MouseButton.Left && Globals.Me.TryTarget())
         {
             return;
         }
@@ -467,7 +487,7 @@ public static partial class Input
         if (Controls.Controls.ControlHasKey(Control.PickUp, modifier, key))
         {
             if (Globals.Me.MapInstance != default &&
-                Player.TryPickupItem(Globals.Me.MapInstance.Id, Globals.Me.Y * Options.MapWidth + Globals.Me.X, Guid.Empty, true)
+                Player.TryPickupItem(Globals.Me.MapInstance.Id, Globals.Me.Y * Options.Instance.Map.MapWidth + Globals.Me.X, Guid.Empty, true)
             )
             {
                 return;
@@ -493,25 +513,25 @@ public static partial class Input
         }
     }
 
-    public static void OnMouseUp(Keys modifier, MouseButtons btn)
+    public static void OnMouseUp(Keys modifier, MouseButton mouseButton)
     {
         var key = Keys.LButton;
-        switch (btn)
+        switch (mouseButton)
         {
-            case MouseButtons.Right:
+            case MouseButton.Right:
                 key = Keys.RButton;
 
                 break;
 
-            case MouseButtons.Middle:
+            case MouseButton.Middle:
                 key = Keys.MButton;
 
                 break;
-            case MouseButtons.X1:
+            case MouseButton.X1:
                 key = Keys.XButton1;
 
                 break;
-            case MouseButtons.X2:
+            case MouseButton.X2:
                 key = Keys.XButton2;
 
                 break;
@@ -538,12 +558,12 @@ public static partial class Input
             return;
         }
 
-        if (btn != MouseButtons.Right)
+        if (mouseButton != MouseButton.Right)
         {
             return;
         }
 
-        if (Globals.InputManager.KeyDown(Keys.Shift) != true)
+        if (Globals.InputManager.IsKeyDown(Keys.Shift) != true)
         {
             return;
         }
@@ -554,28 +574,28 @@ public static partial class Input
 
         foreach (MapInstance map in MapInstance.Lookup.Values.Cast<MapInstance>())
         {
-            if (!(x >= map.X) || !(x <= map.X + Options.MapWidth * Options.TileWidth))
+            if (!(x >= map.X) || !(x <= map.X + Options.Instance.Map.MapWidth * Options.Instance.Map.TileWidth))
             {
                 continue;
             }
 
-            if (!(y >= map.Y) || !(y <= map.Y + Options.MapHeight * Options.TileHeight))
+            if (!(y >= map.Y) || !(y <= map.Y + Options.Instance.Map.MapHeight * Options.Instance.Map.TileHeight))
             {
                 continue;
             }
 
             //Remove the offsets to just be dealing with pixels within the map selected
-            x -= (int) map.X;
-            y -= (int) map.Y;
+            x -= (int)map.X;
+            y -= (int)map.Y;
 
             //transform pixel format to tile format
-            x /= Options.TileWidth;
-            y /= Options.TileHeight;
+            x /= Options.Instance.Map.TileWidth;
+            y /= Options.Instance.Map.TileHeight;
             var mapNum = map.Id;
 
             if (Globals.Me.TryGetRealLocation(ref x, ref y, ref mapNum))
             {
-                PacketSender.SendAdminAction(new WarpToLocationAction(map.Id, (byte) x, (byte) y));
+                PacketSender.SendAdminAction(new WarpToLocationAction(map.Id, (byte)x, (byte)y));
             }
 
             return;

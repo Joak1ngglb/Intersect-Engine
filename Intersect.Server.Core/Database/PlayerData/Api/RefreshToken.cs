@@ -1,10 +1,11 @@
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Intersect.Logging;
+using System.Diagnostics.CodeAnalysis;
+using Intersect.Core;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect.Server.Database.PlayerData.Api;
@@ -110,42 +111,52 @@ public partial class RefreshToken
             refreshToken = context?.RefreshTokens?.Where(token => token.Id == id).Include(token => token.User).FirstOrDefault();
             return refreshToken != default;
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Error loading refresh token {TokenId}", id);
             refreshToken = default;
             return false;
         }
     }
 
-    public static RefreshToken FindForTicket(Guid ticketId)
+    public static bool TryFindForTicket(
+        Guid ticketId,
+        [NotNullWhen(true)] out RefreshToken? refreshToken,
+        bool includeUser = false
+    )
     {
         if (ticketId == Guid.Empty)
         {
-            return null;
+            refreshToken = null;
+            return true;
         }
 
         try
         {
-            using (var context = DbInterface.CreatePlayerContext())
+            using var context = DbInterface.CreatePlayerContext();
+
+            IQueryable<RefreshToken> refreshTokens = context.RefreshTokens;
+            if (includeUser)
             {
-                var refreshToken = context?.RefreshTokens.FirstOrDefault(queryToken => queryToken.TicketId == ticketId);
-
-                if (refreshToken == null || DateTime.UtcNow < refreshToken.Expires)
-                {
-                    return refreshToken;
-                }
-
-                _ = Remove(refreshToken);
-
-                return null;
+                refreshTokens = refreshTokens.Include(t => t.User);
             }
+
+            refreshToken = refreshTokens.FirstOrDefault(queryToken => queryToken.TicketId == ticketId);
+
+            if (refreshToken == null || DateTime.UtcNow < refreshToken.Expires)
+            {
+                return refreshToken != null;
+            }
+
+            _ = Remove(refreshToken);
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
-            return null;
+            ApplicationContext.Context.Value?.Logger.LogError(exception, $"Failed to load RefreshToken for {ticketId}");
         }
+
+        refreshToken = null;
+        return false;
     }
 
     public static IEnumerable<RefreshToken> FindForClient(Guid clientId)
@@ -164,9 +175,13 @@ public partial class RefreshToken
                 return tokenQuery.AsEnumerable()?.ToList();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error loading tokens for client {ClientId}",
+                clientId
+            );
             return null;
         }
     }
@@ -187,9 +202,13 @@ public partial class RefreshToken
                 return tokenQuery.AsEnumerable()?.ToList();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error loading expired tokens for client {ClientId}",
+                clientId
+            );
             return null;
         }
     }
@@ -210,9 +229,13 @@ public partial class RefreshToken
                 return tokenQuery.AsEnumerable()?.ToList();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error loading tokens for user {UserId}",
+                userId
+            );
             return null;
         }
     }
@@ -238,9 +261,13 @@ public partial class RefreshToken
                 return tokenQuery.AsEnumerable()?.ToList();
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error loading expired tokens for user {UserId}",
+                userId
+            );
             return null;
         }
     }
@@ -261,9 +288,13 @@ public partial class RefreshToken
                 return token;
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Log.Error(ex);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error loading token for user {UserId}",
+                userId
+            );
             return null;
         }
     }
@@ -284,7 +315,11 @@ public partial class RefreshToken
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error checking if user {UserId} has tokens",
+                userId
+            );
             throw;
         }
     }
@@ -308,7 +343,7 @@ public partial class RefreshToken
                 return false;
             }
 
-            Log.Diagnostic($"Attempted to remove {tokens.Count} tokens but only {unblockedTokens.Length} were available to remove.");
+            ApplicationContext.Context.Value?.Logger.LogTrace($"Attempted to remove {tokens.Count} tokens but only {unblockedTokens.Length} were available to remove.");
 
             using (var context = DbInterface.CreatePlayerContext(readOnly: false))
             {

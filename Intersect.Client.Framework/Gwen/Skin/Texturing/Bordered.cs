@@ -14,71 +14,89 @@ public partial struct SubRect
 /// <summary>
 ///     3x3 texture grid.
 /// </summary>
-public partial struct Bordered : IEquatable<Bordered>
+public partial struct Bordered : IEquatable<Bordered>, IAtlasDrawable
 {
+    private readonly float mX;
+    private readonly float mY;
 
-    private GameTexture mTexture;
+    public static implicit operator FivePatch(Bordered bordered)
+    {
+        return new FivePatch(
+            bordered._texture,
+            (int)bordered.mX,
+            (int)bordered.mY,
+            (int)bordered._width,
+            (int)bordered._height,
+            bordered._margin,
+            default
+        );
+    }
 
-    private readonly SubRect[] mRects;
+    private IGameTexture _texture;
 
-    private Margin mMargin;
+    private readonly SubRect[] _subRects;
 
-    private float mWidth;
+    private Margin _margin;
 
-    private float mHeight;
+    private float _width;
+
+    private float _height;
+
+    public Margin Margin => _margin;
 
     public Bordered(
-        GameTexture texture,
+        IGameTexture texture,
         float x,
         float y,
         float w,
         float h,
-        Margin inMargin,
-        float drawMarginScale = 1.0f
+        Margin inMargin
     ) : this()
     {
-        mRects = new SubRect[9];
-        for (var i = 0; i < mRects.Length; i++)
+        mX = x;
+        mY = y;
+        _subRects = new SubRect[9];
+        for (var i = 0; i < _subRects.Length; i++)
         {
-            mRects[i].Uv = new float[4];
+            _subRects[i].Uv = new float[4];
         }
 
-        Init(texture, x, y, w, h, inMargin, drawMarginScale);
+        Init(texture, x, y, w, h, inMargin);
     }
 
     void DrawRect(Renderer.Base render, int i, int x, int y, int w, int h, Color clr)
     {
         render.DrawTexturedRect(
-            mTexture, new Rectangle(x, y, w, h), clr, mRects[i].Uv[0], mRects[i].Uv[1], mRects[i].Uv[2],
-            mRects[i].Uv[3]
+            _texture, new Rectangle(x, y, w, h), clr, _subRects[i].Uv[0], _subRects[i].Uv[1], _subRects[i].Uv[2],
+            _subRects[i].Uv[3]
         );
     }
 
     void SetRect(int num, float x, float y, float w, float h)
     {
-        if (mTexture == null)
+        if (_texture == null)
         {
             return;
         }
 
-        float texw = mTexture.Width;
-        float texh = mTexture.Height;
+        float texw = _texture.Width;
+        float texh = _texture.Height;
 
         //x -= 1.0f;
         //y -= 1.0f;
 
-        mRects[num].Uv[0] = x / texw;
-        mRects[num].Uv[1] = y / texh;
+        _subRects[num].Uv[0] = x / texw;
+        _subRects[num].Uv[1] = y / texh;
 
-        mRects[num].Uv[2] = (x + w) / texw;
-        mRects[num].Uv[3] = (y + h) / texh;
+        _subRects[num].Uv[2] = (x + w) / texw;
+        _subRects[num].Uv[3] = (y + h) / texh;
 
         //	rects[num].uv[0] += 1.0f / m_Texture->width;
         //	rects[num].uv[1] += 1.0f / m_Texture->width;
     }
 
     private void Init(
-        GameTexture texture,
+        IGameTexture texture,
         float x,
         float y,
         float w,
@@ -87,32 +105,31 @@ public partial struct Bordered : IEquatable<Bordered>
         float drawMarginScale = 1.0f
     )
     {
-        mTexture = texture;
+        _texture = texture;
 
-        mMargin = inMargin;
+        _margin = inMargin;
 
-        SetRect(0, x, y, mMargin.Left, mMargin.Top);
-        SetRect(1, x + mMargin.Left, y, w - mMargin.Left - mMargin.Right, mMargin.Top);
-        SetRect(2, x + w - mMargin.Right, y, mMargin.Right, mMargin.Top);
+        SetRect(0, x, y, _margin.Left, _margin.Top);
+        SetRect(1, x + _margin.Left, y, w - _margin.Left - _margin.Right, _margin.Top);
+        SetRect(2, x + w - _margin.Right, y, _margin.Right, _margin.Top);
 
-        SetRect(3, x, y + mMargin.Top, mMargin.Left, h - mMargin.Top - mMargin.Bottom);
+        SetRect(3, x, y + _margin.Top, _margin.Left, h - _margin.Top - _margin.Bottom);
         SetRect(
-            4, x + mMargin.Left, y + mMargin.Top, w - mMargin.Left - mMargin.Right, h - mMargin.Top - mMargin.Bottom
+            4,
+            x + _margin.Left,
+            y + _margin.Top,
+            w - _margin.Left - _margin.Right,
+            h - _margin.Top - _margin.Bottom
         );
 
-        SetRect(5, x + w - mMargin.Right, y + mMargin.Top, mMargin.Right, h - mMargin.Top - mMargin.Bottom - 1);
+        SetRect(5, x + w - _margin.Right, y + _margin.Top, _margin.Right, h - _margin.Top - _margin.Bottom);
 
-        SetRect(6, x, y + h - mMargin.Bottom, mMargin.Left, mMargin.Bottom);
-        SetRect(7, x + mMargin.Left, y + h - mMargin.Bottom, w - mMargin.Left - mMargin.Right, mMargin.Bottom);
-        SetRect(8, x + w - mMargin.Right, y + h - mMargin.Bottom, mMargin.Right, mMargin.Bottom);
+        SetRect(6, x, y + h - _margin.Bottom, _margin.Left, _margin.Bottom);
+        SetRect(7, x + _margin.Left, y + h - _margin.Bottom, w - _margin.Left - _margin.Right, _margin.Bottom);
+        SetRect(8, x + w - _margin.Right, y + h - _margin.Bottom, _margin.Right, _margin.Bottom);
 
-        mMargin.Left = (int) (mMargin.Left * drawMarginScale);
-        mMargin.Right = (int) (mMargin.Right * drawMarginScale);
-        mMargin.Top = (int) (mMargin.Top * drawMarginScale);
-        mMargin.Bottom = (int) (mMargin.Bottom * drawMarginScale);
-
-        mWidth = w - x;
-        mHeight = h - y;
+        _width = w;
+        _height = h;
     }
 
     // can't have this as default param
@@ -123,52 +140,52 @@ public partial struct Bordered : IEquatable<Bordered>
 
     public void Draw(Renderer.Base render, Rectangle r, Color col)
     {
-        if (mTexture == null)
+        if (_texture == null)
         {
             return;
         }
 
         render.DrawColor = col;
 
-        if (r.Width < mWidth && r.Height < mHeight)
+        if (r.Width < _width && r.Height < _height)
         {
             render.DrawTexturedRect(
-                mTexture, r, col, mRects[0].Uv[0], mRects[0].Uv[1], mRects[8].Uv[2], mRects[8].Uv[3]
+                _texture, r, col, _subRects[0].Uv[0], _subRects[0].Uv[1], _subRects[8].Uv[2], _subRects[8].Uv[3]
             );
 
             return;
         }
 
-        DrawRect(render, 0, r.X, r.Y, mMargin.Left, mMargin.Top, col);
-        DrawRect(render, 1, r.X + mMargin.Left, r.Y, r.Width - mMargin.Left - mMargin.Right, mMargin.Top, col);
-        DrawRect(render, 2, r.X + r.Width - mMargin.Right, r.Y, mMargin.Right, mMargin.Top, col);
+        DrawRect(render, 0, r.X, r.Y, _margin.Left, _margin.Top, col);
+        DrawRect(render, 1, r.X + _margin.Left, r.Y, r.Width - _margin.Left - _margin.Right, _margin.Top, col);
+        DrawRect(render, 2, r.X + r.Width - _margin.Right, r.Y, _margin.Right, _margin.Top, col);
 
-        DrawRect(render, 3, r.X, r.Y + mMargin.Top, mMargin.Left, r.Height - mMargin.Top - mMargin.Bottom, col);
+        DrawRect(render, 3, r.X, r.Y + _margin.Top, _margin.Left, r.Height - _margin.Top - _margin.Bottom, col);
         DrawRect(
-            render, 4, r.X + mMargin.Left, r.Y + mMargin.Top, r.Width - mMargin.Left - mMargin.Right,
-            r.Height - mMargin.Top - mMargin.Bottom, col
+            render, 4, r.X + _margin.Left, r.Y + _margin.Top, r.Width - _margin.Left - _margin.Right,
+            r.Height - _margin.Top - _margin.Bottom, col
         );
 
         DrawRect(
-            render, 5, r.X + r.Width - mMargin.Right, r.Y + mMargin.Top, mMargin.Right,
-            r.Height - mMargin.Top - mMargin.Bottom, col
+            render, 5, r.X + r.Width - _margin.Right, r.Y + _margin.Top, _margin.Right,
+            r.Height - _margin.Top - _margin.Bottom, col
         );
 
-        DrawRect(render, 6, r.X, r.Y + r.Height - mMargin.Bottom, mMargin.Left, mMargin.Bottom, col);
+        DrawRect(render, 6, r.X, r.Y + r.Height - _margin.Bottom, _margin.Left, _margin.Bottom, col);
         DrawRect(
-            render, 7, r.X + mMargin.Left, r.Y + r.Height - mMargin.Bottom, r.Width - mMargin.Left - mMargin.Right,
-            mMargin.Bottom, col
+            render, 7, r.X + _margin.Left, r.Y + r.Height - _margin.Bottom, r.Width - _margin.Left - _margin.Right,
+            _margin.Bottom, col
         );
 
         DrawRect(
-            render, 8, r.X + r.Width - mMargin.Right, r.Y + r.Height - mMargin.Bottom, mMargin.Right,
-            mMargin.Bottom, col
+            render, 8, r.X + r.Width - _margin.Right, r.Y + r.Height - _margin.Bottom, _margin.Right,
+            _margin.Bottom, col
         );
     }
 
     public bool Equals(Bordered other)
     {
-        return mTexture.Equals(other.mTexture) && mRects.Equals(other.mRects) && mMargin.Equals(other.mMargin) && mWidth.Equals(other.mWidth) && mHeight.Equals(other.mHeight);
+        return _texture.Equals(other._texture) && _subRects.Equals(other._subRects) && _margin.Equals(other._margin) && _width.Equals(other._width) && _height.Equals(other._height);
     }
 
     public override bool Equals(object? obj)
@@ -178,7 +195,7 @@ public partial struct Bordered : IEquatable<Bordered>
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(mTexture, mRects, mMargin, mWidth, mHeight);
+        return HashCode.Combine(_texture, _subRects, _margin, _width, _height);
     }
 
     public static bool operator ==(Bordered lhs, Bordered rhs) => lhs.Equals(rhs);

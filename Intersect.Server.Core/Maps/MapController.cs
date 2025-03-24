@@ -2,15 +2,18 @@ using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
 using Intersect.Compression;
+using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.NPCs;
+using Intersect.Framework.Core.GameObjects.Resources;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Maps;
-using Intersect.Logging;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Database;
 using Intersect.Server.Entities;
 using Intersect.Server.Networking;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect.Server.Maps;
@@ -32,24 +35,139 @@ namespace Intersect.Server.Maps;
 /// </para>
 /// </remarks>
 /// </summary>
-public partial class MapController : MapBase
+public partial class MapController : MapDescriptor
 {
-    private ConcurrentDictionary<Guid, MapInstance> mInstances = new ConcurrentDictionary<Guid, MapInstance>();
+    public static void DespawnInstancesOf(ResourceDescriptor resource)
+    {
+        var allMapControllers = Lookup.Values.OfType<MapController>().ToArray();
+        foreach (var map in allMapControllers)
+        {
+            map?.DespawnResourceAcrossInstances(resource);
+        }
+    }
+
+    public static void DespawnInstancesOf(NPCDescriptor npc)
+    {
+        var allMapControllers = Lookup.Values.OfType<MapController>().ToArray();
+        foreach (var map in allMapControllers)
+        {
+            map?.DespawnNpcAcrossInstances(npc);
+        }
+    }
+
+    public static void DespawnInstancesOf(ProjectileDescriptor projectile)
+    {
+        var allMapControllers = Lookup.Values.OfType<MapController>().ToArray();
+        foreach (var map in allMapControllers)
+        {
+            map?.DespawnProjectileAcrossInstances(projectile);
+        }
+    }
+
+    public static void DespawnInstancesOf(ItemDescriptor item)
+    {
+        var allMapControllers = Lookup.Values.OfType<MapController>().ToArray();
+        foreach (var map in allMapControllers)
+        {
+            map?.DespawnItemAcrossInstances(item);
+        }
+    }
+
+    private readonly ConcurrentDictionary<Guid, MapInstance> mInstances = [];
 
     private static MapControllers sLookup;
 
     //Location of Map in the current grid
-    [JsonIgnore] [NotMapped] public int MapGrid;
+    [JsonIgnore]
+    [NotMapped]
+    public int MapGrid
+    {
+        get => _mapGridId;
+        set
+        {
+            if (value == _mapGridId)
+            {
+                return;
+            }
 
-    [JsonIgnore] [NotMapped] public int MapGridX = -1;
+            _mapGridId = value;
+            CachedMapClientPacket = null;
+        }
+    }
 
-    [JsonIgnore] [NotMapped] public int MapGridY = -1;
+    [JsonIgnore]
+    [NotMapped]
+    public int MapGridX
+    {
+        get => _mapGridX;
+        set
+        {
+            if (value == _mapGridX)
+            {
+                return;
+            }
+
+            _mapGridX = value;
+            CachedMapClientPacket = null;
+        }
+    }
+
+    [JsonIgnore]
+    [NotMapped]
+    public int MapGridY
+    {
+        get => _mapGridY;
+        set
+        {
+            if (value == _mapGridY)
+            {
+                return;
+            }
+
+            _mapGridY = value;
+            CachedMapClientPacket = null;
+        }
+    }
+
+    public bool[]? GetCameraHolds()
+    {
+        switch (Options.Instance.Map.GameBorderStyle)
+        {
+            case GameBorderStyle.Seamed:
+                return [true, true, true, true];
+
+            case GameBorderStyle.Seamless:
+                var grid = DbInterface.GetGrid(MapGrid);
+                if (grid != null)
+                {
+                    return
+                    [
+                        0 == MapGridY,
+                        grid.YMax - 1 == MapGridY,
+                        0 == MapGridX,
+                        grid.XMax - 1 == MapGridX,
+                    ];
+                }
+                break;
+
+            case GameBorderStyle.SeamlessUnbounded:
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        return null;
+    }
 
     //Temporary Values
     private Guid[] mSurroundingMapIds = new Guid[0];
     private Guid[] mSurroundingMapsIdsWithSelf = new Guid[0];
     private MapController[] mSurroundingMaps = new MapController[0];
     private MapController[] mSurroundingMapsWithSelf = new MapController[0];
+    private int _mapGridId;
+    private int _mapGridX = -1;
+    private int _mapGridY = -1;
 
     [NotMapped, JsonIgnore] public MapPacket? CachedMapClientPacket { get; set; }
 
@@ -121,12 +239,12 @@ public partial class MapController : MapBase
     }
 
     /// <summary>
-    /// Quick reference for DB lookup of the relevant <see cref="MapBase"/>
+    /// Quick reference for DB lookup of the relevant <see cref="MapDescriptor"/>
     /// </summary>
-    public new static MapControllers Lookup => sLookup = sLookup ?? new MapControllers(MapBase.Lookup);
+    public new static MapControllers Lookup => sLookup = sLookup ?? new MapControllers(MapDescriptor.Lookup);
 
     /// <summary>
-    /// Quick reference to get a Map Controller from its <see cref="MapBase"/> ID
+    /// Quick reference to get a Map Controller from its <see cref="MapDescriptor"/> ID
     /// </summary>
     /// <param name="id"></param>
     /// <returns></returns>
@@ -136,7 +254,7 @@ public partial class MapController : MapBase
     }
 
     /// <summary>
-    /// Tries to get a Map Controller from its <see cref="MapBase"/> ID
+    /// Tries to get a Map Controller from its <see cref="MapDescriptor"/> ID
     /// </summary>
     /// <param name="id"></param>
     /// <param name="mapController">The retrieved Map Controller, if successful</param>
@@ -237,14 +355,14 @@ public partial class MapController : MapBase
     }
 
     /// <summary>
-    /// Despawns NPCs of a given <see cref="NpcBase"/> from all instances of this controller.
+    /// Despawns NPCs of a given <see cref="NPCDescriptor"/> from all instances of this controller.
     /// </summary>
-    /// <param name="npcBase">The <see cref="NpcBase"/> to despawn</param>
-    public void DespawnNpcAcrossInstances(NpcBase npcBase)
+    /// <param name="npcDescriptor">The <see cref="NPCDescriptor"/> to despawn</param>
+    public void DespawnNpcAcrossInstances(NPCDescriptor npcDescriptor)
     {
         foreach (var entity in GetEntitiesOnAllInstances())
         {
-            if (entity is Npc npc && npc.Base == npcBase)
+            if (entity is Npc npc && npc.Descriptor == npcDescriptor)
             {
                 lock (npc.EntityLock)
                 {
@@ -255,14 +373,14 @@ public partial class MapController : MapBase
     }
 
     /// <summary>
-    /// Despawns resources of a given <see cref="ResourceBase"/> from all instances of this controller.
+    /// Despawns resources of a given <see cref="ResourceDescriptor"/> from all instances of this controller.
     /// </summary>
-    /// <param name="resourceBase">The <see cref="ResourceBase"/> to despawn</param>
-    public void DespawnResourceAcrossInstances(ResourceBase resourceBase)
+    /// <param name="resourceDescriptor">The <see cref="ResourceDescriptor"/> to despawn</param>
+    public void DespawnResourceAcrossInstances(ResourceDescriptor resourceDescriptor)
     {
         foreach (var entity in GetEntitiesOnAllInstances())
         {
-            if (entity is Resource res && res.Base == resourceBase)
+            if (entity is Resource res && res.Descriptor == resourceDescriptor)
             {
                 lock (res.EntityLock)
                 {
@@ -273,15 +391,15 @@ public partial class MapController : MapBase
     }
 
     /// <summary>
-    /// Despawns projectiles of a given <see cref="ProjectileBase"/> from all instances of this controller.
+    /// Despawns projectiles of a given <see cref="ProjectileDescriptor"/> from all instances of this controller.
     /// </summary>
-    /// <param name="projectileBase">The <see cref="ProjectileBase"/> to despawn</param>
-    public void DespawnProjectileAcrossInstances(ProjectileBase projectileBase)
+    /// <param name="projectileDescriptor">The <see cref="ProjectileDescriptor"/> to despawn</param>
+    public void DespawnProjectileAcrossInstances(ProjectileDescriptor projectileDescriptor)
     {
         var guids = new List<Guid>();
         foreach (var entity in GetEntitiesOnAllInstances())
         {
-            if (entity is Projectile proj && proj.Base == projectileBase)
+            if (entity is Projectile proj && proj.Descriptor == projectileDescriptor)
             {
                 lock (proj.EntityLock)
                 {
@@ -294,16 +412,16 @@ public partial class MapController : MapBase
     }
 
     /// <summary>
-    /// Despawns items of a given <see cref="ItemBase"/> from all instances of this controller.
+    /// Despawns items of a given <see cref="ItemDescriptor"/> from all instances of this controller.
     /// </summary>
-    /// <param name="itemBase">The <see cref="ItemBase"/> to despawn</param>
-    public void DespawnItemAcrossInstances(ItemBase itemBase)
+    /// <param name="itemDescriptor">The <see cref="ItemDescriptor"/> to despawn</param>
+    public void DespawnItemAcrossInstances(ItemDescriptor itemDescriptor)
     {
         foreach(var mapInstance in mInstances.Values)
         {
             foreach (var item in mapInstance.AllMapItems.Values)
             {
-                if (ItemBase.Get(item.ItemId) == itemBase)
+                if (ItemDescriptor.Get(item.ItemId) == itemDescriptor)
                 {
                     mapInstance.RemoveItem(item);
                 }
@@ -423,7 +541,7 @@ public partial class MapController : MapBase
         {
             if (!mInstances.ContainsKey(instanceId))
             {
-                Log.Debug($"Creating new instance with ID {instanceId} for map {Name}");
+                ApplicationContext.Context.Value?.Logger.LogDebug($"Creating new instance with ID {instanceId} for map {Name}");
                 newLayer = new MapInstance(this, instanceId, creator);
                 newLayer.Initialize();
                 mInstances[instanceId] = newLayer;
@@ -472,7 +590,7 @@ public partial class MapController : MapBase
                 if (mInstances.TryRemove(mapInstanceId, out var removedInstance))
                 {
                     removedInstance.Dispose();
-                    Log.Debug($"Cleaning up Instance {mapInstanceId} for map: {Name}");
+                    ApplicationContext.Context.Value?.Logger.LogDebug($"Cleaning up Instance {mapInstanceId} for map: {Name}");
                 }
             }
         }
@@ -510,7 +628,7 @@ public partial class MapController : MapBase
         mInstances.Clear();
     }
     #endregion
-
+    
     /// <summary>
     /// Gets rid of any orphaned tile layers
     /// </summary>
@@ -521,14 +639,14 @@ public partial class MapController : MapBase
             Layers = JsonConvert.DeserializeObject<Dictionary<string, Tile[,]>>(LZ4.UnPickleString(TileData), mJsonSerializerSettings);
             foreach (var key in Layers.Keys.ToArray())
             {
-                if (!Options.Instance.MapOpts.Layers.All.Contains(key))
+                if (!Options.Instance.Map.Layers.All.Contains(key))
                 {
                     Layers.Remove(key);
                 }
             }
             TileData = LZ4.PickleString(JsonConvert.SerializeObject(Layers, Formatting.None, mJsonSerializerSettings));
             Layers = null;
-            
+
         }
     }
 
@@ -571,24 +689,24 @@ public partial class MapController : MapBase
                     var oldMap = currentMap;
                     if (currentMap.Left != Guid.Empty)
                     {
-                        currentMap = MapController.Get(currentMap.Left);
+                        currentMap = Get(currentMap.Left);
                         if (currentMap == null)
                         {
                             currentMap = oldMap;
                             continue;
                         }
 
-                        currentX = (Options.MapWidth + 1) + x;
+                        currentX = (Options.Instance.Map.MapWidth + 1) + x;
                     }
                 }
 
                 // Are we going to the map on our right?
-                if (currentX >= Options.MapWidth)
+                if (currentX >= Options.Instance.Map.MapWidth)
                 {
                     var oldMap = currentMap;
                     if (currentMap.Right != Guid.Empty)
                     {
-                        currentMap = MapController.Get(currentMap.Right);
+                        currentMap = Get(currentMap.Right);
                         if (currentMap == null)
                         {
                             currentMap = oldMap;
@@ -605,24 +723,24 @@ public partial class MapController : MapBase
                     var oldMap = currentMap;
                     if (currentMap.Up != Guid.Empty)
                     {
-                        currentMap = MapController.Get(currentMap.Up);
+                        currentMap = Get(currentMap.Up);
                         if (currentMap == null)
                         {
                             currentMap = oldMap;
                             continue;
                         }
 
-                        currentY = (Options.MapHeight + 1) + y;
+                        currentY = (Options.Instance.Map.MapHeight + 1) + y;
                     }
                 }
 
                 // Are we going to the map down from us?
-                if (currentY >= Options.MapHeight)
+                if (currentY >= Options.Instance.Map.MapHeight)
                 {
                     var oldMap = currentMap;
                     if (currentMap.Down != Guid.Empty)
                     {
-                        currentMap = MapController.Get(currentMap.Down);
+                        currentMap = Get(currentMap.Down);
                         if (currentMap == null)
                         {
                             currentMap = oldMap;
@@ -633,7 +751,7 @@ public partial class MapController : MapBase
                     }
                 }
 
-                if (currentX < 0 || currentY < 0 || currentX >= Options.MapWidth || currentY >= Options.MapHeight)
+                if (currentX < 0 || currentY < 0 || currentX >= Options.Instance.Map.MapWidth || currentY >= Options.Instance.Map.MapHeight)
                 {
                     continue;
                 }
@@ -642,7 +760,7 @@ public partial class MapController : MapBase
                 {
                     locations.Add(currentMap, new List<int>());
                 }
-                locations[currentMap].Add(currentY * Options.MapWidth + currentX);
+                locations[currentMap].Add(currentY * Options.Instance.Map.MapWidth + currentX);
             }
         }
 

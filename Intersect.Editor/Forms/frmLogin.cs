@@ -2,15 +2,17 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-
+using Intersect.Configuration;
 using Intersect.Editor.Content;
 using Intersect.Editor.Core;
 using Intersect.Editor.General;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Networking;
-using Intersect.Logging;
+using Intersect.Framework.Core;
 using Intersect.Network;
 using Intersect.Utilities;
+using Intersect.Web;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Editor.Forms;
 
@@ -23,12 +25,17 @@ public partial class FrmLogin : Form
 
     public BeginEditorLoop EditorLoopDelegate;
 
-    private bool mOptionsLoaded = false;
+    private readonly bool _authenticating;
+    
+    private bool _optionsLoaded;
+    private string _savedPassword = string.Empty;
+    private bool _loginPending;
+    private TokenResultType? _tokenResultType;
+    private TokenResponse? _tokenResponse;
 
-    private string mSavedPassword = "";
-
-    public FrmLogin()
+    public FrmLogin(bool authenticating)
     {
+        _authenticating = authenticating;
         CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
         InitializeComponent();
         Icon = Program.Icon;
@@ -43,29 +50,42 @@ public partial class FrmLogin : Form
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(exception, "Error loading strings");
             throw;
         }
-        GameContentManager.CheckForResources();
-        Database.LoadOptions();
-        mOptionsLoaded = true;
-        EditorLoopDelegate = Main.StartLoop;
+
+        InitLocalization();
+
         if (Preferences.LoadPreference("username").Trim().Length > 0)
         {
             txtUsername.Text = Preferences.LoadPreference("Username");
             txtPassword.Text = "*****";
-            mSavedPassword = Preferences.LoadPreference("Password");
+            _savedPassword = Preferences.LoadPreference("Password");
             chkRemember.Checked = true;
         }
 
+        lblStatus.Visible = !_authenticating;
+        if (_authenticating)
+        {
+            return;
+        }
+        
+        GameContentManager.CheckForResources();
+        Database.LoadOptions();
+        _optionsLoaded = true;
+        EditorLoopDelegate = Main.StartLoop;
+        
         Database.InitMapCache();
-        InitLocalization();
     }
 
     private void InitLocalization()
     {
         Text = Strings.Login.title;
         lblVersion.Text = Strings.Login.version.ToString(Application.ProductVersion);
+        lblVersion.Location = new System.Drawing.Point(
+            (lblVersion.Parent?.ClientRectangle.Right - (lblVersion.Parent?.Padding.Right + lblVersion.Width + 4)) ?? 0,
+            (lblVersion.Parent?.ClientRectangle.Bottom - (lblVersion.Parent?.Padding.Bottom + lblVersion.Height + 4)) ?? 0
+        );
         lblGettingStarted.Text = Strings.Login.gettingstarted;
         lblUsername.Text = Strings.Login.username;
         lblPassword.Text = Strings.Login.password;
@@ -86,7 +106,19 @@ public partial class FrmLogin : Form
 
     private void tmrSocket_Tick(object sender, EventArgs e)
     {
-        if (!mOptionsLoaded)
+        if (_authenticating)
+        {
+            if (_tokenResultType == TokenResultType.TokenReceived && _tokenResponse != default)
+            {
+                tmrSocket.Enabled = false;
+                Hide();
+                Globals.UpdateForm.ShowWithToken(_tokenResponse);
+            }
+
+            return;
+        }
+        
+        if (!_optionsLoaded)
         {
             return;
         }
@@ -126,9 +158,9 @@ public partial class FrmLogin : Form
             {
                 using (var sha = new SHA256Managed())
                 {
-                    if (mSavedPassword != "")
+                    if (_savedPassword != "")
                     {
-                        PacketSender.SendLogin(txtUsername.Text.Trim(), mSavedPassword);
+                        PacketSender.SendLogin(txtUsername.Text.Trim(), _savedPassword);
                     }
                     else
                     {
@@ -143,10 +175,32 @@ public partial class FrmLogin : Form
         }
     }
 
-    private bool _loginPending = false;
-
     private void btnLogin_Click(object sender, EventArgs e)
     {
+        if (_authenticating)
+        {
+            _loginPending = true;
+            btnLogin.Enabled = false;
+            Task.Run(() =>
+            {
+                using IntersectHttpClient httpClient = new(ClientConfiguration.Instance.UpdateUrl);
+                var hashed = !string.IsNullOrWhiteSpace(_savedPassword);
+                _tokenResultType = httpClient.TryRequestToken(
+                    txtUsername.Text,
+                    hashed ? _savedPassword : txtPassword.Text,
+                    out _tokenResponse,
+                    hashed: hashed
+                );
+                if (_tokenResultType != TokenResultType.TokenReceived || _tokenResponse == default)
+                {
+                    _loginPending = false;
+                    btnLogin.Enabled = true;
+                }
+            });
+            return;
+        }
+
+        Globals.MainForm ??= new FrmMain();
         if (!Networking.Network.Connected)
         {
             Networking.Network.Connect();
@@ -170,6 +224,12 @@ public partial class FrmLogin : Form
 
     protected override void OnClosed(EventArgs e)
     {
+        if (_authenticating)
+        {
+            base.OnClosed(e);
+            return;
+        }
+
         Networking.Network.EditorLidgrenNetwork?.Disconnect(NetworkStatus.Quitting.ToString());
         base.OnClosed(e);
         Application.Exit();
@@ -182,9 +242,9 @@ public partial class FrmLogin : Form
             if (chkRemember.Checked)
             {
                 Preferences.SavePreference("Username", txtUsername.Text);
-                if (mSavedPassword != "")
+                if (_savedPassword != "")
                 {
-                    Preferences.SavePreference("Password", mSavedPassword);
+                    Preferences.SavePreference("Password", _savedPassword);
                 }
                 else
                 {
@@ -210,10 +270,10 @@ public partial class FrmLogin : Form
             return;
         }
 
-        if (mSavedPassword != "")
+        if (_savedPassword != "")
         {
-            mSavedPassword = "";
-            txtPassword.Text = "";
+            _savedPassword = string.Empty;
+            txtPassword.Text = string.Empty;
             chkRemember.Checked = false;
         }
     }
@@ -225,11 +285,11 @@ public partial class FrmLogin : Form
             return;
         }
 
-        if (mSavedPassword != "")
+        if (_savedPassword != "")
         {
-            mSavedPassword = "";
-            txtUsername.Text = "";
-            txtPassword.Text = "";
+            _savedPassword = string.Empty;
+            txtUsername.Text = string.Empty;
+            txtPassword.Text = string.Empty;
             chkRemember.Checked = false;
         }
     }

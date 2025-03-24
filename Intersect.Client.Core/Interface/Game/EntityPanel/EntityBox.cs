@@ -1,18 +1,21 @@
 using Intersect.Client.Core;
 using Intersect.Client.Entities;
 using Intersect.Client.Entities.Events;
+using Intersect.Client.Framework.Entities;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Gwen.Control;
-using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.General;
 using Intersect.Client.Localization;
-using Intersect.Client.Networking;
 using Intersect.Configuration;
+using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
-using Intersect.Logging;
 using Intersect.Utilities;
+using Microsoft.Extensions.Logging;
+using Label = Intersect.Client.Framework.Gwen.Control.Label;
 
 namespace Intersect.Client.Interface.Game.EntityPanel;
 
@@ -72,7 +75,7 @@ public partial class EntityBox
 
     private Dictionary<Guid, SpellStatus> mActiveStatuses = new Dictionary<Guid, SpellStatus>();
 
-    private string mCurrentSprite = "";
+    private string mCurrentSprite = string.Empty;
 
     private long mLastUpdateTime;
 
@@ -84,7 +87,7 @@ public partial class EntityBox
 
     public Label MpTitle;
 
-    public Entity MyEntity;
+    public IEntity? MyEntity;
 
     public ImagePanel[] PaperdollPanels;
 
@@ -96,20 +99,8 @@ public partial class EntityBox
 
     public bool ShouldUpdateStatuses;
 
-    public bool IsHidden;
-
     // Context menu
-    private Button _contextMenuButton;
-    
-    private Framework.Gwen.Control.Menu _contextMenu;
-
-    private MenuItem _tradeMenuItem;
-
-    private MenuItem _partyMenuItem;
-
-    private MenuItem _friendMenuItem;
-
-    private MenuItem _guildMenuItem;
+    private readonly Button _contextMenuButton;
 
     //Init
     public EntityBox(Canvas gameCanvas, EntityType entityType, Entity? myEntity, bool isPlayerBox = false)
@@ -131,12 +122,12 @@ public partial class EntityBox
 
         EntityMap = new Label(EntityInfoPanel, "EntityMapLabel");
 
-        PaperdollPanels = new ImagePanel[Options.EquipmentSlots.Count];
-        PaperdollTextures = new string[Options.EquipmentSlots.Count];
+        PaperdollPanels = new ImagePanel[Options.Instance.Equipment.Slots.Count];
+        PaperdollTextures = new string[Options.Instance.Equipment.Slots.Count];
         var i = 0;
-        for (var z = 0; z < Options.PaperdollOrder[1].Count; z++)
+        for (var z = 0; z < Options.Instance.Equipment.Paperdoll.Directions[1].Count; z++)
         {
-            if (Options.PaperdollOrder[1][z] == "Player")
+            if (Options.Instance.Equipment.Paperdoll.Directions[1][z] == "Player")
             {
                 EntityFaceContainer = new ImagePanel(EntityInfoPanel, "EntityGraphicContainer");
 
@@ -147,7 +138,7 @@ public partial class EntityBox
             else
             {
                 PaperdollPanels[i] = new ImagePanel(EntityFaceContainer);
-                PaperdollTextures[i] = "";
+                PaperdollTextures[i] = string.Empty;
                 PaperdollPanels[i].Hide();
                 i++;
             }
@@ -180,35 +171,10 @@ public partial class EntityBox
         // Target context menu with basic options.
         if (!_isPlayerBox)
         {
-            _contextMenu = new Framework.Gwen.Control.Menu(gameCanvas, "TargetContextMenu")
-            {
-                IsHidden = true,
-                IconMarginDisabled = true
-            };
-
-            _contextMenu.Children.Clear();
-
-            _tradeMenuItem = _contextMenu.AddItem(Strings.EntityBox.Trade);
-            _tradeMenuItem.Clicked += tradeRequest_Clicked;
-
-            _partyMenuItem = _contextMenu.AddItem(Strings.EntityBox.Party);
-            _partyMenuItem.Clicked += invite_Clicked;
-
-            _friendMenuItem = _contextMenu.AddItem(Strings.EntityBox.Friend);
-            _friendMenuItem.Clicked += friendRequest_Clicked;
-
-            _guildMenuItem = _contextMenu.AddItem(Strings.Guilds.Guild);
-            _guildMenuItem.Clicked += guildRequest_Clicked;
-
-            _contextMenu.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
-
             _contextMenuButton = new Button(EntityInfoPanel, "ContextMenuButton");
-            _contextMenuButton.Clicked += (sender, e) =>
+            _contextMenuButton.Clicked += (_, _) =>
             {
-                _contextMenu.SizeToChildren();
-                _contextMenu.Open(Pos.None);
-                _contextMenu.SetPosition(_contextMenuButton.LocalPosToCanvas(new Point(0, 0)).X,
-                _contextMenuButton.LocalPosToCanvas(new Point(0, 0)).Y + _contextMenuButton.Height);
+                Interface.GameUi.TargetContextMenu.ToggleHidden(_contextMenuButton);
             };
 
             EntityStatusWindow = new ImagePanel(EntityWindow, "EntityStatusWindow");
@@ -220,9 +186,9 @@ public partial class EntityBox
         SetEntity(myEntity);
 
         i = 0;
-        for (var z = 0; z < Options.PaperdollOrder[1].Count; z++)
+        for (var z = 0; z < Options.Instance.Equipment.Paperdoll.Directions[1].Count; z++)
         {
-            if (Options.PaperdollOrder[1][z] == "Player")
+            if (Options.Instance.Equipment.Paperdoll.Directions[1][z] == "Player")
             {
                 EntityFace.RenderColor = EntityFaceContainer.RenderColor;
             }
@@ -238,7 +204,7 @@ public partial class EntityBox
         mLastUpdateTime = Timing.Global.MillisecondsUtc;
     }
 
-    public void SetEntity(Entity? entity)
+    public void SetEntity(IEntity? entity)
     {
         MyEntity = entity;
         if (MyEntity != null)
@@ -255,7 +221,7 @@ public partial class EntityBox
         }
     }
 
-    public void SetEntity(Entity entity, EntityType type)
+    public void SetEntity(IEntity? entity, EntityType type)
     {
         MyEntity = entity;
         EntityType = type;
@@ -263,7 +229,7 @@ public partial class EntityBox
         {
             SetupEntityElements();
             ShouldUpdateStatuses = !_isPlayerBox;
-            
+
             if (EntityType == EntityType.Event)
             {
                 EventDesc.ClearText();
@@ -283,7 +249,6 @@ public partial class EntityBox
 
         if (!_isPlayerBox)
         {
-            TryShowGuildButton();
             _contextMenuButton.Show();
             EventDesc.Show();
         }
@@ -375,13 +340,13 @@ public partial class EntityBox
                 break;
         }
 
-        EntityName.SetText(MyEntity.Name);
+        EntityName.SetText(MyEntity?.Name);
     }
 
     //Update
     public void Update()
     {
-        if (MyEntity == null || MyEntity.IsDisposed())
+        if (MyEntity?.IsDisposed ?? true)
         {
             if (!EntityWindow.IsHidden)
             {
@@ -390,12 +355,10 @@ public partial class EntityBox
 
             return;
         }
-        else
+
+        if (EntityWindow.IsHidden)
         {
-            if (EntityWindow.IsHidden)
-            {
-                Show();
-            }
+            Show();
         }
 
         if (_isPlayerBox)
@@ -405,7 +368,7 @@ public partial class EntityBox
                 Show();
             }
 
-            if (MyEntity.IsDisposed())
+            if (MyEntity.IsDisposed)
             {
                 Dispose();
             }
@@ -417,7 +380,6 @@ public partial class EntityBox
         //Update the event/entity face.
         UpdateImage();
 
-        IsHidden = true;
         if (EntityType != EntityType.Event)
         {
             EntityName.SetText(MyEntity.Name);
@@ -425,7 +387,6 @@ public partial class EntityBox
             UpdateMap();
             UpdateHpBar(elapsedTime);
             UpdateMpBar(elapsedTime);
-            IsHidden = false;
         }
         else
         {
@@ -443,18 +404,17 @@ public partial class EntityBox
 
         if (MyEntity.Type == EntityType.Player && MyEntity != Globals.Me)
         {
-            if (MyEntity.Vital[(int)Vital.Health] <= 0)
+            if (MyEntity.Vitals[Vital.Health] <= 0)
             {
                 _contextMenuButton.Hide();
             }
             else if (_contextMenuButton.IsHidden && !_isPlayerBox)
             {
-                TryShowGuildButton();
                 _contextMenuButton.Show();
             }
         }
 
-        ShouldUpdateStatuses = !_isPlayerBox;
+        ShouldUpdateStatuses = !_isPlayerBox && MyEntity is not Event;
         if (ShouldUpdateStatuses)
         {
             SpellStatus.UpdateSpellStatus(MyEntity, EntityStatusPanel, mActiveStatuses);
@@ -629,13 +589,13 @@ public partial class EntityBox
         float targetShieldSize;
         var barDirectionSetting = ClientConfiguration.Instance.EntityBarDirections[(int)Vital.Health];
         var barPercentageSetting = Globals.Database.ShowHealthAsPercentage;
-        var entityVital = MyEntity.Vital[(int)Vital.Health];
-        var entityMaxVital = MyEntity.MaxVital[(int)Vital.Health];
+        var entityVital = MyEntity.Vitals[Vital.Health];
+        var entityMaxVital = MyEntity.MaxVitals[Vital.Health];
 
         if (entityVital > 0)
         {
-            
-            var shieldSize = MyEntity.GetShieldSize();
+
+            var shieldSize = MyEntity.ShieldSize;
             var vitalSize = (int)barDirectionSetting < (int)DisplayDirection.TopToBottom
                 ? HpBackground.Width
                 : HpBackground.Height;
@@ -699,12 +659,12 @@ public partial class EntityBox
         float targetMpSize;
         var barDirectionSetting = ClientConfiguration.Instance.EntityBarDirections[(int)Vital.Mana];
         var barPercentageSetting = Globals.Database.ShowManaAsPercentage;
-        var entityVital = MyEntity.Vital[(int)Vital.Mana];
-        var entityMaxVital = MyEntity.MaxVital[(int)Vital.Mana];
+        var entityVital = MyEntity.Vitals[Vital.Mana];
+        var entityMaxVital = MyEntity.MaxVitals[Vital.Mana];
 
         if (entityVital > 0)
         {
-            
+
             var entityVitalRatio = (float)entityVital / entityMaxVital;
             var vitalSize = (int)barDirectionSetting < (int)DisplayDirection.TopToBottom
                 ? MpBackground.Width
@@ -797,17 +757,17 @@ public partial class EntityBox
             mCurrentSprite = MyEntity.Face;
             EntityFace.IsHidden = false;
             var i = 0;
-            for (var z = 0; z < Options.PaperdollOrder[1].Count; z++)
+            for (var z = 0; z < Options.Instance.Equipment.Paperdoll.Directions[1].Count; z++)
             {
-                if (Options.PaperdollOrder[1][z] != "Player")
+                if (Options.Instance.Equipment.Paperdoll.Directions[1][z] != "Player")
                 {
                     if (PaperdollPanels == null)
                     {
-                        Log.Warn($@"{nameof(PaperdollPanels)} is null.");
+                        ApplicationContext.Context.Value?.Logger.LogWarning($@"{nameof(PaperdollPanels)} is null.");
                     }
                     else if (PaperdollPanels[i] == null)
                     {
-                        Log.Warn($@"{nameof(PaperdollPanels)}[{i}] is null.");
+                        ApplicationContext.Context.Value?.Logger.LogWarning($@"{nameof(PaperdollPanels)}[{i}] is null.");
                     }
 
                     PaperdollPanels?[i]?.Hide();
@@ -828,15 +788,15 @@ public partial class EntityBox
                 EntityFace.IsHidden = false;
             }
 
-            var equipment = MyEntity.Equipment;
-            if (MyEntity == Globals.Me)
+            var equipment = (MyEntity as Entity)?.Equipment ?? [];
+            if (MyEntity is Player player && player == Globals.Me)
             {
-                for (var i = 0; i < MyEntity.MyEquipment.Length; i++)
+                for (var i = 0; i < player.MyEquipment.Length; i++)
                 {
-                    var eqp = MyEntity.MyEquipment[i];
-                    if (eqp > -1 && eqp < Options.MaxInvItems)
+                    var eqp = player.MyEquipment[i];
+                    if (eqp > -1 && eqp < Options.Instance.Player.MaxInventory)
                     {
-                        equipment[i] = MyEntity.Inventory[eqp].ItemId;
+                        equipment[i] = player.Inventory[eqp].ItemId;
                     }
                     else
                     {
@@ -846,17 +806,17 @@ public partial class EntityBox
             }
 
             var n = 0;
-            for (var z = 0; z < Options.PaperdollOrder[1].Count; z++)
+            for (var z = 0; z < Options.Instance.Equipment.Paperdoll.Directions[1].Count; z++)
             {
                 var paperdollPanel = PaperdollPanels[n];
                 var paperdoll = string.Empty;
-                if (Options.EquipmentSlots.IndexOf(Options.PaperdollOrder[1][z]) > -1 &&
-                    equipment.Length == Options.EquipmentSlots.Count)
+                if (Options.Instance.Equipment.Slots.IndexOf(Options.Instance.Equipment.Paperdoll.Directions[1][z]) > -1 &&
+                    equipment.Length == Options.Instance.Equipment.Slots.Count)
                 {
-                    if (equipment[Options.EquipmentSlots.IndexOf(Options.PaperdollOrder[1][z])] != Guid.Empty)
+                    if (equipment[Options.Instance.Equipment.Slots.IndexOf(Options.Instance.Equipment.Paperdoll.Directions[1][z])] != Guid.Empty)
                     {
-                        var itemId = equipment[Options.EquipmentSlots.IndexOf(Options.PaperdollOrder[1][z])];
-                        if (ItemBase.TryGet(itemId, out var itemDescriptor))
+                        var itemId = equipment[Options.Instance.Equipment.Slots.IndexOf(Options.Instance.Equipment.Paperdoll.Directions[1][z])];
+                        if (ItemDescriptor.TryGet(itemId, out var itemDescriptor))
                         {
                             paperdoll = MyEntity.Gender == 0
                                 ? itemDescriptor.MalePaperdoll : itemDescriptor.FemalePaperdoll;
@@ -866,7 +826,7 @@ public partial class EntityBox
                 }
 
                 //Check for Player layer
-                if (Options.PaperdollOrder[1][z] == "Player")
+                if (Options.Instance.Equipment.Paperdoll.Directions[1][z] == "Player")
                 {
                     continue;
                 }
@@ -910,7 +870,7 @@ public partial class EntityBox
                 }
 
                 //Check for Player layer
-                if (Options.PaperdollOrder[1][z] != "Player")
+                if (Options.Instance.Equipment.Paperdoll.Directions[1][z] != "Player")
                 {
                     n++;
                 }
@@ -919,7 +879,7 @@ public partial class EntityBox
         else if (MyEntity.Sprite != mCurrentSprite && MyEntity.Face != mCurrentSprite)
         {
             EntityFace.IsHidden = true;
-            for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+            for (var i = 0; i < Options.Instance.Equipment.Slots.Count; i++)
             {
                 PaperdollPanels[i]?.Hide();
             }
@@ -934,111 +894,14 @@ public partial class EntityBox
     public void Dispose()
     {
         EntityWindow.Hide();
-        Interface.GameUi.GameCanvas.RemoveChild(EntityWindow, false);
-        EntityWindow.Dispose();
+        EntityWindow.Canvas?.RemoveChild(EntityWindow, true);
     }
 
-    //Input Handlers
-    void invite_Clicked(Base sender, ClickedEventArgs arguments)
+    public bool IsVisible
     {
-        if (Globals.Me.TargetIndex != Guid.Empty && Globals.Me.TargetIndex != Globals.Me.Id)
-        {
-            if (Globals.Me.CombatTimer < Timing.Global.Milliseconds)
-            {
-                PacketSender.SendPartyInvite(Globals.Me.TargetIndex);
-            }
-            else
-            {
-                PacketSender.SendChatMsg(Strings.Parties.InFight.ToString(), 4);
-            }
-        }
+        get => EntityWindow.IsVisibleInTree;
+        set => EntityWindow.IsVisibleInTree = value;
     }
-
-    //Input Handlers
-    void tradeRequest_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        if (Globals.Me.TargetIndex != Guid.Empty && Globals.Me.TargetIndex != Globals.Me.Id)
-        {
-            if (Globals.Me.CombatTimer < Timing.Global.Milliseconds)
-            {
-                PacketSender.SendTradeRequest(Globals.Me.TargetIndex);
-            }
-            else
-            {
-                PacketSender.SendChatMsg(Strings.Trading.InFight.ToString(), 4);
-            }
-        }
-    }
-
-    //Input Handlers
-    void friendRequest_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        if (Globals.Me.TargetIndex != Guid.Empty && Globals.Me.TargetIndex != Globals.Me.Id)
-        {
-            if (Globals.Me.CombatTimer < Timing.Global.Milliseconds)
-            {
-                PacketSender.SendAddFriend(MyEntity.Name);
-            }
-            else
-            {
-                PacketSender.SendChatMsg(Strings.Friends.InFight.ToString(), 4);
-            }
-        }
-    }
-
-
-    void guildRequest_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        if (MyEntity is Player plyr && MyEntity != Globals.Me)
-        {
-            if (string.IsNullOrWhiteSpace(plyr.Guild))
-            {
-                if (Globals.Me?.GuildRank?.Permissions?.Invite ?? false)
-                {
-                    if (Globals.Me.CombatTimer < Timing.Global.Milliseconds)
-                    {
-                        PacketSender.SendInviteGuild(MyEntity.Name);
-                    }
-                    else
-                    {
-                        PacketSender.SendChatMsg(Strings.Friends.InFight.ToString(), 4);
-                    }
-                }
-            }
-            else
-            {
-                Chat.ChatboxMsg.AddMessage(new Chat.ChatboxMsg(Strings.Guilds.InviteAlreadyInGuild, Color.Red, ChatMessageType.Guild));
-            }
-        }
-    }
-
-    void TryShowGuildButton()
-    {
-        var shouldShow = false;
-        if (MyEntity is Player plyr && MyEntity != Globals.Me && string.IsNullOrWhiteSpace(plyr.Guild))
-        {
-            if (Globals.Me?.GuildRank?.Permissions?.Invite ?? false)
-            {
-                shouldShow = true;
-            }
-        }
-
-        if (shouldShow)
-        {
-            if (!_contextMenu.Children.Contains(_guildMenuItem))
-            {
-                _contextMenu.Children.Add(_guildMenuItem);
-            }
-        }
-        else
-        {
-            if (_contextMenu.Children.Contains(_guildMenuItem))
-            {
-                _contextMenu.Children.Remove(_guildMenuItem);
-            }
-        }
-    }
-
 
     public void Hide()
     {
@@ -1047,7 +910,7 @@ public partial class EntityBox
 
     public void Show()
     {
-        if (!Options.Instance.CombatOpts.EnableTargetWindow && !_isPlayerBox)
+        if (!Options.Instance.Combat.EnableTargetWindow && !_isPlayerBox)
         {
             return;
         }

@@ -1,8 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Reflection;
-
 using Intersect.Enums;
-
+using Intersect.Framework.Core.GameObjects.Events;
 using Newtonsoft.Json;
 
 namespace Intersect.Server.Database.PlayerData.Security;
@@ -37,7 +36,8 @@ public sealed partial class UserRights : IComparable<UserRights>, IEquatable<Use
 
     public bool Api { get; set; }
 
-    public ApiRoles ApiRoles { get; set; } = new ApiRoles();
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public ApiRoles? ApiRoles { get; set; }
 
     [JsonIgnore]
     public bool IsModerator => Ban || Mute || Kick;
@@ -134,7 +134,7 @@ public sealed partial class UserRights : IComparable<UserRights>, IEquatable<Use
 
         var apiRoles = ApiRolesPermissions
                            .Where(
-                               property => permitted == (bool) (property?.GetValue(this.ApiRoles, null) ?? false)
+                               property => ApiRoles != null && permitted == (bool) (property?.GetValue(ApiRoles, null) ?? false)
                            )
                            .Select(property => property?.Name)
                            .ToList() ??
@@ -167,7 +167,7 @@ public static partial class AccessExtensions
     }
 }
 
-public partial class ApiRoles
+public partial record ApiRoles
 {
     public bool UserQuery { get; set; }
 

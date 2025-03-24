@@ -5,14 +5,22 @@ using Intersect.Editor.General;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Maps;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Crafting;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
+using Intersect.Framework.Core.GameObjects.NPCs;
+using Intersect.Framework.Core.GameObjects.PlayerClass;
+using Intersect.Framework.Core.GameObjects.Resources;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Crafting;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Maps;
-using Intersect.GameObjects.Maps.MapList;
-using Intersect.Logging;
 using Intersect.Network;
 using Intersect.Network.Packets.Server;
+using Microsoft.Extensions.Logging;
+using ApplicationContext = Intersect.Core.ApplicationContext;
 
 namespace Intersect.Editor.Networking;
 
@@ -55,7 +63,7 @@ internal sealed partial class PacketHandler
 
     public IApplicationContext Context { get; }
 
-    public Logger Logger { get; }
+    public ILogger Logger { get; }
 
     public PacketHandlerRegistry Registry { get; }
 
@@ -83,7 +91,7 @@ internal sealed partial class PacketHandler
 
         if (!Registry.TryGetHandler(packet, out HandlePacketGeneric handler))
         {
-            Logger.Error($"No registered handler for {packet.GetType().FullName}!");
+            Logger.LogError($"No registered handler for {packet.GetType().FullName}!");
 
             return false;
         }
@@ -102,7 +110,7 @@ internal sealed partial class PacketHandler
             if (!preHooks.All(hook => hook.Handle(VirtualSender, packet)))
             {
                 // Hooks should not fail, if they do that's an error
-                Logger.Error($"PreHook handler failed for {packet.GetType().FullName}.");
+                Logger.LogError($"PreHook handler failed for {packet.GetType().FullName}.");
                 return false;
             }
         }
@@ -117,7 +125,7 @@ internal sealed partial class PacketHandler
             if (!postHooks.All(hook => hook.Handle(VirtualSender, packet)))
             {
                 // Hooks should not fail, if they do that's an error
-                Logger.Error($"PostHook handler failed for {packet.GetType().FullName}.");
+                Logger.LogError($"PostHook handler failed for {packet.GetType().FullName}.");
                 return false;
             }
         }
@@ -143,7 +151,7 @@ internal sealed partial class PacketHandler
             Strings.Load();
         } catch (Exception exception)
         {
-            Log.Error(exception);
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to load server options");
             throw;
         }
     }
@@ -160,133 +168,182 @@ internal sealed partial class PacketHandler
     {
         if (packet.Deleted)
         {
-            if (MapInstance.Get(packet.MapId) != null)
+            if (!MapInstance.TryGet(packet.MapId, out var existingMapToDelete))
             {
-                if (Globals.CurrentMap == MapInstance.Get(packet.MapId))
+                return;
+            }
+
+            if (Globals.CurrentMap == existingMapToDelete)
+            {
+                Globals.MainForm.EnterMap(MapList.List.FindFirstMap());
+            }
+
+            existingMapToDelete.Delete();
+            return;
+        }
+
+        var receivedMap = new MapInstance(packet.MapId);
+        receivedMap.Load(packet.Data);
+        receivedMap.LoadTileData(packet.TileData);
+        receivedMap.AttributeData = packet.AttributeData;
+        receivedMap.MapGridX = packet.GridX;
+        receivedMap.MapGridY = packet.GridY;
+        receivedMap.SaveStateAsUnchanged();
+        receivedMap.InitAutotiles();
+        receivedMap.UpdateAdjacentAutotiles();
+        
+        if (MapInstance.TryGet(packet.MapId, out var existingMap))
+        {
+            lock (existingMap.MapLock)
+            {
+                if (Globals.CurrentMap == existingMap)
                 {
-                    Globals.MainForm.EnterMap(MapList.List.FindFirstMap());
+                    Globals.CurrentMap = receivedMap;
                 }
 
-                MapInstance.Get(packet.MapId).Delete();
+                existingMap.Delete();
             }
         }
-        else
+
+        MapInstance.Lookup.Set(packet.MapId, receivedMap);
+        if (!Globals.InEditor && Globals.HasGameData)
         {
-            var map = new MapInstance(packet.MapId);
-            map.Load(packet.Data);
-            map.LoadTileData(packet.TileData);
-            map.AttributeData = packet.AttributeData;
-            map.MapGridX = packet.GridX;
-            map.MapGridY = packet.GridY;
-            map.SaveStateAsUnchanged();
-            map.InitAutotiles();
-            map.UpdateAdjacentAutotiles();
-            if (MapInstance.Get(packet.MapId) != null)
+            Globals.CurrentMap = receivedMap;
+            Globals.LoginForm.BeginInvoke(Globals.LoginForm.EditorLoopDelegate);
+        }
+        else if (Globals.InEditor)
+        {
+            if (Globals.FetchingMapPreviews || Globals.CurrentMap == receivedMap)
             {
-                lock (MapInstance.Get(packet.MapId).MapLock)
+                var currentMapId = Globals.CurrentMap.Id;
+                var img = Database.LoadMapCacheLegacy(packet.MapId, receivedMap.Revision);
+                if (img == null && !Globals.MapsToScreenshot.Contains(packet.MapId))
                 {
-                    if (Globals.CurrentMap == MapInstance.Get(packet.MapId))
-                    {
-                        Globals.CurrentMap = map;
-                    }
-
-                    MapInstance.Get(packet.MapId).Delete();
+                    Globals.MapsToScreenshot.Add(packet.MapId);
                 }
-            }
 
-            MapInstance.Lookup.Set(packet.MapId, map);
-            if (!Globals.InEditor && Globals.HasGameData)
-            {
-                Globals.CurrentMap = map;
-                Globals.LoginForm.BeginInvoke(Globals.LoginForm.EditorLoopDelegate);
-            }
-            else if (Globals.InEditor)
-            {
-                if (Globals.FetchingMapPreviews || Globals.CurrentMap == map)
+                img?.Dispose();
+                if (Globals.FetchingMapPreviews)
                 {
-                    var currentMapId = Globals.CurrentMap.Id;
-                    var img = Database.LoadMapCacheLegacy(packet.MapId, map.Revision);
-                    if (img == null && !Globals.MapsToScreenshot.Contains(packet.MapId))
+                    if (Globals.MapsToFetch.Contains(packet.MapId))
                     {
-                        Globals.MapsToScreenshot.Add(packet.MapId);
-                    }
-
-                    img?.Dispose();
-                    if (Globals.FetchingMapPreviews)
-                    {
-                        if (Globals.MapsToFetch.Contains(packet.MapId))
+                        Globals.MapsToFetch.Remove(packet.MapId);
+                        if (Globals.MapsToFetch.Count == 0)
                         {
-                            Globals.MapsToFetch.Remove(packet.MapId);
-                            if (Globals.MapsToFetch.Count == 0)
-                            {
-                                Globals.FetchingMapPreviews = false;
-                                Globals.PreviewProgressForm.BeginInvoke(
-                                    (MethodInvoker) delegate { Globals.PreviewProgressForm.Dispose(); }
-                                );
-                            }
-                            else
-                            {
-                                //TODO Localize
-                                Globals.PreviewProgressForm.SetProgress(
-                                    "Fetching Maps: " +
-                                    (Globals.FetchCount - Globals.MapsToFetch.Count) +
-                                    "/" +
-                                    Globals.FetchCount,
-                                    (int) ((float) (Globals.FetchCount - Globals.MapsToFetch.Count) /
-                                           (float) Globals.FetchCount *
-                                           100f), false
-                                );
-                            }
+                            Globals.FetchingMapPreviews = false;
+                            Globals.PreviewProgressForm.BeginInvoke(
+                                (MethodInvoker) delegate { Globals.PreviewProgressForm.Dispose(); }
+                            );
                         }
-                    }
-
-                    Globals.CurrentMap = MapInstance.Get(currentMapId);
-                }
-
-                if (packet.MapId != Globals.LoadingMap)
-                {
-                    return;
-                }
-
-                Globals.CurrentMap = MapInstance.Get(Globals.LoadingMap);
-                MapUpdatedDelegate();
-                if (map.Up != Guid.Empty)
-                {
-                    PacketSender.SendNeedMap(map.Up);
-                }
-
-                if (map.Down != Guid.Empty)
-                {
-                    PacketSender.SendNeedMap(map.Down);
-                }
-
-                if (map.Left != Guid.Empty)
-                {
-                    PacketSender.SendNeedMap(map.Left);
-                }
-
-                if (map.Right != Guid.Empty)
-                {
-                    PacketSender.SendNeedMap(map.Right);
-                }
-            }
-
-            if (Globals.CurrentMap.Id == packet.MapId && Globals.MapGrid != null && Globals.MapGrid.Loaded)
-            {
-                for (var y = Globals.CurrentMap.MapGridY + 1; y >= Globals.CurrentMap.MapGridY - 1; y--)
-                {
-                    for (var x = Globals.CurrentMap.MapGridX - 1; x <= Globals.CurrentMap.MapGridX + 1; x++)
-                    {
-                        if (x >= 0 && x < Globals.MapGrid.GridWidth && y >= 0 && y < Globals.MapGrid.GridHeight)
+                        else
                         {
-                            var needMap = MapInstance.Get(Globals.MapGrid.Grid[x, y].MapId);
-                            if (needMap == null && Globals.MapGrid.Grid[x, y].MapId != Guid.Empty)
-                            {
-                                PacketSender.SendNeedMap(Globals.MapGrid.Grid[x, y].MapId);
-                            }
+                            //TODO Localize
+                            Globals.PreviewProgressForm.SetProgress(
+                                "Fetching Maps: " +
+                                (Globals.FetchCount - Globals.MapsToFetch.Count) +
+                                "/" +
+                                Globals.FetchCount,
+                                (int) ((float) (Globals.FetchCount - Globals.MapsToFetch.Count) /
+                                       (float) Globals.FetchCount *
+                                       100f), false
+                            );
                         }
                     }
                 }
+
+                Globals.CurrentMap = MapInstance.Get(currentMapId);
+            }
+
+            if (packet.MapId != Globals.LoadingMap)
+            {
+                return;
+            }
+
+            Globals.CurrentMap = MapInstance.Get(Globals.LoadingMap);
+            MapUpdatedDelegate();
+            if (receivedMap.Up != Guid.Empty)
+            {
+                PacketSender.SendNeedMap(receivedMap.Up);
+            }
+
+            if (receivedMap.Down != Guid.Empty)
+            {
+                PacketSender.SendNeedMap(receivedMap.Down);
+            }
+
+            if (receivedMap.Left != Guid.Empty)
+            {
+                PacketSender.SendNeedMap(receivedMap.Left);
+            }
+
+            if (receivedMap.Right != Guid.Empty)
+            {
+                PacketSender.SendNeedMap(receivedMap.Right);
+            }
+        }
+
+        if (Globals.CurrentMap is not { } currentMap)
+        {
+            throw new InvalidOperationException(
+                $"Received packet for map {packet.MapId} but the current map was null"
+            );
+        }
+
+        if (Globals.MapGrid is not { } mapGrid)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "Received packet for map {MapId} before the map grid was initialized",
+                packet.MapId
+            );
+            return;
+        }
+
+        if (!mapGrid.Loaded)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "Received packet for map {MapId} before the map grid was loaded",
+                packet.MapId
+            );
+            return;
+        }
+
+        if (currentMap.Id != packet.MapId)
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "Received packet for map {MapId} but the current map is {CurrentMapId} ({CurrentMapName})",
+                packet.MapId,
+                currentMap.Id,
+                currentMap.Name
+            );
+            return;
+        }
+
+        for (var y = currentMap.MapGridY + 1; y >= currentMap.MapGridY - 1; y--)
+        {
+            if (y < 0 || y >= mapGrid.GridHeight)
+            {
+                continue;
+            }
+                
+            for (var x = currentMap.MapGridX - 1; x <= currentMap.MapGridX + 1; x++)
+            {
+                if (x < 0 || x >= mapGrid.GridWidth)
+                {
+                    continue;
+                }
+
+                var gridMapId = mapGrid.Grid[x, y].MapId;
+                if (gridMapId == Guid.Empty)
+                {
+                    continue;
+                }
+
+                if (MapInstance.TryGet(gridMapId, out _))
+                {
+                    continue;
+                }
+                    
+                PacketSender.SendNeedMap(gridMapId);
             }
         }
     }
@@ -318,7 +375,7 @@ internal sealed partial class PacketHandler
     public void HandlePacket(IPacketSender packetSender, MapListPacket packet)
     {
         MapList.List.JsonData = packet.MapListData;
-        MapList.List.PostLoad(MapBase.Lookup, false, true);
+        MapList.List.PostLoad(MapDescriptor.Lookup, false, true);
 
         // If our current map is null, load our previous map as per our stored Id or the first available map.
         if (Globals.CurrentMap == null)
@@ -389,7 +446,7 @@ internal sealed partial class PacketHandler
     {
         var id = packet.Id;
         var deleted = packet.Deleted;
-        var json = "";
+        var json = string.Empty;
         if (!packet.Deleted)
         {
             json = packet.Data;
@@ -400,27 +457,27 @@ internal sealed partial class PacketHandler
             case GameObjectType.Animation:
                 if (deleted)
                 {
-                    var anim = AnimationBase.Get(id);
+                    var anim = AnimationDescriptor.Get(id);
                     anim.Delete();
                 }
                 else
                 {
-                    var anim = new AnimationBase(id);
+                    var anim = new AnimationDescriptor(id);
                     anim.Load(json);
                     try
                     {
-                        AnimationBase.Lookup.Set(id, anim);
+                        AnimationDescriptor.Lookup.Set(id, anim);
                     }
                     catch (Exception exception)
                     {
-                        Log.Error($"Another mystery NPE. [Lookup={AnimationBase.Lookup}]");
+                        Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError($"Another mystery NPE. [Lookup={AnimationDescriptor.Lookup}]");
                         if (exception.InnerException != null)
                         {
-                            Log.Error(exception.InnerException);
+                            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(exception.InnerException, "Mystery NPE");
                         }
 
-                        Log.Error(exception);
-                        Log.Error($"{nameof(id)}={id},{nameof(anim)}={anim}");
+                        Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to load animation base");
+                        Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError($"{nameof(id)}={id},{nameof(anim)}={anim}");
 
                         throw;
                     }
@@ -431,14 +488,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.Class:
                 if (deleted)
                 {
-                    var cls = ClassBase.Get(id);
+                    var cls = ClassDescriptor.Get(id);
                     cls.Delete();
                 }
                 else
                 {
-                    var cls = new ClassBase(id);
+                    var cls = new ClassDescriptor(id);
                     cls.Load(json);
-                    ClassBase.Lookup.Set(id, cls);
+                    ClassDescriptor.Lookup.Set(id, cls);
                 }
 
                 break;
@@ -446,28 +503,28 @@ internal sealed partial class PacketHandler
             case GameObjectType.Item:
                 if (deleted)
                 {
-                    var itm = ItemBase.Get(id);
+                    var itm = ItemDescriptor.Get(id);
                     itm.Delete();
                 }
                 else
                 {
-                    var itm = new ItemBase(id);
+                    var itm = new ItemDescriptor(id);
                     itm.Load(json);
-                    ItemBase.Lookup.Set(id, itm);
+                    ItemDescriptor.Lookup.Set(id, itm);
                 }
 
                 break;
             case GameObjectType.Npc:
                 if (deleted)
                 {
-                    var npc = NpcBase.Get(id);
+                    var npc = NPCDescriptor.Get(id);
                     npc.Delete();
                 }
                 else
                 {
-                    var npc = new NpcBase(id);
+                    var npc = new NPCDescriptor(id);
                     npc.Load(json);
-                    NpcBase.Lookup.Set(id, npc);
+                    NPCDescriptor.Lookup.Set(id, npc);
                 }
 
                 break;
@@ -475,14 +532,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.Projectile:
                 if (deleted)
                 {
-                    var proj = ProjectileBase.Get(id);
+                    var proj = ProjectileDescriptor.Get(id);
                     proj.Delete();
                 }
                 else
                 {
-                    var proj = new ProjectileBase(id);
+                    var proj = new ProjectileDescriptor(id);
                     proj.Load(json);
-                    ProjectileBase.Lookup.Set(id, proj);
+                    ProjectileDescriptor.Lookup.Set(id, proj);
                 }
 
                 break;
@@ -490,19 +547,19 @@ internal sealed partial class PacketHandler
             case GameObjectType.Quest:
                 if (deleted)
                 {
-                    var qst = QuestBase.Get(id);
+                    var qst = QuestDescriptor.Get(id);
                     qst.Delete();
                 }
                 else
                 {
-                    var qst = new QuestBase(id);
+                    var qst = new QuestDescriptor(id);
                     qst.Load(json);
                     foreach (var tsk in qst.Tasks)
                     {
                         qst.OriginalTaskEventIds.Add(tsk.Id, tsk.CompletionEventId);
                     }
 
-                    QuestBase.Lookup.Set(id, qst);
+                    QuestDescriptor.Lookup.Set(id, qst);
                 }
 
                 break;
@@ -510,14 +567,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.Resource:
                 if (deleted)
                 {
-                    var res = ResourceBase.Get(id);
+                    var res = ResourceDescriptor.Get(id);
                     res.Delete();
                 }
                 else
                 {
-                    var res = new ResourceBase(id);
+                    var res = new ResourceDescriptor(id);
                     res.Load(json);
-                    ResourceBase.Lookup.Set(id, res);
+                    ResourceDescriptor.Lookup.Set(id, res);
                 }
 
                 break;
@@ -525,14 +582,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.Shop:
                 if (deleted)
                 {
-                    var shp = ShopBase.Get(id);
+                    var shp = ShopDescriptor.Get(id);
                     shp.Delete();
                 }
                 else
                 {
-                    var shp = new ShopBase(id);
+                    var shp = new ShopDescriptor(id);
                     shp.Load(json);
-                    ShopBase.Lookup.Set(id, shp);
+                    ShopDescriptor.Lookup.Set(id, shp);
                 }
 
                 break;
@@ -540,14 +597,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.Spell:
                 if (deleted)
                 {
-                    var spl = SpellBase.Get(id);
+                    var spl = SpellDescriptor.Get(id);
                     spl.Delete();
                 }
                 else
                 {
-                    var spl = new SpellBase(id);
+                    var spl = new SpellDescriptor(id);
                     spl.Load(json);
-                    SpellBase.Lookup.Set(id, spl);
+                    SpellDescriptor.Lookup.Set(id, spl);
                 }
 
                 break;
@@ -555,14 +612,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.CraftTables:
                 if (deleted)
                 {
-                    var cft = CraftingTableBase.Get(id);
+                    var cft = CraftingTableDescriptor.Get(id);
                     cft.Delete();
                 }
                 else
                 {
-                    var cft = new CraftingTableBase(id);
+                    var cft = new CraftingTableDescriptor(id);
                     cft.Load(json);
-                    CraftingTableBase.Lookup.Set(id, cft);
+                    CraftingTableDescriptor.Lookup.Set(id, cft);
                 }
 
                 break;
@@ -570,14 +627,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.Crafts:
                 if (deleted)
                 {
-                    var cft = CraftBase.Get(id);
+                    var cft = CraftingRecipeDescriptor.Get(id);
                     cft.Delete();
                 }
                 else
                 {
-                    var cft = new CraftBase(id);
+                    var cft = new CraftingRecipeDescriptor(id);
                     cft.Load(json);
-                    CraftBase.Lookup.Set(id, cft);
+                    CraftingRecipeDescriptor.Lookup.Set(id, cft);
                 }
 
                 break;
@@ -590,16 +647,16 @@ internal sealed partial class PacketHandler
                 var wasCommon = false;
                 if (deleted)
                 {
-                    var evt = EventBase.Get(id);
+                    var evt = EventDescriptor.Get(id);
                     wasCommon = evt.CommonEvent;
                     evt.Delete();
                 }
                 else
                 {
-                    var evt = new EventBase(id);
+                    var evt = new EventDescriptor(id);
                     evt.Load(json);
                     wasCommon = evt.CommonEvent;
-                    EventBase.Lookup.Set(id, evt);
+                    EventDescriptor.Lookup.Set(id, evt);
                 }
 
                 if (!wasCommon)
@@ -612,14 +669,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.PlayerVariable:
                 if (deleted)
                 {
-                    var pvar = PlayerVariableBase.Get(id);
+                    var pvar = PlayerVariableDescriptor.Get(id);
                     pvar.Delete();
                 }
                 else
                 {
-                    var pvar = new PlayerVariableBase(id);
+                    var pvar = new PlayerVariableDescriptor(id);
                     pvar.Load(json);
-                    PlayerVariableBase.Lookup.Set(id, pvar);
+                    PlayerVariableDescriptor.Lookup.Set(id, pvar);
                 }
 
                 break;
@@ -627,22 +684,22 @@ internal sealed partial class PacketHandler
             case GameObjectType.ServerVariable:
                 if (deleted)
                 {
-                    var svar = ServerVariableBase.Get(id);
+                    var svar = ServerVariableDescriptor.Get(id);
                     svar.Delete();
                 }
                 else
                 {
-                    var svar = new ServerVariableBase(id);
+                    var svar = new ServerVariableDescriptor(id);
                     svar.Load(json);
-                    ServerVariableBase.Lookup.Set(id, svar);
+                    ServerVariableDescriptor.Lookup.Set(id, svar);
                 }
 
                 break;
 
             case GameObjectType.Tileset:
-                var obj = new TilesetBase(id);
+                var obj = new TilesetDescriptor(id);
                 obj.Load(json);
-                TilesetBase.Lookup.Set(id, obj);
+                TilesetDescriptor.Lookup.Set(id, obj);
                 if (Globals.HasGameData && !packet.AnotherFollowing)
                 {
                     GameContentManager.LoadTilesets();
@@ -653,14 +710,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.GuildVariable:
                 if (deleted)
                 {
-                    var pvar = GuildVariableBase.Get(id);
+                    var pvar = GuildVariableDescriptor.Get(id);
                     pvar.Delete();
                 }
                 else
                 {
-                    var pvar = new GuildVariableBase(id);
+                    var pvar = new GuildVariableDescriptor(id);
                     pvar.Load(json);
-                    GuildVariableBase.Lookup.Set(id, pvar);
+                    GuildVariableDescriptor.Lookup.Set(id, pvar);
                 }
 
                 break;
@@ -668,14 +725,14 @@ internal sealed partial class PacketHandler
             case GameObjectType.UserVariable:
                 if (deleted)
                 {
-                    var pvar = UserVariableBase.Get(id);
+                    var pvar = UserVariableDescriptor.Get(id);
                     pvar.Delete();
                 }
                 else
                 {
-                    var pvar = new UserVariableBase(id);
+                    var pvar = new UserVariableDescriptor(id);
                     pvar.Load(json);
-                    UserVariableBase.Lookup.Set(id, pvar);
+                    UserVariableDescriptor.Lookup.Set(id, pvar);
                 }
 
                 break;
@@ -695,6 +752,6 @@ internal sealed partial class PacketHandler
     //TimeDataPacket
     public void HandlePacket(IPacketSender packetSender, TimeDataPacket packet)
     {
-        TimeBase.GetTimeBase().LoadFromJson(packet.TimeJson);
+        DaylightCycleDescriptor.Instance.LoadFromJson(packet.TimeJson);
     }
 }

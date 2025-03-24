@@ -1,9 +1,10 @@
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Events;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Entities.Pathfinding;
-using Intersect.Server.Framework;
 using Intersect.Server.Framework.Items;
 using Intersect.Server.Maps;
 using Intersect.Server.Networking;
@@ -15,7 +16,7 @@ namespace Intersect.Server.Entities.Events;
 public partial class EventPageInstance : Entity
 {
 
-    public EventBase BaseEvent;
+    public EventDescriptor Descriptor;
 
     public bool DisablePreview;
 
@@ -56,7 +57,7 @@ public partial class EventPageInstance : Entity
     protected override bool CanMoveOntoSlide(Direction movementDirection, Direction slideDirection) => false;
 
     public EventPageInstance(
-        EventBase myEvent,
+        EventDescriptor eventDescriptor,
         EventPage myPage,
         Guid mapId,
         Guid mapInstanceId,
@@ -64,14 +65,14 @@ public partial class EventPageInstance : Entity
         Player player
     ) : base()
     {
-        BaseEvent = myEvent;
-        Id = BaseEvent.Id;
+        Descriptor = eventDescriptor;
+        Id = Descriptor.Id;
         MyPage = myPage;
         MapId = mapId;
         MapInstanceId = mapInstanceId;
         X = eventIndex.X;
         Y = eventIndex.Y;
-        Name = myEvent.Name;
+        Name = eventDescriptor.Name;
         MovementType = MyPage.Movement.Type;
         MovementFreq = MyPage.Movement.Frequency;
         MovementSpeed = MyPage.Movement.Speed;
@@ -123,13 +124,13 @@ public partial class EventPageInstance : Entity
         }
 
         Face = MyPage.FaceGraphic;
-        mPageNum = BaseEvent.Pages.IndexOf(MyPage);
+        mPageNum = Descriptor.Pages.IndexOf(MyPage);
         Player = player;
         SendToPlayer();
     }
 
     public EventPageInstance(
-        EventBase myEvent,
+        EventDescriptor eventDescriptor,
         EventPage myPage,
         Guid instanceId,
         Guid mapId,
@@ -139,15 +140,15 @@ public partial class EventPageInstance : Entity
         EventPageInstance globalClone
     ) : base(instanceId, Guid.Empty)
     {
-        BaseEvent = myEvent;
-        Id = BaseEvent.Id;
+        Descriptor = eventDescriptor;
+        Id = Descriptor.Id;
         GlobalClone = globalClone;
         MyPage = myPage;
         MapId = mapId;
         MapInstanceId = mapInstanceId;
         X = globalClone.X;
         Y = globalClone.Y;
-        Name = myEvent.Name;
+        Name = eventDescriptor.Name;
         MovementType = globalClone.MovementType;
         MovementFreq = globalClone.MovementFreq;
         MovementSpeed = globalClone.MovementSpeed;
@@ -198,7 +199,7 @@ public partial class EventPageInstance : Entity
         }
 
         Face = MyPage.FaceGraphic;
-        mPageNum = BaseEvent.Pages.IndexOf(MyPage);
+        mPageNum = Descriptor.Pages.IndexOf(MyPage);
         Player = player;
         SendToPlayer();
     }
@@ -671,7 +672,7 @@ public partial class EventPageInstance : Entity
                         break;
                     case MoveRouteEnum.SetAnimation:
                         Animations.Clear();
-                        var anim = AnimationBase.Get(MoveRoute.Actions[MoveRoute.ActionIndex].AnimationId);
+                        var anim = AnimationDescriptor.Get(MoveRoute.Actions[MoveRoute.ActionIndex].AnimationId);
                         if (anim != null)
                         {
                             Animations.Add(MoveRoute.Actions[MoveRoute.ActionIndex].AnimationId);
@@ -761,7 +762,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.Down:
-                if (Y == Options.MapHeight - 1)
+                if (Y == Options.Instance.Map.MapHeight - 1)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -777,7 +778,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.Right:
-                if (X == Options.MapWidth - 1)
+                if (X == Options.Instance.Map.MapWidth - 1)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -793,7 +794,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.UpRight:
-                if (Y == 0 || X == Options.MapWidth - 1)
+                if (Y == 0 || X == Options.Instance.Map.MapWidth - 1)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -801,7 +802,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.DownRight:
-                if (Y == Options.MapHeight - 1 || X == Options.MapWidth - 1)
+                if (Y == Options.Instance.Map.MapHeight - 1 || X == Options.Instance.Map.MapWidth - 1)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -809,7 +810,7 @@ public partial class EventPageInstance : Entity
                 break;
 
             case Direction.DownLeft:
-                if (Y == Options.MapHeight - 1 || X == 0)
+                if (Y == Options.Instance.Map.MapHeight - 1 || X == 0)
                 {
                     blockerType = MovementBlockerType.OutOfBounds;
                     return false;
@@ -864,9 +865,9 @@ public partial class EventPageInstance : Entity
             return true;
         }
 
-        for (var i = 0; i < BaseEvent.Pages.Count; i++)
+        for (var i = 0; i < Descriptor.Pages.Count; i++)
         {
-            if (i != mPageNum && Conditions.CanSpawnPage(BaseEvent.Pages[i], MyEventIndex.Player, MyEventIndex))
+            if (i != mPageNum && Conditions.CanSpawnPage(Descriptor.Pages[i], MyEventIndex.Player, MyEventIndex))
             {
                 if (i > mPageNum)
                 {
@@ -881,7 +882,7 @@ public partial class EventPageInstance : Entity
             //var map = MapController.Get(GlobalClone.MapId);
             if (MapController.TryGetInstanceFromMap(map.Id, MapInstanceId, out var mapInstance))
             {
-                if (!mapInstance.FindEvent(GlobalClone.BaseEvent, GlobalClone))
+                if (!mapInstance.FindEvent(GlobalClone.Descriptor, GlobalClone))
                 {
                     return true;
                 }

@@ -1,11 +1,19 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Reflection;
 using Intersect.Client.Networking;
 using Intersect.Client.Plugins.Contexts;
+using Intersect.Configuration;
 using Intersect.Core;
 using Intersect.Factories;
-using Intersect.Logging;
+using Intersect.Framework.Core.Network.Packets.Security;
+using Intersect.Framework.Core.Security;
+using Intersect.Framework.Net;
+using Intersect.Framework.Reflection;
+using Intersect.Network;
 using Intersect.Plugins;
 using Intersect.Plugins.Interfaces;
-using Intersect.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Core;
 
@@ -18,12 +26,60 @@ internal sealed partial class ClientContext : ApplicationContext<ClientContext, 
 
     private IPlatformRunner? mPlatformRunner;
 
-    internal ClientContext(ClientCommandLineOptions startupOptions, Logger logger, IPacketHelper packetHelper) : base(
-        startupOptions, logger, packetHelper
-    )
+    internal ClientContext(
+        Assembly entryAssembly,
+        ClientCommandLineOptions startupOptions,
+        ClientConfiguration clientConfiguration,
+        ILogger logger,
+        IPacketHelper packetHelper
+    ) : base(entryAssembly, "Intersect", startupOptions, logger, packetHelper)
     {
+        PermissionSet.ActivePermissionSetChanged += PermissionSetOnActivePermissionSetChanged;
+        PermissionSet.PermissionSetUpdated += PermissionSetOnPermissionSetUpdated;
+
+        var hostNameOrAddress = clientConfiguration.Host;
+        try
+        {
+            var address = Dns.GetHostAddresses(hostNameOrAddress).FirstOrDefault();
+            IsDeveloper = !(address?.IsPublic() ?? true);
+        }
+        catch (SocketException socketException)
+        {
+            if (socketException.SocketErrorCode != SocketError.HostNotFound)
+            {
+                throw;
+            }
+
+            ClientNetwork.UnresolvableHostNames.Add(hostNameOrAddress);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                socketException,
+                "Failed to resolve host '{HostNameOrAddress}'",
+                hostNameOrAddress
+            );
+            IsDeveloper = true;
+        }
+
         _ = FactoryRegistry<IPluginContext>.RegisterFactory(new ClientPluginContext.Factory());
     }
+
+    private void PermissionSetOnPermissionSetUpdated(PermissionSet permissionSet)
+    {
+        if (permissionSet != PermissionSet.ActivePermissionSet)
+        {
+            return;
+        }
+
+        PermissionsChanged?.Invoke(permissionSet);
+    }
+
+    private void PermissionSetOnActivePermissionSetChanged(string activePermissionSetName)
+    {
+        PermissionSetOnPermissionSetUpdated(PermissionSet.ActivePermissionSet);
+    }
+
+    public event PermissionSetChangedHandler? PermissionsChanged;
+
+    public bool IsDeveloper { get; private set; }
 
     protected override bool UsesMainThread => true;
 

@@ -2,8 +2,12 @@
 using Intersect.Editor.General;
 using Intersect.Editor.Localization;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.NPCs;
+using Intersect.Framework.Core.GameObjects.Quests;
 using Intersect.GameObjects;
-using Intersect.Logging;
+using Microsoft.Extensions.Logging;
+
 
 namespace Intersect.Editor.Forms.Editors.Quest;
 
@@ -15,20 +19,20 @@ public partial class QuestTaskEditor : UserControl
 
     private string mEventBackup = null;
 
-    private QuestBase mMyQuest;
+    private QuestDescriptor mMyQuest;
 
-    private QuestBase.QuestTask mMyTask;
+    private QuestTaskDescriptor mMyTask;
 
-    public QuestTaskEditor(QuestBase refQuest, QuestBase.QuestTask refTask)
+    public QuestTaskEditor(QuestDescriptor refQuest, QuestTaskDescriptor refTask)
     {
         if (refQuest == null)
         {
-            Log.Warn($@"{nameof(refQuest)} is null.");
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning($@"{nameof(refQuest)} is null.");
         }
 
         if (refTask == null)
         {
-            Log.Warn($@"{nameof(refTask)} is null.");
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning($@"{nameof(refTask)} is null.");
         }
 
         InitializeComponent();
@@ -37,7 +41,7 @@ public partial class QuestTaskEditor : UserControl
 
         if (mMyTask?.EditingEvent == null)
         {
-            Log.Warn($@"{nameof(mMyTask.EditingEvent)} is null.");
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogWarning($@"{nameof(mMyTask.EditingEvent)} is null.");
         }
 
         mEventBackup = mMyTask?.EditingEvent?.JsonData;
@@ -50,12 +54,12 @@ public partial class QuestTaskEditor : UserControl
             case 0: //Event Driven
                 break;
             case 1: //Gather Items
-                cmbItem.SelectedIndex = ItemBase.ListIndex(mMyTask?.TargetId ?? Guid.Empty);
+                cmbItem.SelectedIndex = ItemDescriptor.ListIndex(mMyTask?.TargetId ?? Guid.Empty);
                 nudItemAmount.Value = mMyTask?.Quantity ?? 0;
 
                 break;
             case 2: //Kill NPCS
-                cmbNpc.SelectedIndex = NpcBase.ListIndex(mMyTask?.TargetId ?? Guid.Empty);
+                cmbNpc.SelectedIndex = NPCDescriptor.ListIndex(mMyTask?.TargetId ?? Guid.Empty);
                 nudNpcQuantity.Value = mMyTask?.Quantity ?? 0;
 
                 break;
@@ -101,7 +105,7 @@ public partial class QuestTaskEditor : UserControl
             case 1: //Gather Items
                 grpGatherItems.Show();
                 cmbItem.Items.Clear();
-                cmbItem.Items.AddRange(ItemBase.Names);
+                cmbItem.Items.AddRange(ItemDescriptor.Names);
                 if (cmbItem.Items.Count > 0)
                 {
                     cmbItem.SelectedIndex = 0;
@@ -113,7 +117,7 @@ public partial class QuestTaskEditor : UserControl
             case 2: //Kill Npcs
                 grpKillNpcs.Show();
                 cmbNpc.Items.Clear();
-                cmbNpc.Items.AddRange(NpcBase.Names);
+                cmbNpc.Items.AddRange(NPCDescriptor.Names);
                 if (cmbNpc.Items.Count > 0)
                 {
                     cmbNpc.SelectedIndex = 0;
@@ -137,12 +141,12 @@ public partial class QuestTaskEditor : UserControl
 
                 break;
             case QuestObjective.GatherItems: //Gather Items
-                mMyTask.TargetId = ItemBase.IdFromList(cmbItem.SelectedIndex);
+                mMyTask.TargetId = ItemDescriptor.IdFromList(cmbItem.SelectedIndex);
                 mMyTask.Quantity = (int) nudItemAmount.Value;
 
                 break;
             case QuestObjective.KillNpcs: //Kill Npcs
-                mMyTask.TargetId = NpcBase.IdFromList(cmbNpc.SelectedIndex);
+                mMyTask.TargetId = NPCDescriptor.IdFromList(cmbNpc.SelectedIndex);
                 mMyTask.Quantity = (int) nudNpcQuantity.Value;
 
                 break;

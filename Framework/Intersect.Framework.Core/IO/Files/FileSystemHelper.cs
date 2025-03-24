@@ -2,9 +2,9 @@
 using System.Diagnostics.Contracts;
 using System.IO.Abstractions;
 using System.Reflection;
-
+using Intersect.Core;
 using Intersect.Extensions;
-using Intersect.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.IO.Files;
 
@@ -54,7 +54,11 @@ public static partial class FileSystemHelper
         }
         catch (Exception exception)
         {
-            LegacyLogging.Logger?.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Failed to create {DirectoryPath}",
+                directoryPath
+            );
 
             return false;
         }
@@ -62,18 +66,8 @@ public static partial class FileSystemHelper
 
     public static string RelativePath(string from, string to)
     {
-        Contract.Requires(from != null);
-        Contract.Requires(to != null);
-
-        if (string.IsNullOrWhiteSpace(from))
-        {
-            throw new ArgumentException(nameof(from));
-        }
-
-        if (string.IsNullOrWhiteSpace(to))
-        {
-            throw new ArgumentException(nameof(to));
-        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(from);
+        ArgumentException.ThrowIfNullOrWhiteSpace(to);
 
         var fullFrom = CleanPath(Path.GetFullPath(from));
 

@@ -1,7 +1,7 @@
 ﻿using Intersect.Editor.Localization;
-using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Events.Commands;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Events.Commands;
+using Intersect.Framework.Core.GameObjects.Variables;
 
 namespace Intersect.Editor.Forms.Editors.Events.Event_Commands;
 
@@ -23,7 +23,7 @@ public partial class EventCommandChangeName : UserControl
         mEventEditor = editor;
 
         cmbVariable.Items.Clear();
-        cmbVariable.Items.AddRange(PlayerVariableBase.Names);
+        cmbVariable.Items.AddRange(PlayerVariableDescriptor.Names);
         
         InitLocalization();
     }
@@ -39,7 +39,7 @@ public partial class EventCommandChangeName : UserControl
 
     private void btnSave_Click(object sender, EventArgs e)
     {
-        mMyCommand.VariableId = PlayerVariableBase.IdFromList(cmbVariable.SelectedIndex);
+        mMyCommand.VariableId = PlayerVariableDescriptor.IdFromList(cmbVariable.SelectedIndex);
         mEventEditor.FinishCommandEdit();
     }
 

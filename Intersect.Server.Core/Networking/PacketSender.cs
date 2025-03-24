@@ -13,6 +13,7 @@ using Intersect.Network;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Database;
 using Intersect.Server.Database.Logging.Entities;
+using Intersect.Server.Database.PlayerData;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Server.Database.PlayerData.Security;
 using Intersect.Server.Entities;
@@ -2513,5 +2514,19 @@ public static partial class PacketSender
             SendOpenMailBox(player);
         }
     }
+    public static void SendAuctionOrders(Client client, IEnumerable<AuctionHouseManager> orders)
+    {
+        var orderList = orders.Select(o => new AuctionHouseOrderInfo(o.OrderId, o.ItemId, o.Quantity, o.Price)).ToList();
+        client.Send(new AuctionOrdersPacket(orderList));
+    }
+    public static void SendAuctionTransactionHistory(Client client, IEnumerable<AuctionTransaction> transactions)
+    {
+        var transactionList = transactions.Select(t =>
+            new AuctionTransactionInfo(t.BuyerId, t.SellerId, t.ItemId, t.Quantity, t.TotalPrice, t.Timestamp)
+        ).ToList();
+
+        client.Send(new AuctionTransactionHistoryResponsePacket(transactionList)); // ✅ Usa AuctionTransactionInfo, independiente del servidor
+    }
+
 
 }

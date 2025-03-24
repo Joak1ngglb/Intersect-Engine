@@ -1,6 +1,7 @@
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Admin;
+using Intersect.Client.Interface.Game.AuctionHouse;
 using Intersect.Client.Interface.Game.Bag;
 using Intersect.Client.Interface.Game.Bank;
 using Intersect.Client.Interface.Game.Chat;
@@ -82,7 +83,9 @@ public partial class GameInterface : MutableInterface
     private bool mShouldHideGuildWindow;
 
     private string mTradingTarget;
-
+    private AuctionHouseWindow mAuctionHouseWindow;
+    private bool mShouldOpenAuctionHouse;
+    private bool mShouldCloseAuctionHouse;
     private bool mCraftJournal {  get; set; }
 
     private TradingWindow? mTradingWindow;
@@ -129,10 +132,50 @@ public partial class GameInterface : MutableInterface
         mQuestOfferWindow = new QuestOfferWindow(GameCanvas);
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
-       // mJobsWindow = new JobsWindow(GameCanvas);
+        mAuctionHouseWindow = new AuctionHouseWindow(GameCanvas);
+        // mJobsWindow = new JobsWindow(GameCanvas);
 
     }
+    public void NotifyOpenAuctionHouse()
+    {
+        mShouldOpenAuctionHouse = true;
+    }
 
+    /// <summary>
+    /// Notifica que se debe cerrar la Auction House.
+    /// </summary>
+    public void NotifyCloseAuctionHouse()
+    {
+        mShouldCloseAuctionHouse = true;
+    }
+
+    /// <summary>
+    /// Abre la ventana de Auction House. Si aún no ha sido creada, se instancia.
+    /// </summary>
+    public void OpenAuctionHouse()
+    {
+        if (mAuctionHouseWindow == null)
+        {
+            mAuctionHouseWindow = new AuctionHouseWindow(GameCanvas);
+        }
+        mAuctionHouseWindow.Show();
+    }
+
+    /// <summary>
+    /// Cierra la ventana de Auction House.
+    /// </summary>
+    public void CloseAuctionHouse()
+    {
+        if (mAuctionHouseWindow != null)
+        {
+            mAuctionHouseWindow.Hide(); // Se asume que AuctionHouseWindow tiene el método Hide()
+        }
+    }
+    public void UpdateAuctionHouse(List<Network.Packets.Server.AuctionHouseOrderInfo> orders)
+    {
+     
+        mAuctionHouseWindow?.UpdateAuctionItems(orders);
+    }
     //Chatbox
     public void SetChatboxText(string msg)
     {
@@ -353,6 +396,7 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow.Update();
         AnnouncementWindow?.Update();
         mPictureWindow?.Update();
+        mAuctionHouseWindow?.Update();
         if (mSendMailBoxWindow != null && !mSendMailBoxWindow.IsVisible())
         {
             mSendMailBoxWindow?.Close();
@@ -532,6 +576,16 @@ public partial class GameInterface : MutableInterface
             mChatBox.UnFocus();
             UnfocusChat = false;
         }
+        if (mShouldOpenAuctionHouse)
+        {
+            OpenAuctionHouse();
+            mShouldOpenAuctionHouse = false;
+        }
+        if (mShouldCloseAuctionHouse)
+        {
+            CloseAuctionHouse();
+            mShouldCloseAuctionHouse = false;
+        }
     }
 
     public void Draw()
@@ -617,7 +671,13 @@ public partial class GameInterface : MutableInterface
             GameMenu.CloseAllWindows();
             closedWindows = true;
         }
-     
+        // También se puede cerrar la Auction House si estuviera abierta
+        if (mAuctionHouseWindow != null && !mAuctionHouseWindow.RootWindow.IsHidden)
+        {
+            CloseAuctionHouse();
+            closedWindows = true;
+
+        }
         return closedWindows;
     }
 

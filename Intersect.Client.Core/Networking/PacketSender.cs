@@ -2,6 +2,7 @@ using Intersect.Client.Entities.Events;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game;
 using Intersect.Client.Interface.Shared;
+using Intersect.Client.Items;
 using Intersect.Client.Maps;
 using Intersect.Enums;
 using Intersect.Framework;
@@ -551,4 +552,30 @@ public static partial class PacketSender
         Network.SendPacket(new TakeMailPacket(mailID));
     
 }
+    public static void SendCreateSellOrder(Guid playerId, Guid itemId, int quantity, int price)
+    {
+        Network.SendPacket(new CreateSellOrderPacket(playerId, itemId, quantity, price));
+    }
+
+    public static void SendSearchOrders(Guid itemId)
+    {
+        Network.SendPacket(new SearchOrdersPacket(itemId));
+    }
+
+    public static void SendBuyAuctionItem(Guid playerId, Guid orderId, int quantity)
+    {
+        Network.SendPacket(new BuyItemtoAuctionPacket(playerId, orderId, quantity));
+    }
+
+    public static void SendCancelOrder(Guid orderId)
+    {
+        Network.SendPacket(new CancelOrderPacket(orderId));
+    }
+
+    public static void SendRequestAuctionTransactionHistory(Guid playerId, bool isBuyer)
+    {
+        Network.SendPacket(new AuctionTransactionHistoryPacket(playerId, isBuyer));
+    }
+
+  
 }

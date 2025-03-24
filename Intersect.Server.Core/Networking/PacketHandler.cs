@@ -29,6 +29,7 @@ using PingPacket = Intersect.Network.Packets.Client.PingPacket;
 using TradeRequestPacket = Intersect.Network.Packets.Client.TradeRequestPacket;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace Intersect.Server.Networking;
 
 internal sealed partial class PacketHandler
@@ -653,6 +654,30 @@ internal sealed partial class PacketHandler
             player.MailBoxs.Remove(mail);
             PacketSender.SendOpenMailBox(player);
         }
+    }
+    public void HandlePacket(Client client, CreateSellOrderPacket packet)
+    {
+        Auction_House.SellItem(packet.SellerId, packet.ItemId, packet.Quantity, packet.Price);
+    }
+    public void HandlePacket(Client client, SearchOrdersPacket packet)
+    {
+        var orders = Auction_House.SearchOrders(packet.ItemId);
+        PacketSender.SendAuctionOrders(client, orders);
+    }
+    public void HandlePacket(Client client, BuyItemtoAuctionPacket packet)
+    {
+        Auction_House.BuyItem(packet.BuyerId, packet.OrderId, packet.Quantity);
+    }
+
+    public void HandlePacket(Client client, CancelOrderPacket packet)
+    {
+        Auction_House.CancelOrder(client.Entity.Id, packet.OrderId);
+    }
+
+    public void HandlePacket(Client client, AuctionTransactionHistoryPacket packet)
+    {
+        var transactions = Auction_House.GetTransactionHistory(client.Entity.Id, packet.IsBuyer);
+        PacketSender.SendAuctionTransactionHistory(client, transactions);
     }
 
 

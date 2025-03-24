@@ -1,10 +1,13 @@
+using Intersect.Enums;
 using Intersect.Extensions;
+using Intersect.GameObjects;
 using Intersect.Server.Database.PlayerData.Api;
 using Intersect.Server.Database.PlayerData.Migrations;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Server.Database.PlayerData.SeedData;
 using Intersect.Server.Entities;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace Intersect.Server.Database.PlayerData;
 
@@ -49,6 +52,10 @@ public abstract partial class PlayerContext : IntersectDbContext<PlayerContext>,
 
     public DbSet<UserVariable> User_Variables { get; set; }
     public DbSet<MailBox> Player_MailBox { get; set; }
+    public DbSet<AuctionHouseManager>AuctionHouse { get;  set; }
+    public DbSet<AuctionTransaction> AuctionTransactions { get; set; }
+
+
     internal async ValueTask Commit(
         bool commit = false,
         CancellationToken cancellationToken = default(CancellationToken)
@@ -115,6 +122,28 @@ public abstract partial class PlayerContext : IntersectDbContext<PlayerContext>,
         modelBuilder.Entity<UserVariable>().HasIndex(p => new { p.VariableId, p.UserId }).IsUnique();
         modelBuilder.Entity<Player>().HasMany(b => b.MailBoxs).WithOne(p => p.Player).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<MailBox>().HasOne(b => b.Sender).WithMany().OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AuctionHouseManager>()
+    .HasOne<Player>()
+    .WithMany()
+    .HasForeignKey(o => o.SellerId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+        // **Configuración de AuctionTransaction**
+        modelBuilder.Entity<AuctionTransaction>()
+            .HasOne<Player>()
+            .WithMany()
+            .HasForeignKey(p => p.BuyerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AuctionTransaction>()
+            .HasOne<Player>()
+            .WithMany()
+            .HasForeignKey(p => p.SellerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AuctionTransaction>()
+            .HasIndex(p => new { p.BuyerId, p.SellerId }).IsUnique(false);
+
     }
 
     public void Seed()
@@ -133,6 +162,7 @@ public abstract partial class PlayerContext : IntersectDbContext<PlayerContext>,
             GuildBankMaxSlotMigration.Run(this);
         }
     }
+   
 
     public void StopTrackingUsersExcept(User user)
     {

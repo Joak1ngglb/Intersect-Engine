@@ -2396,6 +2396,14 @@ internal sealed partial class PacketHandler
         }
     }
 
+   
+        public void HandlePacket(AuctionOrdersPacket packet)
+        {
+        Interface.Interface.GameUi.UpdateAuctionHouse(packet.Orders);
+        }
+
+    
+ 
 
 
 }

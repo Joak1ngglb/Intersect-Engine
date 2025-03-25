@@ -1,8 +1,12 @@
-﻿using Intersect.Client.Framework.GenericClasses;
+﻿using System.Diagnostics;
+using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Anim;
 using Intersect.Client.Framework.Gwen.DragDrop;
 using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Audio;
+using Intersect.Client.Framework.Input;
+using Intersect.Core;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Framework.Gwen.Control;
 
@@ -12,8 +16,7 @@ namespace Intersect.Client.Framework.Gwen.Control;
 /// </summary>
 public partial class Canvas : Base
 {
-
-    private readonly List<IDisposable> mDisposeQueue; // dictionary for faster access?
+    private readonly List<IDisposable> _disposeQueue = [];
 
     private Color mBackgroundColor;
 
@@ -34,18 +37,17 @@ public partial class Canvas : Base
     ///     Initializes a new instance of the <see cref="Canvas" /> class.
     /// </summary>
     /// <param name="skin">Skin to use.</param>
-    public Canvas(Skin.Base skin, string name) : base(null, name)
+    /// <param name="name"></param>
+    public Canvas(Skin.Base skin, string? name = default) : base(parent: null, name: name)
     {
         mUISounds = new List<GameAudioInstance>();
-        SetBounds(0, 0, 10000, 10000);
-        SetSkin(skin);
+        SetBounds(x: 0, y: 0, width: 10000, height: 10000);
+        SetSkin(skin: skin);
         Scale = 1.0f;
         BackgroundColor = Color.White;
         ShouldDrawBackground = false;
         IsTabable = false;
         MouseInputEnabled = false;
-
-        mDisposeQueue = new List<IDisposable>();
     }
 
     /// <summary>
@@ -93,10 +95,10 @@ public partial class Canvas : Base
         set => mNeedsRedraw = value;
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
         ProcessDelayedDeletes();
-        base.Dispose();
+        base.Dispose(disposing);
     }
 
     /// <summary>
@@ -106,13 +108,6 @@ public partial class Canvas : Base
     {
         NeedsRedraw = true;
         base.Redraw();
-    }
-
-    // Children call parent.GetCanvas() until they get to
-    // this top level function.
-    public override Canvas? GetCanvas()
-    {
-        return this;
     }
 
     /// <summary>
@@ -125,15 +120,15 @@ public partial class Canvas : Base
     /// <summary>
     ///     Renders the canvas. Call in your rendering loop.
     /// </summary>
-    public void RenderCanvas()
+    public void RenderCanvas(TimeSpan elapsed, TimeSpan total)
     {
+        UpdateDataProviders(elapsed, total);
+
         DoThink();
 
         var render = Skin.Renderer;
 
         render.Begin();
-
-        RecurseLayout(Skin);
 
         render.ClipRegion = Bounds;
 
@@ -150,7 +145,7 @@ public partial class Canvas : Base
 
         DragAndDrop.RenderOverlay(this, Skin);
 
-        Gwen.ToolTip.RenderToolTip(Skin);
+        ToolTip.RenderToolTip(Skin);
 
         render.EndClip();
 
@@ -172,9 +167,10 @@ public partial class Canvas : Base
     ///     Handler invoked when control's bounds change.
     /// </summary>
     /// <param name="oldBounds">Old bounds.</param>
-    protected override void OnBoundsChanged(Rectangle oldBounds)
+    /// <param name="newBounds"></param>
+    protected override void OnBoundsChanged(Rectangle oldBounds, Rectangle newBounds)
     {
-        base.OnBoundsChanged(oldBounds);
+        base.OnBoundsChanged(oldBounds, newBounds);
         InvalidateChildren(true);
     }
 
@@ -183,7 +179,7 @@ public partial class Canvas : Base
         // Track the sound - we will check to see when it's done and dispose of it in DoThink()
         mUISounds.Add(sound);
         // And play the sound
-        sound.SetVolume(100, false);
+        sound.Volume = 100;
         sound.Play();
     }
 
@@ -223,7 +219,8 @@ public partial class Canvas : Base
 
         ProcessDelayedDeletes();
 
-        // Check has focus etc..
+        InvokeThreadQueue();
+
         RecurseLayout(Skin);
 
         // If we didn't have a next tab, cycle to the start.
@@ -242,29 +239,45 @@ public partial class Canvas : Base
     /// <param name="control">Control to delete.</param>
     public void AddDelayedDelete(Base control)
     {
-        if (!mDisposeQueue.Contains(control))
+        lock (_disposeQueue)
         {
-            mDisposeQueue.Add(control);
-            RemoveChild(control, false);
-        }
+            if (!_disposeQueue.Contains(control))
+            {
+                _disposeQueue.Add(control);
+                control.Parent?.RemoveChild(control, false);
 #if DEBUG
-        else
-        {
-            throw new InvalidOperationException("Control deleted twice");
-        }
+                _delayedDeleteStackTraces.Add(control, new StackTrace());
+            }
+            else
+            {
+                throw new InvalidOperationException("Control deleted twice");
 #endif
+            }
+        }
     }
+
+#if DEBUG
+    private readonly Dictionary<Base, StackTrace> _delayedDeleteStackTraces = [];
+#endif
 
     private void ProcessDelayedDeletes()
     {
-        //if (m_DisposeQueue.Count > 0)
-        //    System.Diagnostics.//debug.print("Canvas.ProcessDelayedDeletes: {0} items", m_DisposeQueue.Count);
-        foreach (var control in mDisposeQueue)
+        lock (_disposeQueue)
         {
-            control.Dispose();
-        }
+            foreach (var control in _disposeQueue)
+            {
+#if DEBUG
+                if (control is Base node)
+                {
+                    _delayedDeleteStackTraces.Remove(node);
+                }
+#endif
 
-        mDisposeQueue.Clear();
+                control.Dispose();
+            }
+
+            _disposeQueue.Clear();
+        }
     }
 
     /// <summary>
@@ -287,25 +300,42 @@ public partial class Canvas : Base
 
         InputHandler.OnMouseMoved(this, x, y, dx, dy);
 
-        if (InputHandler.HoveredControl == null)
+        var hoveredControl = InputHandler.HoveredControl;
+        if (hoveredControl == null)
         {
+            // ApplicationContext.Context.Value?.Logger.LogTrace(
+            //     "Skipping emitting mouse moved because there is no hovered control"
+            // );
             return false;
         }
 
-        if (InputHandler.HoveredControl == this)
+        if (hoveredControl == this)
         {
+            // ApplicationContext.Context.Value?.Logger.LogTrace(
+            //     "Skipping emitting mouse moved because {ControlName} is this canvas",
+            //     hoveredControl.CanonicalName
+            // );
             return false;
         }
 
-        if (InputHandler.HoveredControl.GetCanvas() != this)
+        if (hoveredControl.Canvas != this)
         {
+            // ApplicationContext.Context.Value?.Logger.LogTrace(
+            //     "Skipping emitting mouse moved because {ControlName} is not part of this canvas",
+            //     hoveredControl.CanonicalName
+            // );
             return false;
         }
 
-        InputHandler.HoveredControl.InputMouseMoved(x, y, dx, dy);
-        InputHandler.HoveredControl.UpdateCursor();
+        // ApplicationContext.Context.Value?.Logger.LogTrace(
+        //     "Emitting mouse moved to {ControlName}",
+        //     hoveredControl.CanonicalName
+        // );
 
-        DragAndDrop.OnMouseMoved(InputHandler.HoveredControl, x, y);
+        hoveredControl.InputMouseMoved(x, y, dx, dy);
+        hoveredControl.UpdateCursor();
+
+        DragAndDrop.OnMouseMoved(hoveredControl, x, y);
 
         return true;
     }
@@ -314,15 +344,8 @@ public partial class Canvas : Base
     ///     Handles mouse button events. Called from Input subsystems.
     /// </summary>
     /// <returns>True if handled.</returns>
-    public bool Input_MouseButton(int button, bool down)
-    {
-        if (IsHidden)
-        {
-            return false;
-        }
-
-        return InputHandler.OnMouseClicked(this, button, down);
-    }
+    public bool Input_MouseButton(MouseButton button, bool down) =>
+        !IsHidden && InputHandler.OnMouseButtonStateChanged(this, button, down);
 
     /// <summary>
     ///     Handles mouse button events. Called from Input subsystems.
@@ -395,12 +418,12 @@ public partial class Canvas : Base
             return false;
         }
 
-        if (InputHandler.KeyboardFocus.GetCanvas() != this)
+        if (InputHandler.KeyboardFocus.Canvas != this)
         {
             return false;
         }
 
-        if (!InputHandler.KeyboardFocus.IsVisible)
+        if (!InputHandler.KeyboardFocus.IsVisibleInTree)
         {
             return false;
         }
@@ -431,7 +454,7 @@ public partial class Canvas : Base
             return false;
         }
 
-        if (InputHandler.HoveredControl.GetCanvas() != this)
+        if (InputHandler.HoveredControl.Canvas != this)
         {
             return false;
         }

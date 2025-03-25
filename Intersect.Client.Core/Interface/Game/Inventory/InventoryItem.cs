@@ -1,103 +1,200 @@
 using System;
 using Intersect.Client.Core;
-using Intersect.Client.Framework.GenericClasses;
+using Intersect.Client.Entities;
+using Intersect.Client.Framework.File_Management;
+using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
+using Intersect.Client.Framework.Gwen.DragDrop;
 using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
+using Intersect.Client.Interface.Game.Bag;
+using Intersect.Client.Interface.Game.Bank;
 using Intersect.Client.Interface.Game.DescriptionWindows;
 using Intersect.Client.Interface.Game.Mail;
+using Intersect.Client.Interface.Game.Hotbar;
+using Intersect.Client.Interface.Game.Shop;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Configuration;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
 using Intersect.Utilities;
 
 namespace Intersect.Client.Interface.Game.Inventory;
 
-
-public partial class InventoryItem
+public partial class InventoryItem : SlotItem
 {
+    // Controls
+    private readonly Label _quantityLabel;
+    private readonly Label _equipLabel;
+    private readonly Label _cooldownLabel;
+    private readonly ImagePanel _equipImageBackground;
+    private readonly InventoryWindow _inventoryWindow;
+    private ItemDescriptionWindow? _descriptionWindow;
 
-    public ImagePanel Container;
+    // Context Menu Handling
+    private readonly MenuItem _useItemMenuItem;
+    private readonly MenuItem _actionItemMenuItem;
+    private readonly MenuItem _dropItemMenuItem;
 
-    public Label EquipLabel;
-
-    public ImagePanel EquipPanel;
-
-    public bool IsDragging;
-
-    //Dragging
-    private bool mCanDrag;
-
-    private long mClickTime;
-
-    private Label mCooldownLabel;
-
-    private int mCurrentAmt = 0;
-
-    private Guid mCurrentItemId;
-
-    private ItemDescriptionWindow mDescWindow;
-
-    private Draggable mDragIcon;
-
-    private bool mIconCd;
-
-    //Drag/Drop References
-    private InventoryWindow mInventoryWindow;
-
-    private bool mIsEquipped;
-
-    //Mouse Event Variables
-    private bool mMouseOver;
-
-    private int mMouseX = -1;
-
-    private int mMouseY = -1;
-
-    //Slot info
-    private int mMySlot;
-
-    private string mTexLoaded = "";
-
-    public ImagePanel Pnl;
     private SendMailBoxWindow mSendMailBoxWindow;
 
-
-    public InventoryItem(InventoryWindow inventoryWindow, int index)
+    public InventoryItem(InventoryWindow inventoryWindow, Base parent, int index, ContextMenu contextMenu)
+        : base(parent, nameof(InventoryItem), index, contextMenu)
     {
-        mInventoryWindow = inventoryWindow;
-        mMySlot = index;
+        _inventoryWindow = inventoryWindow;
+        TextureFilename = "inventoryitem.png";
+
+        Icon.HoverEnter += Icon_HoverEnter;
+        Icon.HoverLeave += Icon_HoverLeave;
+        Icon.Clicked += Icon_Clicked;
+        Icon.DoubleClicked += Icon_DoubleClicked;
+
+        _equipImageBackground = new ImagePanel(this, "EquippedIcon")
+        {
+            Texture = Graphics.Renderer.WhitePixel,
+        };
+
+        _equipLabel = new Label(this, "EquippedLabel")
+        {
+            IsVisibleInParent = false,
+            Text = Strings.Inventory.EquippedSymbol,
+            FontName = "sourcesansproblack",
+            FontSize = 8,
+            TextColor = new Color(0, 255, 255, 255),
+            Alignment = [Alignments.Right, Alignments.Top],
+            BackgroundTemplateName = "equipped.png",
+            Padding = new Padding(2),
+        };
+
+        _cooldownLabel = new Label(this, "CooldownLabel")
+        {
+            IsVisibleInParent = false,
+            FontName = "sourcesansproblack",
+            FontSize = 8,
+            TextColor = new Color(0, 255, 255, 255),
+            Alignment = [Alignments.Center],
+            BackgroundTemplateName = "quantity.png",
+            Padding = new Padding(2),
+        };
+
+        _quantityLabel = new Label(this, "Quantity")
+        {
+            Alignment = [Alignments.Bottom, Alignments.Right],
+            BackgroundTemplateName = "quantity.png",
+            FontName = "sourcesansproblack",
+            FontSize = 8,
+            Padding = new Padding(2),
+        };
+
+        LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+
+        contextMenu.ClearChildren();
+        _useItemMenuItem = contextMenu.AddItem(Strings.ItemContextMenu.Use);
+        _useItemMenuItem.Clicked += _useItemContextItem_Clicked;
+        _dropItemMenuItem = contextMenu.AddItem(Strings.ItemContextMenu.Drop);
+        _dropItemMenuItem.Clicked += _dropItemContextItem_Clicked;
+        _actionItemMenuItem = contextMenu.AddItem(Strings.ItemContextMenu.Bank);
+        _actionItemMenuItem.Clicked += _actionItemContextItem_Clicked;
+        contextMenu.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+
+        if (Globals.Me is { } player)
+        {
+            player.InventoryUpdated += PlayerOnInventoryUpdated;
+        }
     }
 
     public InventoryItem(SendMailBoxWindow sendMailBoxWindow, int index)
     {
-       mSendMailBoxWindow = sendMailBoxWindow;
+        mSendMailBoxWindow = sendMailBoxWindow;
         mMySlot = index;
     }
 
-    public void Setup()
+    #region Context Menu
+
+    protected override void OnContextMenuOpening(ContextMenu contextMenu)
     {
-        Pnl = new ImagePanel(Container, "InventoryItemIcon");
-        Pnl.HoverEnter += pnl_HoverEnter;
-        Pnl.HoverLeave += pnl_HoverLeave;
-        Pnl.RightClicked += pnl_RightClicked;
-        Pnl.Clicked += pnl_Clicked;
-        Pnl.DoubleClicked += Pnl_DoubleClicked;
-        EquipPanel = new ImagePanel(Pnl, "InventoryItemEquippedIcon");
-        EquipPanel.Texture = Graphics.Renderer.GetWhiteTexture();
-        EquipLabel = new Label(Pnl, "InventoryItemEquippedLabel");
-        EquipLabel.IsHidden = true;
-        EquipLabel.Text = Strings.Inventory.EquippedSymbol;
-        EquipLabel.TextColor = new Color(0, 255, 255, 255);
-        mCooldownLabel = new Label(Pnl, "InventoryItemCooldownLabel");
-        mCooldownLabel.IsHidden = true;
-        mCooldownLabel.TextColor = new Color(0, 255, 255, 255);
+        // Clear out the old options since we might not show all of them
+        contextMenu.ClearChildren();
+
+        if (Globals.Me?.Inventory[SlotIndex] is not { } inventorySlot)
+        {
+            return;
+        }
+
+        // No point showing a menu for blank space.
+        if (!ItemDescriptor.TryGet(inventorySlot.ItemId, out var descriptor))
+        {
+            return;
+        }
+
+        // Add our use Item prompt, assuming we have a valid usecase.
+        switch (descriptor.ItemType)
+        {
+            case ItemType.Spell:
+                contextMenu.AddChild(_useItemMenuItem);
+                var useItemLabel = descriptor.QuickCast ? Strings.ItemContextMenu.Cast : Strings.ItemContextMenu.Learn;
+                _useItemMenuItem.Text = useItemLabel.ToString(descriptor.Name);
+                break;
+
+            case ItemType.Event:
+            case ItemType.Consumable:
+                contextMenu.AddChild(_useItemMenuItem);
+                _useItemMenuItem.Text = Strings.ItemContextMenu.Use.ToString(descriptor.Name);
+                break;
+
+            case ItemType.Bag:
+                contextMenu.AddChild(_useItemMenuItem);
+                _useItemMenuItem.Text = Strings.ItemContextMenu.Open.ToString(descriptor.Name);
+                break;
+
+            case ItemType.Equipment:
+                contextMenu.AddChild(_useItemMenuItem);
+                var equipItemLabel = Globals.Me.MyEquipment.Contains(SlotIndex) ? Strings.ItemContextMenu.Unequip : Strings.ItemContextMenu.Equip;
+                _useItemMenuItem.Text = equipItemLabel.ToString(descriptor.Name);
+                break;
+        }
+
+        // Set up the correct contextual additional action.
+        if (Globals.InBag && descriptor.CanBag)
+        {
+            contextMenu.AddChild(_actionItemMenuItem);
+            _actionItemMenuItem.SetText(Strings.ItemContextMenu.Bag.ToString(descriptor.Name));
+        }
+        else if (Globals.InBank && (descriptor.CanBank || descriptor.CanGuildBank))
+        {
+            contextMenu.AddChild(_actionItemMenuItem);
+            _actionItemMenuItem.SetText(Strings.ItemContextMenu.Bank.ToString(descriptor.Name));
+        }
+        else if (Globals.InTrade && descriptor.CanTrade)
+        {
+            contextMenu.AddChild(_actionItemMenuItem);
+            _actionItemMenuItem.SetText(Strings.ItemContextMenu.Trade.ToString(descriptor.Name));
+        }
+        else if (Globals.GameShop != null && descriptor.CanSell)
+        {
+            contextMenu.AddChild(_actionItemMenuItem);
+            _actionItemMenuItem.SetText(Strings.ItemContextMenu.Sell.ToString(descriptor.Name));
+        }
+
+        // Can we drop this item? if so show the user!
+        if (descriptor.CanDrop)
+        {
+            contextMenu.AddChild(_dropItemMenuItem);
+            _dropItemMenuItem.SetText(Strings.ItemContextMenu.Drop.ToString(descriptor.Name));
+        }
+
+        base.OnContextMenuOpening(contextMenu);
     }
 
-    private void Pnl_DoubleClicked(Base sender, ClickedEventArgs arguments)
+    private void _useItemContextItem_Clicked(Base sender, MouseButtonState arguments)
+    {
+        Globals.Me?.TryUseItem(SlotIndex);
+    }
+
+    private void _actionItemContextItem_Clicked(Base sender, MouseButtonState arguments)
     {
         if (mSendMailBoxWindow != null)
         {
@@ -105,22 +202,56 @@ public partial class InventoryItem
         }
         else if (Globals.GameShop != null)
         {
-            Globals.Me.TrySellItem(mMySlot);
+            Globals.Me?.TrySellItem(SlotIndex);
         }
         else if (Globals.InBank)
         {
-            if (Globals.InputManager.KeyDown(Keys.Shift))
+            Globals.Me?.TryStoreItemInBank(SlotIndex);
+        }
+        else if (Globals.InBag)
+        {
+            Globals.Me?.TryStoreItemInBag(SlotIndex, -1);
+        }
+        else if (Globals.InTrade)
+        {
+            Globals.Me?.TryOfferItemToTrade(SlotIndex);
+        }
+    }
+
+    private void _dropItemContextItem_Clicked(Base sender, MouseButtonState arguments)
+    {
+        Globals.Me?.TryDropItem(SlotIndex);
+    }
+
+    #endregion
+
+    #region Mouse Events
+
+    private void Icon_DoubleClicked(Base sender, MouseButtonState arguments)
+    {
+        if (Globals.Me == default)
+        {
+            return;
+        }
+
+        if (Globals.GameShop != null)
+        {
+            Globals.Me.TrySellItem(SlotIndex);
+        }
+        else if (Globals.InBank)
+        {
+            if (Globals.InputManager.IsKeyDown(Framework.GenericClasses.Keys.Shift))
             {
-                Globals.Me.TryDepositItem(
-                    mMySlot,
+                Globals.Me.TryStoreItemInBank(
+                    SlotIndex,
                     skipPrompt: true
                 );
             }
             else
             {
-                var slot = Globals.Me.Inventory[mMySlot];
-                Globals.Me.TryDepositItem(
-                    mMySlot,
+                var slot = Globals.Me.Inventory[SlotIndex];
+                Globals.Me.TryStoreItemInBank(
+                    SlotIndex,
                     slot,
                     quantityHint: slot.Quantity,
                     skipPrompt: false
@@ -129,86 +260,91 @@ public partial class InventoryItem
         }
         else if (Globals.InBag)
         {
-            Globals.Me.TryStoreBagItem(mMySlot, -1);
+            Globals.Me.TryStoreItemInBag(SlotIndex, -1);
         }
         else if (Globals.InTrade)
         {
-            Globals.Me.TryTradeItem(mMySlot);
+            Globals.Me.TryOfferItemToTrade(SlotIndex);
         }
         else
         {
-            Globals.Me.TryUseItem(mMySlot);
+            Globals.Me.TryUseItem(SlotIndex);
         }
     }
 
-    void pnl_Clicked(Base sender, ClickedEventArgs arguments)
+    private void Icon_Clicked(Base sender, MouseButtonState arguments)
     {
-        mClickTime = Timing.Global.MillisecondsUtc + 500;
-    }
+        if (arguments.MouseButton is not MouseButton.Right)
+        {
+            return;
+        }
 
-    void pnl_RightClicked(Base sender, ClickedEventArgs arguments)
-    {
         if (ClientConfiguration.Instance.EnableContextMenus)
         {
-            mInventoryWindow.OpenContextMenu(mMySlot);
+            OpenContextMenu();
+            return;
+        }
+
+        if (Globals.Me is not { } player)
+        {
+            return;
+        }
+
+        if (Globals.GameShop != null)
+        {
+            player.TrySellItem(SlotIndex);
+        }
+        else if (Globals.InBank)
+        {
+            player.TryStoreItemInBank(SlotIndex);
+        }
+        else if (Globals.InBag)
+        {
+            player.TryStoreItemInBag(SlotIndex, -1);
+        }
+        else if (Globals.InTrade)
+        {
+            player.TryOfferItemToTrade(SlotIndex);
         }
         else
         {
-            if (Globals.GameShop != null)
-            {
-                Globals.Me.TrySellItem(mMySlot);
-            }
-            else if (Globals.InBank)
-            {
-                Globals.Me.TryDepositItem(mMySlot);
-            }
-            else if (Globals.InBag)
-            {
-                Globals.Me.TryStoreBagItem(mMySlot, -1);
-            }
-            else if (Globals.InTrade)
-            {
-                Globals.Me.TryTradeItem(mMySlot);
-            }
-            else
-            {
-                Globals.Me.TryDropItem(mMySlot);
-            }
+            player.TryDropItem(SlotIndex);
         }
     }
 
-    void pnl_HoverLeave(Base sender, EventArgs arguments)
+    private void Icon_HoverLeave(Base sender, EventArgs arguments)
     {
-        mMouseOver = false;
-        mMouseX = -1;
-        mMouseY = -1;
-        if (mDescWindow != null)
-        {
-            mDescWindow.Dispose();
-            mDescWindow = null;
-        }
+        _descriptionWindow?.Dispose();
+        _descriptionWindow = null;
     }
 
-    void pnl_HoverEnter(Base sender, EventArgs arguments)
+    void Icon_HoverEnter(Base? sender, EventArgs? arguments)
     {
         if (InputHandler.MouseFocus != null)
         {
             return;
         }
 
-        mMouseOver = true;
-        mCanDrag = true;
-
-        if (Globals.InputManager.MouseButtonDown(MouseButtons.Left))
+        if (Globals.InputManager.IsMouseButtonDown(MouseButton.Left))
         {
-            mCanDrag = false;
             return;
         }
 
-        if (mDescWindow != null)
+        if (_descriptionWindow != null)
         {
-            mDescWindow.Dispose();
-            mDescWindow = null;
+            _descriptionWindow.Dispose();
+            _descriptionWindow = null;
+        }
+
+        if (Globals.Me?.Inventory[SlotIndex] is not { } inventorySlot)
+        {
+            return;
+        }
+
+        var inventorySlotDescriptor = inventorySlot.Descriptor;
+        if (inventorySlotDescriptor is null)
+        {
+            return;
         }
 
         // 🔍 Nueva verificación: Si el ítem pertenece a SendMailBoxWindow
@@ -241,106 +377,185 @@ public partial class InventoryItem
         // 🛒 Lógica normal para la tienda o inventario
         if (Globals.GameShop == null)
         {
-            if (Globals.Me.Inventory[mMySlot]?.Base != null)
-            {
-                mDescWindow = new ItemDescriptionWindow(
-                    Globals.Me.Inventory[mMySlot].Base,
-                    Globals.Me.Inventory[mMySlot].Quantity,
-                    mInventoryWindow.X,
-                    mInventoryWindow.Y,
-                    Globals.Me.Inventory[mMySlot].ItemProperties
-                );
-            }
+            _descriptionWindow = new ItemDescriptionWindow(
+                inventorySlotDescriptor,
+                inventorySlot.Quantity,
+                _inventoryWindow.X,
+                _inventoryWindow.Y,
+                inventorySlot.ItemProperties
+            );
         }
         else
         {
-            var invItem = Globals.Me.Inventory[mMySlot];
-            ShopItem shopItem = null;
+            ShopItemDescriptor? shopItemDescriptor = default;
             for (var i = 0; i < Globals.GameShop.BuyingItems.Count; i++)
             {
                 var tmpShop = Globals.GameShop.BuyingItems[i];
-
-                if (invItem.ItemId == tmpShop.ItemId)
+                if (inventorySlot.ItemId == tmpShop.ItemId)
                 {
-                    shopItem = tmpShop;
+                    shopItemDescriptor = tmpShop;
                     break;
                 }
             }
 
-            if (Globals.GameShop.BuyingWhitelist && shopItem != null)
+            if (Globals.GameShop.BuyingWhitelist && shopItemDescriptor != default)
             {
-                var hoveredItem = ItemBase.Get(shopItem.CostItemId);
-                if (hoveredItem != null && Globals.Me.Inventory[mMySlot]?.Base != null)
+                if (!ItemDescriptor.TryGet(shopItemDescriptor.CostItemId, out var hoveredItem))
                 {
                     mDescWindow = new ItemDescriptionWindow(
-                        Globals.Me.Inventory[mMySlot].Base,
-                        Globals.Me.Inventory[mMySlot].Quantity,
+                        inventorySlotDescriptor,
+                        inventorySlot.Quantity,
                         mInventoryWindow.X,
                         mInventoryWindow.Y,
-                        Globals.Me.Inventory[mMySlot].ItemProperties,
+                        inventorySlot.ItemProperties
                         "",
                         Strings.Shop.SellsFor.ToString(shopItem.CostItemQuantity, hoveredItem.Name)
                     );
                 }
+
+                _descriptionWindow = new ItemDescriptionWindow(
+                    inventorySlotDescriptor,
+                    inventorySlot.Quantity,
+                    _inventoryWindow.X,
+                    _inventoryWindow.Y,
+                    inventorySlot.ItemProperties,
+                    "",
+                    Strings.Shop.SellsFor.ToString(shopItemDescriptor.CostItemQuantity, hoveredItem.Name)
+                );
             }
-            else if (shopItem == null)
+            else if (shopItemDescriptor == null)
             {
                 var costItem = Globals.GameShop.DefaultCurrency;
-                if (invItem.Base != null && costItem != null && Globals.Me.Inventory[mMySlot]?.Base != null)
+                if (inventorySlotDescriptor != null && costItem != null)
                 {
-                    mDescWindow = new ItemDescriptionWindow(
-                        Globals.Me.Inventory[mMySlot].Base,
-                        Globals.Me.Inventory[mMySlot].Quantity,
-                        mInventoryWindow.X,
-                        mInventoryWindow.Y,
-                        Globals.Me.Inventory[mMySlot].ItemProperties,
+                    _descriptionWindow = new ItemDescriptionWindow(
+                        inventorySlotDescriptor,
+                        inventorySlot.Quantity,
+                        _inventoryWindow.X,
+                        _inventoryWindow.Y,
+                        inventorySlot.ItemProperties,
                         "",
-                        Strings.Shop.SellsFor.ToString(invItem.Base.Price.ToString(), costItem.Name)
+                        Strings.Shop.SellsFor.ToString(inventorySlotDescriptor.Price.ToString(), costItem.Name)
                     );
                 }
             }
             else
             {
-                if (invItem?.Base != null)
-                {
-                    mDescWindow = new ItemDescriptionWindow(
-                        invItem.Base,
-                        invItem.Quantity,
-                        mInventoryWindow.X,
-                        mInventoryWindow.Y,
-                        invItem.ItemProperties,
-                        "",
-                        Strings.Shop.WontBuy
-                    );
-                }
+                _descriptionWindow = new ItemDescriptionWindow(
+                    inventorySlotDescriptor,
+                    inventorySlot.Quantity,
+                    _inventoryWindow.X,
+                    _inventoryWindow.Y,
+                    inventorySlot.ItemProperties,
+                    "",
+                    Strings.Shop.WontBuy
+                );
             }
         }
     }
 
-    public FloatRect RenderBounds()
-    {
-        var rect = new FloatRect()
-        {
-            X = Pnl.LocalPosToCanvas(new Point(0, 0)).X,
-            Y = Pnl.LocalPosToCanvas(new Point(0, 0)).Y,
-            Width = Pnl.Width,
-            Height = Pnl.Height
-        };
+    #endregion
 
-        return rect;
+    #region Drag and Drop
+
+    public override bool DragAndDrop_HandleDrop(Package package, int x, int y)
+    {
+        if (Globals.Me is not { } player)
+        {
+            return false;
+        }
+
+        if (player.Inventory is not { } inventory)
+        {
+            return false;
+        }
+
+        if (inventory[SlotIndex] is not { } inventorySlot)
+        {
+            return false;
+        }
+
+        if (!Interface.DoesMouseHitInterface() && !player.IsBusy)
+        {
+            PacketSender.SendDropItem(SlotIndex, inventorySlot.Quantity);
+            return true;
+        }
+
+        var targetNode = Interface.FindComponentUnderCursor();
+
+        // Find the first parent acceptable in that tree that can accept the package
+        while (targetNode != default)
+        {
+            switch (targetNode)
+            {
+                case InventoryItem inventoryItem:
+                    if (inventoryItem.SlotIndex == SlotIndex)
+                    {
+                        return false;
+                    }
+
+                    player.SwapItems(SlotIndex, inventoryItem.SlotIndex);
+                    return true;
+
+                case BagItem bagItem:
+                    player.TryStoreItemInBag(SlotIndex, bagItem.SlotIndex);
+                    return true;
+
+                case BankItem bankItem:
+                    player.TryStoreItemInBank(
+                        SlotIndex,
+                        bankSlotIndex: bankItem.SlotIndex,
+                        quantityHint: inventorySlot.Quantity,
+                        skipPrompt: true
+                    );
+                    return true;
+
+                case HotbarItem hotbarItem:
+                        player.AddToHotbar(hotbarItem.SlotIndex, 0, SlotIndex);
+                        return true;
+
+                    case ShopWindow:
+                        player.TrySellItem(SlotIndex);
+                        return true;
+
+                    default:
+                        targetNode = targetNode.Parent;
+                        break;
+                    }
+                }
+
+                // If we've reached the top of the tree, we can't drop here, so cancel drop
+                return false;
+            }
+
+    #endregion
+
+    private void PlayerOnInventoryUpdated(Player player, int slotIndex)
+    {
+        if (player != Globals.Me)
+        {
+            return;
+        }
+
+        if (slotIndex != SlotIndex)
+        {
+            return;
+        }
+
+        if (Globals.Me.Inventory[SlotIndex] == default)
+        {
+            return;
+        }
+
+        // empty texture to reload on update
+        Icon.Texture = default;
     }
 
-    public void Update()
+    public override void Update()
     {
-        var equipped = false;
-        for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+        if (Globals.Me == default)
         {
-            if (Globals.Me.MyEquipment[i] == mMySlot)
-            {
-                equipped = true;
-
-                break;
-            }
+            return;
         }
 
         var item = ItemBase.Get(Globals.Me.Inventory[mMySlot].ItemId);
@@ -365,250 +580,66 @@ public partial class InventoryItem
             mIconCd != Globals.Me.IsItemOnCooldown(mMySlot) ||
             Globals.Me.IsItemOnCooldown(mMySlot))
         {
-            mCurrentItemId = Globals.Me.Inventory[mMySlot].ItemId;
-            mCurrentAmt = Globals.Me.Inventory[mMySlot].Quantity;
-            mIsEquipped = equipped;
-            EquipPanel.IsHidden = !mIsEquipped;
-            EquipLabel.IsHidden = !mIsEquipped;
-            mCooldownLabel.IsHidden = true;
-            if (item != null)
-            {
-                var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Icon);
-                if (itemTex != null)
-                {
-                    Pnl.Texture = itemTex;
-                    if (Globals.Me.IsItemOnCooldown(mMySlot))
-                    {
-                        Pnl.RenderColor = new Color(100, item.Color.R, item.Color.G, item.Color.B);
-                    }
-                    else
-                    {
-                        Pnl.RenderColor = item.Color;
-                    }
-                }
-                else
-                {
-                    if (Pnl.Texture != null)
-                    {
-                        Pnl.Texture = null;
-                    }
-                }
-
-                mTexLoaded = item.Icon;
-                mIconCd = Globals.Me.IsItemOnCooldown(mMySlot);
-                if (mIconCd)
-                {
-                    var itemCooldownRemaining = Globals.Me.GetItemRemainingCooldown(mMySlot);
-                    mCooldownLabel.IsHidden = false;
-                    mCooldownLabel.Text = TimeSpan.FromMilliseconds(itemCooldownRemaining).WithSuffix("0.0");
-                }
-            }
-            else
-            {
-                if (Pnl.Texture != null)
-                {
-                    Pnl.Texture = null;
-                }
-
-                mTexLoaded = "";
-            }
-
-            if (mDescWindow != null)
-            {
-                mDescWindow.Dispose();
-                mDescWindow = null;
-                pnl_HoverEnter(null, null);
-            }
+            return;
         }
 
-        if (!IsDragging)
+        if (!ItemDescriptor.TryGet(inventorySlot.ItemId, out var descriptor))
         {
-            if (mMouseOver)
-            {
-                if (!Globals.InputManager.MouseButtonDown(MouseButtons.Left))
-                {
-                    mCanDrag = true;
-                    mMouseX = -1;
-                    mMouseY = -1;
-                    if (Timing.Global.MillisecondsUtc < mClickTime)
-                    {
-                        mClickTime = 0;
-                    }
-                }
-                else
-                {
-                    if (mCanDrag && Draggable.Active == null)
-                    {
-                        if (mMouseX == -1 || mMouseY == -1)
-                        {
-                            mMouseX = InputHandler.MousePosition.X - Pnl.LocalPosToCanvas(new Point(0, 0)).X;
-                            mMouseY = InputHandler.MousePosition.Y - Pnl.LocalPosToCanvas(new Point(0, 0)).Y;
-                        }
-                        else
-                        {
-                            var xdiff = mMouseX -
-                                        (InputHandler.MousePosition.X - Pnl.LocalPosToCanvas(new Point(0, 0)).X);
+            _reset();
+            return;
+        }
 
-                            var ydiff = mMouseY -
-                                        (InputHandler.MousePosition.Y - Pnl.LocalPosToCanvas(new Point(0, 0)).Y);
+        var equipped = Globals.Me.MyEquipment.Any(s => s == SlotIndex);
+        var isDragging = Icon.IsDragging;
+        _equipImageBackground.IsVisibleInParent = !isDragging && equipped;
+        _equipLabel.IsVisibleInParent = !isDragging && equipped;
 
-                            if (Math.Sqrt(Math.Pow(xdiff, 2) + Math.Pow(ydiff, 2)) > 5)
-                            {
-                                IsDragging = true;
-                                mDragIcon = new Draggable(
-                                    Pnl.LocalPosToCanvas(new Point(0, 0)).X + mMouseX,
-                                    Pnl.LocalPosToCanvas(new Point(0, 0)).X + mMouseY, Pnl.Texture, Pnl.RenderColor
-                                );
-                            }
-                        }
-                    }
-                }
-            }
+        _quantityLabel.IsVisibleInParent = !isDragging && descriptor.IsStackable && inventorySlot.Quantity > 1;
+        if (_quantityLabel.IsVisibleInParent)
+        {
+            _quantityLabel.Text = Strings.FormatQuantityAbbreviated(inventorySlot.Quantity);
+        }
+
+        _cooldownLabel.IsVisibleInParent = !isDragging && Globals.Me.IsItemOnCooldown(SlotIndex);
+        if (_cooldownLabel.IsVisibleInParent)
+        {
+            var itemCooldownRemaining = Globals.Me.GetItemRemainingCooldown(SlotIndex);
+            _cooldownLabel.Text = TimeSpan.FromMilliseconds(itemCooldownRemaining).WithSuffix("0.0");
+            Icon.RenderColor.A = 100;
         }
         else
         {
-            if (mDragIcon.Update())
+            Icon.RenderColor.A = descriptor.Color.A;
+        }
+
+        if (Icon.TextureFilename == descriptor.Icon)
+        {
+            return;
+        }
+
+        var itemTexture = GameContentManager.Current.GetTexture(Framework.Content.TextureType.Item, descriptor.Icon);
+        if (itemTexture != null)
+        {
+            Icon.Texture = itemTexture;
+            Icon.RenderColor = Globals.Me.IsItemOnCooldown(SlotIndex)
+                ? new Color(100, descriptor.Color.R, descriptor.Color.G, descriptor.Color.B)
+                : descriptor.Color;
+            Icon.IsVisibleInParent = true;
+        }
+        else
+        {
+            if (Icon.Texture != null)
             {
-                //Drug the item and now we stopped
-                IsDragging = false;
-                var dragRect = new FloatRect(
-                    mDragIcon.X - (Container.Padding.Left + Container.Padding.Right) / 2,
-                    mDragIcon.Y - (Container.Padding.Top + Container.Padding.Bottom) / 2,
-                    (Container.Padding.Left + Container.Padding.Right) / 2 + Pnl.Width,
-                    (Container.Padding.Top + Container.Padding.Bottom) / 2 + Pnl.Height
-                );
-
-                float bestIntersect = 0;
-                var bestIntersectIndex = -1;
-
-                //So we picked up an item and then dropped it. Lets see where we dropped it to.
-                //Check inventory first.
-                if (mInventoryWindow.RenderBounds().IntersectsWith(dragRect))
-                {
-                    for (var i = 0; i < Options.MaxInvItems; i++)
-                    {
-                        if (mInventoryWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
-                        {
-                            if (FloatRect.Intersect(mInventoryWindow.Items[i].RenderBounds(), dragRect).Width *
-                                FloatRect.Intersect(mInventoryWindow.Items[i].RenderBounds(), dragRect).Height >
-                                bestIntersect)
-                            {
-                                bestIntersect =
-                                    FloatRect.Intersect(mInventoryWindow.Items[i].RenderBounds(), dragRect).Width *
-                                    FloatRect.Intersect(mInventoryWindow.Items[i].RenderBounds(), dragRect).Height;
-
-                                bestIntersectIndex = i;
-                            }
-                        }
-                    }
-
-                    if (bestIntersectIndex > -1)
-                    {
-                        if (mMySlot != bestIntersectIndex)
-                        {
-                            Globals.Me.SwapItems(mMySlot, bestIntersectIndex);
-                        }
-                    }
-                }
-                else if (Interface.GameUi.Hotbar.RenderBounds().IntersectsWith(dragRect))
-                {
-                    for (var i = 0; i < Options.Instance.PlayerOpts.HotbarSlotCount; i++)
-                    {
-                        if (Interface.GameUi.Hotbar.Items[i].RenderBounds().IntersectsWith(dragRect))
-                        {
-                            if (FloatRect.Intersect(
-                                        Interface.GameUi.Hotbar.Items[i].RenderBounds(), dragRect
-                                    )
-                                    .Width *
-                                FloatRect.Intersect(Interface.GameUi.Hotbar.Items[i].RenderBounds(), dragRect)
-                                    .Height >
-                                bestIntersect)
-                            {
-                                bestIntersect =
-                                    FloatRect.Intersect(Interface.GameUi.Hotbar.Items[i].RenderBounds(), dragRect)
-                                        .Width *
-                                    FloatRect.Intersect(Interface.GameUi.Hotbar.Items[i].RenderBounds(), dragRect)
-                                        .Height;
-
-                                bestIntersectIndex = i;
-                            }
-                        }
-                    }
-
-                    if (bestIntersectIndex > -1)
-                    {
-                        Globals.Me.AddToHotbar((byte) bestIntersectIndex, 0, mMySlot);
-                    }
-                }
-                else if (Globals.InBag)
-                {
-                    var bagWindow = Interface.GameUi.GetBagWindow();
-                    if (bagWindow.RenderBounds().IntersectsWith(dragRect))
-                    {
-                        for (var i = 0; i < Globals.Bag.Length; i++)
-                        {
-                            if (bagWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
-                            {
-                                if (FloatRect.Intersect(bagWindow.Items[i].RenderBounds(), dragRect).Width *
-                                    FloatRect.Intersect(bagWindow.Items[i].RenderBounds(), dragRect).Height >
-                                    bestIntersect)
-                                {
-                                    bestIntersect =
-                                        FloatRect.Intersect(bagWindow.Items[i].RenderBounds(), dragRect).Width *
-                                        FloatRect.Intersect(bagWindow.Items[i].RenderBounds(), dragRect).Height;
-
-                                    bestIntersectIndex = i;
-                                }
-                            }
-                        }
-
-                        if (bestIntersectIndex > -1)
-                        {
-                            Globals.Me.TryStoreBagItem(mMySlot, bestIntersectIndex);
-                        }
-                    }
-                }
-                else if (Globals.InBank)
-                {
-                    var bankWindow = Interface.GameUi.GetBankWindow();
-                    if (bankWindow.RenderBounds().IntersectsWith(dragRect))
-                    {
-                        for (var i = 0; i < Globals.Bank.Length; i++)
-                        {
-                            if (bankWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
-                            {
-                                if (FloatRect.Intersect(bankWindow.Items[i].RenderBounds(), dragRect).Width *
-                                    FloatRect.Intersect(bankWindow.Items[i].RenderBounds(), dragRect).Height >
-                                    bestIntersect)
-                                {
-                                    bestIntersect =
-                                        FloatRect.Intersect(bankWindow.Items[i].RenderBounds(), dragRect).Width *
-                                        FloatRect.Intersect(bankWindow.Items[i].RenderBounds(), dragRect).Height;
-
-                                    bestIntersectIndex = i;
-                                }
-                            }
-                        }
-
-                        if (bestIntersectIndex > -1)
-                        {
-                            var slot = Globals.Me.Inventory[mMySlot];
-                            Globals.Me.TryDepositItem(
-                                mMySlot,
-                                bankSlotIndex: bestIntersectIndex,
-                                quantityHint: slot.Quantity,
-                                skipPrompt: true
-                            );
-                        }
-                    }
-                }
-                else if (!Globals.Me.IsBusy)
-                {
-                    PacketSender.SendDropItem(mMySlot, Globals.Me.Inventory[mMySlot].Quantity);
-                }
-
-                mDragIcon.Dispose();
+                Icon.Texture = null;
+                Icon.IsVisibleInParent = false;
             }
+        }
+
+        if (_descriptionWindow != null)
+        {
+            _descriptionWindow.Dispose();
+            _descriptionWindow = null;
+            Icon_HoverEnter(null, null);
         }
     }
     public static int GetItemRarity(ItemBase item)
@@ -630,4 +661,15 @@ public partial class InventoryItem
         return Color.White; // Color por defecto si no se encuentra la rareza
     }
 
+    private void _reset()
+    {
+        Icon.IsVisibleInParent = false;
+        Icon.Texture = default;
+        _equipImageBackground.IsVisibleInParent = false;
+        _quantityLabel.IsVisibleInParent = false;
+        _equipLabel.IsVisibleInParent = false;
+        _cooldownLabel.IsVisibleInParent = false;
+        _descriptionWindow?.Dispose();
+        _descriptionWindow = default;
+    }
 }

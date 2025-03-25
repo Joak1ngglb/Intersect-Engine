@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Database.PlayerData.Players;
@@ -43,8 +44,7 @@ public class Item : IItem
         Bag = bag;
         Properties = properties ?? new ItemProperties();
 
-        var descriptor = ItemBase.Get(ItemId);
-        if (descriptor == null || properties != null)
+        if (!ItemDescriptor.TryGet(itemId, out var descriptor) || properties != null)
         {
             return;
         }
@@ -76,13 +76,13 @@ public class Item : IItem
 
     public Guid ItemId { get; set; } = Guid.Empty;
 
-    [NotMapped] public string ItemName => ItemBase.GetName(ItemId);
+    [NotMapped] public string ItemName => ItemDescriptor.GetName(ItemId);
 
     public int Quantity { get; set; }
 
     [NotMapped] public ItemProperties Properties { get; set; }
 
-    [Column("ItemProperties")]
+    [Column(nameof(ItemProperties))]
     [JsonIgnore]
     public string ItemPropertiesJson
     {
@@ -91,7 +91,7 @@ public class Item : IItem
             Properties = JsonConvert.DeserializeObject<ItemProperties>(value ?? string.Empty) ?? new ItemProperties();
     }
 
-    [JsonIgnore][NotMapped] public ItemBase Descriptor => ItemBase.Get(ItemId);
+    [JsonIgnore, NotMapped] public ItemDescriptor Descriptor => ItemDescriptor.Get(ItemId);
 
     public static Item None => new();
 
@@ -175,7 +175,7 @@ public class Item : IItem
     }
 
     public static TItem[] FindCompatibleSlotsForItem<TItem>(
-        ItemBase itemDescriptor,
+        ItemDescriptor itemDescriptor,
         int maximumStack,
         int slotHint,
         int searchQuantity,
@@ -397,23 +397,29 @@ public class Item : IItem
             var descriptor = Descriptor;
             if (descriptor?.ItemType == ItemType.Bag)
             {
-                bag = Bag.GetBag(BagId ?? Guid.Empty);
-                bag?.ValidateSlots();
-                Bag = bag;
-            }
-        }
-        else
-        {
-            // Remove any items from this bag that have been removed from the game
-            foreach (var slot in bag.Slots)
-            {
-                if (ItemBase.Get(slot.ItemId) == default)
+                if (!Bag.TryGetBag(BagId ?? default, out bag))
                 {
-                    slot.Set(None);
+                    return false;
                 }
+
+                Bag = bag;
+                return true;
             }
+
+            return false;
         }
 
-        return default != bag;
+        // Remove any items from this bag that have been removed from the game
+        foreach (var slot in bag.Slots)
+        {
+            if (ItemDescriptor.TryGet(slot.ItemId, out _))
+            {
+                continue;
+            }
+
+            slot.Set(None);
+        }
+
+        return true;
     }
 }

@@ -2,16 +2,19 @@ using System.Diagnostics;
 using Intersect.Client.Core;
 using Intersect.Client.Framework.Network;
 using Intersect.Client.General;
+using Intersect.Client.Interface.Shared;
 using Intersect.Client.Localization;
 using Intersect.Configuration;
-using Intersect.Logging;
+using Intersect.Core;
 using Intersect.Network;
 using Intersect.Network.Events;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Networking;
 
 internal static partial class Network
 {
+    private static readonly TimeSpan CloseTaskLockTimeout = TimeSpan.FromSeconds(15);
     private static readonly object CloseTaskLock = new();
 
     private static Task? _closeTask;
@@ -38,7 +41,7 @@ internal static partial class Network
         }
         catch (Exception exception)
         {
-            Log.Trace(exception);
+            ApplicationContext.Context.Value?.Logger.LogTrace(exception, "Error closing socket");
         }
     }
 
@@ -49,11 +52,16 @@ internal static partial class Network
             return;
         }
 
-        lock (CloseTaskLock)
+        if (!Monitor.TryEnter(CloseTaskLock, CloseTaskLockTimeout))
+        {
+            throw new Exception($"Failed to acquire lock on {nameof(CloseTaskLock)} from debounce");
+        }
+
+        try
         {
             if (_closeTask != default)
             {
-                Log.Debug("Disconnect already queued, skipping");
+                ApplicationContext.Context.Value?.Logger.LogDebug("Disconnect already queued, skipping");
                 return;
             }
 
@@ -61,11 +69,16 @@ internal static partial class Network
             _closeTask.ContinueWith(
                 task =>
                 {
-                    lock (CloseTaskLock)
+                    if (!Monitor.TryEnter(CloseTaskLock, CloseTaskLockTimeout))
+                    {
+                        throw new Exception($"Failed to acquire lock on {nameof(CloseTaskLock)} from debounce continue");
+                    }
+
+                    try
                     {
                         if (_closeTask != task)
                         {
-                            Log.Debug("Disconnect interrupted, skipping");
+                            ApplicationContext.Context.Value?.Logger.LogDebug("Disconnect interrupted, skipping");
                             return;
                         }
 
@@ -73,8 +86,16 @@ internal static partial class Network
                         _closeTask = default;
                         Close(reason);
                     }
+                    finally
+                    {
+                        Monitor.Exit(CloseTaskLock);
+                    }
                 }
             );
+        }
+        finally
+        {
+            Monitor.Exit(CloseTaskLock);
         }
     }
 
@@ -90,10 +111,19 @@ internal static partial class Network
 
     public static bool InterruptDisconnectsIfConnected()
     {
-        lock (CloseTaskLock)
+        if (!Monitor.TryEnter(CloseTaskLock, CloseTaskLockTimeout))
+        {
+            throw new Exception($"Failed to acquire lock on {nameof(CloseTaskLock)} from {nameof(InterruptDisconnectsIfConnected)}");
+        }
+
+        try
         {
             _closeTask = default;
             return IsConnected;
+        }
+        finally
+        {
+            Monitor.Exit(CloseTaskLock);
         }
     }
 
@@ -133,7 +163,7 @@ internal static partial class Network
         }
         else
         {
-            Interface.Interface.ShowError(message);
+            Interface.Interface.ShowAlert(message, alertType: AlertType.Information);
             Fade.Cancel();
         }
 

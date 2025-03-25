@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Intersect.Config;
 using Intersect.Enums;
 using Intersect.Framework.Core.Config;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Resources;
+using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Database;
@@ -15,9 +18,9 @@ using Intersect.Utilities;
 
 namespace Intersect.Server.Entities;
 
-
 public partial class Resource : Entity
 {
+    public readonly ResourceDescriptor Descriptor;
 
     // Resource Number
     public ResourceBase Base;
@@ -29,20 +32,20 @@ public partial class Resource : Entity
   
     [NotMapped]
     public int BonusDrop { get; set; }
-    public Resource(ResourceBase resource) : base()
+    public Resource(ResourceDescriptor descriptor)
     {
-        Base = resource;
-        Name = resource.Name;
-        Sprite = resource.Initial.Graphic;
+        ArgumentNullException.ThrowIfNull(descriptor);
+
+        Descriptor = descriptor;
+        Name = descriptor.Name;
+        Sprite = descriptor.Initial.Graphic;
         SetMaxVital(
             Vital.Health,
-            Randomization.Next(
-                Math.Min(1, resource.MinHp), Math.Max(resource.MaxHp, Math.Min(1, resource.MinHp)) + 1
-            )
+            Randomization.Next(Math.Min(1, descriptor.MinHp), Math.Max(descriptor.MaxHp, Math.Min(1, descriptor.MinHp)) + 1)
         );
 
         RestoreVital(Vital.Health);
-        Passable = resource.WalkableBefore;
+        Passable = descriptor.WalkableBefore;
         HideName = true;
         Jobs= JobType.JobCount; // Establece el tipo de trabajo predeterminado
         ExperienceAmount = 0; // Establece la cantidad de experiencia predeterminada
@@ -55,7 +58,7 @@ public partial class Resource : Entity
         {
             Die(dropItems, killer);
         }
-        
+
         PacketSender.SendEntityDie(this);
         PacketSender.SendEntityLeave(this);
     }
@@ -114,20 +117,14 @@ public partial class Resource : Entity
         {
             base.Die(false, killer);
         }
-        
-        Sprite = Base.Exhausted.Graphic;
-        Passable = Base.WalkableAfter;
-        Dead = true;
+
+        Sprite = Descriptor.Exhausted.Graphic;
+        Passable = Descriptor.WalkableAfter;
+        IsDead = true;
 
         if (dropItems)
         {
             SpawnResourceItems(killer);
-            if (Base.AnimationId != Guid.Empty)
-            {
-                PacketSender.SendAnimationToProximity(
-                    Base.AnimationId, -1, Guid.Empty, MapId, X, Y, Direction.Up, MapInstanceId
-                );
-            }
         }
 
         PacketSender.SendEntityDataToProximity(this);
@@ -136,37 +133,52 @@ public partial class Resource : Entity
 
     public void Spawn()
     {
-        Sprite = Base.Initial.Graphic;
-        if (Base.MaxHp < Base.MinHp)
-        {
-            Base.MaxHp = Base.MinHp;
-        }
+        Sprite = Descriptor.Initial.Graphic;
+        var minimumHealth = Descriptor.MinHp;
+        var maximumHealth = Descriptor.MaxHp;
 
-        SetMaxVital(Vital.Health, Randomization.Next(Base.MinHp, Base.MaxHp + 1));
+        // Ensure the minimum health is at least 1
+        minimumHealth = Math.Max(1, minimumHealth);
+
+        // Ensure the maximum health is at least the same as the minimum health
+        maximumHealth = Math.Max(maximumHealth, minimumHealth);
+
+        var randomizedHealth = Randomization.Next(minimumHealth, maximumHealth + 1);
+
+        SetMaxVital(Vital.Health, randomizedHealth);
         RestoreVital(Vital.Health);
-        Passable = Base.WalkableBefore;
+
+        Passable = Descriptor.WalkableBefore;
         Items.Clear();
         Jobs = Base.Jobs; // Asigna el tipo de trabajo desde la configuración base
         ExperienceAmount = Base.ExperienceAmount; // Asigna la cantidad de experiencia desde la configuración base
         //Give Resource Drops
         var itemSlot = 0;
-        foreach (var drop in Base.Drops)
+        foreach (var drop in Descriptor.Drops)
         {
-            if (Randomization.Next(1, 10001) <= drop.Chance * 100 && ItemBase.Get(drop.ItemId) != null)
+            var roll = Randomization.Next(1, 10001);
+            var maximumRoll = drop.Chance * 100;
+
+            if (roll > maximumRoll || !ItemDescriptor.TryGet(drop.ItemId, out _))
             {
-                var slot = new InventorySlot(itemSlot);
                 slot.Set(new Item(drop.ItemId, Randomization.Next(drop.MinQuantity, drop.Quantity + 1) + BonusDrop));
-                Items.Add(slot);
-                itemSlot++;
             }
+
+            var slot = new InventorySlot(itemSlot);
+            var dropQuantity = Randomization.Next(drop.MinQuantity, drop.MaxQuantity + 1);
+            var dropInstance = new Item(drop.ItemId, dropQuantity);
+            slot.Set(dropInstance);
+
+            Items.Add(slot);
+            itemSlot++;
         }
 
-        Dead = false;
+        IsDead = false;
         PacketSender.SendEntityDataToProximity(this);
         PacketSender.SendEntityPositionToAll(this);
     }
 
-    public void SpawnResourceItems(Entity killer)
+    private void SpawnResourceItems(Entity killer)
     {
         //Find tile to spawn items
         var tiles = new List<TileHelper>();
@@ -175,26 +187,30 @@ public partial class Resource : Entity
             for (var y = Y - 1; y <= Y + 1; y++)
             {
                 var tileHelper = new TileHelper(MapId, x, y);
-                if (tileHelper.TryFix())
+                if (!tileHelper.TryFix())
                 {
-                    //Tile is valid.. let's see if its open
-                    var mapId = tileHelper.GetMapId();
-                    if (MapController.TryGetInstanceFromMap(mapId, MapInstanceId, out var mapInstance))
+                    continue;
+                }
+
+                // Tile is valid, let's see if its open
+                var mapId = tileHelper.GetMapId();
+                if (!MapController.TryGetInstanceFromMap(mapId, MapInstanceId, out var mapInstance))
+                {
+                    continue;
+                }
+
+                var tileHelperX = tileHelper.GetX();
+                var tileHelperY = tileHelper.GetY();
+                if (mapInstance.TileBlocked(tileHelperX, tileHelperY))
+                {
+                    if (killer.MapId == tileHelper.GetMapId() && killer.X == tileHelperX && killer.Y == tileHelperY)
                     {
-                        if (!mapInstance.TileBlocked(tileHelper.GetX(), tileHelper.GetY()))
-                        {
-                            tiles.Add(tileHelper);
-                        }
-                        else
-                        {
-                            if (killer.MapId == tileHelper.GetMapId() &&
-                                killer.X == tileHelper.GetX() &&
-                                killer.Y == tileHelper.GetY())
-                            {
-                                tiles.Add(tileHelper);
-                            }
-                        }
+                        tiles.Add(tileHelper);
                     }
+                }
+                else
+                {
+                    tiles.Add(tileHelper);
                 }
             }
         }
@@ -203,33 +219,38 @@ public partial class Resource : Entity
         {
             TileHelper selectedTile = null;
 
-            //Prefer the players tile, otherwise choose randomly
-            for (var i = 0; i < tiles.Count; i++)
+            // Prefer the players tile, otherwise choose randomly
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var tileHelper in tiles)
             {
-                if (tiles[i].GetMapId() == killer.MapId &&
-                    tiles[i].GetX() == killer.X &&
-                    tiles[i].GetY() == killer.Y)
+                if (tileHelper.GetMapId() == killer.MapId &&
+                    tileHelper.GetX() == killer.X &&
+                    tileHelper.GetY() == killer.Y)
                 {
-                    selectedTile = tiles[i];
+                    selectedTile = tileHelper;
                 }
             }
 
-            if (selectedTile == null)
-            {
-                selectedTile = tiles[Randomization.Next(0, tiles.Count)];
-            }
-            
+            selectedTile ??= tiles[Randomization.Next(0, tiles.Count)];
+
             var itemSource = AsItemSource();
 
             // Drop items
             foreach (var item in Items)
             {
-                if (ItemBase.Get(item.ItemId) != null)
+                if (ItemDescriptor.Get(item.ItemId) != null)
                 {
                     var mapId = selectedTile.GetMapId();
                     if (MapController.TryGetInstanceFromMap(mapId, MapInstanceId, out var mapInstance))
                     {
-                        mapInstance.SpawnItem(itemSource, selectedTile.GetX(), selectedTile.GetY(), item, item.Quantity, killer.Id);
+                        mapInstance.SpawnItem(
+                            itemSource,
+                            selectedTile.GetX(),
+                            selectedTile.GetY(),
+                            item,
+                            item.Quantity,
+                            killer.Id
+                        );
                     }
                 }
             }
@@ -237,62 +258,60 @@ public partial class Resource : Entity
 
         Items.Clear();
     }
-    
+
     protected override EntityItemSource? AsItemSource()
     {
         return new EntityItemSource
         {
             EntityType = GetEntityType(),
             EntityReference = new WeakReference<IEntity>(this),
-            Id = this.Base.Id
+            Id = Descriptor.Id,
         };
     }
 
     public override void ProcessRegen()
     {
-        //For now give npcs/resources 10% health back every regen tick... in the future we should put per-npc and per-resource regen settings into their respective editors.
-        if (!IsDead())
+        // For now give NPCs/resources 10% health back every regen tick... in the future we should put per-npc and per-resource regen settings into their respective editors.
+        if (IsDead)
         {
-            if (Base == null)
-            {
-                return;
-            }
-            
-            var vital = Vital.Health;
-
-            var vitalId = (int) vital;
-            var vitalValue = GetVital(vital);
-            var maxVitalValue = GetMaxVital(vital);
-            if (vitalValue < maxVitalValue)
-            {
-                var vitalRegenRate = Base.VitalRegen / 100f;
-                var regenValue = (long) Math.Max(1, maxVitalValue * vitalRegenRate) *
-                                 Math.Abs(Math.Sign(vitalRegenRate));
-
-                AddVital(vital, regenValue);
-            }
+            return;
         }
+
+        var vitalValue = GetVital(Vital.Health);
+        var maxVitalValue = GetMaxVital(Vital.Health);
+        if (vitalValue >= maxVitalValue)
+        {
+            return;
+        }
+
+        var vitalRegenRate = Descriptor.VitalRegen / 100f;
+        var regenValue = (long)Math.Max(1, maxVitalValue * vitalRegenRate);
+
+        AddVital(Vital.Health, regenValue);
     }
 
     public override bool IsPassable()
     {
-        return IsDead() & Base.WalkableAfter || !IsDead() && Base.WalkableBefore;
+        return IsDead & Descriptor.WalkableAfter || (!IsDead && Descriptor.WalkableBefore);
     }
 
-    public override EntityPacket EntityPacket(EntityPacket packet = null, Player forPlayer = null)
+    public override EntityPacket EntityPacket(EntityPacket? packet = null, Player? forPlayer = null)
     {
-        if (packet == null)
-        {
-            packet = new ResourceEntityPacket();
-        }
+        packet ??= new ResourceEntityPacket();
 
         packet = base.EntityPacket(packet, forPlayer);
 
-        var pkt = (ResourceEntityPacket) packet;
-        pkt.ResourceId = Base.Id;
-        pkt.IsDead = IsDead();
+        if (packet is not ResourceEntityPacket resourceEntityPacket)
+        {
+            throw new InvalidOperationException(
+                $"Invalid packet type '{packet.GetType().GetName(qualified: true)}', expected '{typeof(ResourceEntityPacket).GetName(qualified: true)}"
+            );
+        }
 
-        return pkt;
+        resourceEntityPacket.ResourceId = Descriptor.Id;
+        resourceEntityPacket.IsDead = IsDead;
+
+        return resourceEntityPacket;
     }
 
     public override EntityType GetEntityType()

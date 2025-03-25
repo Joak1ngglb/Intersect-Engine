@@ -1,7 +1,5 @@
-using System;
-
 using Intersect.Enums;
-using Intersect.GameObjects;
+using Intersect.Framework.Core.GameObjects.Variables;
 using Intersect.Server.Core.CommandParsing;
 using Intersect.Server.Core.CommandParsing.Arguments;
 using Intersect.Server.Database.GameData;
@@ -29,7 +27,7 @@ namespace Intersect.Server.Core.Commands
                 throw new ArgumentNullException(Strings.Commands.Arguments.VariableId.Name, "No server variable specified.");
             }
 
-            ServerVariableBase variable;
+            ServerVariableDescriptor variable;
             if (Guid.TryParse(serverVariableNameOrId, out Guid serverVariableId))
             {
                 variable = GameContext.Queries.ServerVariableById(serverVariableId);

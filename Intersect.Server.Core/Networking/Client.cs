@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
+using Intersect.Config;
 using Intersect.ErrorHandling;
-
 using Intersect.Core;
-using Intersect.Logging;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.Network.Packets.Security;
+using Intersect.Framework.Core.Security;
 using Intersect.Network;
 using Intersect.Network.Packets;
 using Intersect.Server.Database.Logging.Entities;
@@ -12,13 +14,18 @@ using Intersect.Server.Entities;
 using Intersect.Server.General;
 using Intersect.Server.Metrics;
 using Intersect.Utilities;
+using Microsoft.Extensions.Logging;
 using Strings = Intersect.Server.Localization.Strings;
 
 namespace Intersect.Server.Networking;
 
-
 public partial class Client : IPacketSender
 {
+    public static readonly object GlobalLock = new();
+
+    public static readonly Dictionary<Guid, Client> LookupByConnectionId = [];
+
+    public static readonly List<Client> Instances = [];
 
     public Guid EditorMap = Guid.Empty;
 
@@ -38,12 +45,17 @@ public partial class Client : IPacketSender
 
     private int mPacketCount = 0;
 
-    private ConcurrentQueue<Tuple<IPacket, TransmissionMode, long>> mSendPacketQueue = new ConcurrentQueue<Tuple<IPacket, TransmissionMode, long>>();
+    private ConcurrentQueue<Tuple<IPacket, TransmissionMode, long>> mSendPacketQueue =
+        new ConcurrentQueue<Tuple<IPacket, TransmissionMode, long>>();
+
     public ConcurrentQueue<IPacket> HandlePacketQueue = new ConcurrentQueue<IPacket>();
     public ConcurrentQueue<IPacket> RecentPackets = new ConcurrentQueue<IPacket>();
     public bool PacketHandlingQueued = false;
     public bool PacketSendingQueued = false;
-    public Config.FloodThreshholds PacketFloodingThreshholds { get; set; } = Options.Instance.SecurityOpts?.PacketOpts.Threshholds;
+
+    public FloodThresholdOptions PacketFloodingThresholds { get; set; } =
+        Options.Instance.Security?.Packets.DefaultThresholds;
+
     public long LastPing { get; set; } = -1;
 
     protected long mTimeout = 20000; //20 seconds
@@ -51,7 +63,7 @@ public partial class Client : IPacketSender
     private bool mBanChecked;
 
     //Sent Maps
-    public Dictionary<Guid, Tuple<long, int>> SentMaps = new Dictionary<Guid, Tuple<long, int>>();
+    public readonly Dictionary<Guid, Tuple<long, int>> SentMaps = [];
 
     private Client(IApplicationContext applicationContext, INetwork network, IConnection connection = null)
     {
@@ -63,6 +75,8 @@ public partial class Client : IPacketSender
         mConnectionTimeout = Timing.Global.Milliseconds + mTimeout;
 
         PacketSender.SendServerConfig(this);
+
+        SynchronizePermissions();
     }
 
     //Game Incorperation Variables
@@ -118,7 +132,7 @@ public partial class Client : IPacketSender
         }
     }
 
-    public User User { get; private set; }
+    public User? User { get; private set; }
 
     public List<Player> Characters => User?.Players;
 
@@ -141,6 +155,7 @@ public partial class Client : IPacketSender
         }
 
         User = user;
+        PermissionSet = (user?.Power.IsAdmin ?? false) ? PermissionSet.Admin : PermissionSet.Default;
     }
 
     public void LoadCharacter(Player character)
@@ -166,36 +181,46 @@ public partial class Client : IPacketSender
         }
     }
 
-    public void Disconnect(string? reason = default, bool shutdown = false, bool loggingOut = false)
+    public void Disconnect(
+        string? reason = default,
+        bool shutdown = false,
+        bool loggingOut = false,
+        TaskCompletionSource? logoutCompletionSource = null
+    )
     {
-        lock (Globals.ClientLock)
+        if (Connection == null)
         {
-            if (Connection == null)
-            {
-                return;
-            }
+            logoutCompletionSource?.TrySetResult();
+            return;
+        }
 
-            if (!loggingOut)
-            {
-                Logout(shutdown);
-            }
+        if (!loggingOut)
+        {
+            Logout(force: shutdown, logoutCompletionSource: logoutCompletionSource);
+        }
+        else
+        {
+            logoutCompletionSource?.TrySetResult();
+        }
 
-            Globals.Clients.Remove(this);
-            Globals.ClientArray = Globals.Clients.ToArray();
+        lock (GlobalLock)
+        {
+            Instances.Remove(this);
+
             if (Connection != default)
             {
-                Globals.ClientLookup.Remove(Connection.Guid);
+                LookupByConnectionId.Remove(Connection.Guid);
 
                 if (!Connection.CanDisconnect)
                 {
                     return;
                 }
             }
-
-            Connection?.Disconnect(reason);
-            Connection?.Dispose();
-            Connection = default;
         }
+
+        Connection?.Disconnect(reason);
+        Connection?.Dispose();
+        Connection = default;
     }
 
     public bool IsConnected()
@@ -213,7 +238,7 @@ public partial class Client : IPacketSender
             }
             catch (Exception exception)
             {
-                Log.Warn(exception, $"Failed to get IP for user {User.Id}");
+                ApplicationContext.Logger.LogWarning(exception, $"Failed to get IP for user {User.Id}");
                 return default;
             }
         }
@@ -222,23 +247,28 @@ public partial class Client : IPacketSender
     public static Client CreateBeta4Client(IApplicationContext context, INetwork network, IConnection connection)
     {
         var client = new Client(context, network, connection);
-        lock (Globals.ClientLock)
+        lock (GlobalLock)
         {
-            Globals.Clients.Add(client);
-            Globals.ClientArray = Globals.Clients.ToArray();
-            Globals.ClientLookup.Add(connection.Guid, client);
+            Instances.Add(client);
+            LookupByConnectionId.Add(connection.Guid, client);
         }
 
         return client;
     }
 
-    public void Logout(bool force = false)
+    public void Logout(bool force = false, TaskCompletionSource? logoutCompletionSource = null)
     {
-        var entity = Entity;
-        entity?.TryLogout();
-        Entity = null;
+        if (Entity is { } entity)
+        {
+            entity.TryLogout(logoutCompletionSource: logoutCompletionSource);
+            Entity = null;
+        }
+        else
+        {
+            logoutCompletionSource?.TrySetResult();
+        }
 
-        if (User != null && User.LoginTime != null)
+        if (User is { LoginTime: not null })
         {
             User.PlayTimeSeconds += (ulong)(DateTime.UtcNow - (DateTime)User.LoginTime).TotalSeconds;
             User.LoginTime = null;
@@ -271,13 +301,9 @@ public partial class Client : IPacketSender
             return;
         }
 
-        Log.Debug(
-            string.IsNullOrWhiteSpace(client.Name)
-
-                //? $"Client disconnected ({(client.IsEditor ? "[editor]" : "[client]")})"
-                // TODO: Transmit client information on network start so we can determine editor vs client
-                ? $"Client disconnected ([menu])"
-                : $"Client disconnected ({client.Name}->{client.Entity?.Name ?? "[editor]"})"
+        Intersect.Core.ApplicationContext.Context.Value?.Logger.LogDebug(
+            "Client disconnected ({ClientState}])",
+            string.IsNullOrWhiteSpace(client.Name) ? "[menu]" : $"{client.Name}->{client.Entity?.Name ?? "[editor]"}"
         );
 
         client.Disconnect();
@@ -285,9 +311,9 @@ public partial class Client : IPacketSender
 
     public static Client FindBeta4Client(IConnection connection)
     {
-        lock (Globals.ClientLock)
+        lock (GlobalLock)
         {
-            return Globals.Clients.Find(client => client?.Connection == connection);
+            return Instances.Find(client => client?.Connection == connection);
         }
     }
 
@@ -310,56 +336,62 @@ public partial class Client : IPacketSender
     {
         while (mSendPacketQueue.TryDequeue(out Tuple<IPacket, TransmissionMode, long> tuple))
         {
-            if (Connection != null)
+            if (Connection == null)
             {
-                var packet = tuple.Item1;
-                var mode = tuple.Item2;
+                continue;
+            }
 
-                try
+            var (packet, mode, packetTime) = tuple;
+
+            try
+            {
+                if (packet is AbstractTimedPacket timedPacket)
                 {
-                    if (packet is AbstractTimedPacket timedPacket)
-                    {
-                        timedPacket.UpdateTiming();
-                    }
-                    Connection?.Send(packet, mode);
-                    if (Options.Instance.Metrics.Enable)
-                    {
-                        if (!PacketSender.SentPacketTypes.ContainsKey(packet.GetType().Name))
-                        {
-                            PacketSender.SentPacketTypes.TryAdd(packet.GetType().Name, 0);
-                        }
-                        PacketSender.SentPacketTypes[packet.GetType().Name]++;
-                        PacketSender.SentPackets++;
-                        PacketSender.SentBytes += packet.Data.Length;
-                        MetricsRoot.Instance.Network.TotalSentPacketProcessingTime.Record(Timing.Global.Milliseconds - tuple.Item3);
-                    }
+                    timedPacket.UpdateTiming();
                 }
-                catch (Exception exception)
-                {
-                    var packetType = packet.GetType().Name;
-                    var packetMessage =
-                        $"Sending Packet Error! [Packet: {packetType} | User: {this.Name ?? ""} | Player: {this.Entity?.Name ?? ""} | IP {this.Ip}]";
 
-                    // TODO: Re-combine these once we figure out how to prevent the OutOfMemoryException that happens occasionally
-                    Log.Error(packetMessage);
-                    Log.Error(new ExceptionInfo(exception));
-                    if (exception.InnerException != null)
+                Connection?.Send(packet, mode);
+                if (Options.Instance.Metrics.Enable)
+                {
+                    if (!PacketSender.SentPacketTypes.ContainsKey(packet.GetType().Name))
                     {
-                        Log.Error(new ExceptionInfo(exception.InnerException));
+                        PacketSender.SentPacketTypes.TryAdd(packet.GetType().Name, 0);
                     }
 
-                    // Make the call that triggered the OOME in the first place so that we know when it stops happening
-                    Log.Error(exception, packetMessage);
+                    PacketSender.SentPacketTypes[packet.GetType().Name]++;
+                    PacketSender.SentPackets++;
+                    PacketSender.SentBytes += packet.Data.Length;
+                    MetricsRoot.Instance.Network.TotalSentPacketProcessingTime.Record(
+                        Timing.Global.Milliseconds - packetTime
+                    );
+                }
+            }
+            catch (Exception exception)
+            {
+                var packetType = packet.GetType().Name;
+                var packetMessage =
+                    $"Sending Packet Error! [Packet: {packetType} | User: {this.Name ?? ""} | Player: {this.Entity?.Name ?? ""} | IP {this.Ip}]";
+
+                // TODO: Re-combine these once we figure out how to prevent the OutOfMemoryException that happens occasionally
+                ApplicationContext.Logger.LogError(packetMessage);
+                ApplicationContext.Logger.LogError(new ExceptionInfo(exception));
+                if (exception.InnerException != null)
+                {
+                    ApplicationContext.Logger.LogError(new ExceptionInfo(exception.InnerException));
+                }
+
+                // Make the call that triggered the OOME in the first place so that we know when it stops happening
+                ApplicationContext.Logger.LogError(exception, packetMessage);
 
 #if DIAGNOSTIC
                         this.Disconnect($"Error processing packet type '{packetType}'.");
 #else
-                    this.Disconnect($"Error sending packet.");
+                this.Disconnect($"Error sending packet.");
 #endif
-                    break;
-                }
+                break;
             }
         }
+
         lock (mSendPacketQueue)
         {
             PacketSendingQueued = false;
@@ -382,10 +414,14 @@ public partial class Client : IPacketSender
                 {
                     banned = true;
                 }
-                if (!banned && !string.IsNullOrEmpty(Database.PlayerData.Ban.CheckBan(Connection.Ip.Trim())) && Options.Instance.SecurityOpts.CheckIp(Connection.Ip.Trim()))
+
+                if (!banned &&
+                    !string.IsNullOrEmpty(Ban.CheckBan(Connection.Ip.Trim())) &&
+                    Options.Instance.Security.CheckIp(Connection.Ip.Trim()))
                 {
                     banned = true;
                 }
+
                 if (banned)
                 {
                     Disconnect("Banned");
@@ -428,15 +464,15 @@ public partial class Client : IPacketSender
                         $"Client Packet Error! [Packet: {packetType} | User: {this.Name ?? ""} | Player: {this.Entity?.Name ?? ""} | IP {this.Ip}]";
 
                     // TODO: Re-combine these once we figure out how to prevent the OutOfMemoryException that happens occasionally
-                    Log.Error(packetMessage);
-                    Log.Error(new ExceptionInfo(exception));
+                    ApplicationContext.Logger.LogError(packetMessage);
+                    ApplicationContext.Logger.LogError(new ExceptionInfo(exception));
                     if (exception.InnerException != null)
                     {
-                        Log.Error(new ExceptionInfo(exception.InnerException));
+                        ApplicationContext.Logger.LogError(new ExceptionInfo(exception.InnerException));
                     }
 
                     // Make the call that triggered the OOME in the first place so that we know when it stops happening
-                    Log.Error(exception, packetMessage);
+                    ApplicationContext.Logger.LogError(exception, packetMessage);
 
 #if DIAGNOSTIC
                         this.Disconnect($"Error processing packet type '{packetType}'.");
@@ -447,6 +483,7 @@ public partial class Client : IPacketSender
                 }
             }
         }
+
         lock (HandlePacketQueue)
         {
             PacketHandlingQueued = false;
@@ -470,7 +507,7 @@ public partial class Client : IPacketSender
         var message = history?.Id.ToString();
         if (message == default)
         {
-            Log.Error($"Failed to record crash for {User?.Id.ToString() ?? "N/A"}");
+            ApplicationContext.Logger.LogError($"Failed to record crash for {User?.Id.ToString() ?? "N/A"}");
         }
 
         Disconnect(message ?? Strings.Networking.ServerFull, loggingOut: true);

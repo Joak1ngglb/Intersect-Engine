@@ -1,12 +1,22 @@
 using System.Collections.Concurrent;
 using Intersect.Config;
-using Intersect.Enums;
 using Intersect.Framework.Core.Config;
+using Intersect.Core;
+using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Crafting;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
+using Intersect.Framework.Core.GameObjects.NPCs;
+using Intersect.Framework.Core.GameObjects.PlayerClass;
+using Intersect.Framework.Core.GameObjects.Resources;
+using Intersect.Framework.Core.GameObjects.Variables;
+using Intersect.Framework.Core.Network.Packets.Security;
+using Intersect.Framework.Core.Security;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Crafting;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Maps.MapList;
-using Intersect.Logging;
 using Intersect.Models;
 using Intersect.Network;
 
@@ -22,7 +32,9 @@ using Intersect.Server.Localization;
 using Intersect.Server.Maps;
 using Intersect.Utilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+
 
 namespace Intersect.Server.Networking;
 
@@ -58,7 +70,7 @@ public static partial class PacketSender
     //ConfigPacket
     public static void SendServerConfig(Client client)
     {
-        client.Send(new ConfigPacket(Options.OptionsData));
+        client.Send(new ConfigPacket(Options.Instance.OptionsData));
     }
 
     //EnteringGamePacket
@@ -115,7 +127,23 @@ public static partial class PacketSender
 
             // Send our friend list over so the UI can adjust accordingly without having to open it client-side first.
             PacketSender.SendFriends(player);
-         NotifyPlayerOnLogin(player);
+            NotifyPlayerOnLogin(player);
+
+            var pendingGuildInvite = player.PendingGuildInvite;
+            // ReSharper disable once InvertIf
+            if (pendingGuildInvite != default)
+            {
+                if (pendingGuildInvite.ToId == default)
+                {
+                    player.PendingGuildInvite = default;
+                    player.Save();
+                }
+                else
+                {
+                    var inviter = Player.Find(pendingGuildInvite.FromId);
+                    SendGuildInvite(player, inviter);
+                }
+            }
         }
     }
     //MapAreaPacket
@@ -151,7 +179,7 @@ public static partial class PacketSender
     {
         if (client == null)
         {
-            Log.Error("Attempted to send packet to null client.");
+            ApplicationContext.Context.Value?.Logger.LogError("Attempted to send packet to null client.");
 
             return null;
         }
@@ -186,7 +214,7 @@ public static partial class PacketSender
         {
             foreach (var id in map.EventIds)
             {
-                if (EventBase.TryGet(id, out var evt))
+                if (EventDescriptor.TryGet(id, out var evt))
                 {
                     SendGameObject(client, evt);
                 }
@@ -194,26 +222,7 @@ public static partial class PacketSender
         }
         else
         {
-            switch (Options.GameBorderStyle)
-            {
-                case 1:
-                    mapPacket.CameraHolds = new bool[4] { true, true, true, true };
-
-                    break;
-
-                case 0:
-                    var grid = DbInterface.GetGrid(map.MapGrid);
-                    if (grid != null)
-                    {
-                        mapPacket.CameraHolds = new bool[4]
-                        {
-                            0 == map.MapGridY, grid.YMax - 1 == map.MapGridY,
-                            0 == map.MapGridX, grid.XMax - 1 == map.MapGridX
-                        };
-                    }
-
-                    break;
-            }
+            mapPacket.CameraHolds = map.GetCameraHolds();
         }
 
         if (client.IsEditor)
@@ -231,7 +240,7 @@ public static partial class PacketSender
     {
         if (client == null)
         {
-            Log.Error("Attempted to send packet to null client.");
+            ApplicationContext.Context.Value?.Logger.LogError("Attempted to send packet to null client.");
 
             return default;
         }
@@ -280,10 +289,13 @@ public static partial class PacketSender
             }
             catch (Exception exception)
             {
-                Log.Error($"Current Map #: {mapId}");
-                Log.Error($"# Sent maps: {sentMaps.Count}");
-                Log.Error($"# Maps: {MapController.Lookup.Count}");
-                Log.Error(exception);
+                ApplicationContext.Context.Value?.Logger.LogError(
+                    exception,
+                    "Current map: {MapId}\nSent Maps: {SentMapCount}\nMaps: {MapCount}",
+                    mapId,
+                    sentMaps.Count,
+                    MapController.Lookup.Count
+                );
 
                 throw;
             }
@@ -732,7 +744,14 @@ public static partial class PacketSender
         }
 
         //Now send the cached game data that we send to all clients
-        client.Send(CachedGameDataPacket);
+        if (!client.Send(CachedGameDataPacket))
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "Failed to send cached game data packet to {ClientId} ({ClientType})",
+                client.Id,
+                client.IsEditor ? "editor" : "player"
+            );
+        }
     }
 
     //GameDataPacket
@@ -836,7 +855,7 @@ public static partial class PacketSender
     /// <param name="target">The sender of this message, should we decide to respond from the client.</param>
     public static void SendAdminMsg(string message, Color color, string target = "")
     {
-        foreach (var player in Globals.OnlineList)
+        foreach (var player in Player.OnlinePlayers)
         {
             if (player != null)
             {
@@ -1185,13 +1204,13 @@ public static partial class PacketSender
             return;
         }
 
-        var invItems = new InventoryUpdatePacket[Options.MaxInvItems];
-        if (player.Items.Capacity < Options.Instance.PlayerOpts.MaxInventory)
+        var invItems = new InventoryUpdatePacket[Options.Instance.Player.MaxInventory];
+        if (player.Items.Capacity < Options.Instance.Player.MaxInventory)
         {
             throw new InvalidOperationException($"Tried to send inventory before fully loading player {player.Id}");
         }
 
-        for (var i = 0; i < Options.MaxInvItems; i++)
+        for (var i = 0; i < Options.Instance.Player.MaxInventory; i++)
         {
             var playerItem = player.Items[i];
             invItems[i] = new InventoryUpdatePacket(
@@ -1230,8 +1249,8 @@ public static partial class PacketSender
             return;
         }
 
-        var spells = new SpellUpdatePacket[Options.Instance.PlayerOpts.MaxSpells];
-        for (var i = 0; i < Options.Instance.PlayerOpts.MaxSpells; i++)
+        var spells = new SpellUpdatePacket[Options.Instance.Player.MaxSpells];
+        for (var i = 0; i < Options.Instance.Player.MaxSpells; i++)
         {
             spells[i] = new SpellUpdatePacket(i, player.Spells[i].SpellId);
         }
@@ -1259,9 +1278,9 @@ public static partial class PacketSender
         }
         else
         {
-            var equipment = new Guid[Options.EquipmentSlots.Count];
+            var equipment = new Guid[Options.Instance.Equipment.Slots.Count];
 
-            for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+            for (var i = 0; i < Options.Instance.Equipment.Slots.Count; i++)
             {
                 if (en.Equipment[i] == -1 || en.Items[en.Equipment[i]].ItemId == Guid.Empty)
                 {
@@ -1300,8 +1319,8 @@ public static partial class PacketSender
     //HotbarPacket
     public static void SendHotbarSlots(Player player)
     {
-        var hotbarData = new string[Options.Instance.PlayerOpts.HotbarSlotCount];
-        for (var i = 0; i < Options.Instance.PlayerOpts.HotbarSlotCount; i++)
+        var hotbarData = new string[Options.Instance.Player.HotbarSlotCount];
+        for (var i = 0; i < Options.Instance.Player.HotbarSlotCount; i++)
         {
             hotbarData[i] = player.Hotbar[i].Data();
         }
@@ -1310,9 +1329,9 @@ public static partial class PacketSender
     }
 
     //CreateCharacterPacket
-    public static void SendCreateCharacter(Client client)
+    public static void SendCreateCharacter(Client client, bool force = false)
     {
-        client.Send(new CharacterCreationPacket());
+        client.Send(new CharacterCreationPacket(force: force));
     }
 
     //CharactersPacket
@@ -1320,21 +1339,21 @@ public static partial class PacketSender
     {
         if (client == default)
         {
-            Log.Warn($"Tried to {nameof(SendPlayerCharacters)}() to a null client?");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to {nameof(SendPlayerCharacters)}() to a null client?");
             return;
         }
 
         var user = client.User;
         if (user == default)
         {
-            Log.Warn($"Tried to {nameof(SendPlayerCharacters)}() to client with no user? ({client.Id})");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to {nameof(SendPlayerCharacters)}() to client with no user? ({client.Id})");
             return;
         }
 
         var clientCharacters = client.Characters;
         if (clientCharacters == default)
         {
-            Log.Warn($"Tried to {nameof(SendPlayerCharacters)}() to client with no characters? (client {client.Id}/user {user.Id})");
+            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to {nameof(SendPlayerCharacters)}() to client with no characters? (client {client.Id}/user {user.Id})");
             return;
         }
 
@@ -1349,19 +1368,20 @@ public static partial class PacketSender
 
         var characterPackets = new List<CharacterPacket>();
 
-        var equipmentSlotsOptions = Options.EquipmentSlots;
-        var paperdollOrderOptions = Options.PaperdollOrder;
+        var equipmentSlotsOptions = Options.Instance.Equipment.Slots;
+        var paperdollOrderOptions = Options.Instance.Equipment.Paperdoll.Directions;
 
         if (clientCharacters.Count < 1)
         {
             CharactersPacket emptyBulkCharactersPacket = new(
-                Array.Empty<CharacterPacket>(),
-                client.Characters.Count < Options.MaxCharacters
+                user.Name,
+                [],
+                client.Characters.Count < Options.Instance.Player.MaxCharacters
             );
 
             if (!client.Send(emptyBulkCharactersPacket))
             {
-                Log.Error($"Failed to send empty bulk characters packet to {client.Id}");
+                ApplicationContext.Context.Value?.Logger.LogError($"Failed to send empty bulk characters packet to {client.Id}");
             }
 
             return;
@@ -1376,11 +1396,11 @@ public static partial class PacketSender
             var paperdollOrderOptionLayer1 = paperdollOrderOptions[1];
             for (var z = 0; z < paperdollOrderOptionLayer1.Count; z++)
             {
-                var indexOfPaperdoll = equipmentSlotsOptions.IndexOf(Options.PaperdollOrder[1][z]);
+                var indexOfPaperdoll = equipmentSlotsOptions.IndexOf(Options.Instance.Equipment.Paperdoll.Directions[1][z]);
                 if (indexOfPaperdoll < 0)
                 {
                     const string equipmentFragmentNamePlayer = "Player";
-                    if (Options.PaperdollOrder[1][z] == equipmentFragmentNamePlayer)
+                    if (Options.Instance.Equipment.Paperdoll.Directions[1][z] == equipmentFragmentNamePlayer)
                     {
                         equipment[z] = new EquipmentFragment { Name = equipmentFragmentNamePlayer };
                     }
@@ -1389,7 +1409,7 @@ public static partial class PacketSender
                 }
 
                 var inventoryIndexOfEquip = equipmentArray[indexOfPaperdoll];
-                if (inventoryIndexOfEquip <= -1 || inventoryIndexOfEquip >= Options.MaxInvItems)
+                if (inventoryIndexOfEquip <= -1 || inventoryIndexOfEquip >= Options.Instance.Player.MaxInventory)
                 {
                     continue;
                 }
@@ -1400,7 +1420,7 @@ public static partial class PacketSender
 
                 var itemId = character.Items[itemIndex].ItemId;
 
-                if (!ItemBase.TryGet(itemId, out var itemDescriptor))
+                if (!ItemDescriptor.TryGet(itemId, out var itemDescriptor))
                 {
                     continue;
                 }
@@ -1419,27 +1439,22 @@ public static partial class PacketSender
                     character.Sprite,
                     character.Face,
                     character.Level,
-                    ClassBase.GetName(character.ClassId),
+                    ClassDescriptor.GetName(character.ClassId),
                     equipment
                 )
             );
         }
 
         CharactersPacket bulkCharactersPacket = new(
+            user.Name,
             characterPackets.ToArray(),
-            client.Characters.Count < Options.MaxCharacters
+            client.Characters.Count < Options.Instance.Player.MaxCharacters
         );
 
         if (!client.Send(bulkCharactersPacket))
         {
-            Log.Error($"Failed to send {bulkCharactersPacket.Characters.Length} characters to {client.Id}");
+            ApplicationContext.Context.Value?.Logger.LogError($"Failed to send {bulkCharactersPacket.Characters.Length} characters to {client.Id}");
         }
-    }
-
-    //AdminPanelPacket
-    public static void SendOpenAdminWindow(Client client)
-    {
-        client.Send(new AdminPanelPacket(), TransmissionMode.Any);
     }
 
     //MapGridPacket
@@ -1450,7 +1465,7 @@ public static partial class PacketSender
     public static void SendMapGridToAll(MapGrid grid)
     {
         if (grid == null) return;
-        var clients = Globals.Clients.ToArray();
+        var clients = Client.Instances.ToArray();
         foreach (var client in clients)
         {
             if (client == default)
@@ -1588,19 +1603,24 @@ public static partial class PacketSender
         int x,
         int y,
         Direction direction,
-        Guid mapInstanceId
+        Guid mapInstanceId,
+        AnimationSourceType animationSourceType = AnimationSourceType.Any,
+        Guid animationSourceId = default
     )
     {
-        if (MapController.TryGetInstanceFromMap(mapId, mapInstanceId, out var mapInstance))
+        if (!MapController.TryGetInstanceFromMap(mapId, mapInstanceId, out var mapInstance))
         {
-            if (Options.Instance.Packets.BatchAnimationPackets)
-            {
-                mapInstance.AddBatchedAnimation(new PlayAnimationPacket(animId, targetType, entityId, mapId, x, y, direction));
-            }
-            else
-            {
-                SendDataToProximityOnMapInstance(mapId, mapInstanceId, new PlayAnimationPacket(animId, targetType, entityId, mapId, x, y, direction), null, TransmissionMode.Any);
-            }
+            return;
+        }
+
+        PlayAnimationPacket playAnimationPacket = new(animId, targetType, entityId, mapId, x, y, direction, animationSourceType, animationSourceId);
+        if (Options.Instance.Packets.BatchAnimationPackets)
+        {
+            mapInstance.AddBatchedAnimation(playAnimationPacket);
+        }
+        else
+        {
+            SendDataToProximityOnMapInstance(mapId, mapInstanceId, playAnimationPacket, null, TransmissionMode.Any);
         }
     }
 
@@ -1672,7 +1692,7 @@ public static partial class PacketSender
     }
 
     //ShopPacket
-    public static void SendOpenShop(Player player, ShopBase shop)
+    public static void SendOpenShop(Player player, ShopDescriptor shop)
     {
         if (shop == null)
         {
@@ -1689,17 +1709,17 @@ public static partial class PacketSender
     }
 
     //CraftingTablePacket
-    public static void SendOpenCraftingTable(Player player, CraftingTableBase table, bool journalMode)
+    public static void SendOpenCraftingTable(Player player, CraftingTableDescriptor table, bool journalMode)
     {
         if (table != null)
         {
             //Use Json To Cheaply Clone The Table
-            var playerTable = JsonConvert.DeserializeObject<CraftingTableBase>(table.JsonData);
+            var playerTable = JsonConvert.DeserializeObject<CraftingTableDescriptor>(table.JsonData);
 
             //Strip our the items the player can't craft
             foreach (var craft in table.Crafts)
             {
-                var craftBase = CraftBase.Get(craft);
+                var craftBase = CraftingRecipeDescriptor.Get(craft);
                 if (!(craftBase != null && Conditions.MeetsConditionLists(craftBase.CraftingRequirements, player, null)))
                 {
                     playerTable.Crafts.Remove(craft);
@@ -1723,77 +1743,77 @@ public static partial class PacketSender
         switch (type)
         {
             case GameObjectType.Animation:
-                foreach (var obj in AnimationBase.Lookup)
+                foreach (var obj in AnimationDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Class:
-                foreach (var obj in ClassBase.Lookup)
+                foreach (var obj in ClassDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Item:
-                foreach (var obj in ItemBase.Lookup)
+                foreach (var obj in ItemDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Npc:
-                foreach (var obj in NpcBase.Lookup)
+                foreach (var obj in NPCDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Projectile:
-                foreach (var obj in ProjectileBase.Lookup)
+                foreach (var obj in ProjectileDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Quest:
-                foreach (var obj in QuestBase.Lookup)
+                foreach (var obj in QuestDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Resource:
-                foreach (var obj in ResourceBase.Lookup)
+                foreach (var obj in ResourceDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Shop:
-                foreach (var obj in ShopBase.Lookup)
+                foreach (var obj in ShopDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Spell:
-                foreach (var obj in SpellBase.Lookup)
+                foreach (var obj in SpellDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.CraftTables:
-                foreach (var obj in CraftingTableBase.Lookup)
+                foreach (var obj in CraftingTableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Crafts:
-                foreach (var obj in CraftBase.Lookup)
+                foreach (var obj in CraftingRecipeDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
@@ -1802,9 +1822,9 @@ public static partial class PacketSender
             case GameObjectType.Map:
                 throw new Exception("Maps are not sent as batches, use the proper send map functions");
             case GameObjectType.Event:
-                foreach (var obj in EventBase.Lookup)
+                foreach (var obj in EventDescriptor.Lookup)
                 {
-                    if (((EventBase)obj.Value).CommonEvent)
+                    if (((EventDescriptor)obj.Value).CommonEvent)
                     {
                         SendGameObject(client, obj.Value, false, false, packetList);
                     }
@@ -1812,21 +1832,21 @@ public static partial class PacketSender
 
                 break;
             case GameObjectType.PlayerVariable:
-                foreach (var obj in PlayerVariableBase.Lookup)
+                foreach (var obj in PlayerVariableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.ServerVariable:
-                foreach (var obj in ServerVariableBase.Lookup)
+                foreach (var obj in ServerVariableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.Tileset:
-                foreach (var obj in TilesetBase.Lookup)
+                foreach (var obj in TilesetDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
@@ -1835,14 +1855,14 @@ public static partial class PacketSender
             case GameObjectType.Time:
                 break;
             case GameObjectType.GuildVariable:
-                foreach (var obj in GuildVariableBase.Lookup)
+                foreach (var obj in GuildVariableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
 
                 break;
             case GameObjectType.UserVariable:
-                foreach (var obj in UserVariableBase.Lookup)
+                foreach (var obj in UserVariableDescriptor.Lookup)
                 {
                     SendGameObject(client, obj.Value, false, false, packetList);
                 }
@@ -1872,7 +1892,7 @@ public static partial class PacketSender
             //If editor send quest events and map events
             if (obj.Type == GameObjectType.Quest)
             {
-                SendQuestEventsTo(client, (QuestBase)obj);
+                SendQuestEventsTo(client, (QuestDescriptor)obj);
             }
         }
 
@@ -1889,7 +1909,7 @@ public static partial class PacketSender
     }
 
     //GameObjectPacket
-    public static void SendQuestEventsTo(Client client, QuestBase qst)
+    public static void SendQuestEventsTo(Client client, QuestDescriptor qst)
     {
         SendEventIfExists(client, qst.StartEvent);
         SendEventIfExists(client, qst.EndEvent);
@@ -1900,7 +1920,7 @@ public static partial class PacketSender
     }
 
     //GameObjectPacket
-    public static void SendEventIfExists(Client client, EventBase evt)
+    public static void SendEventIfExists(Client client, EventDescriptor evt)
     {
         if (evt != null && evt.Id != Guid.Empty)
         {
@@ -1911,7 +1931,7 @@ public static partial class PacketSender
     //GameObjectPacket
     public static void SendGameObjectToAll(IDatabaseObject obj, bool deleted = false, bool another = false)
     {
-        foreach (var client in Globals.Clients)
+        foreach (var client in Client.Instances)
         {
             SendGameObject(client, obj, deleted, another);
         }
@@ -1938,9 +1958,29 @@ public static partial class PacketSender
     }
 
     //EntityDashPacket
-    public static void SendEntityDash(Entity en, Guid endMapId, byte endX, byte endY, int dashTime, Direction direction)
+    public static void SendEntityDash(
+        Entity en,
+        Guid endMapId,
+        int endX,
+        int endY,
+        long dashEndMilliseconds,
+        int dashLengthMilliseconds,
+        Direction direction
+    )
     {
-        SendDataToProximityOnMapInstance(en.MapId, en.MapInstanceId, new EntityDashPacket(en.Id, endMapId, endX, endY, dashTime, direction));
+        SendDataToProximityOnMapInstance(
+            en.MapId,
+            en.MapInstanceId,
+            new EntityDashPacket(
+                en.Id,
+                endMapId,
+                endX,
+                endY,
+                dashEndMilliseconds,
+                dashLengthMilliseconds,
+                direction
+            )
+        );
     }
 
     /// <summary>
@@ -1983,13 +2023,13 @@ public static partial class PacketSender
     //TimeDataPacket
     public static void SendTimeBaseTo(Client client)
     {
-        client.Send(new TimeDataPacket(TimeBase.GetTimeBase().GetInstanceJson()));
+        client.Send(new TimeDataPacket(DaylightCycleDescriptor.Instance.GetInstanceJson()));
     }
 
     //TimeDataPacket
     public static void SendTimeBaseToAllEditors()
     {
-        SendDataToEditors(new TimeDataPacket(TimeBase.GetTimeBase().GetInstanceJson()));
+        SendDataToEditors(new TimeDataPacket(DaylightCycleDescriptor.Instance.GetInstanceJson()));
     }
 
     //TimePacket
@@ -1997,7 +2037,7 @@ public static partial class PacketSender
     {
         SendDataToAllPlayers(
             new TimePacket(
-                Time.GetTime(), TimeBase.GetTimeBase().SyncTime ? 1 : TimeBase.GetTimeBase().Rate,
+                Time.GetTime(), DaylightCycleDescriptor.Instance.SyncTime ? 1 : DaylightCycleDescriptor.Instance.Rate,
                 Time.GetTimeColor()
             )
         );
@@ -2008,7 +2048,7 @@ public static partial class PacketSender
     {
         client?.Send(
             new TimePacket(
-                Time.GetTime(), TimeBase.GetTimeBase().SyncTime ? 1 : TimeBase.GetTimeBase().Rate,
+                Time.GetTime(), DaylightCycleDescriptor.Instance.SyncTime ? 1 : DaylightCycleDescriptor.Instance.Rate,
                 Time.GetTimeColor()
             )
         );
@@ -2072,6 +2112,11 @@ public static partial class PacketSender
         player.SendPacket(new ChatBubblePacket(entityId, type, mapId, text));
     }
 
+    public static void SendChatBubbleToProximity(Player player, Guid entityId, EntityType type, string text, Guid mapId)
+    {
+            SendDataToProximityOnMapInstance(mapId, player.MapInstanceId, new ChatBubblePacket(entityId, type, mapId, text));
+    }
+    //QuestOfferPacket
     public static void SendQuestOffer(Player player, Guid questId, Dictionary<Guid, int> questRewardItems, Tuple<long, Dictionary<JobType, long>> tuple)
     {
         var questBase = QuestBase.Get(questId);
@@ -2115,9 +2160,9 @@ public static partial class PacketSender
         }
 
         var hiddenQuests = new List<Guid>();
-        foreach (var pair in QuestBase.Lookup)
+        foreach (var pair in QuestDescriptor.Lookup)
         {
-            var quest = (QuestBase)pair.Value;
+            var quest = (QuestDescriptor)pair.Value;
             if (!player.Quests.Any(q => q.QuestId == quest.Id) && quest.DoNotShowUnlessRequirementsMet && !player.CanStartQuest(quest))
             {
                 hiddenQuests.Add(quest.Id);
@@ -2252,9 +2297,9 @@ public static partial class PacketSender
     }
 
     //PasswordResetResultPacket
-    public static void SendPasswordResetResult(Client client, bool result)
+    public static void SendPasswordResetResult(Client client, PasswordResetResultType resultType)
     {
-        client.Send(new PasswordResetResultPacket(result));
+        client.Send(new PasswordChangeResultPacket(resultType));
     }
 
     //TargetOverridePacket
@@ -2298,9 +2343,15 @@ public static partial class PacketSender
     }
 
     //GuildRequestPacket
-    public static void SendGuildInvite(Player player, Player from)
+    public static void SendGuildInvite(Player player, Player? from)
     {
-        player.SendPacket(new GuildInvitePacket(from.Name, from.Guild.Name));
+        var guildName = from?.Guild?.Name;
+        if (guildName == null && from?.GuildId is { } guildId)
+        {
+            _ = Guild.TryGetName(guildId, out guildName);
+        }
+
+        player.SendPacket(new GuildInvitePacket(from?.Name, guildName));
     }
 
     public static void SendFade(Player player, FadeType fadeType, bool waitForCompletion, int speedMs)
@@ -2385,9 +2436,9 @@ public static partial class PacketSender
 
     public static void SendDataToEditors(IPacket packet)
     {
-        lock (Globals.ClientLock)
+        lock (Client.GlobalLock)
         {
-            foreach (var client in Globals.Clients)
+            foreach (var client in Client.Instances)
             {
                 if (client.IsEditor)
                 {
@@ -2399,9 +2450,9 @@ public static partial class PacketSender
 
     public static void SendDataToAllPlayers(IPacket packet, TransmissionMode mode = TransmissionMode.All)
     {
-        lock (Globals.ClientLock)
+        lock (Client.GlobalLock)
         {
-            foreach (var client in Globals.Clients)
+            foreach (var client in Client.Instances)
             {
                 if (client?.Entity != null)
                 {
@@ -2410,20 +2461,20 @@ public static partial class PacketSender
             }
         }
     }
-        public static void SendTradeAcceptPacketTo(Player player)
-        {
-            if (player == null)
-            {
-                return;
-            }
-            player?.SendPacket(new TradeAcceptedPacket());
-        }
-
-        public static void SendDataToAll(IPacket packet, TransmissionMode mode = TransmissionMode.All)
+    public static void SendTradeAcceptPacketTo(Player player)
     {
-        lock (Globals.ClientLock)
+        if (player == null)
         {
-            foreach (var client in Globals.Clients)
+            return;
+        }
+        player?.SendPacket(new TradeAcceptedPacket());
+    }
+
+    public static void SendDataToAll(IPacket packet, TransmissionMode mode = TransmissionMode.All)
+    {
+        lock (Client.GlobalLock)
+        {
+            foreach (var client in Client.Instances)
             {
                 if ((client?.IsEditor ?? false) || client?.Entity != null)
                 {
@@ -2444,7 +2495,7 @@ public static partial class PacketSender
 
         var jobData = new Dictionary<JobType, JobData>();
         // Inicializar trabajos si no están presentes
-       
+
         foreach (var job in player.Jobs)
         {
             var jobType = job.Key;
@@ -2464,7 +2515,7 @@ public static partial class PacketSender
         player.SendPacket(packet, TransmissionMode.Any);
 
         // Depuración en el servidor
-      //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
+        //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
     }
     public static void SendOpenMailBox(Player player)
     {
@@ -2497,10 +2548,10 @@ public static partial class PacketSender
         SendInventory(player);
 
         // Enviar paquete para abrir la ventana de envío de correos
-        
+
         player.SendPacket(new MailBoxPacket(true, true));
     }
-   
+
     public static void NotifyPlayerOnLogin(Player player)
     {
         // Cargar correos pendientes desde la base de datos

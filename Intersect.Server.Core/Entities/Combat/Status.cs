@@ -1,4 +1,6 @@
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
 using Intersect.Server.General;
 using Intersect.Server.Networking;
@@ -10,7 +12,7 @@ namespace Intersect.Server.Entities.Combat;
 public partial class Status
 {
 
-    public string Data = "";
+    public string Data = string.Empty;
 
     public long Duration;
 
@@ -18,7 +20,7 @@ public partial class Status
 
     public Entity Attacker;
 
-    public SpellBase Spell;
+    public SpellDescriptor Spell;
 
     public long StartTime;
 
@@ -43,7 +45,7 @@ public partial class Status
         SpellEffect.Stun,
     };
 
-    public Status(Entity en, Entity attacker, SpellBase spell, SpellEffect type, int duration, string data)
+    public Status(Entity en, Entity attacker, SpellDescriptor spell, SpellEffect type, int duration, string data)
     {
         mEntity = en;
         Attacker = attacker;
@@ -75,7 +77,7 @@ public partial class Status
             // Get our NPC's Tenacity stat
             if (!Status.TenacityExcluded.Contains(type))
             {
-                tenacity = (float)thisNpc.Base.Tenacity;
+                tenacity = (float)thisNpc.Descriptor.Tenacity;
             }
         }
 
@@ -131,9 +133,9 @@ public partial class Status
                 }
             }
 
-            foreach (var dot in en.CachedDots)
+            foreach (var dot in en.CachedDamageOverTimeEffects)
             {
-                if (spell.Combat.Friendly != dot.SpellBase.Combat.Friendly)
+                if (spell.Combat.Friendly != dot.SpellDescriptor.Combat.Friendly)
                 {
                     dot.Expire();
                 }

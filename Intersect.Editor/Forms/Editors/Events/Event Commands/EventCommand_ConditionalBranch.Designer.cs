@@ -77,6 +77,7 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
             grpInGuild = new DarkGroupBox();
             lblRank = new Label();
             cmbRank = new DarkComboBox();
+            pnlConditionControl = new Panel();
             chkHasElse = new DarkCheckBox();
             chkNegated = new DarkCheckBox();
             btnSave = new DarkButton();
@@ -184,6 +185,9 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
             grpManualAmount.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)nudItemAmount).BeginInit();
             grpAmountType.SuspendLayout();
+            lblType = new Label();
+            btnCancel = new DarkButton();
+            grpConditional.SuspendLayout();
             SuspendLayout();
             // 
             // grpConditional
@@ -193,6 +197,7 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
             grpConditional.Controls.Add(grpVariable);
             grpConditional.Controls.Add(grpMapZoneType);
             grpConditional.Controls.Add(grpInGuild);
+            grpConditional.Controls.Add(pnlConditionControl);
             grpConditional.Controls.Add(chkHasElse);
             grpConditional.Controls.Add(chkNegated);
             grpConditional.Controls.Add(btnSave);
@@ -214,6 +219,8 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
             grpConditional.Controls.Add(grpCheckEquippedSlot);
             grpConditional.Controls.Add(grpNpc);
             grpConditional.Controls.Add(grpInventoryConditions);
+            grpConditional.Controls.Add(lblType);
+            grpConditional.Controls.Add(btnCancel);
             grpConditional.ForeColor = System.Drawing.Color.Gainsboro;
             grpConditional.Location = new System.Drawing.Point(4, 5);
             grpConditional.Margin = new Padding(4, 5, 4, 5);
@@ -933,6 +940,12 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
             cmbRank.TabIndex = 3;
             cmbRank.Text = null;
             cmbRank.TextPadding = new Padding(2);
+            // pnlConditionControl
+            // 
+            pnlConditionControl.Location = new System.Drawing.Point(7, 45);
+            pnlConditionControl.Name = "pnlConditionControl";
+            pnlConditionControl.Size = new Size(310, 426);
+            pnlConditionControl.TabIndex = 57;
             // 
             // chkHasElse
             // 
@@ -2292,5 +2305,5 @@ namespace Intersect.Editor.Forms.Editors.Events.Event_Commands
         internal DarkComboBox cmbBooleanUserVariable;
         internal DarkRadioButton optBooleanUserVariable;
         internal DarkRadioButton rdoTimeSystem;
-    }
+        private Panel pnlConditionControl;    }
 }

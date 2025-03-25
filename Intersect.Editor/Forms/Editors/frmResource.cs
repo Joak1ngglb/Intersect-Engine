@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using DarkUI.Forms;
 using Intersect.Config;
 using Intersect.Editor.Content;
@@ -7,22 +8,25 @@ using Intersect.Editor.Localization;
 using Intersect.Editor.Networking;
 using Intersect.Enums;
 using Intersect.Framework.Core.Config;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Resources;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Events;
 using Intersect.Utilities;
+using EventDescriptor = Intersect.Framework.Core.GameObjects.Events.EventDescriptor;
 using Graphics = System.Drawing.Graphics;
 
 namespace Intersect.Editor.Forms.Editors;
 
-
 public partial class FrmResource : EditorForm
 {
 
-    private List<ResourceBase> mChanged = new List<ResourceBase>();
+    private List<ResourceDescriptor> mChanged = [];
 
     private string mCopiedItem;
 
-    private ResourceBase mEditorItem;
+    private ResourceDescriptor mEditorItem;
 
     private Bitmap mEndBitmap;
 
@@ -32,9 +36,11 @@ public partial class FrmResource : EditorForm
 
     private Bitmap mInitialGraphic;
 
-    private List<string> mKnownFolders = new List<string>();
+    private List<string> mKnownFolders = [];
 
     private bool mMouseDown;
+
+    private BindingList<NotifiableDrop> _dropList = [];
 
     //General Editting Variables
     bool mTMouseDown;
@@ -47,16 +53,19 @@ public partial class FrmResource : EditorForm
 
         cmbToolType.Items.Clear();
         cmbToolType.Items.Add(Strings.General.None);
-        cmbToolType.Items.AddRange(Options.ToolTypes.ToArray());
+        cmbToolType.Items.AddRange(Options.Instance.Equipment.ToolTypes.ToArray());
         cmbEvent.Items.Clear();
         cmbEvent.Items.Add(Strings.General.None);
-        cmbEvent.Items.AddRange(EventBase.Names);
+        cmbEvent.Items.AddRange(EventDescriptor.Names);
+
+        lstDrops.DataSource = _dropList;
+        lstDrops.DisplayMember = nameof(NotifiableDrop.DisplayName);
 
         lstGameObjects.Init(UpdateToolStripItems, AssignEditorItem, toolStripItemNew_Click, toolStripItemCopy_Click, toolStripItemUndo_Click, toolStripItemPaste_Click, toolStripItemDelete_Click);
     }
     private void AssignEditorItem(Guid id)
     {
-        mEditorItem = ResourceBase.Get(id);
+        mEditorItem = ResourceDescriptor.Get(id);
         UpdateEditor();
     }
 
@@ -65,7 +74,7 @@ public partial class FrmResource : EditorForm
         if (type == GameObjectType.Resource)
         {
             InitEditor();
-            if (mEditorItem != null && !ResourceBase.Lookup.Values.Contains(mEditorItem))
+            if (mEditorItem != null && !ResourceDescriptor.Lookup.Values.Contains(mEditorItem))
             {
                 mEditorItem = null;
                 UpdateEditor();
@@ -107,15 +116,14 @@ public partial class FrmResource : EditorForm
 
         cmbAnimation.Items.Clear();
         cmbAnimation.Items.Add(Strings.General.None);
-        cmbAnimation.Items.AddRange(AnimationBase.Names);
+        cmbAnimation.Items.AddRange(AnimationDescriptor.Names);
         cmbDropItem.Items.Clear();
         cmbDropItem.Items.Add(Strings.General.None);
-        cmbDropItem.Items.AddRange(ItemBase.Names);
-        cmbJobType.Items.Clear();
         for (var x = 0; x < (int)JobType.JobCount; x++)
         {
             cmbJobType.Items.Add(Globals.GetJobName(x));
         }
+        cmbDropItem.Items.AddRange(ItemDescriptor.Names);
         InitLocalization();
         UpdateEditor();
     }
@@ -203,7 +211,7 @@ public partial class FrmResource : EditorForm
 
         grpDrops.Text = Strings.ResourceEditor.drops;
         lblDropItem.Text = Strings.ResourceEditor.dropitem;
-        lblDropAmount.Text = Strings.ResourceEditor.dropamount;
+        lblDropMaxAmount.Text = Strings.ResourceEditor.DropMaxAmount;
         lblDropMinAmount.Text = Strings.ResourceEditor.DropMinAmount;
         lblDropChance.Text = Strings.ResourceEditor.dropchance;
         btnDropAdd.Text = Strings.ResourceEditor.dropadd;
@@ -248,14 +256,14 @@ public partial class FrmResource : EditorForm
             cmbFolder.Text = mEditorItem.Folder;
             cmbToolType.SelectedIndex = mEditorItem.Tool + 1;
             nudSpawnDuration.Value = mEditorItem.SpawnDuration;
-            cmbAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.AnimationId) + 1;
+            cmbAnimation.SelectedIndex = AnimationDescriptor.ListIndex(mEditorItem.AnimationId) + 1;
             nudMinHp.Value = mEditorItem.MinHp;
             nudMaxHp.Value = mEditorItem.MaxHp;
             chkWalkableBefore.Checked = mEditorItem.WalkableBefore;
             chkWalkableAfter.Checked = mEditorItem.WalkableAfter;
             chkInitialFromTileset.Checked = mEditorItem.Initial.GraphicFromTileset;
             chkExhaustedFromTileset.Checked = mEditorItem.Exhausted.GraphicFromTileset;
-            cmbEvent.SelectedIndex = EventBase.ListIndex(mEditorItem.EventId) + 1;
+            cmbEvent.SelectedIndex = EventDescriptor.ListIndex(mEditorItem.EventId) + 1;
             chkInitialBelowEntities.Checked = mEditorItem.Initial.RenderBelowEntities;
             chkExhaustedBelowEntities.Checked = mEditorItem.Exhausted.RenderBelowEntities;
             txtCannotHarvest.Text = mEditorItem.CannotHarvestMessage;
@@ -281,20 +289,19 @@ public partial class FrmResource : EditorForm
         UpdateToolStripItems();
     }
 
-    private void UpdateDropValues(bool keepIndex = false)
+    private void UpdateDropValues()
     {
-        var index = lstDrops.SelectedIndex;
-        lstDrops.Items.Clear();
-
-        var drops = mEditorItem.Drops.ToArray();
-        foreach (var drop in drops)
+        _dropList.Clear();
+        foreach (var drop in mEditorItem.Drops)
         {
-            if (ItemBase.Get(drop.ItemId) == null)
+            _dropList.Add(new NotifiableDrop
             {
-                mEditorItem.Drops.Remove(drop);
-            }
+                ItemId = drop.ItemId,
+                MinQuantity = drop.MinQuantity,
+                MaxQuantity = drop.MaxQuantity,
+                Chance = drop.Chance
+            });
         }
-
         for (var i = 0; i < mEditorItem.Drops.Count; i++)
         {
             if (mEditorItem.Drops[i].ItemId != Guid.Empty)
@@ -310,11 +317,6 @@ public partial class FrmResource : EditorForm
             {
                 lstDrops.Items.Add(TextUtils.None);
             }
-        }
-
-        if (keepIndex && index < lstDrops.Items.Count)
-        {
-            lstDrops.SelectedIndex = index;
         }
     }
 
@@ -434,8 +436,8 @@ public partial class FrmResource : EditorForm
             gfx.DrawRectangle(
                 new Pen(System.Drawing.Color.White, 2f),
                 new Rectangle(
-                    selX * Options.TileWidth, selY * Options.TileHeight,
-                    Options.TileWidth + selW * Options.TileWidth, Options.TileHeight + selH * Options.TileHeight
+                    selX * Options.Instance.Map.TileWidth, selY * Options.Instance.Map.TileHeight,
+                    Options.Instance.Map.TileWidth + selW * Options.Instance.Map.TileWidth, Options.Instance.Map.TileHeight + selH * Options.Instance.Map.TileHeight
                 )
             );
         }
@@ -478,8 +480,8 @@ public partial class FrmResource : EditorForm
             gfx.DrawRectangle(
                 new Pen(System.Drawing.Color.White, 2f),
                 new Rectangle(
-                    selX * Options.TileWidth, selY * Options.TileHeight,
-                    Options.TileWidth + selW * Options.TileWidth, Options.TileHeight + selH * Options.TileHeight
+                    selX * Options.Instance.Map.TileWidth, selY * Options.Instance.Map.TileHeight,
+                    Options.Instance.Map.TileWidth + selW * Options.Instance.Map.TileWidth, Options.Instance.Map.TileHeight + selH * Options.Instance.Map.TileHeight
                 )
             );
         }
@@ -587,7 +589,7 @@ public partial class FrmResource : EditorForm
 
     private void cmbAnimation_SelectedIndexChanged(object sender, EventArgs e)
     {
-        mEditorItem.Animation = AnimationBase.Get(AnimationBase.IdFromList(cmbAnimation.SelectedIndex - 1));
+        mEditorItem.Animation = AnimationDescriptor.Get(AnimationDescriptor.IdFromList(cmbAnimation.SelectedIndex - 1));
     }
 
     private void nudMinHp_ValueChanged(object sender, EventArgs e)
@@ -637,45 +639,100 @@ public partial class FrmResource : EditorForm
     {
         if (lstDrops.SelectedIndex > -1)
         {
-            cmbDropItem.SelectedIndex = ItemBase.ListIndex(mEditorItem.Drops[lstDrops.SelectedIndex].ItemId) + 1;
-            nudDropAmount.Value = mEditorItem.Drops[lstDrops.SelectedIndex].Quantity;
+            cmbDropItem.SelectedIndex = ItemDescriptor.ListIndex(mEditorItem.Drops[lstDrops.SelectedIndex].ItemId) + 1;
+            nudDropMaxAmount.Value = mEditorItem.Drops[lstDrops.SelectedIndex].MaxQuantity;
             nudDropMinAmount.Value = mEditorItem.Drops[lstDrops.SelectedIndex].MinQuantity;
             nudDropChance.Value = (decimal)mEditorItem.Drops[lstDrops.SelectedIndex].Chance;
         }
     }
 
-    private void btnDropAdd_Click(object sender, EventArgs e)
+    private void cmbDropItem_SelectedIndexChanged(object sender, EventArgs e)
     {
         mEditorItem.Drops.Add(new Drop());
         mEditorItem.Drops[mEditorItem.Drops.Count - 1].ItemId = ItemBase.IdFromList(cmbDropItem.SelectedIndex - 1);
         mEditorItem.Drops[mEditorItem.Drops.Count - 1].Quantity = (int)nudDropAmount.Value;
         mEditorItem.Drops[mEditorItem.Drops.Count - 1].MinQuantity = (int)nudDropMinAmount.Value;
         mEditorItem.Drops[mEditorItem.Drops.Count - 1].Chance = (double)nudDropChance.Value;
-
         UpdateDropValues();
-    }
-
-    private void btnDropRemove_Click(object sender, EventArgs e)
-    {
-        if (lstDrops.SelectedIndex > -1)
-        {
-            var i = lstDrops.SelectedIndex;
-            lstDrops.Items.RemoveAt(i);
-            mEditorItem.Drops.RemoveAt(i);
-        }
-
-        UpdateDropValues(true);
-    }
-
-    private void nudDropChance_ValueChanged(object sender, EventArgs e)
-    {
-        if (lstDrops.SelectedIndex < 0 || lstDrops.SelectedIndex > lstDrops.Items.Count)
+        int index = lstDrops.SelectedIndex;
+        if (index < 0 || index > lstDrops.Items.Count)
         {
             return;
         }
 
-        mEditorItem.Drops[(int)lstDrops.SelectedIndex].Chance = (double)nudDropChance.Value;
-        UpdateDropValues(true);
+        mEditorItem.Drops[index].ItemId = ItemDescriptor.IdFromList(cmbDropItem.SelectedIndex - 1);
+        _dropList[index].ItemId = mEditorItem.Drops[index].ItemId;
+    }
+
+    private void nudDropMaxAmount_ValueChanged(object sender, EventArgs e)
+    {
+        int index = lstDrops.SelectedIndex;
+        if (index < 0 || index > lstDrops.Items.Count)
+        {
+            return;
+        }
+
+        mEditorItem.Drops[index].MaxQuantity = (int)nudDropMaxAmount.Value;
+        _dropList[index].MaxQuantity = mEditorItem.Drops[index].MaxQuantity;
+    }
+
+    private void nudDropMinAmount_ValueChanged(object sender, EventArgs e)
+    {
+        int index = lstDrops.SelectedIndex;
+        if (index < 0 || index > lstDrops.Items.Count)
+        {
+            return;
+        }
+
+        mEditorItem.Drops[index].MinQuantity = (int)nudDropMinAmount.Value;
+        _dropList[index].MinQuantity = mEditorItem.Drops[index].MinQuantity;
+    }
+
+    private void nudDropChance_ValueChanged(object sender, EventArgs e)
+    {
+        int index = lstDrops.SelectedIndex;
+        if (index < 0 || index > lstDrops.Items.Count)
+        {
+            return;
+        }
+
+        mEditorItem.Drops[index].Chance = (double)nudDropChance.Value;
+        _dropList[index].Chance = mEditorItem.Drops[index].Chance;
+    }
+
+    private void btnDropAdd_Click(object sender, EventArgs e)
+    {
+        var drop = new Drop()
+        {
+            ItemId = ItemDescriptor.IdFromList(cmbDropItem.SelectedIndex - 1),
+            MaxQuantity = (int)nudDropMaxAmount.Value,
+            MinQuantity = (int)nudDropMinAmount.Value,
+            Chance = (double)nudDropChance.Value
+        };
+
+        mEditorItem.Drops.Add(drop);
+
+        _dropList.Add(new NotifiableDrop
+        {
+            ItemId = drop.ItemId,
+            MinQuantity = drop.MinQuantity,
+            MaxQuantity = drop.MaxQuantity,
+            Chance = drop.Chance
+        });
+
+        lstDrops.SelectedIndex = lstDrops.Items.Count - 1;
+    }
+
+    private void btnDropRemove_Click(object sender, EventArgs e)
+    {
+        if (lstDrops.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        var index = lstDrops.SelectedIndex;
+        mEditorItem.Drops.RemoveAt(index);
+        _dropList.RemoveAt(index);
     }
 
     private void chkInitialFromTileset_CheckedChanged(object sender, EventArgs e)
@@ -703,8 +760,8 @@ public partial class FrmResource : EditorForm
         }
 
         mMouseDown = true;
-        mEditorItem.Initial.X = (int)Math.Floor((double)e.X / Options.TileWidth);
-        mEditorItem.Initial.Y = (int)Math.Floor((double)e.Y / Options.TileHeight);
+        mEditorItem.Initial.X = (int) Math.Floor((double) e.X / Options.Instance.Map.TileWidth);
+        mEditorItem.Initial.Y = (int) Math.Floor((double) e.Y / Options.Instance.Map.TileHeight);
         mEditorItem.Initial.Width = 0;
         mEditorItem.Initial.Height = 0;
         if (mEditorItem.Initial.X < 0)
@@ -770,8 +827,8 @@ public partial class FrmResource : EditorForm
 
         if (mMouseDown)
         {
-            var tmpX = (int)Math.Floor((double)e.X / Options.TileWidth);
-            var tmpY = (int)Math.Floor((double)e.Y / Options.TileHeight);
+            var tmpX = (int) Math.Floor((double) e.X / Options.Instance.Map.TileWidth);
+            var tmpY = (int) Math.Floor((double) e.Y / Options.Instance.Map.TileHeight);
             mEditorItem.Initial.Width = tmpX - mEditorItem.Initial.X;
             mEditorItem.Initial.Height = tmpY - mEditorItem.Initial.Y;
         }
@@ -792,8 +849,8 @@ public partial class FrmResource : EditorForm
         }
 
         mMouseDown = true;
-        mEditorItem.Exhausted.X = (int)Math.Floor((double)e.X / Options.TileWidth);
-        mEditorItem.Exhausted.Y = (int)Math.Floor((double)e.Y / Options.TileHeight);
+        mEditorItem.Exhausted.X = (int) Math.Floor((double) e.X / Options.Instance.Map.TileWidth);
+        mEditorItem.Exhausted.Y = (int) Math.Floor((double) e.Y / Options.Instance.Map.TileHeight);
         mEditorItem.Exhausted.Width = 0;
         mEditorItem.Exhausted.Height = 0;
         if (mEditorItem.Exhausted.X < 0)
@@ -859,8 +916,8 @@ public partial class FrmResource : EditorForm
 
         if (mMouseDown)
         {
-            var tmpX = (int)Math.Floor((double)e.X / Options.TileWidth);
-            var tmpY = (int)Math.Floor((double)e.Y / Options.TileHeight);
+            var tmpX = (int) Math.Floor((double) e.X / Options.Instance.Map.TileWidth);
+            var tmpY = (int) Math.Floor((double) e.Y / Options.Instance.Map.TileHeight);
             mEditorItem.Exhausted.Width = tmpX - mEditorItem.Exhausted.X;
             mEditorItem.Exhausted.Height = tmpY - mEditorItem.Exhausted.Y;
         }
@@ -875,7 +932,7 @@ public partial class FrmResource : EditorForm
 
     private void cmbEvent_SelectedIndexChanged(object sender, EventArgs e)
     {
-        mEditorItem.Event = EventBase.Get(EventBase.IdFromList(cmbEvent.SelectedIndex - 1));
+        mEditorItem.Event = EventDescriptor.Get(EventDescriptor.IdFromList(cmbEvent.SelectedIndex - 1));
     }
 
     private void chkInitialBelowEntities_CheckedChanged(object sender, EventArgs e)
@@ -899,15 +956,15 @@ public partial class FrmResource : EditorForm
     {
         //Collect folders
         var mFolders = new List<string>();
-        foreach (var itm in ResourceBase.Lookup)
+        foreach (var itm in ResourceDescriptor.Lookup)
         {
-            if (!string.IsNullOrEmpty(((ResourceBase)itm.Value).Folder) &&
-                !mFolders.Contains(((ResourceBase)itm.Value).Folder))
+            if (!string.IsNullOrEmpty(((ResourceDescriptor) itm.Value).Folder) &&
+                !mFolders.Contains(((ResourceDescriptor) itm.Value).Folder))
             {
-                mFolders.Add(((ResourceBase)itm.Value).Folder);
-                if (!mKnownFolders.Contains(((ResourceBase)itm.Value).Folder))
+                mFolders.Add(((ResourceDescriptor) itm.Value).Folder);
+                if (!mKnownFolders.Contains(((ResourceDescriptor) itm.Value).Folder))
                 {
-                    mKnownFolders.Add(((ResourceBase)itm.Value).Folder);
+                    mKnownFolders.Add(((ResourceDescriptor) itm.Value).Folder);
                 }
             }
         }
@@ -918,14 +975,14 @@ public partial class FrmResource : EditorForm
         cmbFolder.Items.Add("");
         cmbFolder.Items.AddRange(mKnownFolders.ToArray());
 
-        var items = ResourceBase.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
-            new KeyValuePair<string, string>(((ResourceBase)pair.Value)?.Name ?? Models.DatabaseObject<ResourceBase>.Deleted, ((ResourceBase)pair.Value)?.Folder ?? ""))).ToArray();
+        var items = ResourceDescriptor.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
+            new KeyValuePair<string, string>(((ResourceDescriptor)pair.Value)?.Name ?? Models.DatabaseObject<ResourceDescriptor>.Deleted, ((ResourceDescriptor)pair.Value)?.Folder ?? ""))).ToArray();
         lstGameObjects.Repopulate(items, mFolders, btnAlphabetical.Checked, CustomSearch(), txtSearch.Text);
     }
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.ResourceEditor.folderprompt, Strings.ResourceEditor.foldertitle, ref folderName,
             DarkDialogButton.OkCancel

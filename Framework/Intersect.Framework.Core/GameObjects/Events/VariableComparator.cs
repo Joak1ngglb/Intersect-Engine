@@ -1,4 +1,4 @@
-namespace Intersect.Enums;
+namespace Intersect.Framework.Core.GameObjects.Events;
 
 public enum VariableComparator
 {
@@ -13,4 +13,6 @@ public enum VariableComparator
     Less,
 
     NotEqual,
+
+    Between,
 }

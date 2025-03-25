@@ -3,7 +3,7 @@ using Intersect.Collections;
 using Intersect.Framework.Core.Serialization;
 using Newtonsoft.Json;
 
-namespace Intersect.GameObjects.Maps.MapList;
+namespace Intersect.Framework.Core.GameObjects.Maps.MapList;
 
 public partial class MapList
 {
@@ -12,11 +12,11 @@ public partial class MapList
     public Guid Id { get; protected set; } = Guid.NewGuid();
 
     [NotMapped]
-    public List<MapListItem> Items { get; set; } = new List<MapListItem>();
+    public List<MapListItem> Items { get; set; } = [];
 
-    public static MapList List { get; set; } = new MapList();
+    public static MapList List { get; set; } = new();
 
-    public static List<MapListMap> OrderedMaps { get; } = new List<MapListMap>();
+    public static List<MapListMap> OrderedMaps { get; } = [];
 
     [JsonIgnore]
     [Column("JsonData")]
@@ -64,7 +64,7 @@ public partial class MapList
                 var removed = false;
                 if (isServer)
                 {
-                    if (gameMaps.Get<MapBase>(mapItm.MapId) == null)
+                    if (gameMaps.Get<MapDescriptor>(mapItm.MapId) == null)
                     {
                         Items.Remove(itm);
                         removed = true;
@@ -339,7 +339,7 @@ public partial class MapList
     public void UpdateMap(Guid mapId)
     {
         var map = FindMap(mapId);
-        var mapInstance = MapBase.Get(mapId);
+        var mapInstance = MapDescriptor.Get(mapId);
         if (map != null && mapInstance != null)
         {
             map.Name = mapInstance.Name;
@@ -353,7 +353,7 @@ public partial class MapList
 
         if (OrderedMaps.Count > 0)
         {
-            lowestMap = OrderedMaps.OrderBy(m => m.TimeCreated).FirstOrDefault().MapId;
+            lowestMap = OrderedMaps.OrderBy(m => m.TimeCreated).FirstOrDefault()?.MapId ?? default;
         }
 
         return lowestMap;

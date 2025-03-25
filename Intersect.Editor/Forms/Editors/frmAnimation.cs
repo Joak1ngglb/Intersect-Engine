@@ -1,17 +1,16 @@
 using System.Media;
-
 using DarkUI.Controls;
 using DarkUI.Forms;
-
 using Intersect.Editor.Content;
 using Intersect.Editor.Core;
 using Intersect.Editor.General;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Networking;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Lighting;
 using Intersect.GameObjects;
 using Intersect.Utilities;
-
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Intersect.Editor.Forms.Editors;
@@ -21,11 +20,11 @@ public partial class FrmAnimation : EditorForm
 {
     private readonly ToolTip _tooltip = new();
 
-    private List<AnimationBase> mChanged = new List<AnimationBase>();
+    private List<AnimationDescriptor> mChanged = new List<AnimationDescriptor>();
 
     private string mCopiedItem;
 
-    private AnimationBase mEditorItem;
+    private AnimationDescriptor mEditorItem;
 
     private List<string> mKnownFolders = new List<string>();
 
@@ -61,7 +60,7 @@ public partial class FrmAnimation : EditorForm
 
     private void AssignEditorItem(Guid id)
     {
-        mEditorItem = AnimationBase.Get(id);
+        mEditorItem = AnimationDescriptor.Get(id);
         UpdateEditor();
     }
 
@@ -73,7 +72,7 @@ public partial class FrmAnimation : EditorForm
         }
 
         InitEditor();
-        if (mEditorItem == null || AnimationBase.Lookup.Values.Contains(mEditorItem))
+        if (mEditorItem == null || AnimationDescriptor.Lookup.Values.Contains(mEditorItem))
         {
             return;
         }
@@ -337,11 +336,11 @@ public partial class FrmAnimation : EditorForm
 
     void UpdateLowerFrames()
     {
-        LightBase[] newArray;
+        LightDescriptor[] newArray;
         scrlLowerFrame.Maximum = (int)nudLowerFrameCount.Value;
         if (mEditorItem.Lower.Lights == null || mEditorItem.Lower.FrameCount != mEditorItem.Lower.Lights.Length)
         {
-            newArray = new LightBase[mEditorItem.Lower.FrameCount];
+            newArray = new LightDescriptor[mEditorItem.Lower.FrameCount];
             for (var i = 0; i < newArray.Length; i++)
             {
                 if (mEditorItem.Lower.Lights != null && i < mEditorItem.Lower.Lights.Length)
@@ -350,7 +349,7 @@ public partial class FrmAnimation : EditorForm
                 }
                 else
                 {
-                    newArray[i] = new LightBase(-1, -1);
+                    newArray[i] = new LightDescriptor(-1, -1);
                 }
             }
 
@@ -360,11 +359,11 @@ public partial class FrmAnimation : EditorForm
 
     void UpdateUpperFrames()
     {
-        LightBase[] newArray;
+        LightDescriptor[] newArray;
         scrlUpperFrame.Maximum = (int)nudUpperFrameCount.Value;
         if (mEditorItem.Upper.Lights == null || mEditorItem.Upper.FrameCount != mEditorItem.Upper.Lights.Length)
         {
-            newArray = new LightBase[mEditorItem.Upper.FrameCount];
+            newArray = new LightDescriptor[mEditorItem.Upper.FrameCount];
             for (var i = 0; i < newArray.Length; i++)
             {
                 if (mEditorItem.Upper.Lights != null && i < mEditorItem.Upper.Lights.Length)
@@ -373,7 +372,7 @@ public partial class FrmAnimation : EditorForm
                 }
                 else
                 {
-                    newArray[i] = new LightBase(-1, -1);
+                    newArray[i] = new LightDescriptor(-1, -1);
                 }
             }
 
@@ -578,7 +577,7 @@ public partial class FrmAnimation : EditorForm
         if (scrlLowerFrame.Value > 1)
         {
             mEditorItem.Lower.Lights[scrlLowerFrame.Value - 1] =
-                new LightBase(mEditorItem.Lower.Lights[scrlLowerFrame.Value - 2]);
+                new LightDescriptor(mEditorItem.Lower.Lights[scrlLowerFrame.Value - 2]);
 
             LoadLowerLight();
             DrawLowerFrame();
@@ -606,7 +605,7 @@ public partial class FrmAnimation : EditorForm
         if (scrlUpperFrame.Value > 1)
         {
             mEditorItem.Upper.Lights[scrlUpperFrame.Value - 1] =
-                new LightBase(mEditorItem.Upper.Lights[scrlUpperFrame.Value - 2]);
+                new LightDescriptor(mEditorItem.Upper.Lights[scrlUpperFrame.Value - 2]);
 
             LoadUpperLight();
             DrawUpperFrame();
@@ -823,15 +822,15 @@ public partial class FrmAnimation : EditorForm
     {
         //Collect folders
         var mFolders = new List<string>();
-        foreach (var anim in AnimationBase.Lookup)
+        foreach (var anim in AnimationDescriptor.Lookup)
         {
-            if (!string.IsNullOrEmpty(((AnimationBase)anim.Value).Folder) &&
-                !mFolders.Contains(((AnimationBase)anim.Value).Folder))
+            if (!string.IsNullOrEmpty(((AnimationDescriptor)anim.Value).Folder) &&
+                !mFolders.Contains(((AnimationDescriptor)anim.Value).Folder))
             {
-                mFolders.Add(((AnimationBase)anim.Value).Folder);
-                if (!mKnownFolders.Contains(((AnimationBase)anim.Value).Folder))
+                mFolders.Add(((AnimationDescriptor)anim.Value).Folder);
+                if (!mKnownFolders.Contains(((AnimationDescriptor)anim.Value).Folder))
                 {
-                    mKnownFolders.Add(((AnimationBase)anim.Value).Folder);
+                    mKnownFolders.Add(((AnimationDescriptor)anim.Value).Folder);
                 }
             }
         }
@@ -842,14 +841,14 @@ public partial class FrmAnimation : EditorForm
         cmbFolder.Items.Add("");
         cmbFolder.Items.AddRange(mKnownFolders.ToArray());
 
-        var items = AnimationBase.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
-            new KeyValuePair<string, string>(((AnimationBase)pair.Value)?.Name ?? Models.DatabaseObject<AnimationBase>.Deleted, ((AnimationBase)pair.Value)?.Folder ?? ""))).ToArray();
+        var items = AnimationDescriptor.Lookup.OrderBy(p => p.Value?.Name).Select(pair => new KeyValuePair<Guid, KeyValuePair<string, string>>(pair.Key,
+            new KeyValuePair<string, string>(((AnimationDescriptor)pair.Value)?.Name ?? Models.DatabaseObject<AnimationDescriptor>.Deleted, ((AnimationDescriptor)pair.Value)?.Folder ?? ""))).ToArray();
         lstGameObjects.Repopulate(items, mFolders, btnAlphabetical.Checked, CustomSearch(), txtSearch.Text);
     }
 
     private void btnAddFolder_Click(object sender, EventArgs e)
     {
-        var folderName = "";
+        var folderName = string.Empty;
         var result = DarkInputBox.ShowInformation(
             Strings.AnimationEditor.folderprompt, Strings.AnimationEditor.foldertitle, ref folderName,
             DarkDialogButton.OkCancel

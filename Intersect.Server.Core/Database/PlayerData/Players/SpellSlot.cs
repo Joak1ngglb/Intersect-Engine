@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using Intersect.Collections.Slotting;
 using Intersect.Server.Entities;
-
 using Newtonsoft.Json;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Local
@@ -26,6 +25,7 @@ public partial class SpellSlot : Spell, ISlot, IPlayerOwned
     [DatabaseGenerated(DatabaseGeneratedOption.Identity), JsonIgnore]
     public Guid Id { get; private set; }
 
+    [JsonIgnore]
     public bool IsEmpty => SpellId == default;
 
     [JsonIgnore]

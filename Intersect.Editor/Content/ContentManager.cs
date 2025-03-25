@@ -1,11 +1,11 @@
 using Intersect.Editor.Core;
 using Intersect.Editor.Localization;
 using Intersect.Editor.Networking;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
 using Intersect.GameObjects;
 using Intersect.IO.Files;
-using Intersect.Logging;
 using Intersect.Utilities;
-
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
@@ -57,7 +57,7 @@ public static partial class GameContentManager
 
     static IDictionary<string, Texture> sEntityDict = new Dictionary<string, Texture>();
 
-    private static string sErrorString = "";
+    private static string sErrorString = string.Empty;
 
     static IDictionary<string, Texture> sFaceDict = new Dictionary<string, Texture>();
 
@@ -179,7 +179,7 @@ public static partial class GameContentManager
         Array.Sort(tilesets, new AlphanumComparatorFast());
         if (tilesets.Length > 0)
         {
-            var tilesetBaseList = TilesetBase.Names;
+            var tilesetBaseList = TilesetDescriptor.Names;
             for (var i = 0; i < tilesets.Length; i++)
             {
                 tilesets[i] = tilesets[i].Replace("resources/tilesets\\", "");
@@ -210,9 +210,9 @@ public static partial class GameContentManager
         sTilesetDict.Clear();
         TilesetTextures.Clear();
         var badTilesets = new List<string>();
-        for (var i = 0; i < TilesetBase.Lookup.Count; i++)
+        for (var i = 0; i < TilesetDescriptor.Lookup.Count; i++)
         {
-            var tileset = TilesetBase.Get(TilesetBase.IdFromList(i));
+            var tileset = TilesetDescriptor.Get(TilesetDescriptor.IdFromList(i));
             if (File.Exists("resources/tilesets/" + tileset.Name))
             {
                 try
@@ -222,13 +222,18 @@ public static partial class GameContentManager
                 }
                 catch (Exception exception)
                 {
-                    Log.Error($"Fake methods! ({tileset.Name})");
+                    Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
+                        exception,
+                        $"Fake methods! ({tileset.Name})"
+                    );
+                    
                     if (exception.InnerException != null)
                     {
-                        Log.Error(exception.InnerException);
+                        Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError(
+                            exception.InnerException,
+                            "Caused by"
+                        );
                     }
-
-                    Log.Error(exception);
 
                     throw;
                 }
@@ -469,7 +474,7 @@ public static partial class GameContentManager
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            Log.Error("Tried to load shader with null name.");
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError("Tried to load shader with null name.");
 
             return null;
         }
@@ -486,7 +491,7 @@ public static partial class GameContentManager
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            Log.Error("Tried to load music with null name.");
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError("Tried to load music with null name.");
 
             return null;
         }
@@ -503,7 +508,7 @@ public static partial class GameContentManager
     {
         if (string.IsNullOrWhiteSpace(name))
         {
-            Log.Error("Tried to load sound with null name.");
+            Intersect.Core.ApplicationContext.Context.Value?.Logger.LogError("Tried to load sound with null name.");
 
             return null;
         }

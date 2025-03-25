@@ -1,7 +1,7 @@
 using Intersect.Compression;
 using Intersect.Enums;
+using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.Framework.Core.Serialization;
-using Intersect.GameObjects.Maps;
 using Intersect.Network;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -153,7 +153,7 @@ public partial class CerasVersionToleranceMigration
                     if (currentCount > 256)
                     {
                         updateCmd.ExecuteNonQuery();
-                        updateCmd.CommandText = "";
+                        updateCmd.CommandText = string.Empty;
                         updateCmd.Parameters.Clear();
                         currentCount = 0;
                     }

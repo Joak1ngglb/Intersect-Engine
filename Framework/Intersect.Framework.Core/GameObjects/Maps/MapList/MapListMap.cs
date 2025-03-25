@@ -1,6 +1,6 @@
 ﻿using Intersect.Collections;
 
-namespace Intersect.GameObjects.Maps.MapList;
+namespace Intersect.Framework.Core.GameObjects.Maps.MapList;
 
 public partial class MapListMap : MapListItem, IComparable<MapListMap>
 {
@@ -8,16 +8,14 @@ public partial class MapListMap : MapListItem, IComparable<MapListMap>
 
     public long TimeCreated;
 
-    public MapListMap() : base()
+    public MapListMap()
     {
         Name = "New Map";
         Type = 1;
     }
 
-    public int CompareTo(MapListMap obj)
-    {
-        return Name.CompareTo(obj.Name);
-    }
+    public int CompareTo(MapListMap other) =>
+        string.Compare(Name, other.Name, StringComparison.CurrentCultureIgnoreCase);
 
     public void PostLoad(DatabaseObjectLookup gameMaps, bool isServer = true)
     {

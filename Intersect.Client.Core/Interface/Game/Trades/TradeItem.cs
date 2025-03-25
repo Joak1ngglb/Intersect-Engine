@@ -2,9 +2,11 @@ using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.Framework.Gwen.Input;
+using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.DescriptionWindows;
 using Intersect.Configuration;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
 
 namespace Intersect.Client.Interface.Game.Trades;
@@ -54,12 +56,17 @@ public partial class TradeItem
         Pnl = new ImagePanel(Container, "TradeIcon");
         Pnl.HoverEnter += pnl_HoverEnter;
         Pnl.HoverLeave += pnl_HoverLeave;
-        Pnl.RightClicked += Pnl_RightClicked;
+        Pnl.Clicked += Pnl_RightClicked;
         Pnl.DoubleClicked += Pnl_DoubleClicked;
     }
 
-    private void Pnl_RightClicked(Base sender, ClickedEventArgs arguments)
+    private void Pnl_RightClicked(Base sender, MouseButtonState arguments)
     {
+        if (arguments.MouseButton != MouseButton.Right)
+        {
+            return;
+        }
+
         // Are we operating our own side? if not ignore it.
         if (mMySide != 0)
         {
@@ -76,7 +83,7 @@ public partial class TradeItem
         }
     }
 
-    private void Pnl_DoubleClicked(Base sender, ClickedEventArgs arguments)
+    private void Pnl_DoubleClicked(Base sender, MouseButtonState arguments)
     {
         // Are we operating our own side? if not ignore it.
         if (mMySide != 0)
@@ -86,7 +93,7 @@ public partial class TradeItem
 
         if (Globals.InTrade)
         {
-            Globals.Me.TryRevokeItem(mMySlot);
+            Globals.Me.TryCancelOfferToTradeItem(mMySlot);
         }
     }
 
@@ -117,10 +124,10 @@ public partial class TradeItem
             mDescWindow = null;
         }
 
-        if (ItemBase.Get(Globals.Trade[mMySide, mMySlot].ItemId) != null)
+        if (ItemDescriptor.Get(Globals.Trade[mMySide, mMySlot].ItemId) != null)
         {
             mDescWindow = new ItemDescriptionWindow(
-                Globals.Trade[mMySide, mMySlot].Base, Globals.Trade[mMySide, mMySlot].Quantity, mTradeWindow.X,
+                Globals.Trade[mMySide, mMySlot].Descriptor, Globals.Trade[mMySide, mMySlot].Quantity, mTradeWindow.X,
                 mTradeWindow.Y, Globals.Trade[mMySide, mMySlot].ItemProperties
             );
         }
@@ -130,8 +137,8 @@ public partial class TradeItem
     {
         var rect = new FloatRect()
         {
-            X = Pnl.LocalPosToCanvas(new Point(0, 0)).X,
-            Y = Pnl.LocalPosToCanvas(new Point(0, 0)).Y,
+            X = Pnl.ToCanvas(new Point(0, 0)).X,
+            Y = Pnl.ToCanvas(new Point(0, 0)).Y,
             Width = Pnl.Width,
             Height = Pnl.Height
         };
@@ -145,7 +152,7 @@ public partial class TradeItem
         if (Globals.Trade[n, mMySlot].ItemId != mCurrentItemId)
         {
             mCurrentItemId = Globals.Trade[n, mMySlot].ItemId;
-            var item = ItemBase.Get(Globals.Trade[n, mMySlot].ItemId);
+            var item = ItemDescriptor.Get(Globals.Trade[n, mMySlot].ItemId);
             if (item != null)
             {
                 if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))

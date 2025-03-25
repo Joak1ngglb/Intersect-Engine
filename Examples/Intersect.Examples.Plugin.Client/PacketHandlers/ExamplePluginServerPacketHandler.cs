@@ -1,40 +1,44 @@
-﻿using Intersect.Examples.Plugin.Packets.Client;
+﻿using Intersect.Core;
+using Intersect.Examples.Plugin.Packets.Client;
 using Intersect.Examples.Plugin.Packets.Server;
-using Intersect.Logging;
 using Intersect.Network;
+using Microsoft.Extensions.Logging;
 
-using System;
+namespace Intersect.Examples.Plugin.Client.PacketHandlers;
 
-namespace Intersect.Examples.Plugin.Client.PacketHandlers
+public class ExamplePluginServerPacketHandler : IPacketHandler<ExamplePluginServerPacket>
 {
-    public class ExamplePluginServerPacketHandler : IPacketHandler<ExamplePluginServerPacket>
+    public bool Handle(IPacketSender packetSender, ExamplePluginServerPacket packet)
     {
-        public bool Handle(IPacketSender packetSender, ExamplePluginServerPacket packet)
+        if (default == packetSender)
         {
-            if (default == packetSender)
-            {
-                throw new ArgumentNullException(nameof(packetSender));
-            }
-
-            if (default == packet)
-            {
-                throw new ArgumentNullException(nameof(packet));
-            }
-
-            Log.Info($"Received server packet! The server said '{packet.ExamplePluginMessage}'.");
-            
-            var packetSent = packetSender.Send(new ExamplePluginClientPacket("A message from the client!"));
-            if (packetSent)
-            {
-                Log.Info("Sent response back to the server!");
-            } else
-            {
-                Log.Error("Failed to send response back to the server!");
-            }
-
-            return packetSent;
+            throw new ArgumentNullException(nameof(packetSender));
         }
 
-        public bool Handle(IPacketSender packetSender, IPacket packet) => Handle(packetSender, packet as ExamplePluginServerPacket);
+        if (default == packet)
+        {
+            throw new ArgumentNullException(nameof(packet));
+        }
+
+        ApplicationContext.Context.Value?.Logger.LogInformation(
+            $"Received server packet! The server said '{packet.ExamplePluginMessage}'."
+        );
+
+        var packetSent = packetSender.Send(new ExamplePluginClientPacket("A message from the client!"));
+        if (packetSent)
+        {
+            ApplicationContext.Context.Value?.Logger.LogInformation("Sent response back to the server!");
+        }
+        else
+        {
+            ApplicationContext.Context.Value?.Logger.LogError("Failed to send response back to the server!");
+        }
+
+        return packetSent;
+    }
+
+    public bool Handle(IPacketSender packetSender, IPacket packet)
+    {
+        return Handle(packetSender, packet as ExamplePluginServerPacket);
     }
 }

@@ -1,159 +1,138 @@
-using Intersect.Client.Framework.GenericClasses;
+using Intersect.Client.Core;
+using Intersect.Client.Framework.File_Management;
+using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
+using Intersect.Client.Framework.Gwen.DragDrop;
 using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.DescriptionWindows;
+using Intersect.Client.Interface.Game.Inventory;
+using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Configuration;
-using Intersect.GameObjects;
-using Intersect.Utilities;
+using Intersect.Framework.Core.GameObjects.Items;
 
 namespace Intersect.Client.Interface.Game.Bag;
 
-
-public partial class BagItem
+public partial class BagItem : SlotItem
 {
+    // Controls
+    private readonly Label _quantityLabel;
+    private readonly BagWindow _bagWindow;
+    private ItemDescriptionWindow? _descriptionWindow;
 
-    private static int sItemXPadding = 4;
+    // Context Menu Handling
+    private readonly MenuItem _withdrawContextItem;
 
-    private static int sItemYPadding = 4;
-
-    public ImagePanel Container;
-
-    public bool IsDragging;
-
-    //Drag/Drop References
-    private BagWindow mBagWindow;
-
-    //Dragging
-    private bool mCanDrag;
-
-    private long mClickTime;
-
-    private Guid mCurrentItemId;
-
-    private ItemDescriptionWindow mDescWindow;
-
-    private Draggable mDragIcon;
-
-    //Mouse Event Variables
-    private bool mMouseOver;
-
-    private int mMouseX = -1;
-
-    private int mMouseY = -1;
-
-    //Slot info
-    private int mMySlot;
-
-    public ImagePanel Pnl;
-
-    public BagItem(BagWindow bagWindow, int index)
+    public BagItem(BagWindow bagWindow, Base parent, int index, ContextMenu contextMenu)
+        : base(parent, nameof(BagItem), index, contextMenu)
     {
-        mBagWindow = bagWindow;
-        mMySlot = index;
-    }
+        _bagWindow = bagWindow;
+        TextureFilename = "bagitem.png";
 
-    public void Setup()
-    {
-        Pnl = new ImagePanel(Container, "BagItemIcon");
-        Pnl.HoverEnter += pnl_HoverEnter;
-        Pnl.HoverLeave += pnl_HoverLeave;
-        Pnl.RightClicked += Pnl_RightClicked;
-        Pnl.DoubleClicked += Pnl_DoubleClicked;
-        Pnl.Clicked += pnl_Clicked;
-    }
+        Icon.HoverEnter += Icon_HoverEnter;
+        Icon.HoverLeave += Icon_HoverLeave;
+        Icon.Clicked += Icon_Clicked;
+        Icon.DoubleClicked += Icon_DoubleClicked;
 
-    private void Pnl_RightClicked(Base sender, ClickedEventArgs arguments)
-    {
-        if (ClientConfiguration.Instance.EnableContextMenus)
+        _quantityLabel = new Label(this, "Quantity")
         {
-            mBagWindow.OpenContextMenu(mMySlot);
+            Alignment = [Alignments.Bottom, Alignments.Right],
+            BackgroundTemplateName = "quantity.png",
+            FontName = "sourcesansproblack",
+            FontSize = 8,
+            Padding = new Padding(2),
+        };
+
+        LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+
+        contextMenu.ClearChildren();
+        _withdrawContextItem = contextMenu.AddItem(Strings.BagContextMenu.Withdraw);
+        _withdrawContextItem.Clicked += _withdrawMenuItem_Clicked;
+        contextMenu.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+    }
+
+    #region Context Menu
+
+    protected override void OnContextMenuOpening(ContextMenu contextMenu)
+    {
+        if (Globals.BagSlots is not { Length: > 0 } bagSlots)
+        {
+            return;
         }
-        else
+
+        if (!ItemDescriptor.TryGet(bagSlots[SlotIndex].ItemId, out var item))
         {
-            Pnl_DoubleClicked(sender, arguments);
-        }    
+            return;
+        }
+
+        // Clear the context menu and add the withdraw item with updated item name
+        contextMenu.ClearChildren();
+        _withdrawContextItem.SetText(Strings.BagContextMenu.Withdraw.ToString(item.Name));
+        contextMenu.AddChild(_withdrawContextItem);
+        base.OnContextMenuOpening(contextMenu);
     }
 
-    private void Pnl_DoubleClicked(Base sender, ClickedEventArgs arguments)
+    private void _withdrawMenuItem_Clicked(Base sender, MouseButtonState arguments)
     {
         if (Globals.InBag)
         {
-            Globals.Me.TryRetreiveBagItem(mMySlot, -1);
+            Globals.Me?.TryRetrieveItemFromBag(SlotIndex, -1);
         }
     }
 
-    void pnl_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        mClickTime = Timing.Global.MillisecondsUtc + 500;
-    }
+    #endregion
 
-    void pnl_HoverLeave(Base sender, EventArgs arguments)
-    {
-        mMouseOver = false;
-        mMouseX = -1;
-        mMouseY = -1;
-        if (mDescWindow != null)
-        {
-            mDescWindow.Dispose();
-            mDescWindow = null;
-        }
-    }
+    #region Mouse Events
 
-    void pnl_HoverEnter(Base sender, EventArgs arguments)
+    private void Icon_HoverEnter(Base? sender, EventArgs? arguments)
     {
-        if (InputHandler.MouseFocus != null)
+        if (InputHandler.MouseFocus != default)
         {
             return;
         }
 
-        mMouseOver = true;
-        mCanDrag = true;
-        if (Globals.InputManager.MouseButtonDown(MouseButtons.Left))
+        if (Globals.InputManager.IsMouseButtonDown(MouseButton.Left))
         {
-            mCanDrag = false;
-
             return;
         }
 
-        if (mDescWindow != null)
+        _descriptionWindow?.Dispose();
+        _descriptionWindow = default;
+
+        if (Globals.BagSlots is not { Length: > 0 } bagSlots)
         {
-            mDescWindow.Dispose();
-            mDescWindow = null;
+            return;
         }
 
-        if (Globals.Bag[mMySlot]?.Base != null)
+        if (bagSlots[SlotIndex] is not { Descriptor: not null } or { Quantity: <= 0 })
         {
-            mDescWindow = new ItemDescriptionWindow(
-                Globals.Bag[mMySlot].Base, Globals.Bag[mMySlot].Quantity, mBagWindow.X, mBagWindow.Y,
-                Globals.Bag[mMySlot].ItemProperties
-            );
+            return;
         }
+
+        var item = bagSlots[SlotIndex];
+        _descriptionWindow = new ItemDescriptionWindow(
+            item.Descriptor,
+            item.Quantity,
+            _bagWindow.X,
+            _bagWindow.Y,
+            item.ItemProperties
+        );
     }
 
-    public FloatRect RenderBounds()
+    private void Icon_HoverLeave(Base sender, EventArgs arguments)
     {
-        var rect = new FloatRect()
-        {
-            X = Pnl.LocalPosToCanvas(new Point(0, 0)).X,
-            Y = Pnl.LocalPosToCanvas(new Point(0, 0)).Y,
-            Width = Pnl.Width,
-            Height = Pnl.Height
-        };
-
-        return rect;
+        _descriptionWindow?.Dispose();
+        _descriptionWindow = default;
     }
 
-    public void Update()
+    private void Icon_Clicked(Base sender, MouseButtonState arguments)
     {
-        if (Globals.Bag[mMySlot].ItemId != mCurrentItemId)
+        if (arguments.MouseButton is MouseButton.Right)
         {
-            mCurrentItemId = Globals.Bag[mMySlot].ItemId;
-            var item = ItemBase.Get(Globals.Bag[mMySlot].ItemId);
-            if (item != null)
+            if (ClientConfiguration.Instance.EnableContextMenus)
             {
                 // Obtener el color de la rareza del ítem
                 if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
@@ -180,137 +159,106 @@ public partial class BagItem
                         Pnl.Texture = null;
                     }
                 }
+                OpenContextMenu();
             }
             else
             {
-                if (Pnl.Texture != null)
-                {
-                    Pnl.Texture = null;
-                }
-            }
-        }
-
-        if (!IsDragging)
-        {
-            if (mMouseOver)
-            {
-                if (!Globals.InputManager.MouseButtonDown(MouseButtons.Left))
-                {
-                    mCanDrag = true;
-                    mMouseX = -1;
-                    mMouseY = -1;
-                    if (Timing.Global.MillisecondsUtc < mClickTime)
-                    {
-                        mClickTime = 0;
-                    }
-                }
-                else
-                {
-                    if (mCanDrag && Draggable.Active == null)
-                    {
-                        if (mMouseX == -1 || mMouseY == -1)
-                        {
-                            mMouseX = InputHandler.MousePosition.X - Pnl.LocalPosToCanvas(new Point(0, 0)).X;
-                            mMouseY = InputHandler.MousePosition.Y - Pnl.LocalPosToCanvas(new Point(0, 0)).Y;
-                        }
-                        else
-                        {
-                            var xdiff = mMouseX -
-                                        (InputHandler.MousePosition.X - Pnl.LocalPosToCanvas(new Point(0, 0)).X);
-
-                            var ydiff = mMouseY -
-                                        (InputHandler.MousePosition.Y - Pnl.LocalPosToCanvas(new Point(0, 0)).Y);
-
-                            if (Math.Sqrt(Math.Pow(xdiff, 2) + Math.Pow(ydiff, 2)) > 5)
-                            {
-                                IsDragging = true;
-                                mDragIcon = new Draggable(
-                                    Pnl.LocalPosToCanvas(new Point(0, 0)).X + mMouseX,
-                                    Pnl.LocalPosToCanvas(new Point(0, 0)).X + mMouseY, Pnl.Texture, Pnl.RenderColor
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        else
-        {
-            if (mDragIcon.Update())
-            {
-                //Drug the item and now we stopped
-                IsDragging = false;
-                var dragRect = new FloatRect(
-                    mDragIcon.X - sItemXPadding / 2, mDragIcon.Y - sItemYPadding / 2, sItemXPadding / 2 + 32,
-                    sItemYPadding / 2 + 32
-                );
-
-                float bestIntersect = 0;
-                var bestIntersectIndex = -1;
-
-                //So we picked up an item and then dropped it. Lets see where we dropped it to.
-                //Check inventory first.
-                if (mBagWindow.RenderBounds().IntersectsWith(dragRect))
-                {
-                    for (var i = 0; i < Globals.Bag.Length; i++)
-                    {
-                        if (mBagWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
-                        {
-                            if (FloatRect.Intersect(mBagWindow.Items[i].RenderBounds(), dragRect).Width *
-                                FloatRect.Intersect(mBagWindow.Items[i].RenderBounds(), dragRect).Height >
-                                bestIntersect)
-                            {
-                                bestIntersect =
-                                    FloatRect.Intersect(mBagWindow.Items[i].RenderBounds(), dragRect).Width *
-                                    FloatRect.Intersect(mBagWindow.Items[i].RenderBounds(), dragRect).Height;
-
-                                bestIntersectIndex = i;
-                            }
-                        }
-                    }
-
-                    if (bestIntersectIndex > -1)
-                    {
-                        if (mMySlot != bestIntersectIndex)
-                        {
-                            //Try to swap....
-                            PacketSender.SendMoveBagItems(mMySlot, bestIntersectIndex);
-                        }
-                    }
-                }
-                else
-                {
-                    var invWindow = Interface.GameUi.GameMenu.GetInventoryWindow();
-
-                    if (invWindow.RenderBounds().IntersectsWith(dragRect))
-                    {
-                        for (var i = 0; i < Options.MaxInvItems; i++)
-                        {
-                            if (invWindow.Items[i].RenderBounds().IntersectsWith(dragRect))
-                            {
-                                if (FloatRect.Intersect(invWindow.Items[i].RenderBounds(), dragRect).Width *
-                                    FloatRect.Intersect(invWindow.Items[i].RenderBounds(), dragRect).Height >
-                                    bestIntersect)
-                                {
-                                    bestIntersect =
-                                        FloatRect.Intersect(invWindow.Items[i].RenderBounds(), dragRect).Width *
-                                        FloatRect.Intersect(invWindow.Items[i].RenderBounds(), dragRect).Height;
-
-                                    bestIntersectIndex = i;
-                                }
-                            }
-                        }
-
-                        if (bestIntersectIndex > -1)
-                        {
-                            Globals.Me.TryRetreiveBagItem(mMySlot, bestIntersectIndex);
-                        }
-                    }
-                }
-
-                mDragIcon.Dispose();
+                Icon_DoubleClicked(sender, arguments);
             }
         }
     }
 
+    private void Icon_DoubleClicked(Base sender, MouseButtonState arguments)
+    {
+        if (arguments.MouseButton is MouseButton.Left)
+        {
+            Globals.Me?.TryRetrieveItemFromBag(SlotIndex, -1);
+        }
+    }
+
+    #endregion
+
+    #region Drag and Drop
+
+    public override bool DragAndDrop_HandleDrop(Package package, int x, int y)
+    {
+        var targetNode = Interface.FindComponentUnderCursor();
+
+        // Find the first parent acceptable in that tree that can accept the package
+        while (targetNode != default)
+        {
+            switch (targetNode)
+            {
+                case BagItem bagItem:
+                    PacketSender.SendMoveBagItems(SlotIndex, bagItem.SlotIndex);
+                    return true;
+
+                case InventoryItem inventoryItem:
+                    Globals.Me?.TryRetrieveItemFromBag(SlotIndex, inventoryItem.SlotIndex);
+                    return true;
+
+                default:
+                    targetNode = targetNode.Parent;
+                    break;
+            }
+        }
+
+        // If we've reached the top of the tree, we can't drop here, so cancel drop
+        return false;
+    }
+
+    #endregion
+
+    public override void Update()
+    {
+        if (Globals.Me == default)
+        {
+            return;
+        }
+
+        if (Globals.BagSlots is not { Length: > 0 } bagSlots)
+        {
+            return;
+        }
+
+        if (bagSlots[SlotIndex] is not { Descriptor: not null } or { Quantity: <= 0 })
+        {
+            _quantityLabel.IsVisibleInParent = false;
+            Icon.Texture = default;
+            return;
+        }
+
+        var bagSlot = bagSlots[SlotIndex];
+        var descriptor = bagSlot.Descriptor;
+
+        _quantityLabel.IsVisibleInParent = !Icon.IsDragging && descriptor.IsStackable && bagSlot.Quantity > 1;
+        if (_quantityLabel.IsVisibleInParent)
+        {
+            _quantityLabel.Text = Strings.FormatQuantityAbbreviated(bagSlot.Quantity);
+        }
+
+        if (Icon.TextureFilename == descriptor.Icon)
+        {
+            return;
+        }
+
+        var itemTexture = GameContentManager.Current.GetTexture(Framework.Content.TextureType.Item, descriptor.Icon);
+        if (itemTexture != default)
+        {
+            Icon.Texture = itemTexture;
+            Icon.RenderColor = descriptor.Color;
+            Icon.IsVisibleInParent = true;
+        }
+        else
+        {
+            if (Icon.Texture != default)
+            {
+                Icon.Texture = default;
+                Icon.IsVisibleInParent = false;
+            }
+        }
+
+        _descriptionWindow?.Dispose();
+        _descriptionWindow = default;
+    }
 }

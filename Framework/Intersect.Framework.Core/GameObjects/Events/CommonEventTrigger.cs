@@ -1,4 +1,4 @@
-namespace Intersect.Enums;
+namespace Intersect.Framework.Core.GameObjects.Events;
 
 public enum CommonEventTrigger
 {
@@ -39,4 +39,8 @@ public enum CommonEventTrigger
     MapChanged,
 
     UserVariableChange,
+
+    LevelDown,
+
+    Logout,
 }

@@ -4,7 +4,6 @@ using Intersect.Config;
 using Intersect.Enums;
 using Intersect.Server.Database.PlayerData.Security;
 using Intersect.Server.Entities;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace Intersect.Server.Database.PlayerData.SeedData;
@@ -110,10 +109,10 @@ public partial class SeedUsers : SeedData<User>
                     Sprite = "1.png",
                     Face = null
                 };
-
+                
                 player.InitializeJobs();
 
-                for (var i = 0; i < Options.EquipmentSlots.Count; i++)
+                for (var i = 0; i < Options.Instance.Equipment.Slots.Count; i++)
                 {
                     player.Equipment[i] = -1;
                 }
@@ -143,7 +142,7 @@ public partial class SeedUsers : SeedData<User>
                     player.Stat[i].BaseStat = 0;
                 }
                 // **Inicialización de trabajos**
-               
+
                 user.Players?.Add(player);
                 player.ValidateLists();
             }

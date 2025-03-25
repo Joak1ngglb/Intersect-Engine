@@ -1,11 +1,13 @@
 using Intersect.Client.Entities.Events;
+using Intersect.Client.Framework.Gwen.Control;
+using Intersect.Client.Framework.Gwen.Control.EventArguments;
+using Intersect.Client.Framework.Gwen.Control.EventArguments.InputSubmissionEvent;
 using Intersect.Client.General;
-using Intersect.Client.Interface.Game;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.Maps;
 using Intersect.Enums;
 using Intersect.Framework;
-using Intersect.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.Models;
 using Intersect.Network.Packets.Client;
 
@@ -32,7 +34,7 @@ public static partial class PacketSender
         Network.SendPacket(new LogoutPacket(characterSelect));
     }
 
-    public static void SendNeedMap(params ObjectCacheKey<MapBase>[] cacheKeys)
+    public static void SendNeedMap(params ObjectCacheKey<MapDescriptor>[] cacheKeys)
     {
         var validMapCacheKeys = cacheKeys
             .Where(cacheKey => cacheKey != default && MapInstance.MapNotRequested(cacheKey.Id.Guid))
@@ -47,7 +49,7 @@ public static partial class PacketSender
             return;
         }
 
-        Network.SendPacket(new GetObjectData<MapBase>(validMapCacheKeys));
+        Network.SendPacket(new GetObjectData<MapDescriptor>(validMapCacheKeys));
         MapInstance.UpdateMapRequestTime(validMapCacheKeys.Select(cacheKey => cacheKey.Id.Guid).ToArray());
     }
 
@@ -63,8 +65,8 @@ public static partial class PacketSender
         }
 
         Network.SendPacket(
-            new GetObjectData<MapBase>(
-                validMapIds.Select(id => new ObjectCacheKey<MapBase>(new Id<MapBase>(id))).ToArray()
+            new GetObjectData<MapDescriptor>(
+                validMapIds.Select(id => new ObjectCacheKey<MapDescriptor>(new Id<MapDescriptor>(id))).ToArray()
             )
         );
         MapInstance.UpdateMapRequestTime(validMapIds);
@@ -105,7 +107,7 @@ public static partial class PacketSender
 
     public static void SendMove()
     {
-        Network.SendPacket(new MovePacket(Globals.Me.MapId, Globals.Me.X, Globals.Me.Y, Globals.Me.Dir));
+        Network.SendPacket(new MovePacket(Globals.Me.MapId, Globals.Me.X, Globals.Me.Y, Globals.Me.DirectionFacing));
     }
 
     public static void SendChatMsg(string msg, byte channel)
@@ -144,25 +146,41 @@ public static partial class PacketSender
         Network.SendPacket(new EventResponsePacket(ed.EventId, response));
     }
 
-    public static void SendEventInputVariable(object? sender, EventArgs e)
+    public static void SendEventInputVariable(Base sender, InputSubmissionEventArgs args)
     {
-        if (sender is InputBox inputBox && inputBox.UserData is Guid eventId)
+        if (sender is not InputBox { UserData: Guid eventId })
         {
-            Network.SendPacket(new EventInputVariablePacket(eventId, (int)inputBox.Value, inputBox.TextValue));
+            return;
         }
+
+        var booleanValue = args.Value is BooleanSubmissionValue booleanSubmissionValue
+            ? booleanSubmissionValue.Value
+            : default;
+
+        var numericalValue = args.Value is NumericalSubmissionValue numericalSubmissionValue
+            ? (int)numericalSubmissionValue.Value
+            : default;
+
+        var stringValue = args.Value is StringSubmissionValue stringSubmissionValue
+            ? stringSubmissionValue.Value
+            : default;
+
+        Network.SendPacket(new EventInputVariablePacket(eventId, booleanValue, numericalValue, stringValue));
     }
 
     public static void SendEventInputVariableCancel(object? sender, EventArgs e)
     {
-        if (sender is InputBox inputBox && inputBox.UserData is Guid eventId)
+        if (sender is not InputBox { UserData: Guid eventId } inputBox)
         {
-            Network.SendPacket(new EventInputVariablePacket(eventId, (int)inputBox.Value, inputBox.TextValue, true));
+            return;
         }
+
+        Network.SendPacket(new EventInputVariablePacket(eventId, default, default, default, true));
     }
 
-    public static void SendCreateAccount(string username, string password, string email)
+    public static void SendUserRegistration(string username, string password, string email)
     {
-        Network.SendPacket(new CreateAccountPacket(username.Trim(), password.Trim(), email.Trim()));
+        Network.SendPacket(new UserRegistrationRequestPacket(username, password, email));
     }
 
     public static void SendCreateCharacter(string name, Guid classId, int sprite)
@@ -202,7 +220,7 @@ public static partial class PacketSender
 
     public static void SendUseSpell(int slot, Guid targetId)
     {
-        Network.SendPacket(new UseSpellPacket(slot, targetId));
+        Network.SendPacket(new UseSpellPacket(slot, targetId, Globals.ShouldSoftRetargetOnSelfCast));
     }
 
     public static void SendUnequipItem(int slot)
@@ -440,9 +458,9 @@ public static partial class PacketSender
         Network.SendPacket(new RequestPasswordResetPacket(nameEmail));
     }
 
-    public static void SendResetPassword(string nameEmail, string code, string hashedPass)
+    public static void SendPasswordChangeRequest(string identifier, string token, string passwordHash)
     {
-        Network.SendPacket(new ResetPasswordPacket(nameEmail, code, hashedPass));
+        Network.SendPacket(new PasswordChangeRequestPacket(identifier, token, passwordHash));
     }
 
     public static void SendAdminAction(AdminAction action)
@@ -498,7 +516,7 @@ public static partial class PacketSender
     {
         Network.SendPacket(new UpdateGuildMemberPacket(id, null, Enums.GuildMemberUpdateAction.Transfer));
     }
-  
+
     public static void SendClosePicture(Guid eventId)
     {
         if (eventId != Guid.Empty)

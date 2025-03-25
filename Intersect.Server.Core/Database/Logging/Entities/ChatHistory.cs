@@ -1,6 +1,5 @@
 ﻿using Intersect.Enums;
 using Intersect.Server.Entities;
-using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Intersect.Server.Database.Logging.Entities;
@@ -18,11 +17,7 @@ public partial class ChatHistory
 
     public DateTime TimeStamp { get; set; }
 
-    [JsonIgnore]
     public ChatMessageType MessageType { get; set; }
-
-    [JsonProperty("MessageType")]
-    public string MessageTypeName => Enum.GetName(typeof(ChatMessageType), MessageType);
 
     public string MessageText { get; set; }
 

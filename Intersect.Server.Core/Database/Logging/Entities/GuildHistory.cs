@@ -1,5 +1,4 @@
 ﻿using Intersect.Server.Entities;
-using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Intersect.Server.Database.Logging.Entities;
@@ -19,11 +18,7 @@ public partial class GuildHistory
 
     public DateTime TimeStamp { get; set; }
 
-    [JsonIgnore]
     public GuildActivityType Type { get; set; }
-
-    [JsonProperty("ActivityType")]
-    public string ActivityTypeName => Enum.GetName(typeof(GuildActivityType), Type);
 
     public string Meta { get; set; }
 

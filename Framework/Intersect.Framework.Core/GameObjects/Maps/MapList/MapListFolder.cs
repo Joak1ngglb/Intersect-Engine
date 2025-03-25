@@ -1,10 +1,10 @@
 ﻿using Intersect.Collections;
 
-namespace Intersect.GameObjects.Maps.MapList;
+namespace Intersect.Framework.Core.GameObjects.Maps.MapList;
 
 public partial class MapListFolder : MapListItem
 {
-    public MapList Children = new MapList();
+    public MapList Children = new();
 
     public Guid FolderId = Guid.Empty;
 

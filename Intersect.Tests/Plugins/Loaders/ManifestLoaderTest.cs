@@ -1,19 +1,14 @@
-﻿using Intersect.Logging;
+﻿
 using Intersect.Plugins.Manifests;
-
 using Moq;
-
 using NUnit.Framework;
-
 using Semver;
-
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-
+using Intersect.Core;
 using Intersect.Plugins.Interfaces;
 using Intersect.Plugins.Manifests.Types;
+using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace Intersect.Plugins.Loaders
 {
@@ -27,7 +22,7 @@ namespace Intersect.Plugins.Loaders
 
         public Exception ExceptionGetManifestResourceStream { get; set; } = null;
 
-        public Type[] MockTypes { get; set; } = Array.Empty<Type>();
+        public Type[] MockTypes { get; set; } = [];
 
         public Dictionary<string, ManifestResourceInfo> MockManifestResourceInfo { get; set; } =
             new Dictionary<string, ManifestResourceInfo>();
@@ -111,6 +106,7 @@ namespace Intersect.Plugins.Loaders
         [SetUp]
         public void SetUp()
         {
+            ApplicationContext.Context.Value = new TestApplicationContext();
             ManifestLoader.ManifestLoaderDelegates.Clear();
         }
 
@@ -180,21 +176,27 @@ namespace Intersect.Plugins.Loaders
         [Test]
         public void FindManifest_LogsErrorsIfAnExceptionIsThrownByDelegate()
         {
-            var mockLogger = new Mock<Logger>();
-            Log.Default = mockLogger.Object;
             var mockException = new Exception("Delegate exception");
-            ManifestLoader.ManifestLoaderDelegates.Add((Assembly assembly) => throw mockException);
-            var mockAssembly = new MockAssembly
-            {
-            };
+            ManifestLoader.ManifestLoaderDelegates.Add(_ => throw mockException);
 
+            var mockAssembly = new MockAssembly();
             var manifest = ManifestLoader.FindManifest(mockAssembly);
-            Assert.Null(manifest);
-            mockLogger.Verify(
-                l => l.Error(
-                    It.Is<Exception>(e => e.Message == mockException.Message),
-                    "Exception thrown by manifest loader delegate."
-                )
+
+            Assert.Multiple(
+                () =>
+                {
+                    Assert.That(manifest, Is.Null);
+                    ApplicationContext.GetCurrentContext<TestApplicationContext>()
+                        .LoggerMock.Verify(
+                            logger => logger.Log(
+                                It.Is<LogLevel>(logLevel => logLevel == LogLevel.Error),
+                                It.IsAny<EventId>(),
+                                It.Is<It.IsAnyType>((@object, type) => @object.ToString() == "Exception thrown by manifest loader delegate"),
+                                It.Is<Exception>(e => e == mockException),
+                                It.Is<Func<It.IsAnyType, Exception?, string>>((_, _) => true)
+                            )
+                        );
+                }
             );
         }
 
@@ -239,7 +241,7 @@ namespace Intersect.Plugins.Loaders
             ManifestLoader.ManifestLoaderDelegates.Add(ManifestLoader.LoadVirtualManifestFrom);
             var mockAssembly = new MockAssembly
             {
-                MockTypes = new[] { typeof(VirtualTestManifest) }
+                MockTypes = [typeof(VirtualTestManifest)]
             };
 
             var manifest = ManifestLoader.FindManifest(mockAssembly);
@@ -258,7 +260,7 @@ namespace Intersect.Plugins.Loaders
             ManifestLoader.ManifestLoaderDelegates.Add(ManifestLoader.LoadVirtualManifestFrom);
             var mockAssembly = new MockAssembly
             {
-                MockTypes = new[] { typeof(VirtualTestManifest) }
+                MockTypes = [typeof(VirtualTestManifest)]
             };
 
             var manifest = ManifestLoader.FindManifest(mockAssembly);
@@ -277,7 +279,7 @@ namespace Intersect.Plugins.Loaders
             ManifestLoader.ManifestLoaderDelegates.Add(ManifestLoader.LoadVirtualManifestFrom);
             var mockAssembly = new MockAssembly
             {
-                MockTypes = new[] { typeof(VirtualTestManifest) },
+                MockTypes = [typeof(VirtualTestManifest)],
                 MockManifestResourceInfo = new Dictionary<string, ManifestResourceInfo>
                 {
                     {
@@ -314,7 +316,7 @@ namespace Intersect.Plugins.Loaders
             ManifestLoader.ManifestLoaderDelegates.Add(ManifestLoader.LoadJsonManifestFrom);
             var mockAssembly = new MockAssembly
             {
-                MockTypes = new[] { typeof(VirtualTestManifest) },
+                MockTypes = [typeof(VirtualTestManifest)],
                 MockManifestResourceInfo = new Dictionary<string, ManifestResourceInfo>
                 {
                     {

@@ -7,6 +7,7 @@ using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.DescriptionWindows;
 using Intersect.Client.Items;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects;
 
 namespace Intersect.Client.Interface.Game.Inventory;
@@ -17,7 +18,7 @@ public partial class MapItemIcon
 
     public ImagePanel Container;
 
-    public MapItemInstance MyItem;
+    public MapItemInstance? MyItem;
 
     public Guid MapId;
 
@@ -42,9 +43,9 @@ public partial class MapItemIcon
         Pnl.Clicked += pnl_Clicked;
     }
 
-    void pnl_Clicked(Base sender, ClickedEventArgs arguments)
+    void pnl_Clicked(Base sender, MouseButtonState arguments)
     {
-        if (MyItem == null || TileIndex < 0 || TileIndex >= Options.MapWidth * Options.MapHeight)
+        if (MyItem == null || TileIndex < 0 || TileIndex >= Options.Instance.Map.MapWidth * Options.Instance.Map.MapHeight)
         {
             return;
         }
@@ -73,7 +74,7 @@ public partial class MapItemIcon
             return;
         }
 
-        if (Globals.InputManager.MouseButtonDown(MouseButtons.Left))
+        if (Globals.InputManager.IsMouseButtonDown(MouseButton.Left))
         {
             return;
         }
@@ -84,7 +85,7 @@ public partial class MapItemIcon
             mDescWindow = null;
         }
         mDescWindow = new ItemDescriptionWindow(
-            ItemBase.Get(MyItem.ItemId), MyItem.Quantity, mMapItemWindow.X,
+            ItemDescriptor.Get(MyItem.ItemId), MyItem.Quantity, mMapItemWindow.X,
             mMapItemWindow.Y, MyItem.ItemProperties
        );
     }
@@ -93,8 +94,8 @@ public partial class MapItemIcon
     {
         var rect = new FloatRect()
         {
-            X = Pnl.LocalPosToCanvas(new Point(0, 0)).X,
-            Y = Pnl.LocalPosToCanvas(new Point(0, 0)).Y,
+            X = Pnl.ToCanvas(new Point(0, 0)).X,
+            Y = Pnl.ToCanvas(new Point(0, 0)).Y,
             Width = Pnl.Width,
             Height = Pnl.Height
         };
@@ -109,7 +110,7 @@ public partial class MapItemIcon
             return;
         }
 
-        var item = ItemBase.Get(MyItem.ItemId);
+        var item = ItemDescriptor.Get(MyItem.ItemId);
         if (item != null)
         {
             if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))

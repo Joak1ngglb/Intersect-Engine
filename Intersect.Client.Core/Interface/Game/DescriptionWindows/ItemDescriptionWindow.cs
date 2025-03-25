@@ -2,16 +2,18 @@ using Intersect.Enums;
 using Intersect.GameObjects;
 using Intersect.Client.General;
 using Intersect.Client.Localization;
+using Intersect.Core;
+using Intersect.Framework.Core.GameObjects.Items;
 using Intersect.GameObjects.Ranges;
-using Intersect.Logging;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Interface.Game.DescriptionWindows;
 
 public partial class ItemDescriptionWindow : DescriptionWindowBase
 {
-    protected ItemBase mItem;
+    protected ItemDescriptor mItem;
 
     protected int mAmount;
 
@@ -24,7 +26,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
     protected SpellDescriptionWindow? mSpellDescWindow;
 
     public ItemDescriptionWindow(
-        ItemBase item,
+        ItemDescriptor item,
         int amount,
         int x,
         int y,
@@ -127,9 +129,9 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         Strings.ItemDescription.ItemTypes.TryGetValue((int)mItem.ItemType, out var typeDesc);
         if (mItem.ItemType == ItemType.Equipment)
         {
-            var equipSlot = Options.Equipment.Slots[mItem.EquipmentSlot];
+            var equipSlot = Options.Instance.Equipment.Slots[mItem.EquipmentSlot];
             var extraInfo = equipSlot;
-            if (mItem.EquipmentSlot == Options.WeaponIndex && mItem.TwoHanded)
+            if (mItem.EquipmentSlot == Options.Instance.Equipment.WeaponSlot && mItem.TwoHanded)
             {
                 extraInfo = $"{Strings.ItemDescription.TwoHand} {equipSlot}";
             }
@@ -151,7 +153,11 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(
+                exception,
+                "Error setting rarity description for rarity {Rarity}",
+                mItem.Rarity
+            );
             throw;
         }
 
@@ -352,7 +358,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         var rows = AddRowContainer();
 
         // Is this a weapon?
-        if (mItem.EquipmentSlot == Options.WeaponIndex)
+        if (mItem.EquipmentSlot == Options.Instance.Equipment.WeaponSlot)
         {
             // Base Damage:
             var damageDiff = GetBaseDamageDifference();
@@ -387,12 +393,12 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
                 // Calculate base attack speed manually.
                 var speed = Globals.Me.Stat[(int)Stat.Speed];
 
-                // Adjust for currently equipped weapon stats.
-                var weaponSlot = Globals.Me.MyEquipment[Options.WeaponIndex];
+                // Remove currently equipped weapon stats.. We want to create a fair display!
+                var weaponSlot = Globals.Me.MyEquipment[Options.Instance.Equipment.WeaponSlot];
                 if (weaponSlot != -1)
                 {
                     var randomStats = Globals.Me.Inventory[weaponSlot].ItemProperties.StatModifiers;
-                    var weapon = ItemBase.Get(Globals.Me.Inventory[weaponSlot].ItemId);
+                    var weapon = ItemDescriptor.Get(Globals.Me.Inventory[weaponSlot].ItemId);
                     if (weapon != null && randomStats != null)
                     {
                         speed = (int)Math.Round(speed / ((100 + weapon.PercentageStatsGiven[(int)Stat.Speed]) / 100f));
@@ -426,8 +432,8 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
             }
         }
 
-        // Blocking options
-        if (mItem.EquipmentSlot == Options.ShieldIndex)
+        //Blocking options
+        if (mItem.EquipmentSlot == Options.Instance.Equipment.ShieldSlot)
         {
             if (mItem.BlockChance > 0)
             {

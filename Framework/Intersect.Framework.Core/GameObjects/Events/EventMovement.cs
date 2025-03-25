@@ -1,6 +1,4 @@
-﻿using Intersect.Enums;
-
-namespace Intersect.GameObjects.Events;
+﻿namespace Intersect.Framework.Core.GameObjects.Events;
 
 public partial class EventMovement
 {
@@ -10,5 +8,5 @@ public partial class EventMovement
 
     public EventMovementSpeed Speed { get; set; } = EventMovementSpeed.Normal;
 
-    public EventMoveRoute Route { get; set; } = new EventMoveRoute();
+    public EventMoveRoute Route { get; set; } = new();
 }

@@ -1,10 +1,11 @@
 using System.Text;
 using Intersect.Config;
 using Intersect.Framework.Core.Config;
+using Intersect.Core;
 using Intersect.Localization;
-using Intersect.Logging;
 using Intersect.Server.Core;
 using Intersect.Server.Networking.Helpers;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Intersect.Server.Localization;
@@ -67,6 +68,9 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString LoadFail = @"Failed to load account. Please try logging in again.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString PlayerSavingTryAgainLater = @"'{00}' is currently being saved, please try again later.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString MaxCharacters = @"You have already created the maximum number of characters. Delete one before creating a new one.";
@@ -142,6 +146,15 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString InvalidSlotToSwap = @"Invalid slots to swap!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NotEnoughInInventory = @"There are not {00} of {01} in your inventory to deposit.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NotEnoughBankSpaceForItem = @"There is not enough space in the bank to store {00} of {01}!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString NotEnoughBankSpaceForOneOfItem = @"There is not enough space in the bank to store a {00}!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString WithdrawInvalid = @"Invalid item selected to withdraw!";
@@ -270,6 +283,9 @@ public static partial class Strings
         public readonly LocalizedString ImmuneToEffect = @"IMMUNE!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString LevelDown = @"LEVEL DOWN!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString LevelUp = @"LEVEL UP!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -380,6 +396,9 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString ApiRoles = @"API roles for {00}:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString ApiRolesNotGranted = @"No API roles have been granted.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString CharacterCount = @" - {00} Characters.";
@@ -699,6 +718,9 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString NoticeError = @"Error Notice";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString UnknownErrorPleaseTryAgain = @"An unknown error occurred, please try again.";
     }
 
     public sealed partial class GuildsNamespace : LocaleNamespace
@@ -711,6 +733,10 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString DisbandGuild = @"{00} has been disbanded!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString ErrorWhileAcceptingInvite =
+            @"An error occurred while saving your guild membership, please try again.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString GuildChat = @"[{00}] {01}: {02}";
@@ -731,7 +757,13 @@ public static partial class Strings
         public readonly LocalizedString InviteDeclined = @"You have declined the request to join {00}.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString InviteDeclinedMissingGuild = @"You have declined the request to join the guild.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString InviteDeclinedResponse = @"{00} has declined your request for them to join {01}.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString InviteDeclinedResponseMissingGuild = @"{00} has declined your request for them to join the guild.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString InviteNotOnline = @"The player you're trying to invite is either not online or does not exist.";
@@ -989,7 +1021,7 @@ public static partial class Strings
     public sealed partial class NotificationsNamespace : LocaleNamespace
     {
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString Copyright = @"Copyright (C) 2020-2024 Ascension Game Dev, All Rights Reserved";
+        public readonly LocalizedString Copyright = @"Copyright (c) 2020-2025 Ascension Game Dev, All Rights Reserved";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString Product = @"Intersect Game Engine";
@@ -1109,6 +1141,9 @@ public static partial class Strings
         public readonly LocalizedString Left = @"{00} has left {01}.";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString LevelLost = @"You have lost a level! You are now level {00}!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString LevelUp = @"You have leveled up! You are now level {00}!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -1139,7 +1174,10 @@ public static partial class Strings
         public readonly LocalizedString ServerKilled = @"{00} has been killed by the server!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString SpellTaughtLevelUp = @"You've learned the {00} spell!";
+        public readonly LocalizedString LearnedSpell = @"You've learned the {00} spell!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString ForgotSpell = @"You've forgotten the {00} spell!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString StatPoints = @"You have {00} stat points available to be spent!";
@@ -1388,7 +1426,7 @@ public static partial class Strings
                     );
                 }
 
-                Log.Error(exception);
+                ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to deserialize strings");
 
                 return false;
             }
@@ -1410,7 +1448,7 @@ public static partial class Strings
         }
         catch (Exception exception)
         {
-            Log.Error(exception);
+            ApplicationContext.Context.Value?.Logger.LogError(exception, "Failed to save strings");
 
             return false;
         }

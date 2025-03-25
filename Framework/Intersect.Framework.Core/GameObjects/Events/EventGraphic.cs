@@ -1,7 +1,6 @@
-﻿using Intersect.Enums;
-using MessagePack;
+﻿using MessagePack;
 
-namespace Intersect.GameObjects.Events;
+namespace Intersect.Framework.Core.GameObjects.Events;
 
 [MessagePackObject]
 public partial class EventGraphic
@@ -27,7 +26,7 @@ public partial class EventGraphic
     public EventGraphic()
     {
         Type = EventGraphicType.None;
-        Filename = "";
+        Filename = string.Empty;
         X = -1;
         Y = -1;
         Width = -1;

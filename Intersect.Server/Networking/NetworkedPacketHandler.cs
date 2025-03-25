@@ -1,10 +1,19 @@
+using Intersect.Core;
 using Intersect.Enums;
+using Intersect.Framework.Core;
+using Intersect.Framework.Core.GameObjects.Animations;
+using Intersect.Framework.Core.GameObjects.Crafting;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Mapping.Tilesets;
+using Intersect.Framework.Core.GameObjects.Maps;
+using Intersect.Framework.Core.GameObjects.Maps.MapList;
+using Intersect.Framework.Core.GameObjects.NPCs;
+using Intersect.Framework.Core.GameObjects.PlayerClass;
+using Intersect.Framework.Core.GameObjects.Resources;
+using Intersect.Framework.Core.GameObjects.Variables;
+using Intersect.Framework.Core.Security;
 using Intersect.GameObjects;
-using Intersect.GameObjects.Crafting;
-using Intersect.GameObjects.Events;
-using Intersect.GameObjects.Maps;
-using Intersect.GameObjects.Maps.MapList;
-using Intersect.Logging;
 using Intersect.Models;
 using Intersect.Network.Packets.Client;
 using Intersect.Server.Admin.Actions;
@@ -39,10 +48,9 @@ internal sealed partial class NetworkedPacketHandler
     //OpenAdminWindowPacket
     public void HandlePacket(Client client, OpenAdminWindowPacket packet)
     {
-        if (client.Power.IsModerator)
+        if (client.PermissionSet.IsGranted(Permission.WindowAdmin))
         {
             PacketSender.SendMapList(client);
-            PacketSender.SendOpenAdminWindow(client);
         }
     }
 
@@ -57,27 +65,38 @@ internal sealed partial class NetworkedPacketHandler
             return;
         }
 
-        if (Options.Instance.SmtpValid)
-        {
-            //Find account with that name or email
-            var user = User.FindFromNameOrEmail(packet.NameOrEmail.Trim());
-            if (user != null)
-            {
-                var email = new PasswordResetEmail(user);
-                if (!email.Send())
-                {
-                    PacketSender.SendError(client, Strings.Account.EmailFail, Strings.General.NoticeError);
-                }
-            }
-            else
-            {
-                client.FailedAttempt();
-            }
-        }
-        else
+        if (!Options.Instance.SmtpValid)
         {
             client.FailedAttempt();
+            return;
         }
+
+        //Find account with that name or email
+        var user = User.FindFromNameOrEmail(packet.NameOrEmail.Trim());
+        if (user == null)
+        {
+            client.FailedAttempt();
+            return;
+        }
+
+        if (!PasswordResetEmail.TryCreate(user, out var passwordResetEmail))
+        {
+            ApplicationContext.CurrentContext.Logger.LogError(
+                "Failed to create password reset email for {UserName} ({UserId})",
+                user.Name,
+                user.Id
+            );
+            PacketSender.SendError(client, Strings.Account.EmailFail, Strings.General.NoticeError);
+            return;
+        }
+
+        if (!passwordResetEmail.TrySend())
+        {
+            PacketSender.SendError(client, Strings.Account.EmailFail, Strings.General.NoticeError);
+            return;
+        }
+
+        ApplicationContext.CurrentContext.Logger.LogInformation("Send password reset email to {UserId}", user.Id);
     }
 
         #region "Editor Packets"
@@ -136,15 +155,15 @@ internal sealed partial class NetworkedPacketHandler
             if (client.IsEditor)
             {
                 //Is Editor
-                client.PacketFloodingThreshholds = Options.Instance.SecurityOpts.PacketOpts.EditorThreshholds;
+                client.PacketFloodingThresholds = Options.Instance.Security.Packets.EditorThresholds;
             }
 
 
             client.SetUser(user);
 
-            lock (Globals.ClientLock)
+            lock (Client.GlobalLock)
             {
-                var clients = Globals.Clients.ToArray();
+                var clients = Client.Instances.ToArray();
                 foreach (var cli in clients)
                 {
                     if (cli.Name != null &&
@@ -188,7 +207,7 @@ internal sealed partial class NetworkedPacketHandler
             {
                 if (!map.LocalEvents.ContainsKey(id))
                 {
-                    var evt = EventBase.Get(id);
+                    var evt = EventDescriptor.Get(id);
                     if (evt != null)
                     {
                         DbInterface.DeleteGameObject(evt);
@@ -205,10 +224,10 @@ internal sealed partial class NetworkedPacketHandler
 
             foreach (var evt in map.LocalEvents)
             {
-                var dbObj = EventBase.Get(evt.Key);
+                var dbObj = EventDescriptor.Get(evt.Key);
                 if (dbObj == null)
                 {
-                    dbObj = (EventBase)DbInterface.AddGameObject(GameObjectType.Event, evt.Key);
+                    dbObj = (EventDescriptor)DbInterface.AddGameObject(GameObjectType.Event, evt.Key);
                 }
 
                 dbObj.Load(evt.Value.JsonData);
@@ -275,7 +294,7 @@ internal sealed partial class NetworkedPacketHandler
                     destType = -1;
                     if (destType == -1)
                     {
-                        MapList.List.AddMap(newMapId, tmpMap.TimeCreated, MapBase.Lookup);
+                        MapList.List.AddMap(newMapId, tmpMap.TimeCreated, MapDescriptor.Lookup);
                     }
 
                     DbInterface.SaveMapList();
@@ -435,11 +454,11 @@ internal sealed partial class NetworkedPacketHandler
                         var folderDir = MapList.List.FindMapParent(relativeMap, null);
                         if (folderDir != null)
                         {
-                            folderDir.Children.AddMap(newMapId, MapController.Get(newMapId).TimeCreated, MapBase.Lookup);
+                            folderDir.Children.AddMap(newMapId, MapController.Get(newMapId).TimeCreated, MapDescriptor.Lookup);
                         }
                         else
                         {
-                            MapList.List.AddMap(newMapId, MapController.Get(newMapId).TimeCreated, MapBase.Lookup);
+                            MapList.List.AddMap(newMapId, MapController.Get(newMapId).TimeCreated, MapDescriptor.Lookup);
                         }
 
                         DbInterface.SaveMapList();
@@ -493,7 +512,7 @@ internal sealed partial class NetworkedPacketHandler
                         parent = MapList.List.FindFolder(packet.TargetId);
                         if (parent == default)
                         {
-                            Log.Warn($"Tried to rename {nameof(MapListFolder)} {packet.TargetId} but it was not found.");
+                            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to rename {nameof(MapListFolder)} {packet.TargetId} but it was not found.");
                             return;
                         }
 
@@ -506,13 +525,13 @@ internal sealed partial class NetworkedPacketHandler
                         var mapListMap = MapList.List.FindMap(packet.TargetId);
                         if (mapListMap == default)
                         {
-                            Log.Warn($"Tried to rename {nameof(MapListMap)} {packet.TargetId} but it was not found in the map list.");
+                            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to rename {nameof(MapListMap)} {packet.TargetId} but it was not found in the map list.");
                             return;
                         }
 
                         if (!MapController.TryGet(packet.TargetId, out var mapToRename))
                         {
-                            Log.Warn($"Tried to rename {nameof(MapListMap)} {packet.TargetId} but the map itself could not be found.");
+                            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to rename {nameof(MapListMap)} {packet.TargetId} but the map itself could not be found.");
                             return;
                         }
 
@@ -534,7 +553,7 @@ internal sealed partial class NetworkedPacketHandler
                     {
                         if (MapController.Lookup == default)
                         {
-                            Log.Warn($"Tried to delete {nameof(MapListMap)} {packet.TargetId} but the {nameof(MapController)}.{nameof(MapController.Lookup)} was null?");
+                            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to delete {nameof(MapListMap)} {packet.TargetId} but the {nameof(MapController)}.{nameof(MapController.Lookup)} was null?");
                             return;
                         }
 
@@ -548,26 +567,26 @@ internal sealed partial class NetworkedPacketHandler
                         var logicLock = logicService?.LogicLock;
                         if (logicLock == default)
                         {
-                            Log.Error($"{nameof(ServerContext)}.{nameof(ServerContext.Instance)}.{nameof(ServerContext.LogicService)}.{nameof(LogicService.LogicLock)} was unexpectedly null when try to delete {nameof(MapListMap)} {packet.TargetId}.");
+                            ApplicationContext.Context.Value?.Logger.LogError($"{nameof(ServerContext)}.{nameof(ServerContext.Instance)}.{nameof(ServerContext.LogicService)}.{nameof(LogicService.LogicLock)} was unexpectedly null when try to delete {nameof(MapListMap)} {packet.TargetId}.");
                             return;
                         }
 
                         var logicPool = logicService.LogicPool;
                         if (logicPool == default)
                         {
-                            Log.Error($"{nameof(ServerContext)}.{nameof(ServerContext.Instance)}.{nameof(ServerContext.LogicService)}.{nameof(LogicService.LogicPool)} was unexpectedly null when try to delete {nameof(MapListMap)} {packet.TargetId}.");
+                            ApplicationContext.Context.Value?.Logger.LogError($"{nameof(ServerContext)}.{nameof(ServerContext.Instance)}.{nameof(ServerContext.LogicService)}.{nameof(LogicService.LogicPool)} was unexpectedly null when try to delete {nameof(MapListMap)} {packet.TargetId}.");
                             return;
                         }
 
                         if (!MapController.TryGet(packet.TargetId, out var mapToDelete))
                         {
-                            Log.Warn($"Tried to delete {nameof(MapListMap)} {packet.TargetId} but the map itself could not be found.");
+                            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to delete {nameof(MapListMap)} {packet.TargetId} but the map itself could not be found.");
                             return;
                         }
 
                         if (!(mapToDelete is MapController mapController))
                         {
-                            Log.Warn($"Tried to delete {nameof(MapListMap)} {packet.TargetId} but {nameof(MapController)}.{nameof(MapController.TryGet)} returned something other than a {nameof(MapController)}.");
+                            ApplicationContext.Context.Value?.Logger.LogWarning($"Tried to delete {nameof(MapListMap)} {packet.TargetId} but {nameof(MapController)}.{nameof(MapController.TryGet)} returned something other than a {nameof(MapController)}.");
                             return;
                         }
 
@@ -708,9 +727,9 @@ internal sealed partial class NetworkedPacketHandler
                                         PacketSender.SendError(
                                             client,
                                             Strings.Mapping.LinkFailureError.ToString(
-                                                MapBase.GetName(linkMapId), MapBase.GetName(adjacentMapId),
-                                                MapBase.GetName(adjacentGrid.MapIdGrid[x, y]),
-                                                MapBase.GetName(linkGrid.MapIdGrid[x + xOffset, y + yOffset])
+                                                MapDescriptor.GetName(linkMapId), MapDescriptor.GetName(adjacentMapId),
+                                                MapDescriptor.GetName(adjacentGrid.MapIdGrid[x, y]),
+                                                MapDescriptor.GetName(linkGrid.MapIdGrid[x + xOffset, y + yOffset])
                                             ), Strings.Mapping.LinkFailure
                                         );
 
@@ -813,12 +832,12 @@ internal sealed partial class NetworkedPacketHandler
             switch(type)
             {
                 case GameObjectType.Event:
-                    ((EventBase)obj).CommonEvent = true;
+                    ((EventDescriptor)obj).CommonEvent = true;
                     changed = true;
 
                     break;
                 case GameObjectType.Item:
-                    ((ItemBase)obj).DropChanceOnDeath = Options.ItemDropChance;
+                    ((ItemDescriptor)obj).DropChanceOnDeath = Options.Instance.Player.ItemDropChance;
                     changed = true;
 
                     break;
@@ -863,63 +882,63 @@ internal sealed partial class NetworkedPacketHandler
             switch (type)
             {
                 case GameObjectType.Animation:
-                    obj = AnimationBase.Get(id);
+                    obj = AnimationDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Class:
-                    if (ClassBase.Lookup.Count == 1)
+                    if (ClassDescriptor.Lookup.Count == 1)
                     {
                         PacketSender.SendError(client, Strings.Classes.LastClassError, Strings.Classes.LastClass);
 
                         return;
                     }
 
-                    obj = DatabaseObject<ClassBase>.Lookup.Get(id);
+                    obj = DatabaseObject<ClassDescriptor>.Lookup.Get(id);
 
                     break;
 
                 case GameObjectType.Item:
-                    obj = ItemBase.Get(id);
+                    obj = ItemDescriptor.Get(id);
 
                     break;
                 case GameObjectType.Npc:
-                    obj = NpcBase.Get(id);
+                    obj = NPCDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Projectile:
-                    obj = ProjectileBase.Get(id);
+                    obj = ProjectileDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Quest:
-                    obj = QuestBase.Get(id);
+                    obj = QuestDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Resource:
-                    obj = ResourceBase.Get(id);
+                    obj = ResourceDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Shop:
-                    obj = ShopBase.Get(id);
+                    obj = ShopDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Spell:
-                    obj = SpellBase.Get(id);
+                    obj = SpellDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.CraftTables:
-                    obj = DatabaseObject<CraftingTableBase>.Lookup.Get(id);
+                    obj = DatabaseObject<CraftingTableDescriptor>.Lookup.Get(id);
 
                     break;
 
                 case GameObjectType.Crafts:
-                    obj = DatabaseObject<CraftBase>.Lookup.Get(id);
+                    obj = DatabaseObject<CraftingRecipeDescriptor>.Lookup.Get(id);
 
                     break;
 
@@ -927,17 +946,17 @@ internal sealed partial class NetworkedPacketHandler
                     break;
 
                 case GameObjectType.Event:
-                    obj = EventBase.Get(id);
+                    obj = EventDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.PlayerVariable:
-                    obj = PlayerVariableBase.Get(id);
+                    obj = PlayerVariableDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.ServerVariable:
-                    obj = ServerVariableBase.Get(id);
+                    obj = ServerVariableDescriptor.Get(id);
 
                     break;
 
@@ -948,12 +967,12 @@ internal sealed partial class NetworkedPacketHandler
                     break;
 
                 case GameObjectType.GuildVariable:
-                    obj = GuildVariableBase.Get(id);
+                    obj = GuildVariableDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.UserVariable:
-                    obj = UserVariableBase.Get(id);
+                    obj = UserVariableDescriptor.Get(id);
 
                     break;
 
@@ -963,18 +982,21 @@ internal sealed partial class NetworkedPacketHandler
 
             if (obj != null)
             {
-                //if Item or Resource, kill all global entities of that kind
-                if (type == GameObjectType.Item)
+                switch (obj)
                 {
-                    Globals.KillItemsOf((ItemBase) obj);
-                }
-                else if (type == GameObjectType.Resource)
-                {
-                    Globals.KillResourcesOf((ResourceBase) obj);
-                }
-                else if (type == GameObjectType.Npc)
-                {
-                    Globals.KillNpcsOf((NpcBase) obj);
+                    //if Item or Resource, kill all global entities of that kind
+                    case ItemDescriptor itemDescriptor:
+                        MapController.DespawnInstancesOf(itemDescriptor);
+                        break;
+                    case NPCDescriptor npcDescriptor:
+                        MapController.DespawnInstancesOf(npcDescriptor);
+                        break;
+                    case ProjectileDescriptor projectileDescriptor:
+                        MapController.DespawnInstancesOf(projectileDescriptor);
+                        break;
+                    case ResourceDescriptor resourceDescriptor:
+                        MapController.DespawnInstancesOf(resourceDescriptor);
+                        break;
                 }
 
                 DbInterface.DeleteGameObject(obj);
@@ -999,56 +1021,56 @@ internal sealed partial class NetworkedPacketHandler
             switch (type)
             {
                 case GameObjectType.Animation:
-                    obj = AnimationBase.Get(id);
+                    obj = AnimationDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Class:
-                    obj = DatabaseObject<ClassBase>.Lookup.Get(id);
+                    obj = DatabaseObject<ClassDescriptor>.Lookup.Get(id);
 
                     break;
 
                 case GameObjectType.Item:
-                    obj = ItemBase.Get(id);
+                    obj = ItemDescriptor.Get(id);
 
                     break;
                 case GameObjectType.Npc:
-                    obj = NpcBase.Get(id);
+                    obj = NPCDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Projectile:
-                    obj = ProjectileBase.Get(id);
+                    obj = ProjectileDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Quest:
-                    obj = QuestBase.Get(id);
+                    obj = QuestDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Resource:
-                    obj = ResourceBase.Get(id);
+                    obj = ResourceDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Shop:
-                    obj = ShopBase.Get(id);
+                    obj = ShopDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.Spell:
-                    obj = SpellBase.Get(id);
+                    obj = SpellDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.CraftTables:
-                    obj = DatabaseObject<CraftingTableBase>.Lookup.Get(id);
+                    obj = DatabaseObject<CraftingTableDescriptor>.Lookup.Get(id);
 
                     break;
 
                 case GameObjectType.Crafts:
-                    obj = DatabaseObject<CraftBase>.Lookup.Get(id);
+                    obj = DatabaseObject<CraftingRecipeDescriptor>.Lookup.Get(id);
 
                     break;
 
@@ -1056,17 +1078,17 @@ internal sealed partial class NetworkedPacketHandler
                     break;
 
                 case GameObjectType.Event:
-                    obj = EventBase.Get(id);
+                    obj = EventDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.PlayerVariable:
-                    obj = PlayerVariableBase.Get(id);
+                    obj = PlayerVariableDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.ServerVariable:
-                    obj = ServerVariableBase.Get(id);
+                    obj = ServerVariableDescriptor.Get(id);
 
                     break;
 
@@ -1077,12 +1099,12 @@ internal sealed partial class NetworkedPacketHandler
                     break;
 
                 case GameObjectType.GuildVariable:
-                    obj = GuildVariableBase.Get(id);
+                    obj = GuildVariableDescriptor.Get(id);
 
                     break;
 
                 case GameObjectType.UserVariable:
-                    obj = UserVariableBase.Get(id);
+                    obj = UserVariableDescriptor.Get(id);
 
                     break;
 
@@ -1095,28 +1117,32 @@ internal sealed partial class NetworkedPacketHandler
                 lock (ServerContext.Instance.LogicService.LogicLock)
                 {
                     ServerContext.Instance.LogicService.LogicPool.WaitForIdle();
+
                     //if Item or Resource, kill all global entities of that kind
-                    if (type == GameObjectType.Item)
+                    switch (obj)
                     {
-                        Globals.KillItemsOf((ItemBase) obj);
-                    }
-                    else if (type == GameObjectType.Npc)
-                    {
-                        Globals.KillNpcsOf((NpcBase) obj);
-                    }
-                    else if (type == GameObjectType.Projectile)
-                    {
-                        Globals.KillProjectilesOf((ProjectileBase) obj);
+                        case ItemDescriptor itemDescriptor:
+                            MapController.DespawnInstancesOf(itemDescriptor);
+                            break;
+                        case NPCDescriptor npcDescriptor:
+                            MapController.DespawnInstancesOf(npcDescriptor);
+                            break;
+                        case ProjectileDescriptor projectileDescriptor:
+                            MapController.DespawnInstancesOf(projectileDescriptor);
+                            break;
+                        case ResourceDescriptor resourceDescriptor:
+                            MapController.DespawnInstancesOf(resourceDescriptor);
+                            break;
                     }
 
                     obj.Load(packet.Data);
 
                     if (type == GameObjectType.Quest)
                     {
-                        var qst = (QuestBase)obj;
+                        var qst = (QuestDescriptor)obj;
                         foreach (var evt in qst.RemoveEvents)
                         {
-                            var evtb = EventBase.Get(evt);
+                            var evtb = EventDescriptor.Get(evt);
                             if (evtb != null)
                             {
                                 DbInterface.DeleteGameObject(evtb);
@@ -1125,7 +1151,7 @@ internal sealed partial class NetworkedPacketHandler
 
                         foreach (var evt in qst.AddEvents)
                         {
-                            var evtb = (EventBase)DbInterface.AddGameObject(GameObjectType.Event, evt.Key);
+                            var evtb = (EventDescriptor)DbInterface.AddGameObject(GameObjectType.Event, evt.Key);
                             evtb.Load(evt.Value.JsonData);
 
                             foreach (var tsk in qst.Tasks)
@@ -1169,7 +1195,7 @@ internal sealed partial class NetworkedPacketHandler
 
                 if (type == GameObjectType.Item)
                 {
-                    foreach (var player in Globals.OnlineList)
+                    foreach (var player in Player.OnlinePlayers)
                     {
                         player.CacheEquipmentTriggers();
                     }
@@ -1185,7 +1211,7 @@ internal sealed partial class NetworkedPacketHandler
                 return;
             }
 
-            TimeBase.GetTimeBase().LoadFromJson(packet.TimeJson);
+            DaylightCycleDescriptor.Instance.LoadFromJson(packet.TimeJson);
             DbInterface.SaveTime();
             Time.Init();
             PacketSender.SendTimeBaseToAllEditors();
@@ -1203,7 +1229,7 @@ internal sealed partial class NetworkedPacketHandler
             {
                 var value = tileset.Trim().ToLower();
                 var found = false;
-                foreach (var tset in TilesetBase.Lookup)
+                foreach (var tset in TilesetDescriptor.Lookup)
                 {
                     if (tset.Value.Name.Trim().ToLower() == value)
                     {
@@ -1214,7 +1240,7 @@ internal sealed partial class NetworkedPacketHandler
                 if (!found)
                 {
                     var obj = DbInterface.AddGameObject(GameObjectType.Tileset);
-                    ((TilesetBase)obj).Name = value;
+                    ((TilesetDescriptor)obj).Name = value;
                     DbInterface.SaveGameObject(obj);
                     PacketSender.CacheGameDataPacket();
                     PacketSender.SendGameObjectToAll(obj);

@@ -1,5 +1,5 @@
 ﻿using Intersect.Editor.Localization;
-using Intersect.GameObjects.Events.Commands;
+using Intersect.Framework.Core.GameObjects.Events.Commands;
 
 namespace Intersect.Editor.Forms.Editors.Events.Event_Commands;
 
@@ -16,12 +16,12 @@ public partial class EventCommandChangeLevel : UserControl
         InitializeComponent();
         mMyCommand = refCommand;
         mEventEditor = editor;
-        if (mMyCommand.Level <= 0 || mMyCommand.Level > Options.MaxLevel)
+        if (mMyCommand.Level <= 0 || mMyCommand.Level > Options.Instance.Player.MaxLevel)
         {
             mMyCommand.Level = 1;
         }
 
-        nudLevel.Maximum = Options.MaxLevel;
+        nudLevel.Maximum = Options.Instance.Player.MaxLevel;
         nudLevel.Value = mMyCommand.Level;
         InitLocalization();
     }

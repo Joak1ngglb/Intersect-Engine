@@ -217,3 +217,7 @@ packages/
 
 /assets/**
 !/assets/*.*
+
+.local/
+
+Custom*.props

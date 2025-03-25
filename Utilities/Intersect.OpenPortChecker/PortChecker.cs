@@ -51,7 +51,6 @@ public sealed class PortChecker : INetEventListener, INetLogger
             UnsyncedDeliveryEvent = true,
             UnsyncedReceiveEvent = true,
             UseNativeSockets = true,
-            UseSafeMtu = true,
         };
         _manager.Start();
 
@@ -60,7 +59,7 @@ public sealed class PortChecker : INetEventListener, INetLogger
 
     public void OnPeerConnected(NetPeer peer)
     {
-        _logger.LogDebug("Peer connected {EndPoint}", peer.EndPoint);
+        _logger.LogDebug("Peer connected {EndPoint}", peer);
         peer.Disconnect();
     }
 
@@ -68,7 +67,7 @@ public sealed class PortChecker : INetEventListener, INetLogger
     {
         _logger.LogDebug(
             "Peer disconnected {EndPoint} - {DisconnectInfo} ({SocketErrorCode})",
-            peer.EndPoint,
+            peer,
             disconnectInfo.Reason,
             disconnectInfo.SocketErrorCode
         );
@@ -146,7 +145,7 @@ public sealed class PortChecker : INetEventListener, INetLogger
         request.Reject();
     }
 
-    public void WriteNet(NetLogLevel level, string str, params object[] args)
+    public void WriteNet(NetLogLevel level, string format, params object[] args)
     {
         var logLevel = level switch
         {
@@ -156,7 +155,7 @@ public sealed class PortChecker : INetEventListener, INetLogger
             NetLogLevel.Info => LogLevel.Information,
             _ => throw new ArgumentOutOfRangeException(nameof(level), level, null),
         };
-        _logger.Log(logLevel, str, args);
+        _logger.Log(logLevel, format, args);
     }
 
     public void PruneTasks(bool onlyExpired = true)

@@ -1,5 +1,7 @@
-﻿using Intersect.Client.Framework.GenericClasses;
+﻿using System.Numerics;
+using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
+using Intersect.Client.Framework.Input;
 
 namespace Intersect.Client.Framework.Gwen.Input;
 
@@ -109,14 +111,14 @@ public partial class IntersectInput : InputBase
 
                 return mCanvas.Input_MouseMoved(mMouseX, mMouseY, dx, dy);
             case InputEvent.MouseDown:
-                return mCanvas.Input_MouseButton((int) msg.MouseBtn, true);
+                return mCanvas.Input_MouseButton(msg.MouseBtn, true);
             case InputEvent.MouseUp:
-                return mCanvas.Input_MouseButton((int) msg.MouseBtn, false);
+                return mCanvas.Input_MouseButton(msg.MouseBtn, false);
             case InputEvent.TextEntered:
                 return mCanvas.Input_Character((char) msg.Unicode[0]);
             case InputEvent.KeyDown:
                 var ch = TranslateChar(msg.Key);
-                if ((int) msg.MouseBtn > -1 && InputHandler.DoSpecialKeys(mCanvas, ch))
+                if ((int) msg.MouseBtn < 0 && InputHandler.DoSpecialKeys(mCanvas, ch, msg.Key))
                 {
                     return false;
                 }
@@ -150,20 +152,20 @@ public partial class GwenInputMessage
 
     public Keys Key;
 
-    public int MouseBtn;
+    public MouseButton MouseBtn;
 
-    public Pointf MousePosition;
+    public Vector2 MousePosition;
 
     public bool Shift;
 
     public IntersectInput.InputEvent Type;
 
-    public string Unicode = "";
+    public string Unicode = string.Empty;
 
     public GwenInputMessage(
         IntersectInput.InputEvent type,
-        Pointf mousePos,
-        int mousebtn,
+        Vector2 mousePos,
+        MouseButton mousebtn,
         Keys keyAction,
         bool alt = false,
         bool control = false,

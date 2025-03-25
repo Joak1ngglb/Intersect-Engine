@@ -1,5 +1,6 @@
-﻿using Intersect.Logging;
-using Intersect.GameObjects.Events;
+﻿using Intersect.Core;
+using Intersect.Framework.Core.GameObjects.Events;
+using Microsoft.Extensions.Logging;
 
 namespace Intersect.Server.Database.GameData.Migrations;
 
@@ -13,7 +14,7 @@ public partial class FixQuestTaskCompletionEventsMigration
 
     public static void FixQuestTaskCompletionEvents(GameContext context)
     {
-        Log.Info("Checking for broken Quest Task Completion Events, this process might take several minutes depending on your quest count!");
+        ApplicationContext.Context.Value?.Logger.LogInformation("Checking for broken Quest Task Completion Events, this process might take several minutes depending on your quest count!");
 
         // Go through each and every quest to check if all the tasks have valid events.
         foreach (var quest in context.Quests)
@@ -27,21 +28,21 @@ public partial class FixQuestTaskCompletionEventsMigration
                 // If the event Id is incorrect and we can't find the event.. recreate it!
                 if (incorrectEventId && foundEvent == null)
                 {
-                    var ev = new EventBase(task.Id, Guid.Empty, 0, 0, false);
+                    var ev = new EventDescriptor(task.Id, Guid.Empty, 0, 0, false);
                     ev.CommonEvent = false;
                     ev.Name = $"Quest: {quest.Name} - Task Completion Event";
                     context.Events.Add(ev);
-                    EventBase.Lookup.Set(ev.Id, ev);
+                    EventDescriptor.Lookup.Set(ev.Id, ev);
                     task.CompletionEventId = task.Id;
 
-                    Log.Info($"Fixed quest {quest.Name} ({quest.Id}) task {task.Id}, created new event {task.Id}.");
+                    ApplicationContext.Context.Value?.Logger.LogInformation($"Fixed quest {quest.Name} ({quest.Id}) task {task.Id}, created new event {task.Id}.");
                 }
                 // if the Event ID is incorrect but we CAN find the event, link it!
                 else if (incorrectEventId && foundEvent != null)
                 {
                     task.CompletionEventId = foundEvent.Id;
 
-                    Log.Info($"Fixed quest {quest.Name} ({quest.Id}) task {task.Id}, linked up old event {foundEvent.Id}.");
+                    ApplicationContext.Context.Value?.Logger.LogInformation($"Fixed quest {quest.Name} ({quest.Id}) task {task.Id}, linked up old event {foundEvent.Id}.");
                 }
             }
         }

@@ -1182,7 +1182,7 @@ public partial class Player : Entity
         PacketSender.SendEntityDie(this);
         // Reset();
         // Respawn();
-        this.DeadSeconds = Options.Instance.PlayerOpts.DeathSeconds;
+        this.DeadSeconds = Options.Instance.Player.DeathSeconds;
         PacketSender.SendInventory(this);
     }
 
@@ -6219,6 +6219,7 @@ public partial class Player : Entity
                 UnequipInvalidItems();
             }
         }
+    }
 
     //HotbarSlot
     public void HotbarChange(int index, int type, int slot)

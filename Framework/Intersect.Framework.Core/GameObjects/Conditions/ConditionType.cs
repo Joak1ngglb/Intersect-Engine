@@ -40,7 +40,6 @@ public enum ConditionType
 
     CheckEquipment,
 
-    SpellActive,
-    
     IsInCombat,
+    SpellActive,
 }

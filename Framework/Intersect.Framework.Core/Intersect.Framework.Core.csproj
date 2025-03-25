@@ -70,6 +70,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="Config\Custom Changes\" />
       <Folder Include="Network\Handlers\" />
     </ItemGroup>
 

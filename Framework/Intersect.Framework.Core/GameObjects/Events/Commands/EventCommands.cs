@@ -1,6 +1,9 @@
 using Intersect.Config;
 using Intersect.Enums;
 using Intersect.Framework.Core.Config;
+using Intersect.Framework.Core.GameObjects.Events;
+using Intersect.Framework.Core.GameObjects.Items;
+using Intersect.Framework.Core.GameObjects.Maps;
 using Intersect.Framework.Core.Serialization;
 using Newtonsoft.Json;
 

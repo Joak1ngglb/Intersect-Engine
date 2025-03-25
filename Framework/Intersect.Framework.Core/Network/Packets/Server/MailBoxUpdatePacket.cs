@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Intersect.Framework.Core.GameObjects.Items;
 using MessagePack;
 
 namespace Intersect.Network.Packets.Server

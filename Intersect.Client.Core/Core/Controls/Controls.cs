@@ -69,14 +69,7 @@ public partial class Controls : IControlSet
     public void ResetDefaults()
     {
         _mappings.Clear();
-        
-        CreateControlMap(Control.TargetParty1, new ControlValue(Keys.None, Keys.NumPad1), ControlValue.Default);
-        CreateControlMap(Control.TargetParty2, new ControlValue(Keys.None, Keys.NumPad2), ControlValue.Default);
-        CreateControlMap(Control.TargetParty3, new ControlValue(Keys.None, Keys.NumPad3), ControlValue.Default);
-        CreateControlMap(Control.TargetParty4, new ControlValue(Keys.None, Keys.NumPad4), ControlValue.Default);
-        CreateControlMap(Control.TargetParty5, new ControlValue(Keys.None, Keys.NumPad5), ControlValue.Default);
-        CreateControlMap(Control.TargetParty6, new ControlValue(Keys.None, Keys.NumPad6), ControlValue.Default);
-        CreateControlMap(Control.TargetParty7, new ControlValue(Keys.None, Keys.NumPad7), ControlValue.Default);
+    
 
         foreach (var controlsProvider in GameInput.Current.ControlsProviders)
         {

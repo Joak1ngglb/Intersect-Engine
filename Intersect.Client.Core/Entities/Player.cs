@@ -32,10 +32,6 @@ using Intersect.Framework.Reflection;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
-using Intersect.Client.Items;
-using Intersect.Client.Interface.Game.Chat;
-using Intersect.Config.Guilds;
-using Intersect.Client.Interface.Game.DescriptionWindows;
 using Microsoft.Extensions.Logging;
 
 namespace Intersect.Client.Entities;
@@ -72,8 +68,6 @@ public partial class Player : Entity, IPlayer
     public List<IFriendInstance> Friends { get; set; } = [];
 
     IReadOnlyList<IHotbarInstance> IPlayer.HotbarSlots => Hotbar.ToList();
-
-    private ItemDescriptionWindow mItemTargetBox;
 
     public HotbarInstance[] Hotbar { get; set; } = new HotbarInstance[Options.Instance.Player.HotbarSlotCount];
 
@@ -414,16 +408,15 @@ public partial class Player : Entity, IPlayer
 
     public void TryDropItem(int inventorySlotIndex)
     {
-        if (this.IsDead())
-        {
-            return;
-        }
         var inventorySlot = Inventory[inventorySlotIndex];
         if (!ItemDescriptor.TryGet(inventorySlot.ItemId, out var itemDescriptor))
         {
             return;
         }
-
+        if (this.IsDead())
+        {
+            return;
+        }
         var quantity = inventorySlot.Quantity;
         var canDropMultiple = quantity > 1;
         var inputType = canDropMultiple ? InputType.NumericSliderInput : InputType.YesNo;
@@ -616,7 +609,7 @@ public partial class Player : Entity, IPlayer
 
     public bool IsItemOnCooldown(int slot)
     {
-        if (Inventory[slot] is not {} inventorySlot)
+        if (Inventory[slot] is not { } inventorySlot)
         {
             return false;
         }
@@ -944,13 +937,11 @@ public partial class Player : Entity, IPlayer
             PacketSender.SendDepositItem(inventorySlotIndex, movableQuantity, bankSlotIndex);
             return true;
         }
-
-        if (Globals.InputManager.KeyDown(Keys.Shift))
+        if (Globals.InputManager.IsKeyDown(Keys.Shift))
         {
             PacketSender.SendDepositItem(inventorySlotIndex, Inventory[inventorySlotIndex].Quantity);
             return true;
         }
-
         var maximumQuantity = movableQuantity < quantity ? movableQuantity : Item.FindSpaceForItem(
             itemDescriptor.Id,
             itemDescriptor.ItemType,
@@ -1027,6 +1018,11 @@ public partial class Player : Entity, IPlayer
             ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Guilds.NotAllowedWithdraw.ToString(Globals.Me?.Guild), CustomColors.Alerts.Error, ChatMessageType.Bank));
             return false;
         }
+        if (Globals.InputManager.IsKeyDown(Keys.Shift))
+        {
+            PacketSender.SendWithdrawItem(bankSlotIndex, Globals.BankSlots[bankSlotIndex].Quantity);
+            return true;
+        }
 
         slot ??= Globals.BankSlots[bankSlotIndex];
         if (!ItemDescriptor.TryGet(slot.ItemId, out var itemDescriptor))
@@ -1074,12 +1070,6 @@ public partial class Player : Entity, IPlayer
         if (skipPrompt)
         {
             PacketSender.SendWithdrawItem(bankSlotIndex, movableQuantity, inventorySlotIndex);
-            return true;
-        }
-
-        if (Globals.InputManager.KeyDown(Keys.Shift))
-        {
-            PacketSender.SendWithdrawItem(bankSlotIndex, Globals.Bank[bankSlotIndex].Quantity);
             return true;
         }
 
@@ -1144,7 +1134,7 @@ public partial class Player : Entity, IPlayer
         {
             return;
         }
-
+  
         var quantity = inventorySlot.Quantity;
         var maxQuantity = quantity;
 
@@ -1239,10 +1229,6 @@ public partial class Player : Entity, IPlayer
     //Trade
     public void TryOfferItemToTrade(int index)
     {
-        if (this.IsDead())
-        {
-            return;
-        }
         var slot = Inventory[index];
         var quantity = slot.Quantity;
         var tradingItem = ItemDescriptor.Get(slot.ItemId);
@@ -1250,7 +1236,10 @@ public partial class Player : Entity, IPlayer
         {
             return;
         }
-
+        if (this.IsDead())
+        {
+            return;
+        }
         if (quantity == 1)
         {
             PacketSender.SendOfferTradeItem(index, 1);
@@ -1367,12 +1356,11 @@ public partial class Player : Entity, IPlayer
 
     public void TryUseSpell(int index)
     {
-        if (this.IsDead())
+        if (index < 0 || Spells.Length <= index)
         {
             return;
         }
-
-        if (index < 0 || Spells.Length <= index)
+        if (this.IsDead())
         {
             return;
         }
@@ -1707,21 +1695,6 @@ public partial class Player : Entity, IPlayer
         return 9999;
     }
 
-    public void TargetPartyMember(int idx)
-    {
-        if (Globals.Me.IsInParty() && idx < Globals.Me.Party.Count)
-        {
-            if (Globals.Entities.TryGetValue(Globals.Me.Party[idx].Id, out var partyMember) && GetDistanceTo(partyMember) <= Options.Instance.CombatOpts.PartyTargetDistance)
-            {
-                TryTarget(partyMember);
-            }
-        }
-        else if (idx == 0)
-        {
-            TryTarget(this);
-        }
-    }
-
     public void AutoTarget()
     {
         //Check for taunt status if so don't allow to change target
@@ -1870,7 +1843,7 @@ public partial class Player : Entity, IPlayer
             return;
         }
 
-        if(!Globals.Entities.TryGetValue(currentEntity.Id, out var targetedEntity))
+        if (!Globals.Entities.TryGetValue(currentEntity.Id, out var targetedEntity))
         {
             return;
         }
@@ -1893,18 +1866,18 @@ public partial class Player : Entity, IPlayer
         switch (targetEntity)
         {
             case null:
-            {
-                // ReSharper disable once InvertIf
-                if (TargetBox is { } targetBox)
                 {
-                    TargetBox.SetEntity(null);
-                    if (targetBox.IsVisible)
+                    // ReSharper disable once InvertIf
+                    if (TargetBox is { } targetBox)
                     {
-                        TargetBox.Hide();
+                        TargetBox.SetEntity(null);
+                        if (targetBox.IsVisible)
+                        {
+                            TargetBox.Hide();
+                        }
                     }
+                    return;
                 }
-                return;
-            }
 
             case Player:
                 TargetBox?.SetEntity(targetEntity, EntityType.Player);
@@ -2002,7 +1975,20 @@ public partial class Player : Entity, IPlayer
         PacketSender.SendBlock(IsBlocking);
         return IsBlocking;
     }
-
+    public void TargetPartyMember(int idx)
+    {
+        if (Globals.Me.IsInParty() && idx < Globals.Me.Party.Count)
+        {
+            if (Globals.Entities.TryGetValue(Globals.Me.Party[idx].Id, out var partyMember) && GetDistanceTo(partyMember) <= Options.Instance.CombatOpts.PartyTargetDistance)
+            {
+                TryTarget(partyMember);
+            }
+        }
+        else if (idx == 0)
+        {
+            TryTarget(this);
+        }
+    }
     public bool TryAttack()
     {
         if (IsAttacking || IsBlocking || (IsMoving && !Options.Instance.Player.AllowCombatMovement) || (this.IsDead()) || Globals.Me == default)
@@ -2482,14 +2468,13 @@ public partial class Player : Entity, IPlayer
         {
             return;
         }
-
-        //Check if player is crafting
-        if (Globals.InCraft)
+        if (this.IsDead())
         {
             return;
         }
 
-        if (this.IsDead())
+        //Check if player is crafting
+        if (Globals.InCraft)
         {
             return;
         }

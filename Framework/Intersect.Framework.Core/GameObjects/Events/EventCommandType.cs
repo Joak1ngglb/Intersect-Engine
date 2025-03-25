@@ -1,4 +1,4 @@
-﻿namespace Intersect.Framework.Core.GameObjects.Events;
+namespace Intersect.Framework.Core.GameObjects.Events;
 
 public enum EventCommandType
 {
@@ -136,25 +136,7 @@ public enum EventCommandType
     CastSpellOn,
 
     Fade,
-    GiveJobExperience=200,
-    SendMail = 201,
-    OpenMailBox = 202,
-}
-
-public enum FadeType
-{
-    None = 0,
-    FadeIn,
-    FadeOut,
-}
-
-public enum ItemEventTriggers
-{
-    OnPickup = 0,
-    OnDrop,
-    OnUse,
-    OnEquip,
-    OnUnequip,
-    OnHit,
-    OnDamageReceived
+    GiveJobExperience,
+    SendMail,
+    OpenMailBox,
 }

@@ -1,10 +1,9 @@
 using System.ComponentModel;
 using Intersect.Config;
 using Intersect.Config.Guilds;
-using Intersect.Framework.Core.Config;
-using Intersect.Logging;
 using Intersect.Core;
 using Intersect.Framework.Annotations;
+using Intersect.Framework.Core.Config;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -50,52 +49,7 @@ public partial record Options
 
     #region Static Properties
 
-    [JsonProperty("Map")]
-    public MapOptions MapOpts = new MapOptions();
-
-    public DatabaseOptions GameDatabase = new DatabaseOptions();
-
-    public DatabaseOptions LoggingDatabase = new DatabaseOptions();
-
-    public DatabaseOptions PlayerDatabase = new DatabaseOptions();
-
-    [JsonProperty("Player")]
-    public PlayerOptions PlayerOpts = new PlayerOptions();
-    [JsonProperty("Jobs")]
-    public JobOptions JobOpts = new JobOptions(); // Integración de JobOptions
-    [JsonProperty("Party")]
-    public PartyOptions PartyOpts = new PartyOptions();
-
-    [JsonProperty("Security")]
-    public SecurityOptions SecurityOpts = new SecurityOptions();
-
-    [JsonProperty("Loot")]
-    public LootOptions LootOpts = new LootOptions();
-
-    public ProcessingOptions Processing = new ProcessingOptions();
-
-    public SpriteOptions Sprites = new SpriteOptions();
-
-    [JsonProperty("Npc")]
-    public NpcOptions NpcOpts = new NpcOptions();
-
-    public MetricsOptions Metrics = new MetricsOptions();
-
-    public PacketOptions Packets = new PacketOptions();
-
-    public SmtpSettings SmtpSettings = new SmtpSettings();
-
-    public QuestOptions Quest = new QuestOptions();
-
-    public GuildOptions Guild = new GuildOptions();
-
-    public LoggingOptions Logging = new LoggingOptions();
-
-    public BankOptions Bank = new BankOptions();
-
-    public InstancingOptions Instancing = new InstancingOptions();
-
-    public ItemOptions Items = new ItemOptions();
+    public static string ResourcesDirectory { get; set; } = "resources";
 
     public static Options Instance { get; private set; }
 
@@ -157,8 +111,6 @@ public partial record Options
 
     #endregion Game Access
 
-    public static int MaxLevel => Instance.PlayerOpts.MaxLevel;
-    public static int MaxInvItems => Instance.PlayerOpts.MaxInventory;
     #region Network Visibility
 
     [Category(CategoryNetworkVisibility)]
@@ -192,20 +144,6 @@ public partial record Options
 
     #region Database
 
-    public static bool CombatFlashes => Instance.CombatOpts.CombatFlashes;
-    public static float CriticalHitFlashIntensity => Instance.CombatOpts.CriticalHitFlashIntensity;
-    public static float HitFlashDuration => Instance.CombatOpts.HitFlashDuration;
-    public static string CriticalHitReceivedSound => Instance.CombatOpts.CriticalHitReceivedSound;
-    public static float DamageTakenFlashIntensity => Instance.CombatOpts.DamageTakenFlashIntensity;
-    public static float DamageTakenShakeAmount => Instance.CombatOpts.DamageTakenShakeAmount;
-    public static float DamageGivenShakeAmount => Instance.CombatOpts.DamageGivenShakeAmount;
-    public static float MaxDamageShakeDistance => Instance.CombatOpts.MaxDamageShakeDistance;
-    public static string GenericDamageGivenSound => Instance.CombatOpts.GenericDamageGivenSound;
-    public static string GenericDamageReceivedSound => Instance.CombatOpts.GenericDamageReceivedSound;
-    public static float ResourceDestroyedShakeAmount => Instance.CombatOpts.ResourceDestroyedShakeAmount;
-    public static string CriticalHitDealtSound => Instance.CombatOpts.CriticalHitDealtSound;
-
-    public static List<string> ToolTypes => Instance.EquipmentOpts.ToolTypes;
     [Category(CategoryDatabase)]
     [JsonProperty(Order = -70)]
     [RequiresRestart]
@@ -256,61 +194,6 @@ public partial record Options
     [RequiresRestart]
     public int EventWatchdogKillThreshold { get; set; } = 5000;
 
-    public static int EventWatchdogKillThreshhold => Instance.EventKillTheshhold;
-
-    public static int MaxChatLength => Instance.ChatOpts.MaxChatLength;
-
-    public static int MinChatInterval => Instance.ChatOpts.MinIntervalBetweenChats;
-
-    public static LootOptions Loot => Instance.LootOpts;
-
-    public static NpcOptions Npc => Instance.NpcOpts;
-
-    public static PartyOptions Party => Instance.PartyOpts;
-
-    public static ChatOptions Chat => Instance.ChatOpts;
-
-    public static bool UPnP => Instance._upnp;
-
-    public static bool OpenPortChecker => Instance._portChecker;
-
-    public static SmtpSettings Smtp => Instance.SmtpSettings;
-
-    public static int PasswordResetExpirationMinutes => Instance._passResetExpirationMin;
-
-    public static bool AdminOnly
-    {
-        get => Instance._adminOnly;
-        set => Instance._adminOnly = value;
-    }
-
-    public static bool BlockClientRegistrations
-    {
-        get => Instance._blockClientRegistrations;
-        set => Instance._blockClientRegistrations = value;
-    }
-
-    public static PlayerOptions Player => Instance.PlayerOpts;
-    public static JobOptions Jobs => Instance.JobOpts; // Propiedad estática para acceder fácilmente a JobOptions
-    public static string RecipesId => Instance.JobOpts.RecipesId; // Propiedad estática para acceder fácilmente al ID de las recetas
-    public static int MaxJobLevel => Instance.JobOpts.MaxJobLevel; // Propiedad estática para el nivel máximo de los trabajos
-    public static Dictionary<JobType, long> JobBaseExp => Instance.JobOpts.JobBaseExp;
-
-    public static double GainBaseExponent => Instance.JobOpts.ExpGrowthRate;
-    public static EquipmentOptions Equipment => Instance.EquipmentOpts;
-
-    public static CombatOptions Combat => Instance.CombatOpts;
-
-    public static MapOptions Map => Instance.MapOpts;
-
-    public static bool Loaded => Instance != null;
-
-    [JsonProperty("GameName", Order = -5)]
-    public string GameName { get; set; } = DEFAULT_GAME_NAME;
-
-    [JsonProperty("ServerPort", Order = -4)]
-    public ushort _serverPort { get; set; } = DEFAULT_SERVER_PORT;
-
     /// <summary>
     /// Passability configuration by map zone
     /// </summary>
@@ -341,6 +224,8 @@ public partial record Options
     public InstancingOptions Instancing { get; set; } = new();
 
     public ItemOptions Items { get; set; } = new();
+    public JobOptions JobOpts { get; set; } = new();
+    public CombatOptions CombatOpts { get; set; } = new();
 
     #endregion Other Game Properties
 
@@ -437,4 +322,24 @@ public partial record Options
     public Options DeepClone() => JsonConvert.DeserializeObject<Options>(
         JsonConvert.SerializeObject(this, PrivateSerializerSettings)
     );
+
+    public static bool CombatFlashes => Instance.CombatOpts.CombatFlashes;
+    public static float CriticalHitFlashIntensity => Instance.CombatOpts.CriticalHitFlashIntensity;
+    public static float HitFlashDuration => Instance.CombatOpts.HitFlashDuration;
+    public static string CriticalHitReceivedSound => Instance.CombatOpts.CriticalHitReceivedSound;
+    public static float DamageTakenFlashIntensity => Instance.CombatOpts.DamageTakenFlashIntensity;
+    public static float DamageTakenShakeAmount => Instance.CombatOpts.DamageTakenShakeAmount;
+    public static float DamageGivenShakeAmount => Instance.CombatOpts.DamageGivenShakeAmount;
+    public static float MaxDamageShakeDistance => Instance.CombatOpts.MaxDamageShakeDistance;
+    public static string GenericDamageGivenSound => Instance.CombatOpts.GenericDamageGivenSound;
+    public static string GenericDamageReceivedSound => Instance.CombatOpts.GenericDamageReceivedSound;
+    public static float ResourceDestroyedShakeAmount => Instance.CombatOpts.ResourceDestroyedShakeAmount;
+    public static string CriticalHitDealtSound => Instance.CombatOpts.CriticalHitDealtSound;
+    public static JobOptions Jobs => Instance.JobOpts; // Propiedad estática para acceder fácilmente a JobOptions
+    public static string RecipesId => Instance.JobOpts.RecipesId; // Propiedad estática para acceder fácilmente al ID de las recetas
+    public static int MaxJobLevel => Instance.JobOpts.MaxJobLevel; // Propiedad estática para el nivel máximo de los trabajos
+    public static Dictionary<JobType, long> JobBaseExp => Instance.JobOpts.JobBaseExp;
+
+    public static double GainBaseExponent => Instance.JobOpts.ExpGrowthRate;
+    public static int MaxMail => Instance.Player.MaxMail;
 }

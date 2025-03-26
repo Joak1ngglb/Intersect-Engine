@@ -29,6 +29,7 @@ using PingPacket = Intersect.Network.Packets.Client.PingPacket;
 using TradeRequestPacket = Intersect.Network.Packets.Client.TradeRequestPacket;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace Intersect.Server.Networking;
 
 internal sealed partial class PacketHandler
@@ -3164,4 +3165,52 @@ internal sealed partial class PacketHandler
     }
 
     #endregion
+    public void HandlePacket(Client client, BuyMarketListingPacket packet)
+    {
+        var player = client.Entity;
+        if (player == null) return;
+
+        MarketManager.TryBuyListing(player, packet.ListingId);
+    }
+    public void HandlePacket(Client client, SearchMarketPacket packet)
+    {
+        var player = client.Entity;
+        if (player == null) return;
+
+        using var context = DbInterface.CreatePlayerContext(readOnly: true);
+        var listings = context.Market_Listings
+            .Where(l => !l.IsSold && l.ExpireAt > DateTime.UtcNow)
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(packet.ItemName))
+            listings = listings.Where(l => ItemBase.Get(l.ItemId)?.Name?.ToLower().Contains(packet.ItemName.ToLower()) == true).ToList();
+
+        if (packet.Type.HasValue)
+            listings = listings.Where(l => ItemBase.Get(l.ItemId)?.ItemType == packet.Type).ToList();
+
+        if (packet.MinPrice.HasValue)
+            listings = listings.Where(l => l.Price >= packet.MinPrice.Value).ToList();
+
+        if (packet.MaxPrice.HasValue)
+            listings = listings.Where(l => l.Price <= packet.MaxPrice.Value).ToList();
+
+        PacketSender.SendMarketListings(player, listings);
+    }
+    public void HandlePacket(Client client, CreateMarketListingPacket packet)
+    {
+        var player = client.Entity;
+        if (player == null) return;
+
+        var item = player.FindInventoryItemSlot(packet.ItemId);
+        if (item == null) return;
+
+        item.Properties = packet.Properties;
+
+        var success = MarketManager.TryListItem(player, item, packet.Quantity, packet.Price);
+        if (success)
+        {
+            PacketSender.SendMarketListingCreated(player);
+        }
+    }
+
 }

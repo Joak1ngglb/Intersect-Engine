@@ -9,11 +9,13 @@ using Intersect.Client.Interface.Game.EntityPanel;
 using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
 using Intersect.Client.Interface.Game.Mail;
+using Intersect.Client.Interface.Game.Market;
 using Intersect.Client.Interface.Game.Shop;
 using Intersect.Client.Interface.Game.Trades;
 using Intersect.Client.Networking;
 using Intersect.Enums;
 using Intersect.GameObjects;
+using Intersect.Network.Packets.Server;
 
 namespace Intersect.Client.Interface.Game;
 
@@ -51,6 +53,8 @@ public partial class GameInterface : MutableInterface
     private MapItemWindow mMapItemWindow;
     private SendMailBoxWindow mSendMailBoxWindow;
     private MailBoxWindow mMailBoxWindow;
+    private MarketWindow mMarketWindow;
+    private SellMarketWindow mSellMarketWindow;
     private bool mShouldCloseBag;
 
     private bool mShouldCloseBank;
@@ -129,7 +133,9 @@ public partial class GameInterface : MutableInterface
         mQuestOfferWindow = new QuestOfferWindow(GameCanvas);
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
-       // mJobsWindow = new JobsWindow(GameCanvas);
+        // mJobsWindow = new JobsWindow(GameCanvas);
+        mMarketWindow = new MarketWindow(GameCanvas);
+       
 
     }
 
@@ -632,6 +638,49 @@ public partial class GameInterface : MutableInterface
         CloseShop();
         CloseTrading();
         GameCanvas.Dispose();
+    }
+    // Mostrar ventana de mercado
+    public void OpenMarket()
+    {
+        mMarketWindow?.Close();
+        mMarketWindow = new MarketWindow(GameCanvas);
+    }
+
+    // Mostrar ventana de venta
+    public void OpenSellMarket()
+    {
+        mSellMarketWindow?.Close();
+        mSellMarketWindow = new SellMarketWindow(GameCanvas);
+        mSellMarketWindow.Show();
+    }
+
+    public void CloseMarket()
+    {
+        mMarketWindow?.Close();
+        mMarketWindow = null;
+    }
+
+    public void CloseSellMarket()
+    {
+        mSellMarketWindow?.Close();
+        mSellMarketWindow = null;
+    }
+
+  
+    public void UpdateTransactionHistory(List<MarketTransactionPacket> transactions)
+    {
+        MarketWindow.Instance?.UpdateTransactionHistory(transactions);
+    }
+
+    public void RefreshAfterPurchase()
+    {
+        MarketWindow.Instance?.RefreshAfterPurchase();
+    }
+
+
+    public void UpdateListings(List<MarketListingPacket> listings)
+    {
+        MarketWindow.Instance?.UpdateListings(listings);
     }
 
 }

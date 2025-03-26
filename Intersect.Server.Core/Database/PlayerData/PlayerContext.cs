@@ -1,5 +1,6 @@
 using Intersect.Extensions;
 using Intersect.Server.Database.PlayerData.Api;
+
 using Intersect.Server.Database.PlayerData.Migrations;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Server.Database.PlayerData.SeedData;
@@ -49,6 +50,8 @@ public abstract partial class PlayerContext : IntersectDbContext<PlayerContext>,
 
     public DbSet<UserVariable> User_Variables { get; set; }
     public DbSet<MailBox> Player_MailBox { get; set; }
+    public DbSet<MarketListing> Market_Listings { get; set; }
+    public DbSet<MarketTransaction> Market_Transactions { get; set; }
     internal async ValueTask Commit(
         bool commit = false,
         CancellationToken cancellationToken = default(CancellationToken)
@@ -115,6 +118,21 @@ public abstract partial class PlayerContext : IntersectDbContext<PlayerContext>,
         modelBuilder.Entity<UserVariable>().HasIndex(p => new { p.VariableId, p.UserId }).IsUnique();
         modelBuilder.Entity<Player>().HasMany(b => b.MailBoxs).WithOne(p => p.Player).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<MailBox>().HasOne(b => b.Sender).WithMany().OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MarketListing>().HasKey(m => m.Id);
+        modelBuilder.Entity<MarketTransaction>().HasKey(t => t.Id);
+
+        // Relaciones opcionales si usas navigation properties
+        modelBuilder.Entity<MarketListing>()
+            .HasOne(m => m.Seller)
+            .WithMany()
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MarketTransaction>()
+            .HasOne(t => t.Seller)
+            .WithMany()
+            .OnDelete(DeleteBehavior.Restrict);
+
     }
 
     public void Seed()

@@ -2396,6 +2396,44 @@ internal sealed partial class PacketHandler
         }
     }
 
+    public void HandlePacket(IPacketSender sender, MarketListingsPacket packet)
+    {
+        if (packet?.Listings == null)
+            return;
+
+        // Aquí deberás pasar los listados a la ventana del mercado.
+        // Puedes almacenarlos en una variable global temporal o llamar directamente a la ventana.
+
+        Interface.Interface.GameUi.UpdateListings(packet.Listings);
+    }
+    public void HandlePacket(IPacketSender sender, MarketListingCreatedPacket packet)
+    {
+        // Mostrar confirmación en el chat o ventana flotante
+        ChatboxMsg.AddMessage(new ChatboxMsg(
+            packet.Message,
+            CustomColors.Alerts.Accepted,
+            ChatMessageType.Trading
+        ));
+    }
+    public void HandlePacket(IPacketSender sender, MarketPurchaseSuccessPacket packet)
+    {
+        ChatboxMsg.AddMessage(new ChatboxMsg(
+            packet.Message,
+            CustomColors.Alerts.Accepted,
+            ChatMessageType.Trading
+        ));
+
+        // Opcional: cerrar ventana o refrescar
+        Interface.Interface.GameUi?.RefreshAfterPurchase();
+    }
+    public void HandlePacket(IPacketSender sender, MarketTransactionsPacket packet)
+    {
+        if (packet?.Transactions == null)
+            return;
+
+        // Mostrar historial al usuario (en una pestaña de la ventana de mercado, por ejemplo)
+        Interface.Interface.GameUi?.UpdateTransactionHistory(packet.Transactions);
+    }
 
 
 }

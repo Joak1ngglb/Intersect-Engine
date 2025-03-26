@@ -6,6 +6,8 @@ using Intersect.Server.Localization;
 using Intersect.Config;
 using System.Text.Json.Serialization;
 using Intersect.Server.Database.PlayerData.Players;
+using Intersect.Server.Database.PlayerData;
+
 
 namespace Intersect.Server.Entities
 {
@@ -108,6 +110,9 @@ namespace Intersect.Server.Entities
             InMailBox = true;
             PacketSender.SendOpenSendMail(this);
         }
+        [JsonIgnore]
+        public virtual List<MarketListing> MarketListings { get; set; } = new List<MarketListing>();
+
     }
 
     public enum MessageType

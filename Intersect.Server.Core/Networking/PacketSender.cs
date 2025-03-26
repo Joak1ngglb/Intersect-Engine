@@ -13,6 +13,7 @@ using Intersect.Network;
 using Intersect.Network.Packets.Server;
 using Intersect.Server.Database;
 using Intersect.Server.Database.Logging.Entities;
+using Intersect.Server.Database.PlayerData;
 using Intersect.Server.Database.PlayerData.Players;
 using Intersect.Server.Database.PlayerData.Security;
 using Intersect.Server.Entities;
@@ -2558,6 +2559,43 @@ public static partial class PacketSender
         player.SendPacket(new GuildCreationWindowPacket());
     }
     
-    
+
+    public static void SendMarketListings(Player player, List<MarketListing> listings)
+    {
+        var listingPackets = listings.Select(l => new MarketListingPacket
+        {
+            ListingId = l.Id,
+            ItemId = l.ItemId,
+            Quantity = l.Quantity,
+            Price = l.Price,
+            SellerName = l.Seller?.Name ?? "???",
+            Properties = l.ItemProperties
+        }).ToList();
+
+        player.SendPacket(new MarketListingsPacket(listingPackets));
+    }
+    public static void SendMarketListingCreated(Player player)
+    {
+        player.SendPacket(new MarketListingCreatedPacket(Strings.Market.listingcreated));
+    }
+    public static void SendMarketPurchaseSuccess(Player player)
+    {
+        player.SendPacket(new MarketPurchaseSuccessPacket(Strings.Market.itempurchased));
+    }
+    public static void SendMarketTransactions(Player player, List<MarketTransaction> transactions)
+    {
+        var packets = transactions.Select(t => new MarketTransactionPacket
+        {
+            BuyerName = t.BuyerName,
+            ItemId = t.ItemId,
+            Quantity = t.Quantity,
+            Price = t.Price,
+            Properties = t.ItemProperties,
+            SoldAt = t.SoldAt
+        }).ToList();
+
+        player.SendPacket(new MarketTransactionsPacket(packets));
+    }
+
 
 }

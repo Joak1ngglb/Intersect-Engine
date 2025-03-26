@@ -550,8 +550,8 @@ public static partial class PacketSender
 
         // Enviar paquete para tomar un correo
         Network.SendPacket(new TakeMailPacket(mailID));
-    
-}
+    }
+
     public static void SendCreateGuild(string name, string logoBackground, byte backgroundR, byte backgroundG, byte backgroundB, 
         string logoSymbol, byte symbolR, byte symbolG, byte symbolB)
     {
@@ -569,6 +569,32 @@ public static partial class PacketSender
     {
         var packet = new ApplyGuildUpgradePacket(type);
         Networking.Network.SendPacket(packet);
+	}
+    public static void SendBuyMarketListing(Guid listingId)
+    {
+        Network.SendPacket(new BuyMarketListingPacket(listingId));
+    }
+
+    public static void SendSearchMarket(string name = "", int? min = null, int? max = null, ItemType? type = null)
+    {
+        Network.SendPacket(new SearchMarketPacket
+        {
+            ItemName = name,
+            MinPrice = min,
+            MaxPrice = max,
+            Type = type
+        });
+    }
+
+    public static void SendCreateMarketListing(Guid itemId, int quantity, int price, Intersect.Network.Packets.Server.ItemProperties props)
+    {
+        Network.SendPacket(new CreateMarketListingPacket
+        {
+            ItemId = itemId,
+            Quantity = quantity,
+            Price = price,
+            Properties = props
+        });
     }
 
 }

@@ -14,6 +14,7 @@ using Newtonsoft.Json.Linq;
 using Intersect.Client.Localization;
 using Intersect.Enums;
 using Intersect.Client.Framework.GenericClasses;
+using System.Diagnostics;
 
 namespace Intersect.Client.Interface.Game.Market
 {
@@ -36,6 +37,8 @@ namespace Intersect.Client.Interface.Game.Market
 
         private Label mPriceLabel;
         private Label mQuantityLabel;
+        private Label suggestedPriceLabel;
+
         public int X { get; set; }
         public int Y { get; set; }
         public SellMarketWindow(Canvas canvas)
@@ -47,42 +50,60 @@ namespace Intersect.Client.Interface.Game.Market
            // Interface.InputBlockingElements.Add(mSellWindow);
 
             mInventoryScroll = new ScrollControl(mSellWindow, "SellInventoryScroll");
-            mInventoryScroll.SetBounds(20, 20, 280, 400);
+          
             mInventoryScroll.EnableScroll(false, true);
 
            
 
             mInfoLabel = new Label(mSellWindow);
-            mInfoLabel.SetBounds(320, 30, 250, 20);
+      
             mInfoLabel.Text = "Selecciona un objeto del inventario";
 
             mQuantityLabel = new Label(mSellWindow);
-            mQuantityLabel.SetBounds(320, 55, 100, 15);
+           
             mQuantityLabel.Text = "Cantidad";
 
             mQuantityInput = new TextBoxNumeric(mSellWindow);
-            mQuantityInput.SetBounds(320, 70, 100, 30);
+            
             mQuantityInput.SetText("", false);
+            mQuantityInput.TextChanged += (sender, args) => UpdateTaxDisplay();
 
             mPriceLabel = new Label(mSellWindow);
-            mPriceLabel.SetBounds(430, 55, 100, 15);
+         
             mPriceLabel.Text = "Precio";
 
             mPriceInput = new TextBoxNumeric(mSellWindow);
-            mPriceInput.SetBounds(430, 70, 100, 30);
+        
             mPriceInput.SetText("", false);
             mPriceInput.TextChanged += (sender, args) => UpdateTaxDisplay();
 
             mTaxLabel = new Label(mSellWindow,"Taxlabel");
-            mTaxLabel.SetBounds(320, 105, 210, 15);
+         
             mTaxLabel.Text = "🧾 Impuesto estimado: 0 🪙";
 
             mConfirmButton = new Button(mSellWindow);
-            mConfirmButton.SetBounds(320, 120, 210, 40);
+   
             mConfirmButton.SetText("📤 Publicar");
             mConfirmButton.Disable();
             mConfirmButton.Clicked += OnConfirmClicked;
+            suggestedPriceLabel = new Label(mSellWindow,"SuggetedLabel");
+            suggestedPriceLabel.SetBounds(320, 150, 210, 15);
+            suggestedPriceLabel.Text = "";
 
+            int startX = 320;
+            int spacingY = 25;
+
+            mInfoLabel.SetBounds(startX, 20, 250, 20);
+            suggestedPriceLabel.SetBounds(startX, 45, 250, 20);
+
+            mQuantityLabel.SetBounds(startX, 75, 100, 20);
+            mQuantityInput.SetBounds(startX, 95, 100, 30);
+
+            mPriceLabel.SetBounds(startX + 110, 75, 100, 20);
+            mPriceInput.SetBounds(startX + 110, 95, 100, 30);
+
+            mTaxLabel.SetBounds(startX, 135, 210, 20);
+            mConfirmButton.SetBounds(startX, 160, 210, 40);
             mSellWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
             InitItemContainer();
         }
@@ -91,9 +112,12 @@ namespace Intersect.Client.Interface.Game.Market
             if (int.TryParse(mPriceInput.Text, out var price) && price > 0)
             {
                 var quantity = mQuantityInput.Value;
-                // 🔧 Usa el mismo porcentaje que el servidor (por defecto 5%)
-                var tax = (int)Math.Ceiling(price*quantity* 0.05);
-                mTaxLabel.Text = $"🧾 Impuesto estimado: {tax} 🪙";
+                if (price > 0 && quantity > 0)
+                {
+                    var tax = (int)Math.Ceiling(price * quantity * 0.02f); // Usa el valor real del servidor
+                    mTaxLabel.Text = $"🧾 Impuesto estimado: {tax} 🪙";
+                }
+
             }
             else
             {
@@ -220,8 +244,19 @@ namespace Intersect.Client.Interface.Game.Market
             // Por conveniencia, precargar cantidad máxima
             mQuantityInput.SetText(Globals.Me.Inventory[slotIndex].Quantity.ToString(), false);
             mPriceInput.SetText("", false);
-
+           
+            if (item!= null)
+            {
+                var suggestedPrice = item.Price;
+                suggestedPriceLabel.Text = $"💡 Precio sugerido: {suggestedPrice} 🪙";
+                if (suggestedPrice > 0 && (mPriceInput.Value < suggestedPrice * 0.5 || mPriceInput.Value > suggestedPrice * 2))
+                {
+                    PacketSender.SendChatMsg("⚠️ Precio fuera del rango sugerido.", 4);
+                }
+            }
             PacketSender.SendChatMsg($"📦 Ítem seleccionado: {item?.Name}", 5);
+           
+
         }
         private void OnConfirmClicked(Base sender, EventArgs args)
         {
@@ -261,9 +296,7 @@ namespace Intersect.Client.Interface.Game.Market
             var itemName = item.Name;
             var properties = slotData.ItemProperties ?? new Network.Packets.Server.ItemProperties();
 
-            // 🪪 Depuración: ID y tipo del ítem
-            PacketSender.SendChatMsg($"[DEBUG] ItemId: {slotData.ItemId}", 5);
-            PacketSender.SendChatMsg($"[DEBUG] ItemProperties: StatBonus.Count={properties.StatModifiers}", 5);
+      
 
             // Enviar el listado al servidor
             PacketSender.SendCreateMarketListing(slotData.ItemId, qty, price, properties);

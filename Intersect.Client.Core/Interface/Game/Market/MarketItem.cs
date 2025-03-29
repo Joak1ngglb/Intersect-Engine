@@ -22,6 +22,7 @@ public class MarketItem
     private MarketListingPacket mListing;
     private ItemDescriptionWindow mDescWindow;
     private ItemBase mItemBase;
+    private Button cancelButton;
 
     public MarketItem(MarketWindow marketWindow, MarketListingPacket listing)
     {
@@ -68,6 +69,20 @@ public class MarketItem
         mBuyButton.SetText("🛒 Comprar");
         mBuyButton.SetBounds(500, 5, 100, 30);
         mBuyButton.Clicked += OnBuyClick;
+        if (mListing.SellerName == Globals.Me.Name)
+        {
+            mBuyButton.IsHidden = true;
+
+            cancelButton = new Button(Container, "CancelMarketItemButton");
+            cancelButton.SetText("❌ Cancelar");
+            cancelButton.SetBounds(500, 5, 100, 30);
+            cancelButton.Clicked += OnCancelClick;
+        }
+
+    }
+    private void OnCancelClick(Base sender, ClickedEventArgs args)
+    {
+        PacketSender.SendCancelMarketListing(mListing.ListingId);
     }
 
     private void OnBuyClick(Base sender, ClickedEventArgs args)

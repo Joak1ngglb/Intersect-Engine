@@ -56,15 +56,14 @@ namespace Intersect.Client.Interface.Game.Market
             mNameLabel.SetBounds(20, 45, 140, 20);
 
             mSearchBox = new TextBox(mMarketWindow, "MarketSearchBox");
-            mSearchBox.SetBounds(160, 45, 160, 25);
-         
+           
             mSearchBox.Focus();
             mTypeLabel = new Label(mMarketWindow, "MarketTypeLabel");
             mTypeLabel.Text = "📦 Tipo:";
-            mTypeLabel.SetBounds(340, 45, 50, 20);
+            
 
             mItemTypeCombo = new ComboBox(mMarketWindow, "MarketItemTypeCombo");
-            mItemTypeCombo.SetBounds(390, 45, 160, 25);
+           
             mItemTypeCombo.AddItem("Todos", "all", "all");
             mItemTypeCombo.SelectByUserData("all");
             foreach (ItemType type in Enum.GetValues(typeof(ItemType)))
@@ -77,33 +76,49 @@ namespace Intersect.Client.Interface.Game.Market
 
             mMinLabel = new Label(mMarketWindow, "MarketMinLabel");
             mMinLabel.Text = "💰 Precio Mínimo:";
-            mMinLabel.SetBounds(20, 150, 120, 20);
+          
 
             mMinPriceBox = new TextBoxNumeric(mMarketWindow, "MarketMinPriceBox");
-            mMinPriceBox.SetBounds(140, 150, 80, 25);
+         
             mMinPriceBox.SetText("", false);
 
             mMaxLabel = new Label(mMarketWindow, "MarketMaxLabel");
             mMaxLabel.Text = "💰 Precio Máximo:";
-            mMaxLabel.SetBounds(230, 150, 120, 20);
+           
 
             mMaxPriceBox = new TextBoxNumeric(mMarketWindow, "MarketMaxPriceBox");
-            mMaxPriceBox.SetBounds(350, 150, 80, 25);
+          
             mMaxPriceBox.SetText("", false);
 
             mSearchButton = new Button(mMarketWindow, "MarketSearchButton");
-            mSearchButton.SetBounds(450, 150, 100, 30);
+          
             mSearchButton.SetText("🔍 Buscar");
             mSearchButton.Clicked += (s, a) => SendSearch();
 
             mSellButton = new Button(mMarketWindow, "MarketSellButton");
-            mSellButton.SetBounds(560, 150, 100, 30);
+           
             mSellButton.SetText("📤 Vender");
             mSellButton.Clicked += SellMarket_Clicked;
+            // Fila 1
+            mNameLabel.SetBounds(20, 40, 140, 20);
+            mSearchBox.SetBounds(160, 40, 160, 25);
 
+            mTypeLabel.SetBounds(340, 40, 50, 20);
+            mItemTypeCombo.SetBounds(390, 40, 160, 25);
+
+            // Fila 2
+            mMinLabel.SetBounds(20, 75, 120, 20);
+            mMinPriceBox.SetBounds(140, 75, 80, 25);
+
+            mMaxLabel.SetBounds(230, 75, 120, 20);
+            mMaxPriceBox.SetBounds(350, 75, 80, 25);
+
+            mSearchButton.SetBounds(450, 75, 100, 30);
+            mSellButton.SetBounds(560, 75, 100, 30);
             // 📦 Contenedor general del listado (incluye encabezados + scroll)
             mListContainer = new ImagePanel(mMarketWindow, "MarketContainer");
-            mListContainer.SetBounds(20, 180, 760, 400);
+            mListContainer.SetBounds(20, 115, 760, 450); // Estira casi hasta el fondo
+
 
             // 🧾 Encabezados dentro del contenedor
             mHeaderNameLabel = new Label(mListContainer, "MarketHeaderName");
@@ -122,7 +137,8 @@ namespace Intersect.Client.Interface.Game.Market
             // ❌ Mensaje si no hay resultados (fuera del contenedor)
             mNoResultsLabel = new Label(mMarketWindow);
             mNoResultsLabel.SetText("❌ No se encontraron resultados.");
-            mNoResultsLabel.SetBounds(220, 300, 300, 30);
+            mNoResultsLabel.SetBounds(250, 300, 300, 30);
+
             mNoResultsLabel.Hide(); // Oculto por defecto
             InitScrollPanel();
 
@@ -140,7 +156,8 @@ namespace Intersect.Client.Interface.Game.Market
             mListingScroll = new ScrollControl(mListContainer, "MarketListingScroll");
             mListingScroll.GetVerticalScrollBar();
             mListingScroll.EnableScroll(false, true);
-            mListingScroll.SetBounds(0, 25, 760, 375); // Debajo de los encabezados
+            mListingScroll.SetBounds(0, 25, 760, 425); // Más alto, acorde al nuevo mListContainer
+
             mListingScroll.Show(); // Forzar creación visual
 
         }
@@ -190,7 +207,8 @@ namespace Intersect.Client.Interface.Game.Market
             mListingScroll = new ScrollControl(mListContainer, "MarketListingScroll");
             mListingScroll.GetVerticalScrollBar();
             mListingScroll.EnableScroll(false, true);
-            mListingScroll.SetBounds(0, 25, 760, 375); // Debajo de los encabezados
+            mListingScroll.SetBounds(0, 25, 760, 425); // Más alto, acorde al nuevo mListContainer
+
             mListingScroll.Show(); // Forzar creación visual
 
            

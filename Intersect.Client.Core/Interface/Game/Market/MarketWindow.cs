@@ -30,59 +30,81 @@ namespace Intersect.Client.Interface.Game.Market
         private ListBox mItemTypeList;
         private Button mSearchButton;
         private Button mSellButton;
+        private Label mNoResultsLabel;
 
-     
         public MarketWindow(Canvas parent)
         {
             Instance = this;
 
             mMarketWindow = new WindowControl(parent, "📦 Mercado Global", false, "MarketWindow");
             mMarketWindow.SetSize(800, 600);
-            
             mMarketWindow.DisableResizing();
-            Interface.InputBlockingElements.Add(mMarketWindow);
-          
+            mMarketWindow.Focus();
+
             mTitle = new Label(mMarketWindow, "MarketTitle");
             mTitle.Text = "📦 Mercado Global";
             mTitle.SetBounds(20, 10, 400, 30);
 
+            // 🔍 Filtros
+            var nameLabel = new Label(mMarketWindow) { Text = "🔍 Nombre del ítem:" };
+            nameLabel.SetBounds(20, 45, 140, 20);
             mSearchBox = new TextBox(mMarketWindow);
-            mSearchBox.SetBounds(20, 50, 200, 30);
-            mSearchBox.SetText("");
+            mSearchBox.SetBounds(160, 45, 160, 25);
 
+            var typeLabel = new Label(mMarketWindow) { Text = "📦 Tipo:" };
+            typeLabel.SetBounds(340, 45, 50, 20);
             mItemTypeList = new ListBox(mMarketWindow);
-            mItemTypeList.SetBounds(230, 50, 150, 100);
+            mItemTypeList.SetBounds(390, 45, 150, 80);
             mItemTypeList.AddRow("Todos", "all", "all");
             mItemTypeList.SelectByUserData("all");
-            foreach (var type in Enum.GetValues(typeof(ItemType)))
+            foreach (ItemType type in Enum.GetValues(typeof(ItemType)))
             {
-                mItemTypeList.AddRow(type.ToString(), type.ToString(), type);
+                if (type != ItemType.Currency)
+                {
+                    mItemTypeList.AddRow(type.ToString(), type.ToString(), type);
+                }
             }
 
+            var minLabel = new Label(mMarketWindow) { Text = "💰 Precio Mínimo:" };
+            minLabel.SetBounds(20, 130, 120, 20);
             mMinPriceBox = new TextBoxNumeric(mMarketWindow);
-            mMinPriceBox.SetBounds(390, 50, 80, 30);
+            mMinPriceBox.SetBounds(140, 130, 80, 25);
+         
             mMinPriceBox.SetText("", false);
-
+            var maxLabel = new Label(mMarketWindow) { Text = "💰 Precio Máximo:" };
+            maxLabel.SetBounds(230, 130, 120, 20);
             mMaxPriceBox = new TextBoxNumeric(mMarketWindow);
-            mMaxPriceBox.SetBounds(480, 50, 80, 30);
+            mMaxPriceBox.SetBounds(350, 130, 80, 25);
             mMaxPriceBox.SetText("", false);
 
             mSearchButton = new Button(mMarketWindow);
-            mSearchButton.SetBounds(570, 50, 100, 30);
+            mSearchButton.SetBounds(450, 130, 100, 30);
             mSearchButton.SetText("🔍 Buscar");
             mSearchButton.Clicked += (s, a) => SendSearch();
 
-            mListingScroll = new ScrollControl(mMarketWindow, "MarketListingScroll");
-            mListingScroll.EnableScroll(false, true);
-            mListingScroll.SetBounds(20, 150, 760, 420);
             mSellButton = new Button(mMarketWindow);
-            mSellButton.SetBounds(680, 50, 100, 30);
+            mSellButton.SetBounds(560, 130, 100, 30);
             mSellButton.SetText("📤 Vender");
             mSellButton.Clicked += SellMarket_Clicked;
-            mMarketWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
 
+            mListingScroll = new ScrollControl(mMarketWindow, "MarketListingScroll");
+            mListingScroll.EnableScroll(false, true);
+            mListingScroll.SetBounds(20, 180, 760, 400);
+            mNoResultsLabel = new Label(mMarketWindow);
+            mNoResultsLabel.SetText("❌ No se encontraron resultados.");
+            mNoResultsLabel.SetBounds(220, 300, 300, 30);
+            mNoResultsLabel.Hide(); // Oculto por defecto
+
+            mMarketWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+            InitItemContainer();
 
             PacketSender.SendSearchMarket();
+        }
+
+        private void InitItemContainer()
+        {
+            mListingScroll.DeleteAllChildren();
+            mCurrentItems.Clear();
         }
 
         private void SellMarket_Clicked(Base sender, ClickedEventArgs arguments)
@@ -90,20 +112,28 @@ namespace Intersect.Client.Interface.Game.Market
             if (mMarketWindow.Parent is Canvas parentCanvas)
             {
                 var sellWindow = new SellMarketWindow(parentCanvas);
-
                 sellWindow.Show();
                 sellWindow.Update();
             }
-            
         }
 
         private void SendSearch()
         {
             var name = mSearchBox.Text?.Trim() ?? "";
-            int? minPrice = int.TryParse(mMinPriceBox.Text, out var minVal) ? minVal : null;
-            int? maxPrice = int.TryParse(mMaxPriceBox.Text, out var maxVal) ? maxVal : null;
-            ItemType? type = null;
 
+            int? minPrice = null;
+            if (!string.IsNullOrWhiteSpace(mMinPriceBox.Text) && int.TryParse(mMinPriceBox.Text, out var minVal))
+            {
+                minPrice = minVal;
+            }
+
+            int? maxPrice = null;
+            if (!string.IsNullOrWhiteSpace(mMaxPriceBox.Text) && int.TryParse(mMaxPriceBox.Text, out var maxVal))
+            {
+                maxPrice = maxVal;
+            }
+
+            ItemType? type = null;
             if (mItemTypeList.SelectedRow?.UserData?.ToString() != "all")
             {
                 if (Enum.TryParse<ItemType>(mItemTypeList.SelectedRow?.UserData?.ToString(), out var parsed))
@@ -115,28 +145,62 @@ namespace Intersect.Client.Interface.Game.Market
             PacketSender.SendSearchMarket(name, minPrice, maxPrice, type);
         }
 
+
         public void UpdateListings(List<MarketListingPacket> listings)
         {
-            foreach (var item in mCurrentItems)
+            // Ocultamos siempre el mensaje de "no resultados" al comenzar
+            mNoResultsLabel.Hide();
+
+            // Si no hay nada que mostrar
+            if (listings.Count == 0)
             {
-                item.Container.Dispose();
+                foreach (var item in mCurrentItems)
+                {
+                    item.Container.Dispose();
+                }
+
+                mCurrentItems.Clear();
+                mListingScroll.DeleteAllChildren();
+
+                mNoResultsLabel.Show();
+                return;
             }
 
-            mCurrentItems.Clear();
-            mListingScroll.DeleteAllChildren();
-
-            int offsetY = 0;
-            foreach (var listing in listings)
+            // Si cambió la cantidad de ítems, reiniciamos todo
+            if (listings.Count != mCurrentItems.Count)
             {
-                var marketItem = new MarketItem(this, listing);
-                marketItem.Setup();
-                marketItem.Container.SetPosition(0, offsetY);
-                offsetY += 44;
+                foreach (var item in mCurrentItems)
+                {
+                    item.Container.Dispose();
+                }
 
-                mCurrentItems.Add(marketItem);
-                mListingScroll.AddChild(marketItem.Container);
+                mCurrentItems.Clear();
+                mListingScroll.DeleteAllChildren();
+
+                int offsetY = 0;
+                foreach (var listing in listings)
+                {
+                    var marketItem = new MarketItem(this, listing);
+                    marketItem.Container = new ImagePanel(mListingScroll, "MarketItemRow");
+                    marketItem.Setup();
+                    marketItem.Container.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+                    marketItem.Container.SetPosition(0, offsetY);
+                    marketItem.Container.Show();
+
+                    offsetY += 44;
+                    mCurrentItems.Add(marketItem);
+                }
+
+                return;
+            }
+
+            // Si no cambió la cantidad, solo actualizamos visualmente
+            for (int i = 0; i < listings.Count; i++)
+            {
+                mCurrentItems[i].Update(listings[i]);
             }
         }
+
 
         public void RefreshAfterPurchase()
         {
@@ -145,7 +209,7 @@ namespace Intersect.Client.Interface.Game.Market
 
         public void UpdateTransactionHistory(List<MarketTransactionPacket> transactions)
         {
-            // Implementar si deseas mostrar historial en pestaña futura
+            // Futuro: historial de transacciones
         }
 
         public void Close() => mMarketWindow?.Close();

@@ -2597,5 +2597,30 @@ public static partial class PacketSender
         player.SendPacket(new MarketTransactionsPacket(packets));
     }
 
+    public static void SendRefreshMarket(Player player)
+    {
+        if (player == null)
+        {
+            return;
+        }
+
+        // Obtener todos los listados activos en el mercado
+        var listings = MarketManager.SearchMarket();
+
+        // Construir el paquete de listado de mercado
+        var packet = new MarketListingsPacket(
+            listings.Select(listing => new MarketListingPacket
+            {
+                ListingId = listing.Id,
+                ItemId = listing.ItemId,
+                Quantity = listing.Quantity,
+                Price = listing.Price,
+                Properties = listing.ItemProperties
+            }).ToList()
+        );
+
+        // Enviar al cliente
+        player.SendPacket(packet);
+    }
 
 }

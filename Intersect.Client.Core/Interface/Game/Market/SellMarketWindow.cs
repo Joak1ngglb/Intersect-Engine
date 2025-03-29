@@ -202,28 +202,61 @@ namespace Intersect.Client.Interface.Game.Market
 
             PacketSender.SendChatMsg($"📦 Ítem seleccionado: {item?.Name}", 5);
         }
-
-
-
         private void OnConfirmClicked(Base sender, EventArgs args)
         {
-            if (mSelectedSlot < 0 || mSelectedItemId == Guid.Empty) return;
+            if (mSelectedSlot < 0 || mSelectedItemId == Guid.Empty)
+            {
+                PacketSender.SendChatMsg("❌ Slot inválido o sin ítem.", 5);
+                return;
+            }
 
-            if (!int.TryParse(mQuantityInput.Text, out var qty) || qty <= 0) return;
-            if (!int.TryParse(mPriceInput.Text, out var price) || price <= 0) return;
+            // Validar cantidad y precio
+            if (!int.TryParse(mQuantityInput.Text, out var qty) || qty <= 0)
+            {
+                PacketSender.SendChatMsg("❌ Cantidad inválida.", 5);
+                return;
+            }
+
+            if (!int.TryParse(mPriceInput.Text, out var price) || price <= 0)
+            {
+                PacketSender.SendChatMsg("❌ Precio inválido.", 5);
+                return;
+            }
 
             var slotData = Globals.Me.Inventory[mSelectedSlot];
-            if (slotData == null) return;
+            if (slotData == null)
+            {
+                PacketSender.SendChatMsg("❌ No se encontró el slot en inventario.", 5);
+                return;
+            }
 
-            PacketSender.SendCreateMarketListing(slotData.ItemId, qty, price, slotData.ItemProperties);
+            var item = ItemBase.Get(slotData.ItemId);
+            if (item == null)
+            {
+                PacketSender.SendChatMsg("❌ ItemBase no encontrado.", 5);
+                return;
+            }
 
-            // 🔍 Enviar mensaje de depuración al chat
-            PacketSender.SendChatMsg($"[Debug] Publicado: {slotData.ItemId} x{qty} por {price}",5);
+            var itemName = item.Name;
+            var properties = slotData.ItemProperties ?? new Network.Packets.Server.ItemProperties();
 
+            // 🪪 Depuración: ID y tipo del ítem
+            PacketSender.SendChatMsg($"[DEBUG] ItemId: {slotData.ItemId}", 5);
+            PacketSender.SendChatMsg($"[DEBUG] ItemProperties: StatBonus.Count={properties.StatModifiers}", 5);
+
+            // Enviar el listado al servidor
+            PacketSender.SendCreateMarketListing(slotData.ItemId, qty, price, properties);
+
+            // ✅ Confirmación al jugador
+            PacketSender.SendChatMsg($"📤 Publicado: {itemName} x{qty} por {price} 🪙", 5);
+
+            // Limpiar campos
             mPriceInput.SetText("", false);
             mQuantityInput.SetText("", false);
             mInfoLabel.Text = "✅ ¡Ítem publicado con éxito!";
         }
+
+
 
 
         public void Show() => mSellWindow?.Show();

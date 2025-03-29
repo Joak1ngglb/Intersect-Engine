@@ -3201,16 +3201,20 @@ internal sealed partial class PacketHandler
         var player = client.Entity;
         if (player == null) return;
 
-        var item = player.FindInventoryItemSlot(packet.ItemId);
-        if (item == null) return;
+       
+        // Clonar los datos necesarios antes de perder el ítem
+        var clone = new Item(packet.ItemId, packet.Quantity)
+        {
+            Properties = packet.Properties
+        };
 
-        item.Properties = packet.Properties;
+        var success = MarketManager.TryListItem(player, clone, packet.Quantity, packet.Price);
 
-        var success = MarketManager.TryListItem(player, item, packet.Quantity, packet.Price);
         if (success)
         {
             PacketSender.SendMarketListingCreated(player);
         }
     }
+
 
 }

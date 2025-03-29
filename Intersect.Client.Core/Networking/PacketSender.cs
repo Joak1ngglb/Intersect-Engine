@@ -567,7 +567,7 @@ public static partial class PacketSender
         });
     }
 
-    public static void SendCreateMarketListing(Guid itemId, int quantity, int price, Intersect.Network.Packets.Server.ItemProperties props)
+    public static void SendCreateMarketListing(Guid itemId, int quantity, int price,Intersect.Network.Packets.Server.ItemProperties props)
     {
         Network.SendPacket(new CreateMarketListingPacket
         {

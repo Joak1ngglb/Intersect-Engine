@@ -1,120 +1,128 @@
-﻿using System;
-using Intersect.Client.Framework.Gwen.Control;
+using System;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
-using Intersect.Client.General;
+using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Interface.Game.DescriptionWindows;
-using Intersect.Client.Networking;
+using Intersect.Client.Interface.Game.Market;
 using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
+using Intersect.Client.Networking;
+using Intersect.Client.General;
 
-namespace Intersect.Client.Interface.Game.Market
+public class MarketItem
 {
-    public class MarketItem
+    public ImagePanel Container;
+
+    private ImagePanel mIconPanel;
+    private Label mNameLabel;
+    private Label mQuantityLabel;
+    private Label mPriceLabel;
+    private Button mBuyButton;
+
+    private MarketWindow mMarketWindow;
+    private MarketListingPacket mListing;
+    private ItemDescriptionWindow mDescWindow;
+    private ItemBase mItemBase;
+
+    public MarketItem(MarketWindow marketWindow, MarketListingPacket listing)
     {
-        public ImagePanel Container;
-        public ImagePanel Pnl;
+        mMarketWindow = marketWindow;
+        mListing = listing;
+    }
 
-        private Label mNameLabel;
-        private Label mQuantityLabel;
-        private Label mPriceLabel;
-        private Button mBuyButton;
+    public void Setup()
+    {
+        mItemBase = ItemBase.Get(mListing.ItemId);
 
-        private MarketWindow mMarketWindow;
-        private MarketListingPacket mListing;
-        private ItemDescriptionWindow mDescWindow;
+        mIconPanel = new ImagePanel(Container, "MarketItemIcon");
+        mIconPanel.SetBounds(5, 4, 32, 32);
 
-        public MarketItem(MarketWindow marketWindow, MarketListingPacket listing)
+        if (mItemBase != null)
         {
-            mMarketWindow = marketWindow;
-            mListing = listing;
+            mIconPanel.Texture = Globals.ContentManager.GetTexture(Intersect.Client.Framework.Content.TextureType.Item, mItemBase.Icon);
+            mIconPanel.RenderColor = mItemBase.Color;
         }
 
-        public void Setup()
+        mIconPanel.HoverEnter += OnHoverEnter;
+        mIconPanel.HoverLeave += OnHoverLeave;
+        mIconPanel.DoubleClicked += OnDoubleClick;
+
+        mNameLabel = new Label(Container, "MarketItemName")
         {
-            Container = new ImagePanel(null, "MarketItemRow");
-            Container.SetBounds(0, 0, 760, 40);
+            Text = mItemBase?.Name ?? "???"
+        };
+        mNameLabel.SetBounds(42, 5, 200, 30);
 
-            Pnl = new ImagePanel(Container, "MarketItemIcon");
-            Pnl.SetBounds(5, 4, 32, 32);
-
-            var itemData = ItemBase.Get(mListing.ItemId);
-            if (itemData != null)
-            {
-                Pnl.Texture = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, itemData.Icon);
-            }
-
-            Pnl.HoverEnter += Pnl_HoverEnter;
-            Pnl.HoverLeave += Pnl_HoverLeave;
-            Pnl.DoubleClicked += Pnl_DoubleClicked;
-
-            mNameLabel = new Label(Container, "MarketItemName");
-            mNameLabel.Text = itemData?.Name ?? "???";
-            mNameLabel.SetBounds(42, 5, 200, 30);
-
-            mQuantityLabel = new Label(Container, "MarketItemQuantity");
-            mQuantityLabel.Text = $"x{mListing.Quantity}";
-            mQuantityLabel.SetBounds(250, 5, 50, 30);
-
-            mPriceLabel = new Label(Container, "MarketItemPrice");
-            mPriceLabel.Text = $"{mListing.Price} 🪙";
-            mPriceLabel.SetBounds(310, 5, 100, 30);
-
-            mBuyButton = new Button(Container, "BuyMarketItemButton");
-            mBuyButton.SetText("🛒 Comprar");
-            mBuyButton.SetBounds(620, 5, 100, 30);
-            mBuyButton.Clicked += OnBuyClicked;
-        }
-
-        private void OnBuyClicked(Base sender, ClickedEventArgs args)
+        mQuantityLabel = new Label(Container, "MarketItemQuantity")
         {
-            var itemData = ItemBase.Get(mListing.ItemId);
-            var confirmation = new MessageBox(
-                Container?.Parent ?? Container,
-                $"¿Comprar {itemData?.Name} por {mListing.Price} 🪙?",
-                "Confirmar Compra"
-            );
+            Text = $"x{mListing.Quantity}"
+        };
+        mQuantityLabel.SetBounds(250, 5, 50, 30);
 
-            confirmation.Dismissed += (s, e) =>
-            {
-                PacketSender.SendBuyMarketListing(mListing.ListingId);
-            };
-
-            confirmation.Show();
-        }
-
-        private void Pnl_HoverEnter(Base sender, EventArgs args)
+        mPriceLabel = new Label(Container, "MarketItemPrice")
         {
-            var itemData = ItemBase.Get(mListing.ItemId);
-            if (itemData != null && mDescWindow == null)
-            {
-                mDescWindow = new ItemDescriptionWindow(itemData, mListing.Quantity, 0, 0, mListing.Properties);
-            }
-        }
+            Text = $"{mListing.Price} 🪙"
+        };
+        mPriceLabel.SetBounds(310, 5, 100, 30);
 
-        private void Pnl_HoverLeave(Base sender, EventArgs args)
-        {
-            mDescWindow?.Dispose();
-            mDescWindow = null;
-        }
+        mBuyButton = new Button(Container, "BuyMarketItemButton");
+        mBuyButton.SetText("🛒 Comprar");
+        mBuyButton.SetBounds(500, 5, 100, 30);
+        mBuyButton.Clicked += OnBuyClick;
+    }
 
-        private void Pnl_DoubleClicked(Base sender, ClickedEventArgs args)
+    private void OnBuyClick(Base sender, ClickedEventArgs args)
+    {
+        if (mItemBase == null) return;
+
+        var confirmation = new MessageBox(
+            Container?.Parent ?? Container,
+            $"¿Comprar {mItemBase.Name} x{mListing.Quantity} por {mListing.Price * mListing.Quantity} 🪙?",
+            "Confirmar Compra"
+        );
+        confirmation.SetSize(200, 200);
+        confirmation.Dismissed += (s, e) =>
         {
             PacketSender.SendBuyMarketListing(mListing.ListingId);
-        }
+        };
 
-        public void UpdateItem(MarketListingPacket listing)
+        confirmation.Show();
+    }
+
+    private void OnHoverEnter(Base sender, EventArgs args)
+    {
+        if (mItemBase != null && mDescWindow == null)
         {
-            mListing = listing;
-
-            var itemData = ItemBase.Get(mListing.ItemId);
-            mNameLabel.Text = itemData?.Name ?? "???";
-            mQuantityLabel.Text = $"x{mListing.Quantity}";
-            mPriceLabel.Text = $"{mListing.Price} 🪙";
-
-            if (itemData != null)
-            {
-                Pnl.Texture = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, itemData.Icon);
-            }
+            mDescWindow = new ItemDescriptionWindow(mItemBase, mListing.Quantity, 0, 0, mListing.Properties);
         }
+    }
+
+    private void OnHoverLeave(Base sender, EventArgs args)
+    {
+        mDescWindow?.Dispose();
+        mDescWindow = null;
+    }
+
+    private void OnDoubleClick(Base sender, ClickedEventArgs args)
+    {
+        PacketSender.SendBuyMarketListing(mListing.ListingId);
+    }
+
+    public void Update(MarketListingPacket newListing)
+    {
+        mListing = newListing;
+        mItemBase = ItemBase.Get(mListing.ItemId);
+
+        if (mItemBase == null)
+        {
+            mNameLabel.Text = "???";
+            mIconPanel.Texture = null;
+            return;
+        }
+
+        mNameLabel.Text = mItemBase.Name;
+        mQuantityLabel.Text = $"x{mListing.Quantity}";
+        mPriceLabel.Text = $"{mListing.Price} 🪙";
+        mIconPanel.Texture = Globals.ContentManager.GetTexture(Intersect.Client.Framework.Content.TextureType.Item, mItemBase.Icon);
+        mIconPanel.RenderColor = mItemBase.Color;
     }
 }

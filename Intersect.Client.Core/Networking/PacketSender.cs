@@ -577,5 +577,10 @@ public static partial class PacketSender
             Properties = props
         });
     }
+    public static void SendCancelMarketListing(Guid listingId)
+    {
+        var packet = new CancelMarketListingPacket(listingId);
+        Network.SendPacket(packet);
+    }
 
 }

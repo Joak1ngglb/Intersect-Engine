@@ -681,6 +681,7 @@ public partial class GameInterface : MutableInterface
     public void UpdateListings(List<MarketListingPacket> listings)
     {
         MarketWindow.Instance?.UpdateListings(listings);
+      
     }
 
 }

@@ -32,7 +32,8 @@ namespace Intersect.Client.Interface.Game.Market
         private bool Initialized= false;
         //Item List
         public List<InventoryItem> Items = new List<InventoryItem>();
-  
+        private Label mTaxLabel;
+
         private Label mPriceLabel;
         private Label mQuantityLabel;
         public int X { get; set; }
@@ -70,6 +71,11 @@ namespace Intersect.Client.Interface.Game.Market
             mPriceInput = new TextBoxNumeric(mSellWindow);
             mPriceInput.SetBounds(430, 70, 100, 30);
             mPriceInput.SetText("", false);
+            mPriceInput.TextChanged += (sender, args) => UpdateTaxDisplay();
+
+            mTaxLabel = new Label(mSellWindow,"Taxlabel");
+            mTaxLabel.SetBounds(320, 105, 210, 15);
+            mTaxLabel.Text = "🧾 Impuesto estimado: 0 🪙";
 
             mConfirmButton = new Button(mSellWindow);
             mConfirmButton.SetBounds(320, 120, 210, 40);
@@ -80,6 +86,21 @@ namespace Intersect.Client.Interface.Game.Market
             mSellWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
             InitItemContainer();
         }
+        private void UpdateTaxDisplay()
+        {
+            if (int.TryParse(mPriceInput.Text, out var price) && price > 0)
+            {
+                var quantity = mQuantityInput.Value;
+                // 🔧 Usa el mismo porcentaje que el servidor (por defecto 5%)
+                var tax = (int)Math.Ceiling(price*quantity* 0.05);
+                mTaxLabel.Text = $"🧾 Impuesto estimado: {tax} 🪙";
+            }
+            else
+            {
+                mTaxLabel.Text = "🧾 Impuesto estimado: 0 ";
+            }
+        }
+
 
         public void Update()
         {
@@ -262,20 +283,7 @@ namespace Intersect.Client.Interface.Game.Market
         public void Show() => mSellWindow?.Show();
         public void Hide() => mSellWindow?.Hide();
         public void Close() => mSellWindow?.Close();
-        public FloatRect RenderBounds()
-        {
-            var rect = new FloatRect()
-            {
-                X = mSellWindow.LocalPosToCanvas(new Point(0, 0)).X -
-                    (Items[0].Container.Padding.Left + Items[0].Container.Padding.Right) / 2,
-                Y = mSellWindow.LocalPosToCanvas(new Point(0, 0)).Y -
-                    (Items[0].Container.Padding.Top + Items[0].Container.Padding.Bottom) / 2,
-                Width = mSellWindow.Width + Items[0].Container.Padding.Left + Items[0].Container.Padding.Right,
-                Height = mSellWindow.Height + Items[0].Container.Padding.Top + Items[0].Container.Padding.Bottom
-            };
-
-            return rect;
-        }
+      
     }
 }
 

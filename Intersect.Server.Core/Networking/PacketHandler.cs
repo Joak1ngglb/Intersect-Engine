@@ -3216,5 +3216,29 @@ internal sealed partial class PacketHandler
         }
     }
 
+    public void HandlePacket(Client client, CancelMarketListingPacket packet)
+    {
+        var player = client.Entity;
+        if (player == null) return;
+
+        var context = DbInterface.CreatePlayerContext(readOnly: false);
+        var listing = context.Market_Listings.Include(l => l.Seller).FirstOrDefault(l => l.Id == packet.ListingId);
+
+        if (listing == null || listing.IsSold || listing.Seller.Name != player.Name)
+        {
+            PacketSender.SendChatMsg(player, "❌ No puedes cancelar este listado.", ChatMessageType.Error, CustomColors.Alerts.Error);
+            return;
+        }
+
+        listing.IsSold = true;
+        context.Update(listing);
+
+        // Devolver el ítem
+        player.TryGiveItem(listing.ItemId, listing.Quantity);
+
+        context.SaveChanges();
+        PacketSender.SendChatMsg(player, "🛑 Listado cancelado y objeto devuelto.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+        PacketSender.SendRefreshMarket(player);
+    }
 
 }

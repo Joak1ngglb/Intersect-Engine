@@ -2417,17 +2417,15 @@ internal sealed partial class PacketHandler
 
     public void HandlePacket(IPacketSender packetSender, GuildUpdate packet)
     {
-        // Verifica que el jugador y su guild estén disponibles
         if (Globals.Me == null || Globals.Me.Guild == null)
         {
             return;
         }
 
-        // Si usas el nombre del gremio en el cliente
-        Globals.Me.Guild = packet.Name; // O la propiedad adecuada para almacenar el nombre
+        // Nombre del gremio
+        Globals.Me.Guild = packet.Name;
 
-        // Llamada al método GetLogo con TODOS los parámetros
-        // (Asegúrate de tener un método que coincida con esta firma en tu lado cliente)
+        // Logo visual
         Globals.Me.GetLogo(
             packet.LogoBackground,
             packet.BackgroundR,
@@ -2440,17 +2438,36 @@ internal sealed partial class PacketHandler
             packet.SymbolPosY,
             packet.SymbolScale
         );
+
         Globals.Me.GuildBackgroundFile = packet.LogoBackground;
         Globals.Me.GuildSymbolFile = packet.LogoSymbol;
         Globals.Me.GuildBackgroundB = packet.BackgroundB;
         Globals.Me.GuildBackgroundR = packet.BackgroundR;
         Globals.Me.GuildBackgroundG = packet.BackgroundG;
+
+        // Datos de progreso
         Guild.GuildLevel = packet.GuildLevel;
         Guild.GuildExp = packet.GuildExp;
         Guild.GuildExpToNextLevel = packet.GuildExpToNextLevel;
-        // Por ejemplo, notificar a la interfaz gráfica de que se actualizó la guild
-        //Interface.Interface.GameUi.NotifyUpdateGuild();
+
+        // Puntos del gremio
+        Guild.GuildPoints = packet.GuildPoints;
+        Guild.GuildSpent = packet.SpentGuildPoints;
+
+        // Cargar mejoras desde el diccionario
+        Guild.GuildUpgrades.Clear();
+        foreach (var kvp in packet.GuildUpgrades)
+        {
+            if (Enum.TryParse(kvp.Key, out GuildUpgradeType upgradeType))
+            {
+                Guild.GuildUpgrades[upgradeType] = kvp.Value;
+            }
+        }
+
+        // Notificar a la interfaz (si usas bindings o UI dinámica)
+        // Interface.Interface.GameUi.NotifyUpdateGuild();
     }
+
     public void HandlePacket(IPacketSender packetSender, GuildExperienceUpdatePacket packet)
     {
         if (Globals.Me == null) return;

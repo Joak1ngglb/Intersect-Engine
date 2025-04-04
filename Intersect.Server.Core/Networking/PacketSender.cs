@@ -2522,20 +2522,21 @@ public static partial class PacketSender
         var guild = player.Guild;
         var guildUpdatePacket = new GuildUpdate
         (
-            guild.Name,
-            guild.LogoBackground,
-            guild.BackgroundR,
-            guild.BackgroundG,
-            guild.BackgroundB,
-            guild.LogoSymbol,
-            guild.SymbolR,
-            guild.SymbolG,
-            guild.SymbolB,
-            guild.SymbolPosY,
-            guild.SymbolScale,
-            guild.Level,
-            guild.Experience,
-            guild.ExperienceToNextLevel
+               guild.Name,
+    guild.LogoBackground,
+    guild.BackgroundR, guild.BackgroundG, guild.BackgroundB,
+    guild.LogoSymbol,
+    guild.SymbolR, guild.SymbolG, guild.SymbolB,
+    guild.SymbolPosY,
+    guild.SymbolScale,
+    guild.Level,
+    guild.Experience,
+    guild.ExperienceToNextLevel,
+    guild.GuildPoints,
+    guild.SpentGuildPoints,
+    guild.GuildUpgrades.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value)
+
+
         );
         player.SendPacket(guildUpdatePacket);
     }

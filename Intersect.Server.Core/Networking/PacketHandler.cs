@@ -2878,6 +2878,30 @@ internal sealed partial class PacketHandler
         PacketSender.SendGuild(player);
     }
 
+    public void HandlePacket(Client client, ApplyGuildUpgradePacket packet)
+    {
+        var player = client.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var guild = player.Guild;
+        if (player?.Guild != null)
+        {
+            var success = player.Guild.ApplyUpgrade(packet.UpgradeType);
+
+            if (success)
+            {
+                PacketSender.UpdateGuild(player);
+                PacketSender.SendChatMsg(player, "¡Mejora aplicada exitosamente!", ChatMessageType.Notice);
+            }
+            else
+            {
+                PacketSender.SendChatMsg(player, "No se pudo aplicar la mejora.", ChatMessageType.Notice);
+            }
+        }
+    }
 
     //UpdateGuildMemberPacket
     public void HandlePacket(Client client, UpdateGuildMemberPacket packet)

@@ -57,6 +57,13 @@ namespace Intersect.Client.Interface.Game
         private ImagePanel GuildExpBackground;
         private ImagePanel GuildExpBar;
         private Label GuildExpLabel;
+        private ImagePanel _panelUpgrades;
+        private Dictionary<GuildUpgradeType, Button> _upgradeButtons = new();
+        private Dictionary<GuildUpgradeType, Label> _upgradeLabels = new();
+        private Label pointsLabel;
+        private Label spentLabel;
+        private bool _isViewingUpgrades = false;
+        private Label mGuildMembersLabel;
 
         public GuildWindow(Canvas gameCanvas) : base(gameCanvas, Globals.Me?.Guild, false, nameof(GuildWindow))
         {
@@ -71,9 +78,97 @@ namespace Intersect.Client.Interface.Game
             _textboxSearch = new TextBox(_textboxContainer, "SearchTextbox");
             _textboxSearch.SetBounds(0, 0, 400, 30);
             Interface.FocusElements.Add(_textboxSearch);
+            // Panel de Miembros
+            _panelMemberList = new ImagePanel(this, "PanelMemberList");
+            _panelMemberList.SetBounds(10, 120, 620, 270);
+            _panelMemberList.IsHidden = false;
 
+            #region Upgrade
+            // Panel de Mejoras
+            _panelUpgrades = new ImagePanel(this, "PanelUpgrades");
+            _panelUpgrades.SetBounds(10, 120, 620, 270);
+            _panelUpgrades.IsHidden = true;
+            // Label: Puntos disponibles
+           pointsLabel = new Label(_panelUpgrades, "GuildPointsLabel");
+            pointsLabel.SetText($"Puntos disponibles: {Guild.GuildPoints}");
+            pointsLabel.SetBounds(10, 10, 300, 20);
+
+            // Label: Puntos gastados
+            spentLabel = new Label(_panelUpgrades, "GuildSpentLabel");
+            spentLabel.SetText($"Puntos usados: {Guild.GuildSpent}");
+            spentLabel.SetBounds(10, 35, 300, 20);
+
+            // Título para mejoras
+            var upgradesTitle = new Label(_panelUpgrades, "GuildUpgradesTitle");
+            upgradesTitle.SetText("Mejoras de Gremio:");
+            upgradesTitle.SetBounds(10, 60, 200, 20);
+
+            // Lista dinámica de mejoras
+            int yOffset = 90;
+          
+            foreach (var upgradeType in Enum.GetValues(typeof(GuildUpgradeType)).Cast<GuildUpgradeType>())
+            {
+                var upgradeName = upgradeType.ToString();
+                int currentLevel = Guild.GetUpgradeLevel(upgradeType);
+                int maxLevel = Guild.MaxUpgradeLevels[upgradeType];
+                int cost = Guild.UpgradeCosts[upgradeType].ElementAtOrDefault(currentLevel);
+
+                var upgradeLabel = new Label(_panelUpgrades,"Upgrade_"+ upgradeName );
+                upgradeLabel.SetText($"{upgradeName} - Nivel {currentLevel}/{maxLevel}");
+                upgradeLabel.SetBounds(10, yOffset, 250, 20);
+                _upgradeLabels[upgradeType] = upgradeLabel;
+                upgradeLabel.SetToolTipText(GetUpgradeTooltip(upgradeType));
+
+                var upgradeBtn = new Button(_panelUpgrades,upgradeName +"_UpButton")
+                {
+                    Text = $"Subir ({cost} pts)"
+                };
+                upgradeBtn.IsDisabled = currentLevel >= maxLevel || Guild.GuildPoints < cost || Globals.Me.Rank != 0;
+
+                upgradeBtn.SetBounds(270, yOffset - 2, 100, 25);
+                upgradeBtn.UserData = upgradeType;
+                upgradeBtn.Clicked += (s, e) =>
+                {
+                    if (s is Button btn && btn.UserData is GuildUpgradeType type)
+                    {
+                        PacketSender.SendApplyGuildUpgrade(type);
+                    }
+                };
+                _upgradeButtons[upgradeType] = upgradeBtn;
+
+                yOffset += 30;
+            }
+
+            #endregion
+            // Aquí puedes agregar luego los controles para mostrar mejoras dentro de _panelUpgrades
+
+            // Botón para mostrar miembros
+            var btnShowMembers = new Button(this, "ShowMembersButton")
+            {
+                Text = "👥 Miembros"
+            };
+            btnShowMembers.SetBounds(10, 90, 100, 25);
+            btnShowMembers.Clicked += (s, e) =>
+            {
+                _panelMemberList.IsHidden = false;
+                _panelUpgrades.IsHidden = true;
+                _isViewingUpgrades = false;
+            };
+
+            // Botón para mostrar mejoras
+            var btnShowUpgrades = new Button(this, "ShowUpgradesButton")
+            {
+                Text = "⭐ Mejoras"
+            };
+            btnShowUpgrades.SetBounds(120, 90, 100, 25);
+            btnShowUpgrades.Clicked += (s, e) =>
+            {
+                _panelMemberList.IsHidden = true;
+                _panelUpgrades.IsHidden = false;
+                _isViewingUpgrades = true;
+            };
             // Lista de miembros amplia (parte inferior)
-            _listGuildMembers = new ListBox(this, "GuildMembers") { ColumnCount = 5 };
+            _listGuildMembers = new ListBox(_panelMemberList, "GuildMembers") { ColumnCount = 5 };
             _listGuildMembers.SetColumnWidth(0, 150); // Nombre
             _listGuildMembers.SetColumnWidth(1, 100); // Rango
             _listGuildMembers.SetColumnWidth(2, 50);  // Nivel
@@ -84,17 +179,17 @@ namespace Intersect.Client.Interface.Game
 
             #region Action Buttons
             // Acciones (Invitar, Salir, etc.)
-            _panelActions = new ImagePanel(this, "ActionsPanel");
+            _panelActions = new ImagePanel(_panelMemberList, "ActionsPanel");
             _panelActions.SetBounds(320, 5, 270, 70);
 
-            _buttonAdd = new Button(this, "InviteButton") { Text = Strings.Guilds.Add };
+            _buttonAdd = new Button(_panelActions, "InviteButton") { Text = Strings.Guilds.Add };
             _buttonAdd.SetBounds(530, 10, 100, 30);
             _buttonAdd.Clicked += (s, e) => {
                 if (_textboxSearch.Text.Trim().Length >= 3)
                     PacketSender.SendInviteGuild(_textboxSearch.Text);
             };
 
-            _buttonLeave = new Button(this, "LeaveButton") { Text = Strings.Guilds.Leave };
+            _buttonLeave = new Button(_panelActions, "LeaveButton") { Text = Strings.Guilds.Leave };
             _buttonLeave.SetBounds(530, 50, 100, 30);
             _buttonLeave.Clicked += (s, e) => new InputBox(
                 title: Strings.Guilds.LeaveTitle,
@@ -200,6 +295,7 @@ namespace Intersect.Client.Interface.Game
 
             #endregion
 
+            #region Logo
             // Contenedor principal para el logo del gremio (superior izquierda)
             mLogoContainer = new ImagePanel(this, "GuildLogoContainer");
             mLogoContainer.SetBounds(10, 10, 100, 100);
@@ -212,10 +308,10 @@ namespace Intersect.Client.Interface.Game
             mSymbolLogo.SetBounds(0, 0, 100, 100);
             mSymbolLogo.Show();
             // Nivel del gremio al lado del logo
-             guildLevelLabel = new Label(this, "GuildLevelLabel")
+            guildLevelLabel = new Label(this, "GuildLevelLabel")
             {
                 Text = $"Nivel: {Guild.GuildLevel}",
-                TextColor = Color.White             
+                TextColor = Color.White
             };
             guildLevelLabel.SetBounds(80, 10, 150, 25);
 
@@ -237,11 +333,25 @@ namespace Intersect.Client.Interface.Game
             GuildExpBar.RenderColor = Color.FromArgb(255, 50, 150, 50);
 
             // Label con texto Exp/ExpTNL centrado en la barra
-          GuildExpLabel = new Label(GuildExpBackground, "GuildExpLabel");
+            GuildExpLabel = new Label(GuildExpBackground, "GuildExpLabel");
             GuildExpLabel.SetText($"{Guild.GuildExp} / {Guild.GuildExpToNextLevel}");
             GuildExpLabel.SetBounds(0, 0, 200, 20);
             GuildExpLabel.Alignment = Pos.Center;
             GuildExpLabel.RenderColor = Color.White;
+            var current = Globals.Me?.GuildMembers?.Length ?? 0;
+            var max = Guild.GetMaxMembers();
+          
+
+            // Miembros actuales / máximo
+          mGuildMembersLabel = new Label(this, "GuildMembersLabel")
+            {
+                Text = $"Miembros: {current}/{max}",
+
+                TextColor = Color.White
+            };
+            mGuildMembersLabel.SetBounds(80, 70, 200, 20);
+
+            #endregion
             // Llama a UpdateList() para cargar la lista
             UpdateList();
             UpdateLogo();
@@ -251,6 +361,43 @@ namespace Intersect.Client.Interface.Game
             _addButtonUsed = !_buttonAdd.IsHidden;
             _addPopupButtonUsed = !_buttonAddPopup.IsHidden;
         }
+
+        private string GetUpgradeTooltip(GuildUpgradeType type)
+        {
+            int level = Guild.GetUpgradeLevel(type);
+            return type switch
+            {
+                GuildUpgradeType.ExtraMembers => $"Incrementa el número máximo de miembros en +{level * 10}.",
+                GuildUpgradeType.ExtraBankSlots => $"Agrega +{level * 10} espacios al banco.",
+                GuildUpgradeType.BonusXp => $"Bono de experiencia del {level * 5}%.",
+                GuildUpgradeType.BonusDrop => $"Bono de botín del {level * 5}%.",
+                GuildUpgradeType.BonusJobXp=> $"Bono de experiencia del {level * 5}%.",
+                _ => "Mejora desconocida."
+            };
+        }
+
+
+        public void UpdateUpgradesPanel()
+        {
+            foreach (var upgradeType in Enum.GetValues(typeof(GuildUpgradeType)).Cast<GuildUpgradeType>())
+            {
+                int currentLevel = Guild.GetUpgradeLevel(upgradeType);
+                int maxLevel = Guild.MaxUpgradeLevels[upgradeType];
+                int cost = Guild.UpgradeCosts[upgradeType].ElementAtOrDefault(currentLevel);
+
+                if (_upgradeLabels.TryGetValue(upgradeType, out var label))
+                {
+                    label.Text = $"{upgradeType} - Nivel: {currentLevel}/{maxLevel}";
+                }
+
+                if (_upgradeButtons.TryGetValue(upgradeType, out var button))
+                {
+                    button.Text = $"Subir ({cost} pts)";
+                    button.IsDisabled = currentLevel >= maxLevel || Guild.GuildPoints < cost;
+                }
+            }
+        }
+
         public void UpdateLogo()
         {
             Globals.Me.ConsultGuildLogo();
@@ -385,6 +532,15 @@ namespace Intersect.Client.Interface.Game
             GuildExpLabel.SetText($"{Guild.GuildExp} / {Guild.GuildExpToNextLevel}");
             GuildExpBar.Width = (int)(GuildExpBackground.Width * ((float)Guild.GuildExp / Guild.GuildExpToNextLevel));
             GuildExpBar.SetTextureRect(0, 0, (int)(200 * (float)Guild.GuildExp / Guild.GuildExpToNextLevel), 20);
+            UpdateUpgradesPanel();
+            pointsLabel?.SetText($"Puntos disponibles: {Guild.GuildPoints}");
+            spentLabel?.SetText($"Puntos usados: {Guild.GuildSpent}");
+            _panelMemberList.IsHidden = _isViewingUpgrades;
+            _panelUpgrades.IsHidden = !_isViewingUpgrades;
+            var current = Globals.Me?.GuildMembers?.Length ?? 0;
+            var max = Guild.GetMaxMembers();
+            mGuildMembersLabel.SetText($"Miembros: {current}/{max}");
+
         }
 
         public override void Hide()

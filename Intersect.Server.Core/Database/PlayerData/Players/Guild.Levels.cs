@@ -1,34 +1,28 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Newtonsoft.Json;
 
+
 using Intersect.Enums;
-using Intersect.Server.Entities;
 using Intersect.Server.Networking;
-using System.Collections.Concurrent;
-using Intersect.Collections.Slotting;
-using Microsoft.EntityFrameworkCore;
-using Intersect.Network.Packets.Server;
-using Intersect.GameObjects;
-using Intersect.GameObjects.Maps;
-using Intersect.Logging;
-using Intersect.Utilities;
-using Intersect.Server.Localization;
-using Intersect.Server.Web.RestApi.Payloads;
-using static Intersect.Server.Database.Logging.Entities.GuildHistory;
-using Intersect.Config.Guilds;
+
 
 namespace Intersect.Server.Database.PlayerData.Players;
 
-/// <summary>
-/// A class containing the definition of each guild, alongside the methods to use them.
-/// </summary>
 public partial class Guild
 {
-    // Nuevo sistema de niveles
-    public int Level { get;  set; } = 1;
+    // ===============================
+    // Sistema de Nivel, XP y Mejoras
+    // ===============================
+
+    public int Level { get; set; } = 1;
+
     public long Experience { get; set; } = 0;
-    public long ExperienceToNextLevel => CalculateRequiredExperience(Level);
-    public int MaxMembers => CalculateMaxMembers(Level);
+
+    public int GuildPoints { get; set; } = 0;
+
+    public int SpentGuildPoints { get; set; } = 0;
+
+
     /// <summary>
     /// The name of the guild.
     /// </summary>
@@ -56,6 +50,35 @@ public partial class Guild
     /// Añade experiencia al gremio y verifica si puede subir de nivel.
     /// </summary>
 
+    [NotMapped]
+    public Dictionary<GuildUpgradeType, int> GuildUpgrades = new();
+
+    public string GuildUpgradesData
+    {
+        get => JsonConvert.SerializeObject(GuildUpgrades);
+        set => GuildUpgrades = string.IsNullOrEmpty(value)
+            ? new()
+            : JsonConvert.DeserializeObject<Dictionary<GuildUpgradeType, int>>(value);
+    }
+    public static Dictionary<GuildUpgradeType, int> MaxUpgradeLevels { get; set; } = new()
+{
+    { GuildUpgradeType.ExtraMembers, 5 },
+    { GuildUpgradeType.ExtraBankSlots, 5 },
+    { GuildUpgradeType.BonusXp, 3 },
+    { GuildUpgradeType.BonusDrop, 5 },
+    { GuildUpgradeType.BonusJobXp, 3 } // NUEVO
+};
+
+    public static Dictionary<GuildUpgradeType, int[]> UpgradeCosts = new()
+{
+    { GuildUpgradeType.ExtraMembers, new[] {3, 5, 7, 9, 15} },
+    { GuildUpgradeType.ExtraBankSlots, new[] {1, 2, 3, 4, 5} },
+    { GuildUpgradeType.BonusXp, new[] {6, 11, 20} },
+    { GuildUpgradeType.BonusDrop, new[] {4, 8, 12, 16, 20} },
+    { GuildUpgradeType.BonusJobXp, new[] {5, 10, 15} } // NUEVO
+};
+
+    public long ExperienceToNextLevel => CalculateRequiredExperience(Level);
 
     /// <summary>
     /// Calcula la XP necesaria para subir al siguiente nivel usando los valores configurables.
@@ -68,9 +91,9 @@ public partial class Guild
     /// <summary>
     /// Calcula la cantidad máxima de miembros en un gremio según su nivel.
     /// </summary>
-    private int CalculateMaxMembers(int level)
+    private int CalculateMaxMembers()
     {
-        return Options.Instance.Guild.InitialMaxMembers + ((level - 1) * 5); // Aumenta 5 miembros por nivel
+        return Options.Instance.Guild.InitialMaxMembers; // +5 miembros por nivel
     }
 
     /// <summary>
@@ -85,17 +108,18 @@ public partial class Guild
 
         if (CheckLevelUp())
         {
-            UpdateMemberList(); // Refrescar visualmente en los clientes
+            UpdateMemberList(); // Refrescar en clientes
         }
 
         Save(); // Guardar en DB
     }
+
     private bool CheckLevelUp()
     {
         var levelUps = 0;
 
         while (Experience >= CalculateRequiredExperience(Level + levelUps) &&
-                CalculateRequiredExperience(Level + levelUps) > 0)
+               CalculateRequiredExperience(Level + levelUps) > 0)
         {
             Experience -= CalculateRequiredExperience(Level + levelUps);
             levelUps++;
@@ -116,33 +140,174 @@ public partial class Guild
         for (int i = 0; i < levels; i++)
         {
             Level++;
+
             if (resetExperience)
             {
                 Experience = 0;
             }
 
-            // Mensaje a todos los miembros online
+            // Ganar puntos por nivel (1 por defecto, puedes ajustar)
+            GuildPoints++;
+
+            // Notificar a miembros online
             foreach (var member in FindOnlineMembers())
             {
                 PacketSender.SendChatMsg(member, $"¡El gremio ha subido al nivel {Level}!", ChatMessageType.Guild);
+             
             }
         }
 
         UpdateMemberList();
         Save();
     }
+
     public void SetLevel(int level, bool resetExperience = false)
     {
         if (level < 1)
             return;
 
         Level = level;
+
         if (resetExperience)
+        {
             Experience = 0;
+        }
 
         UpdateMemberList();
         Save();
     }
+    public bool HasUpgrade(GuildUpgradeType upgrade)
+    {
+        return GuildUpgrades.TryGetValue(upgrade, out var level) && level > 0;
+    }
+
+    public int GetUpgradeLevel(GuildUpgradeType type)
+    {
+        if (!GuildUpgrades.ContainsKey(type))
+        {
+            GuildUpgrades[type] = 0;
+        }
+        return GuildUpgrades[type];
+    }
+    public bool ApplyUpgrade(GuildUpgradeType upgrade)
+    {
+        // Inicializar si no existe
+        if (!GuildUpgrades.ContainsKey(upgrade))
+        {
+            GuildUpgrades[upgrade] = 0;
+        }
+
+        var currentLevel = GuildUpgrades[upgrade];
+
+        // Verificación de nivel máximo
+        if (!MaxUpgradeLevels.ContainsKey(upgrade))
+        {
+            Console.WriteLine($"[GuildUpgrade] Error: MaxUpgradeLevels no contiene la mejora {upgrade}.");
+            return false;
+        }
+
+        var maxLevel = MaxUpgradeLevels[upgrade];
+        if (currentLevel >= maxLevel)
+        {
+            Console.WriteLine($"[GuildUpgrade] Ya alcanzado el nivel máximo para {upgrade}.");
+            return false;
+        }
+
+        // Verificación de costos
+        if (!UpgradeCosts.TryGetValue(upgrade, out var costs))
+        {
+            Console.WriteLine($"[GuildUpgrade] Error: No hay costos definidos para {upgrade}.");
+            return false;
+        }
+
+        if (currentLevel >= costs.Length)
+        {
+            Console.WriteLine($"[GuildUpgrade] Error: No hay costo definido para nivel {currentLevel} de {upgrade}.");
+            return false;
+        }
+        var cost = costs[currentLevel];
+        if (GuildPoints < cost)
+        {
+            Console.WriteLine($"[GuildUpgrade] No hay suficientes puntos. Requiere {cost}, disponibles {GuildPoints}.");
+            return false;
+        }
+
+        // Aplicar mejora
+        GuildUpgrades[upgrade] = currentLevel + 1;
+        SpentGuildPoints += cost;
+        GuildPoints -= cost;
+        // Efecto inmediato si aplica
+
+        switch (upgrade)
+        {
+            case GuildUpgradeType.ExtraBankSlots:
+                ExpandBankSlots(BankSlotsCount + 10); // +10 por nivel
+                foreach (var member in FindOnlineMembers())
+                {
+                    PacketSender.SendChatMsg(member, "¡El gremio ha mejorado los espacios del banco! +10 espacios nuevos.", ChatMessageType.Guild);
+                }
+                break;
+
+            case GuildUpgradeType.ExtraMembers:
+                foreach (var member in FindOnlineMembers())
+                {
+                    PacketSender.SendChatMsg(member, "¡El gremio puede aceptar más miembros! Límite aumentado.", ChatMessageType.Guild);
+                }
+                break;
+
+            case GuildUpgradeType.BonusXp:
+                foreach (var member in FindOnlineMembers())
+                {
+                    PacketSender.SendChatMsg(member, "¡El gremio ha mejorado su bonificación de experiencia!", ChatMessageType.Guild);
+                }
+                break;
+
+            case GuildUpgradeType.BonusDrop:
+                foreach (var member in FindOnlineMembers())
+                {
+                    PacketSender.SendChatMsg(member, "¡El gremio ha mejorado su bonificación de drop!", ChatMessageType.Guild);
+                }
+                break;
+            case GuildUpgradeType.BonusJobXp:
+                foreach (var member in FindOnlineMembers())
+                {
+                    PacketSender.SendChatMsg(member, "¡El gremio ha mejorado su bonificación de experiencia de oficios!", ChatMessageType.Guild);
+                }
+                break;
+
+        }
+
+
+        // Actualizar y guardar
+        UpdateMemberList();
+        Save();
+
+        Console.WriteLine($"[GuildUpgrade] Mejora {upgrade} aplicada con éxito. Nuevo nivel: {GuildUpgrades[upgrade]}");
+
+        return true;
+    }
+    public float GetJobXpBonusMultiplier()
+    {
+        var bonusLevel = GetUpgradeLevel(GuildUpgradeType.BonusJobXp);
+        return 1f + (bonusLevel * 0.05f); // 5% por nivel
+    }
+
+    public float GetXpBonusMultiplier()
+    {
+        var bonusLevel = GetUpgradeLevel(GuildUpgradeType.BonusXp);
+        return 1f + (bonusLevel * 0.05f); // 5% por nivel
+    }
+    public int GetMaxBankSlots()
+    {
+        var extra = GetUpgradeLevel(GuildUpgradeType.ExtraBankSlots) * 10;
+        return Options.Instance.Guild.InitialBankSlots + extra;
+    }
+    public int GetMaxMembers()
+    {
+        var baseMembers = CalculateMaxMembers();
+        var extra = GetUpgradeLevel(GuildUpgradeType.ExtraMembers) * 10;
+        return baseMembers + extra;
+    }
+  
 
 }
-

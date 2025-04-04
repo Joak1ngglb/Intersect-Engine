@@ -1293,8 +1293,17 @@ public partial class Player : Entity
     {
         if (amount <= 0) return;
 
+        // Bonus por ítems
         long totalExp = (long)Math.Round(amount + (amount * (GetEquipmentBonusEffect(ItemEffect.EXP) / 100f)));
 
+        // 💡 Bonus adicional por mejoras del gremio
+        if (IsInGuild && Guild.HasUpgrade(GuildUpgradeType.BonusXp))
+        {
+            float guildBonus = Guild.GetXpBonusMultiplier(); // ej: 1.15
+            totalExp = (long)Math.Round(totalExp * guildBonus);
+        }
+
+        // Dividir XP entre jugador y gremio
         long guildExp = (long)(totalExp * (GuildExpPercentage / 100f));
         long playerExp = totalExp - guildExp;
 

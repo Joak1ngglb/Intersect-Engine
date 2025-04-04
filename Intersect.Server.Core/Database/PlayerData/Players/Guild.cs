@@ -226,7 +226,16 @@ public partial class Guild
     {
         if (player != null && !Members.Any(m => m.Key == player.Id))
         {
-            using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+            if (Members.Count >= GetMaxMembers())
+            {
+                // Gremio lleno
+                PacketSender.SendChatMsg(player, "Este gremio ha alcanzado el límite de miembros.", ChatMessageType.Guild);
+           
+                return;
+            }
+
+         
+                using (var context = DbInterface.CreatePlayerContext(readOnly: false))
             {
                 var dbPlayer = context.Players.FirstOrDefault(p => p.Id == player.Id);
                 if (dbPlayer != null)
@@ -686,16 +695,24 @@ public partial class Guild
     /// Updates the number of bank slots alotted to this guild for use, only expanding because we don't want to risk wiping items
     /// </summary>
     /// <param name="count"></param>
-    public void ExpandBankSlots(int count)
+    public void ExpandBankSlots(int requestedCount)
     {
-        if (BankSlotsCount >= count || count > Options.Instance.Bank.MaxSlots)
-        {
+        // El máximo que puede tener el gremio depende del nivel de mejora
+        var extraSlotsFromUpgrade = GetUpgradeLevel(GuildUpgradeType.ExtraBankSlots) * 10;
+        var maxAllowedSlots = Options.Instance.Guild.InitialBankSlots + extraSlotsFromUpgrade;
+
+        // Nunca permitir más que el máximo definido en config general
+        maxAllowedSlots = Math.Min(maxAllowedSlots, Options.Instance.Bank.MaxSlots);
+
+        // Ajustar si la solicitud supera lo permitido
+        requestedCount = Math.Min(requestedCount, maxAllowedSlots);
+
+        if (BankSlotsCount >= requestedCount)
             return;
-        }
 
         lock (mLock)
         {
-            BankSlotsCount = count;
+            BankSlotsCount = requestedCount;
             SlotHelper.ValidateSlotList(Bank, BankSlotsCount);
             DbInterface.Pool.QueueWorkItem(Save);
         }

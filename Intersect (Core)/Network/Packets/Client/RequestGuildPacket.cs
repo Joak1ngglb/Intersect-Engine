@@ -1,3 +1,4 @@
+using Intersect.Enums;
 using MessagePack;
 
 namespace Intersect.Network.Packets.Client;
@@ -47,4 +48,14 @@ public partial class RequestGuildPacket : IntersectPacket
     public int SymbolPosY { get; }
     [Key(9)]
     public float SymbolScale { get; }
+}
+public class ApplyGuildUpgradePacket : IntersectPacket
+{
+    [Key(0)]
+    public GuildUpgradeType UpgradeType { get; set; }
+
+    public ApplyGuildUpgradePacket(GuildUpgradeType upgradeType)
+    {
+        UpgradeType = upgradeType;
+    }
 }

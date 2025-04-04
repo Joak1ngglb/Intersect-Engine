@@ -563,4 +563,11 @@ public static partial class PacketSender
     {
         Network.SendPacket(new GuildExpPercentagePacket(contribution));
     }
+
+    public static void SendApplyGuildUpgrade(GuildUpgradeType type)
+    {
+        var packet = new ApplyGuildUpgradePacket(type);
+        Networking.Network.SendPacket(packet);
+    }
+
 }

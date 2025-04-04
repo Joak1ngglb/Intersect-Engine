@@ -2270,7 +2270,8 @@ internal sealed partial class PacketHandler
                     current.Rank != updated.Rank ||
                     current.Name != updated.Name ||
                     current.Level != updated.Level ||
-                    !string.Equals(current.Map, updated.Map) ||
+                    !string.Equals(current.Map, updated.Map) || 
+                    current.DonatedXp != updated.DonatedXp ||
                     Math.Abs(current.ExperiencePerc - updated.ExperiencePerc) > 0.01f)
                 {
                     hasUpdates = true;

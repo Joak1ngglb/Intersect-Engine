@@ -13,8 +13,9 @@ namespace Intersect.Server.Entities
     public partial class Player : Entity
     {
 
-       [NotMapped]
         public float GuildExpPercentage { get; set; } = 10f;
+
+        public long DonateXPGuild { get; set; } = 0;
 
         public void SetGuildExpPercentage(float percentage)
         {
@@ -36,7 +37,15 @@ namespace Intersect.Server.Entities
             if (Guild == null || amount <= 0) return;
 
             Guild.AddExperience(amount);
+            DonateXPGuild += amount;
             PacketSender.SendChatMsg(this, $"Your guild has received {amount} XP.", ChatMessageType.Guild);
+
+            // Obtener el miembro del gremio correspondiente
+            if (Guild.Members.TryGetValue(this.Id, out var member))
+            {
+                member.DonatedXp = DonateXPGuild;
+            }
+            Guild?.UpdateMemberList();
         }
     }
 

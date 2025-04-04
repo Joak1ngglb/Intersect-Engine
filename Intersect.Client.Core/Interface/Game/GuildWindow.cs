@@ -168,12 +168,14 @@ namespace Intersect.Client.Interface.Game
                 _isViewingUpgrades = true;
             };
             // Lista de miembros amplia (parte inferior)
-            _listGuildMembers = new ListBox(_panelMemberList, "GuildMembers") { ColumnCount = 5 };
+            _listGuildMembers = new ListBox(_panelMemberList, "GuildMembers") { ColumnCount = 6 };
             _listGuildMembers.SetColumnWidth(0, 150); // Nombre
             _listGuildMembers.SetColumnWidth(1, 100); // Rango
             _listGuildMembers.SetColumnWidth(2, 50);  // Nivel
             _listGuildMembers.SetColumnWidth(3, 50);  // % XP
-            _listGuildMembers.SetColumnWidth(4, 150); // Mapa
+            _listGuildMembers.SetColumnWidth(4, 120); // XP Donada
+            _listGuildMembers.SetColumnWidth(5, 100); // Mapa
+
             _listGuildMembers.SetBounds(10, 120, 620, 270);
 
 
@@ -555,7 +557,8 @@ namespace Intersect.Client.Interface.Game
             _listGuildMembers.Clear();
 
             // Encabezado claro y organizado
-            var header = _listGuildMembers.AddRow("Nombre", "Rango", "Nivel", "% XP", "Mapa");
+            var header = _listGuildMembers.AddRow("Nombre", "Rango", "Nivel", "% XP", "XP Donada", "Mapa");
+
             header.SetTextColor(Color.White);
             header.RenderColor = new Color(80, 80, 80, 255);
 
@@ -572,12 +575,14 @@ namespace Intersect.Client.Interface.Game
 
                 // Crear fila completa con datos del miembro
                 var row = _listGuildMembers.AddRow(
-                    member.Name,
-                    Options.Instance.Guild.Ranks[member.Rank].Title,
-                    member.Level.ToString(),
-                    $"{member.ExperiencePerc}%",
-                    mapName
-                );
+       member.Name,
+       Options.Instance.Guild.Ranks[member.Rank].Title,
+       member.Level.ToString(),
+       $"{member.ExperiencePerc}%",
+       $"{member.DonatedXp:N0}",
+       mapName
+   );
+
 
                 // Añadir tooltip informativo (nivel y clase)
                 row.SetToolTipText(Strings.Guilds.Tooltip.ToString(member.Level, member.Class));

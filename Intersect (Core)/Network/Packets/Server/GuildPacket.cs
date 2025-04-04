@@ -51,7 +51,9 @@ public partial class GuildMember
     public bool Online = false;
     [Key(7)]
     public float ExperiencePerc;
-  
+    [Key(8)]
+    public long DonatedXp;
+
 
     /// <summary>
     /// Parameterless constructor for messagepack
@@ -70,7 +72,7 @@ public partial class GuildMember
         Map = map;
    
     }
-    public GuildMember(Guid id, string name, int rank, int level, string cls, string map,float percexp)
+    public GuildMember(Guid id, string name, int rank, int level, string cls, string map,float percexp,long xpdoned)
     {
         Id = id;
         Name = name;
@@ -79,6 +81,6 @@ public partial class GuildMember
         Class = cls;
         Map = map;
         ExperiencePerc = percexp;
-
+        DonatedXp = xpdoned;
     }
 }

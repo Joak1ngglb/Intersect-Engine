@@ -130,7 +130,7 @@ public partial class Guild
                     context.ChangeTracker.DetectChanges();
                     context.SaveChanges();
 
-                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage);
+                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage,player.DonateXPGuild);
                     guild.Members.AddOrUpdate(player.Id, member, (key, oldValue) => member);
 
                     creator.Guild = guild;
@@ -208,7 +208,8 @@ public partial class Guild
                 member.Value.Level = plyr.Level;
                 member.Value.Map = plyr.MapName;
                 member.Value.Rank = plyr.GuildRank;
-                member.Value.ExperiencePerc=plyr.GuildExpPercentage;
+                member.Value.ExperiencePerc = plyr.GuildExpPercentage;
+                member.Value.DonatedXp= plyr.DonateXPGuild;
                 online.Add(plyr);
             }
         }
@@ -251,7 +252,7 @@ public partial class Guild
                     player.GuildRank = rank;
                     player.GuildJoinDate = DateTime.UtcNow;
 
-                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage);
+                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage, player.DonateXPGuild);
                     Members.AddOrUpdate(player.Id, member, (key, oldValue) => member);
 
                     // Send our new guild list to everyone that's online.

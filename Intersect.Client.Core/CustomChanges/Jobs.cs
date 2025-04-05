@@ -1,29 +1,6 @@
-using Intersect.Client.Core;
-using Intersect.Client.Core.Controls;
-using Intersect.Client.Entities.Events;
-using Intersect.Client.Entities.Projectiles;
-using Intersect.Client.Framework.Entities;
-using Intersect.Client.Framework.GenericClasses;
-using Intersect.Client.Framework.Items;
-using Intersect.Client.General;
-using Intersect.Client.Interface.Game.Chat;
-using Intersect.Client.Interface.Game.EntityPanel;
-using Intersect.Client.Interface.Shared;
-using Intersect.Client.Items;
-using Intersect.Client.Localization;
-using Intersect.Client.Maps;
 using Intersect.Client.Networking;
-using Intersect.Config;
-using Intersect.Config.Guilds;
-using Intersect.Configuration;
-using Intersect.Enums;
-using Intersect.Extensions;
 using Intersect.Framework.Core.Config;
-using Intersect.GameObjects;
-using Intersect.GameObjects.Maps;
-using Intersect.Logging;
 using Intersect.Network.Packets.Server;
-using Intersect.Utilities;
 
 
 namespace Intersect.Client.Entities;
@@ -34,6 +11,7 @@ public partial class Player
     public Dictionary<JobType, int> JobLevel { get; set; } = [];
     public Dictionary<JobType, long> JobExp { get; set; } = [];
     public Dictionary<JobType, long> JobExpToNextLevel { get; set; } = [];
+ 
 
     public void UpdateJobsFromPacket(Dictionary<JobType, JobData> jobData)
     {
@@ -74,4 +52,5 @@ public partial class Player
         }
     }
 
+  
 }

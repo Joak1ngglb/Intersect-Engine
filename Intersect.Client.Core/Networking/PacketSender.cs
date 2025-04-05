@@ -551,4 +551,23 @@ public static partial class PacketSender
         Network.SendPacket(new TakeMailPacket(mailID));
     
 }
+    public static void SendCreateGuild(string name, string logoBackground, byte backgroundR, byte backgroundG, byte backgroundB, 
+        string logoSymbol, byte symbolR, byte symbolG, byte symbolB, int symbolPosY, float symbolScale)
+    {
+        Network.SendPacket(new CreateGuildPacket(name, logoBackground, backgroundR, backgroundG, backgroundB, 
+            logoSymbol, symbolR, symbolG, symbolB, symbolPosY, symbolScale));
+    }
+
+
+    public static void SendUpdateGuildXpContribution(float contribution)
+    {
+        Network.SendPacket(new GuildExpPercentagePacket(contribution));
+    }
+
+    public static void SendApplyGuildUpgrade(GuildUpgradeType type)
+    {
+        var packet = new ApplyGuildUpgradePacket(type);
+        Networking.Network.SendPacket(packet);
+    }
+
 }

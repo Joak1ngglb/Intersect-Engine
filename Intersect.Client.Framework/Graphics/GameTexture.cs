@@ -97,4 +97,6 @@ public abstract partial class GameTexture : IAsset
     }
 
     public override string ToString() => $"{GetType().Name} ({Name})";
+
+    public abstract void SetColor(int x, int y, Color color);
 }

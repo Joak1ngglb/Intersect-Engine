@@ -115,6 +115,5 @@ namespace Intersect.Server.Entities
         Warning,
         Error,
         Info
-    }      
-
+    }
 }

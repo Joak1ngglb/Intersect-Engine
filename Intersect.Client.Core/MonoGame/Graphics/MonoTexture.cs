@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using Intersect.Client.Framework.Graphics;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Localization;
@@ -297,5 +297,37 @@ public partial class MonoTexture : GameTexture
     public static MonoTexture CreateFromTexture2D(Texture2D texture2D, string assetName)
     {
         return new MonoTexture(texture2D, assetName);
+    }
+
+    public override void SetColor(int x, int y, Color color)
+    {
+        // Verificar si las coordenadas dadas están dentro de los límites de la textura
+        if (x < 0 || x >= _width || y < 0 || y >= _height)
+            return;
+
+        // Si la textura no ha sido cargada, cargala
+        if (_texture == null)
+        {
+            LoadTexture();
+        }
+
+        // Si hubo un error al cargar la textura, no continuar
+        if (_loadError)
+        {
+            return;
+        }
+
+        // Extraer todos los datos de color de la textura
+        var colorData = new Microsoft.Xna.Framework.Color[_width * _height];
+        _texture.GetData(colorData);
+
+        // Convertir las coordenadas (x, y) a un índice en el arreglo unidimensional
+        int index = x + y * _width;
+
+        // Cambiar el color del pixel en el índice calculado
+        colorData[index] = new Microsoft.Xna.Framework.Color(color.R, color.G, color.B, color.A);
+
+        // Aplicar los datos de color modificados a la textura
+        _texture.SetData(colorData);
     }
 }

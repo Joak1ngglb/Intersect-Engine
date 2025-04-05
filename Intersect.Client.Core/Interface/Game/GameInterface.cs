@@ -138,7 +138,11 @@ public partial class GameInterface : MutableInterface
     }
     public void NotifyOpenGuildCreation()
     {
-        mShouldOpenGuildCreation = true;
+        if (mCreateGuildWindow == null)
+        {
+            mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
+        }
+        mCreateGuildWindow.Show();
     }
 
     public void NotifyCloseGuildCreation()
@@ -146,10 +150,12 @@ public partial class GameInterface : MutableInterface
         mShouldCloseGuildCreation = true;
     }
 
-    public void OpenGuildCreation()
+    public void OpenGuildCreationWindow()
     {
-        mCreateGuildWindow?.Show();
+       mCreateGuildWindow?.Show();
+     
     }
+
     public void CloseGuildCreation()
     {
         mCreateGuildWindow?.Hide();
@@ -423,7 +429,7 @@ public partial class GameInterface : MutableInterface
         }
         if (mShouldOpenGuildCreation)
         {
-            OpenGuildCreation();
+            OpenGuildCreationWindow();
             mShouldOpenGuildCreation = false;
         }
 

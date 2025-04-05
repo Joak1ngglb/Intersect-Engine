@@ -662,6 +662,7 @@ namespace Intersect.Client.Interface.Game.Guilds
         public void Show()
         {
             mCreateGuildWindow.IsHidden = false;
+
         }
 
         // =====================================================

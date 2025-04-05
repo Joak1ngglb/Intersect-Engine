@@ -728,7 +728,7 @@ public partial class FrmEvent : Form
                 break;
 
             case EventCommandType.CreateGuild:
-                tmpCommand = new CreateGuildCommand(CurrentPage.CommandLists);
+                tmpCommand = new CreateGuildCommand();
 
                 break;
 
@@ -1408,7 +1408,7 @@ public partial class FrmEvent : Form
                 break;
 
             case EventCommandType.CreateGuild:
-                cmdWindow = new EventCommandCreateGuild((CreateGuildCommand)command, CurrentPage, this);
+               
 
                 break;
 

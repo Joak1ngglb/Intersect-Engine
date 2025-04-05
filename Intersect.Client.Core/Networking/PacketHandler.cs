@@ -2481,6 +2481,20 @@ internal sealed partial class PacketHandler
 
        
     }
-   
+    public void HandlePacket(IPacketSender packetSender, OpenGuildCreationPacket packet)
+    {
+        if (Globals.Me?.Guild != null)
+        {
+            ChatboxMsg.AddMessage(new ChatboxMsg("No puedes crear una nueva guild mientras ya eres miembro de una.", Color.Red, ChatMessageType.Error));
+            return;
+        }
+
+        Interface.Interface.GameUi.NotifyOpenGuildCreation();
+    }
+    public void HandleGuildCreationWindow(IPacketSender packetSender, GuildCreationWindowPacket packet)
+    {
+        Interface.Interface.GameUi?.NotifyOpenGuildCreation();
+    }
+
 
 }

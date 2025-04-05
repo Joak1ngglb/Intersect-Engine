@@ -7,6 +7,7 @@ using Intersect.Config;
 using System.Text.Json.Serialization;
 using Intersect.Server.Database.PlayerData.Players;
 using System.ComponentModel.DataAnnotations.Schema;
+using Intersect.Network.Packets.Server;
 
 namespace Intersect.Server.Entities
 {
@@ -47,6 +48,7 @@ namespace Intersect.Server.Entities
             }
             Guild?.UpdateMemberList();
         }
+       
     }
 
 }

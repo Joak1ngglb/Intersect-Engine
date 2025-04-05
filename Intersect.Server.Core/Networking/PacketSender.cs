@@ -2547,8 +2547,13 @@ public static partial class PacketSender
 
         player.SendPacket(new GuildExperienceUpdatePacket(player.GuildExpPercentage));
     }
-   
 
-
+    public static void SendOpenGuildWindow(Player player)
+    {
+        if (player == null) return;
+        player.SendPacket(new GuildCreationWindowPacket());
+    }
+    
+    
 
 }

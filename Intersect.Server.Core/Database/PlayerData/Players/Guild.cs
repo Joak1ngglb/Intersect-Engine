@@ -136,7 +136,8 @@ public partial class Guild
                     creator.Guild = guild;
                     creator.GuildRank = 0;
                     creator.GuildJoinDate = DateTime.UtcNow;
-
+                    creator.GuildExpPercentage = 0;
+                    creator.DonateXPGuild = 0;
                     // Send our entity data to nearby players.
                     PacketSender.SendEntityDataToProximity(Player.FindOnline(creator.Id));
                     PacketSender.UpdateGuild(creator);
@@ -251,7 +252,8 @@ public partial class Guild
                     player.Guild = this;
                     player.GuildRank = rank;
                     player.GuildJoinDate = DateTime.UtcNow;
-
+                    player.DonateXPGuild = 0;
+                    player.GuildExpPercentage = 0;
                     var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage, player.DonateXPGuild);
                     Members.AddOrUpdate(player.Id, member, (key, oldValue) => member);
 
@@ -304,7 +306,8 @@ public partial class Guild
                 }
             }
 
-
+            targetPlayer.DonateXPGuild = 0;
+            targetPlayer.GuildExpPercentage = 0;
             Members.TryRemove(targetId, out GuildMember _);
 
             // Send our new guild list to everyone that's online.

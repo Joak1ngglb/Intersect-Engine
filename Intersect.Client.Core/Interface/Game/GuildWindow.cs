@@ -434,11 +434,11 @@ namespace Intersect.Client.Interface.Game
                 // Centrar la imagen
                 Align.Center(mBackgroundLogo);
 
-                PacketSender.SendChatMsg($"Fondo cargado correctamente: {Globals.Me.GuildBackgroundFile}", 5);
+                //PacketSender.SendChatMsg($"Fondo cargado correctamente: {Globals.Me.GuildBackgroundFile}", 5);
             }
             else
             {
-                PacketSender.SendChatMsg($"Error al cargar el fondo: {Globals.Me.GuildBackgroundFile}", 5);
+                //PacketSender.SendChatMsg($"Error al cargar el fondo: {Globals.Me.GuildBackgroundFile}", 5);
                 mBackgroundLogo.SetSize(0, 0);
             }
 
@@ -476,7 +476,7 @@ namespace Intersect.Client.Interface.Game
                     Globals.Me.GuildSymbolG,
                     Globals.Me.GuildSymbolB
                 );
-                PacketSender.SendChatMsg($"Simbolo cargado correctamente: {Globals.Me.GuildSymbolFile}", 5);
+                //PacketSender.SendChatMsg($"Simbolo cargado correctamente: {Globals.Me.GuildSymbolFile}", 5);
             }
             else
             {

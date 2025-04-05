@@ -441,7 +441,7 @@ namespace Intersect.Client.Interface.Game.Guilds
             // Slider de escala (50% a 200%)
             mSymbolScaleSlider = new HorizontalSlider(mCreateGuildWindow, "SymbolScaleSlider");
             mSymbolScaleSlider.SetBounds(220, 590, 150, 20);
-            mSymbolScaleSlider.SetRange(50, 200);
+            mSymbolScaleSlider.SetRange(100, 150);
             mSymbolScaleSlider.Value = 100; // 100% = 1.0
             mSymbolScaleSlider.ValueChanged += OnSymbolTransformChanged;
         }

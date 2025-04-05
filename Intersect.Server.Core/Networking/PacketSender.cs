@@ -2295,7 +2295,7 @@ public static partial class PacketSender
         }
 
         player.SendPacket(new GuildPacket(members));
-    }
+        UpdateGuild(player);    }
 
     //GuildRequestPacket
     public static void SendGuildInvite(Player player, Player from)
@@ -2513,5 +2513,47 @@ public static partial class PacketSender
             SendOpenMailBox(player);
         }
     }
+    public static void UpdateGuild(Player player)
+    {
+        if (player == null || player.Guild == null)
+        {
+            return;
+        }
+        var guild = player.Guild;
+        var guildUpdatePacket = new GuildUpdate
+        (
+               guild.Name,
+    guild.LogoBackground,
+    guild.BackgroundR, guild.BackgroundG, guild.BackgroundB,
+    guild.LogoSymbol,
+    guild.SymbolR, guild.SymbolG, guild.SymbolB,
+    guild.SymbolPosY,
+    guild.SymbolScale,
+    guild.Level,
+    guild.Experience,
+    guild.ExperienceToNextLevel,
+    guild.GuildPoints,
+    guild.SpentGuildPoints,
+    guild.GuildUpgrades.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value)
+
+
+        );
+        player.SendPacket(guildUpdatePacket);
+    }
+
+    public static void UpdateExpPercent(Player player)
+    {
+        if (player == null) return;
+
+        player.SendPacket(new GuildExperienceUpdatePacket(player.GuildExpPercentage));
+    }
+
+    public static void SendOpenGuildWindow(Player player)
+    {
+        if (player == null) return;
+        player.SendPacket(new GuildCreationWindowPacket());
+    }
+    
+    
 
 }

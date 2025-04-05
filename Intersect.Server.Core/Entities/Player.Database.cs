@@ -329,6 +329,8 @@ public partial class Player
         {
             GuildRank = Options.Instance.Guild.Ranks.Length - 1;
         }
+        PacketSender.UpdateGuild(this);
+
     }
     #endregion
 

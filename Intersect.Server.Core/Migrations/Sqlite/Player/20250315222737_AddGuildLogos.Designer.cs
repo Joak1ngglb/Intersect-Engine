@@ -3,6 +3,7 @@ using System;
 using Intersect.Server.Database.PlayerData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Intersect.Server.Migrations.Sqlite.Player
 {
     [DbContext(typeof(SqlitePlayerContext))]
-    partial class SqlitePlayerContextModelSnapshot : ModelSnapshot
+    [Migration("20250315222737_AddGuildLogos")]
+    partial class AddGuildLogos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
@@ -235,23 +238,11 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<int>("BankSlotsCount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("Experience")
-                        .HasColumnType("INTEGER");
-
                     b.Property<DateTime>("FoundingDate")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("GuildInstanceId")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("GuildPoints")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("GuildUpgradesData")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("LogoBackground")
                         .HasColumnType("TEXT");
@@ -261,9 +252,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
 
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("SpentGuildPoints")
-                        .HasColumnType("INTEGER");
 
                     b.Property<byte>("SymbolB")
                         .HasColumnType("INTEGER");
@@ -606,9 +594,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<int>("Dir")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("DonateXPGuild")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("EquipmentJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("Equipment");
@@ -625,9 +610,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
 
                     b.Property<int>("Gender")
                         .HasColumnType("INTEGER");
-
-                    b.Property<float>("GuildExpPercentage")
-                        .HasColumnType("REAL");
 
                     b.Property<DateTime>("GuildJoinDate")
                         .HasColumnType("TEXT");

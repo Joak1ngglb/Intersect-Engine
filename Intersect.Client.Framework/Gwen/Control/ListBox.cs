@@ -448,6 +448,35 @@ public partial class ListBox : ScrollControl
 
         return row;
     }
+    public ListBoxRow AddRow(params string[] columns)
+    {
+        var row = new ListBoxRow(this, columns.Length)
+        {
+            ClickSound = mItemClickSound,
+            HoverSound = mItemHoverSound,
+            RightClickSound = mItemRightClickSound,
+            TextColor = TextColor,
+            TextColorOverride = TextColorOverride,
+        };
+        mTable.AddRow(row);
+
+        for (int i = 0; i < columns.Length; i++)
+        {
+            row.SetCellText(i, columns[i]);
+        }
+
+        row.Selected += OnRowSelected;
+
+        if (mFont != null)
+        {
+            row.SetTextFont(mFont);
+        }
+
+        mTable.SizeToContents(Width);
+        mTable.DoSizeToContents();
+
+        return row;
+    }
 
     /// <summary>
     ///     Sets the column width (in pixels).
@@ -629,4 +658,5 @@ public partial class ListBox : ScrollControl
         return base.mVerticalScrollBar;
     }
 
+  
 }

@@ -465,8 +465,8 @@ namespace Intersect.Client.Interface.Game
                 mSymbolLogo.SetSize(scaledW, scaledH);
                 // Escalar
                 int baseSize = 50;
-                int newW = (int)(baseSize * Globals.Me.GuildSymbolScale);
-                int newH = (int)(baseSize * Globals.Me.GuildSymbolScale);
+                int newW = baseSize;
+                int newH = baseSize;
                 mSymbolLogo.SetSize(newW, newH);
 
                 // Centrar la imagen

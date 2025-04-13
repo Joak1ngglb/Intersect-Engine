@@ -355,8 +355,6 @@ public partial class Player : Entity, IPlayer
         GuildSymbolR = playerPacket.GuildSymbolR;
         GuildSymbolG = playerPacket.GuildSymbolG;
         GuildSymbolB = playerPacket.GuildSymbolB;
-        GuildSymbolPosY = playerPacket.GuildSymbolPosY;
-        GuildSymbolScale = playerPacket.GuildSymbolScale;
         if (playerPacket.Equipment != null)
         {
             if (this == Globals.Me && playerPacket.Equipment.InventorySlots != null)
@@ -2645,14 +2643,14 @@ public partial class Player : Entity, IPlayer
         var symbolTex = Globals.ContentManager.GetTexture(TextureType.Guild, GuildSymbolFile);
         if (symbolTex != null)
         {
-            float scale = (float)(GuildSymbolScale * 0.65); // ejemplo: 0.8 = 80%
+            float scale = (float)0.65; // ejemplo: 0.8 = 80%
             int scaledSize = (int)(logoSize * scale);
-            int offsetY = GuildSymbolPosY;
+        
 
             // Centrado dentro del logo de fondo
             var symbolRect = new FloatRect(
                 posX + (logoSize - scaledSize) / 2f,
-                posY + (logoSize - scaledSize) / 2f + offsetY,
+                posY + (logoSize - scaledSize) / 2f,
                 scaledSize,
                 scaledSize
             );

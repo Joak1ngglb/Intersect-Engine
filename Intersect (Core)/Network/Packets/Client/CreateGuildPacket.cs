@@ -13,9 +13,8 @@ namespace Intersect.Network.Packets.Client
             string backgroundFile,
             byte bgR, byte bgG, byte bgB,
             string symbolFile,
-            byte symR, byte symG, byte symB,
-            int symbolPosY,
-            float symbolScale)
+            byte symR, byte symG, byte symB)
+         
         {
             Name = name;
             LogoBackground = backgroundFile ?? string.Empty;
@@ -28,8 +27,6 @@ namespace Intersect.Network.Packets.Client
             SymbolG = symG;
             SymbolB = symB;
 
-            SymbolPosY = symbolPosY;
-            SymbolScale = symbolScale;
         }
 
         [Key(0)]
@@ -59,11 +56,6 @@ namespace Intersect.Network.Packets.Client
         [Key(8)]
         public byte SymbolB { get; set; } = 255;
 
-        [Key(9)]
-        public int SymbolPosY { get; set; } = 0;
-
-        [Key(10)]
-        public float SymbolScale { get; set; } = 1.0f;
 
     }
 }

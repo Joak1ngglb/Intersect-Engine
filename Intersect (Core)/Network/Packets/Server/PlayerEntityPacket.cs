@@ -51,20 +51,14 @@ public partial class PlayerEntityPacket : EntityPacket
     public byte GuildSymbolB { get; set; }
 
     [Key(35)]
-    public float GuildSymbolScale { get; set; }
-
-    [Key(36)]
-    public int GuildSymbolPosY { get; set; }
-
-    [Key(37)]
     public string GuildBackgroundFile { get; set; }
 
-    [Key(38)]
+    [Key(36)]
     public byte GuildBackgroundR { get; set; }
 
-    [Key(39)]
+    [Key(37)]
     public byte GuildBackgroundG { get; set; }
 
-    [Key(40)]
+    [Key(38)]
     public byte GuildBackgroundB { get; set; }
 }

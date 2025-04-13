@@ -2305,9 +2305,7 @@ internal sealed partial class PacketHandler
             packet.LogoSymbol,
             packet.SymbolR,
             packet.SymbolG,
-            packet.SymbolB,
-            packet.SymbolPosY,
-            packet.SymbolScale
+            packet.SymbolB
         );
         Globals.Me.GuildBackgroundFile = packet.LogoBackground;
         Globals.Me.GuildSymbolFile = packet.LogoSymbol;
@@ -2435,9 +2433,7 @@ internal sealed partial class PacketHandler
             packet.LogoSymbol,
             packet.SymbolR,
             packet.SymbolG,
-            packet.SymbolB,
-            packet.SymbolPosY,
-            packet.SymbolScale
+            packet.SymbolB
         );
 
         Globals.Me.GuildBackgroundFile = packet.LogoBackground;

@@ -1021,8 +1021,6 @@ public partial class Player : Entity
             pkt.GuildSymbolG = Guild.SymbolG;
             pkt.GuildSymbolB = Guild.SymbolB;
 
-            pkt.GuildSymbolScale = Guild.SymbolScale;
-            pkt.GuildSymbolPosY = Guild.SymbolPosY;
         }
         return pkt;
     }

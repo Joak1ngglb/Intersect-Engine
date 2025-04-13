@@ -844,10 +844,8 @@ public partial class Guild
     string backgroundFile,
     byte bgR, byte bgG, byte bgB,
     string symbolFile,
-    byte symR, byte symG, byte symB,
-    int symbolPosY,
-    float symbolScale
-)
+    byte symR, byte symG, byte symB
+  )
     {
         // Asignar propiedades
         LogoBackground = backgroundFile ?? string.Empty;
@@ -859,9 +857,6 @@ public partial class Guild
         SymbolR = symR;
         SymbolG = symG;
         SymbolB = symB;
-
-        SymbolPosY = symbolPosY;
-        SymbolScale = symbolScale;
 
         // Guardar en DB
         Save(); // Usa tu método lock(mLock) { ... context.SaveChanges() }

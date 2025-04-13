@@ -1,4 +1,4 @@
-﻿
+
 
 using Intersect.Client.Networking;
 
@@ -16,8 +16,6 @@ public partial class Player
     public byte GuildSymbolG { get; set; }
     public byte GuildSymbolB { get; set; }
 
-    public int GuildSymbolPosY { get; set; } = 0;
-    public float GuildSymbolScale { get; set; } = 1.0f;
     public float GuildXpContribution { get; set; }
 
     public void GetLogo(
@@ -28,10 +26,8 @@ public partial class Player
      string symbolFile,
      byte symbolR,
      byte symbolG,
-     byte symbolB,
-     int symbolPosY,
-     float symbolScale
- )
+     byte symbolB
+  )
     {
         // Validaciones básicas
         if (string.IsNullOrEmpty(backgroundFile))
@@ -55,9 +51,7 @@ public partial class Player
         GuildSymbolR = symbolR;
         GuildSymbolG = symbolG;
         GuildSymbolB = symbolB;
-
-        GuildSymbolPosY = symbolPosY;
-        GuildSymbolScale = symbolScale;
+        
 
         /* // Mensaje de depuración (opcional)
          PacketSender.SendChatMsg(

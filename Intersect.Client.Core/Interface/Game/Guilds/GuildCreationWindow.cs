@@ -66,8 +66,8 @@ namespace Intersect.Client.Interface.Game.Guilds
         private HorizontalSlider mSymbolPosYSlider;
         private HorizontalSlider mSymbolScaleSlider;
 
-        private int symbolPosY = 0;      // Offset en vertical
-        private float symbolScale = 1f;  // 1.0 = tamaño normal
+      //  private int symbolPosY = 0;      // Offset en vertical
+      //  private float symbolScale = 1f;  // 1.0 = tamaño normal
         private string selectedBackgroundFile = string.Empty;
         private string selectedSymbolFile = string.Empty;
 
@@ -151,7 +151,7 @@ namespace Intersect.Client.Interface.Game.Guilds
             InitializeSymbolColorSliders();
 
             // 7) Sliders para mover en Y + escalar el símbolo
-            InitializeSymbolTransformSliders();
+            //InitializeSymbolTransformSliders();
 
             // Cargamos la UI
             mCreateGuildWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
@@ -185,9 +185,9 @@ namespace Intersect.Client.Interface.Game.Guilds
                 selectedBackgroundFile,
                 bgR, bgG, bgB,
                 selectedSymbolFile,
-                symR, symG, symB,
-                symbolPosY,
-                symbolScale
+                symR, symG, symB
+              // ,symbolPosY,
+               // symbolScale
             );
 
             // Opcional: Cerrar la ventana, o dejarla abierta
@@ -425,7 +425,7 @@ namespace Intersect.Client.Interface.Game.Guilds
         // =====================================================
         //  Sliders para mover en Y y escalar el símbolo
         // =====================================================
-        private void InitializeSymbolTransformSliders()
+        /*private void InitializeSymbolTransformSliders()
         {
             mTransformLabel = new Label(mCreateGuildWindow, "TransformLabel");
             mTransformLabel.Text = "Transformar Símbolo:";
@@ -444,7 +444,7 @@ namespace Intersect.Client.Interface.Game.Guilds
             mSymbolScaleSlider.SetRange(100, 150);
             mSymbolScaleSlider.Value = 100; // 100% = 1.0
             mSymbolScaleSlider.ValueChanged += OnSymbolTransformChanged;
-        }
+        }*/
 
         // =====================================================
         //  Eventos de color para FONDO
@@ -548,13 +548,7 @@ namespace Intersect.Client.Interface.Game.Guilds
         // =====================================================
         //  Evento al cambiar sliders de posición Y o escala
         // =====================================================
-        private void OnSymbolTransformChanged(Base sender, EventArgs e)
-        {
-            symbolPosY = (int)mSymbolPosYSlider.Value;
-            symbolScale = (float)(mSymbolScaleSlider.Value / 100f);
-            UpdateSymbolTransform();
-        }
-
+     
         private void UpdateSymbolTransform()
         {
             if (mLogoElements[1] == null) return; // No hay símbolo
@@ -564,8 +558,8 @@ namespace Intersect.Client.Interface.Game.Guilds
             int h = mSymbolPreview.Height;
 
             // Aplicamos la escala
-            int newW = (int)(w * symbolScale);
-            int newH = (int)(h * symbolScale);
+            int newW = (int)(w);
+            int newH = (int)(h );
 
             mSymbolPreview.SetSize(newW, newH);
 
@@ -573,9 +567,8 @@ namespace Intersect.Client.Interface.Game.Guilds
             int centerX = (COMPOSITION_SIZE - newW) / 2;
             // Centrar en Y y sumarle symbolPosY
             int centerY = (COMPOSITION_SIZE - newH) / 2;
-            int finalY = centerY + symbolPosY;
-
-            mSymbolPreview.SetPosition(centerX, finalY);
+   
+            mSymbolPreview.SetPosition(centerX,centerY);
         }
 
         // =====================================================

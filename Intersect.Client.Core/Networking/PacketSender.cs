@@ -552,10 +552,10 @@ public static partial class PacketSender
     
 }
     public static void SendCreateGuild(string name, string logoBackground, byte backgroundR, byte backgroundG, byte backgroundB, 
-        string logoSymbol, byte symbolR, byte symbolG, byte symbolB, int symbolPosY, float symbolScale)
+        string logoSymbol, byte symbolR, byte symbolG, byte symbolB)
     {
         Network.SendPacket(new CreateGuildPacket(name, logoBackground, backgroundR, backgroundG, backgroundB, 
-            logoSymbol, symbolR, symbolG, symbolB, symbolPosY, symbolScale));
+            logoSymbol, symbolR, symbolG, symbolB));
     }
 
 

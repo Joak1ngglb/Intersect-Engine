@@ -2527,8 +2527,6 @@ public static partial class PacketSender
     guild.BackgroundR, guild.BackgroundG, guild.BackgroundB,
     guild.LogoSymbol,
     guild.SymbolR, guild.SymbolG, guild.SymbolB,
-    guild.SymbolPosY,
-    guild.SymbolScale,
     guild.Level,
     guild.Experience,
     guild.ExperienceToNextLevel,

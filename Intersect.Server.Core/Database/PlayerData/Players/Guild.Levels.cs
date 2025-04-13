@@ -43,9 +43,7 @@ public partial class Guild
     public byte SymbolG { get; set; } = 255;
     public byte SymbolB { get; set; } = 255;
 
-    // Parámetros para la posición/escala del símbolo, si deseas guardarlo
-    public int SymbolPosY { get; set; } = 0;
-    public float SymbolScale { get; set; } = 1.0f;
+
     /// <summary>
     /// Añade experiencia al gremio y verifica si puede subir de nivel.
     /// </summary>

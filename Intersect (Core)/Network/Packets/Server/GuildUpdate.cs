@@ -10,8 +10,6 @@ public partial class GuildUpdate : IntersectPacket
         byte bgR, byte bgG, byte bgB,
         string symbolFile,
         byte symR, byte symG, byte symB,
-        int symbolPosY,
-        float symbolScale,
         int level,
         long exp,
         long expToNextLevel,
@@ -29,8 +27,6 @@ public partial class GuildUpdate : IntersectPacket
         SymbolR = symR;
         SymbolG = symG;
         SymbolB = symB;
-        SymbolPosY = symbolPosY;
-        SymbolScale = symbolScale;
         GuildLevel = level;
         GuildExp = exp;
         GuildExpToNextLevel = expToNextLevel;
@@ -48,14 +44,12 @@ public partial class GuildUpdate : IntersectPacket
     [Key(6)] public byte SymbolR { get; set; }
     [Key(7)] public byte SymbolG { get; set; }
     [Key(8)] public byte SymbolB { get; set; }
-    [Key(9)] public int SymbolPosY { get; set; }
-    [Key(10)] public float SymbolScale { get; set; }
-    [Key(11)] public int GuildLevel { get; set; }
-    [Key(12)] public long GuildExp { get; set; }
-    [Key(13)] public long GuildExpToNextLevel { get; set; }
+    [Key(9)] public int GuildLevel { get; set; }
+    [Key(10)] public long GuildExp { get; set; }
+    [Key(11)] public long GuildExpToNextLevel { get; set; }
 
     // NUEVOS CAMPOS
-    [Key(14)] public int GuildPoints { get; set; }
-    [Key(15)] public int SpentGuildPoints { get; set; }
-    [Key(16)] public Dictionary<string, int> GuildUpgrades { get; set; } = new();
+    [Key(12)] public int GuildPoints { get; set; }
+    [Key(13)] public int SpentGuildPoints { get; set; }
+    [Key(14)] public Dictionary<string, int> GuildUpgrades { get; set; } = new();
 }

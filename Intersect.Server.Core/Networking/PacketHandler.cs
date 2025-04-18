@@ -3354,5 +3354,15 @@ internal sealed partial class PacketHandler
         PacketSender.SendChatMsg(player, "🛑 Listado cancelado y objeto devuelto.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
         PacketSender.SendRefreshMarket(player);
     }
+    public void HandlePacket(Client client, RequestMarketPricePacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        PacketSender.SendPriceInfo(player, packet.ItemId);
+    }
 
 }

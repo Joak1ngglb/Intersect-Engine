@@ -602,4 +602,10 @@ public static partial class PacketSender
         Network.SendPacket(packet);
     }
 
+    public static void SendRequestMarketInfo(Guid itemId)
+    {
+        var packet = new RequestMarketPricePacket(itemId);
+        Network.SendPacket(packet);
+    }
+
 }

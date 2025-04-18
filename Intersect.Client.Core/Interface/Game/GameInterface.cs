@@ -98,6 +98,7 @@ public partial class GameInterface : MutableInterface
     public PlayerStatusWindow PlayerStatusWindow;
     private bool mShouldHideJobWindow;
     private GuildCreationInterface mCreateGuildWindow;
+    internal SellMarketWindow mMarketSellWindow;
 
     public GameInterface(Canvas canvas) : base(canvas)
     {

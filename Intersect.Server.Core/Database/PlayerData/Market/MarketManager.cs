@@ -83,6 +83,29 @@ namespace Intersect.Server.Database.PlayerData.Players
                 PacketSender.SendChatMsg(seller, Strings.Market.cannotlist, ChatMessageType.Error, CustomColors.Alerts.Error);
                 return false;
             }
+            var basePrice = itemBase.Price;
+            var minAllowed = (int)(basePrice * 0.5);
+            var maxAllowed = (int)(basePrice * 2);
+
+            // Intentar obtener estadísticas previas si existen
+            if (MarketStatisticsManager.TryGetStats(item.ItemId, out var stats))
+            {
+                minAllowed = stats.GetMinAllowedPrice();
+                maxAllowed = stats.GetMaxAllowedPrice();
+            }
+
+            // ❌ Si el precio está fuera del margen permitido, rechazar publicación
+            if (price < minAllowed || price > maxAllowed)
+            {
+                PacketSender.SendChatMsg(
+                    seller,
+                    $"❌ Precio fuera del rango permitido para este ítem. Rango actual: {minAllowed} - {maxAllowed} 🪙",
+                    ChatMessageType.Error,
+                    CustomColors.Alerts.Declined
+                );
+                return false;
+            }
+
 
             var currencyBase = GetDefaultCurrency();
             if (currencyBase == null)
@@ -90,7 +113,7 @@ namespace Intersect.Server.Database.PlayerData.Players
                 PacketSender.SendChatMsg(seller, "Currency item not configured!", ChatMessageType.Error, CustomColors.Alerts.Error);
                 return false;
             }
-
+        
             var tax = (int)Math.Ceiling(price * GetMarketTaxPercentage());
             if (!seller.TryTakeItem(currencyBase.Id, tax))
             {
@@ -225,6 +248,7 @@ namespace Intersect.Server.Database.PlayerData.Players
 
             // ✅ Marcar como vendido y dar el ítem
             listing.IsSold = true;
+            context.Remove(listing);
             context.Update(listing);
             buyer.TryGiveItem(itemToGive, -1);
 
@@ -287,6 +311,7 @@ namespace Intersect.Server.Database.PlayerData.Players
                     }
                 }
             }
+            UpdateStatistics(transaction);
 
             PacketSender.SendChatMsg(buyer, Strings.Market.itempurchased, ChatMessageType.Trading, CustomColors.Alerts.Accepted);
             PacketSender.SendRefreshMarket(buyer); // Actualiza al cliente con nuevo mercado
@@ -309,7 +334,7 @@ namespace Intersect.Server.Database.PlayerData.Players
                 .FirstOrDefault(i => i.ItemType == ItemType.Currency);
         }
 
-       
+
         public static void CleanExpiredListings()
         {
             using var context = DbInterface.CreatePlayerContext(readOnly: false);
@@ -352,5 +377,39 @@ namespace Intersect.Server.Database.PlayerData.Players
                 context.SaveChanges();
             }
         }
+        private static Dictionary<Guid, MarketStatistics> _statisticsCache = new();
+
+        public static void UpdateStatistics(MarketTransaction tx)
+        {
+            if (!_statisticsCache.TryGetValue(tx.ItemId, out var stats))
+            {
+                stats = new MarketStatistics(tx.ItemId);
+                _statisticsCache[tx.ItemId] = stats;
+            }
+
+            stats.AddTransaction(tx);
+        }
+
+        public static bool IsPriceWithinAllowedRange(Guid itemId, int price)
+        {
+            if (_statisticsCache.TryGetValue(itemId, out var stats) && stats.NumberOfSales > 0)
+            {
+                var min = stats.GetMinAllowedPrice();
+                var max = stats.GetMaxAllowedPrice();
+                return price >= min && price <= max;
+            }
+
+            // Si no hay stats, usar precio base
+            var item = ItemBase.Get(itemId);
+            if (item?.Price > 0)
+            {
+                var min = (int)(item.Price * 0.5);
+                var max = (int)(item.Price * 1.5);
+                return price >= min && price <= max;
+            }
+
+            return true; // Sin datos, dejar pasar
+        }
+
     }
 }

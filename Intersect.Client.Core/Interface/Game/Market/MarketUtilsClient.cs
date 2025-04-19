@@ -1,5 +1,7 @@
-﻿namespace Intersect.Client.Interface.Game.Market;
+namespace Intersect.Client.Interface.Game.Market;
 
-internal class MarketUtilsClient
+public class MarketUtilsClient
 {
+  
 }
+

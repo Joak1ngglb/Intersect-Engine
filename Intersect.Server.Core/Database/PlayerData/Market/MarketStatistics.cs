@@ -8,10 +8,11 @@ public class MarketStatistics
 {
     public Guid ItemId { get; set; }
     public int TotalSold { get; set; }
-    public int TotalRevenue { get; set; }
+    public int TotalRevenue { get; set; } // Acumula el valor total pagado
     public int NumberOfSales { get; set; }
 
-    public float AveragePrice => NumberOfSales > 0 ? (float)TotalRevenue / NumberOfSales : 0;
+    // ✅ Precio promedio por unidad
+    public float AveragePricePerUnit => TotalSold > 0 ? (float)TotalRevenue / TotalSold : 0;
 
     public MarketStatistics(Guid itemId, IEnumerable<MarketTransaction> transactions)
     {
@@ -28,22 +29,39 @@ public class MarketStatistics
         ItemId = itemId;
     }
 
+    // ✅ Rango basado en precio promedio por unidad
     public int GetMinAllowedPrice(float marginPercent = 0.5f)
     {
-        return (int)Math.Floor(AveragePrice * (1f - marginPercent));
+        var baseAvg = GetFallbackAverage();
+        return (int)Math.Floor(baseAvg * (1f - marginPercent));
     }
 
     public int GetMaxAllowedPrice(float marginPercent = 0.5f)
     {
-        return (int)Math.Ceiling(AveragePrice * (1f + marginPercent));
+        var baseAvg = GetFallbackAverage();
+        return (int)Math.Ceiling(baseAvg * (1f + marginPercent));
     }
 
     public void AddTransaction(MarketTransaction tx)
     {
-        if (tx == null) return;
+        if (tx == null || tx.Quantity <= 0 || tx.Price <= 0)
+            return;
 
-        NumberOfSales++;
         TotalSold += tx.Quantity;
         TotalRevenue += tx.Price;
+        NumberOfSales++;
+    }
+
+    // ✅ Si no hay datos, se usa precio base del ítem
+   public float GetFallbackAverage()
+    {
+        if (AveragePricePerUnit > 0)
+        {
+            return AveragePricePerUnit;
+        }
+
+        var basePrice = ItemBase.Get(ItemId)?.Price ?? 0;
+        return basePrice > 0 ? basePrice : 1; // Nunca menor que 1
     }
 }
+

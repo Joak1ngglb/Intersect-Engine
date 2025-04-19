@@ -2625,17 +2625,23 @@ public static partial class PacketSender
 
     public static void SendPriceInfo(Player player, Guid itemId)
     {
-        var basePrice = ItemBase.Get(itemId)?.Price ?? 0;
-
         var stats = MarketStatisticsManager.GetStatistics(itemId);
-        var avgPrice = stats?.AveragePrice ?? basePrice;
 
+        var avgPrice = (int)(stats?.AveragePricePerUnit ?? (ItemBase.Get(itemId)?.Price ?? 1));
         var margin = 0.5f;
-        var min = (int)Math.Floor(avgPrice * (1f - margin));
-        var max = (int)Math.Ceiling(avgPrice * (1f + margin));
 
-        var packet = new MarketPriceInfoPacket(itemId, (int)avgPrice, min, max);
-        player.SendPacket (packet);
+        var min = (int)Math.Floor(avgPrice * (1 - margin));
+        var max = (int)Math.Ceiling(avgPrice * (1 + margin));
+
+        var packet = new MarketPriceInfoPacket
+        {
+            ItemId = itemId,
+            SuggestedPrice = (int)avgPrice,
+            MinAllowedPrice = min,
+            MaxAllowedPrice = max
+        };
+        player.SendPacket(packet);
     }
+
 
 }

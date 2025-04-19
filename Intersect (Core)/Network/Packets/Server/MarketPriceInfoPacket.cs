@@ -11,16 +11,6 @@ namespace Intersect.Network.Packets.Server
         [Key(2)] public int MinAllowedPrice { get; set; }
         [Key(3)] public int MaxAllowedPrice { get; set; }
 
-        public MarketPriceInfoPacket()
-        {
-        }
-
-        public MarketPriceInfoPacket(Guid itemId, int suggestedPrice, int minAllowed, int maxAllowed)
-        {
-            ItemId = itemId;
-            SuggestedPrice = suggestedPrice;
-            MinAllowedPrice = minAllowed;
-            MaxAllowedPrice = maxAllowed;
-        }
+             
     }
 }

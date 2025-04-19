@@ -33,6 +33,7 @@ namespace Intersect.Client.Interface.Game.Market
         private Label mPriceLabel;
         private Label mQuantityLabel;
         private Label suggestedPriceLabel;
+        private CheckBox mAutoSplitCheckbox;
 
         public int X { get; set; }
         public int Y { get; set; }
@@ -52,11 +53,7 @@ namespace Intersect.Client.Interface.Game.Market
             mInfoLabel.Text = "Selecciona un objeto del inventario";
 
             suggestedPriceLabel = new Label(mSellWindow, "SuggestedLabel");
-            suggestedPriceLabel.Text = "";
-        
-            suggestedPriceLabel.AutoSizeToContents = true;
-    
-
+            suggestedPriceLabel.Text = "";   
 
             mQuantityLabel = new Label(mSellWindow) { Text = "Cantidad" };
             mQuantityInput = new TextBoxNumeric(mSellWindow);
@@ -72,20 +69,46 @@ namespace Intersect.Client.Interface.Game.Market
             mTaxLabel.Text = "🧾 Impuesto estimado: 0 🪙";
 
             mConfirmButton = new Button(mSellWindow);
-            mConfirmButton.SetText("📤 Publicar");
+            mConfirmButton.SetText("Publicar");
             mConfirmButton.Disable();
             mConfirmButton.Clicked += OnConfirmClicked;
+            mAutoSplitCheckbox = new CheckBox(mSellWindow);
+            mAutoSplitCheckbox.Text = "Dividir en paquetes (1, 10, 100, 1000)";
+            mAutoSplitCheckbox.IsChecked = true; // activado por defecto
 
-            // Layout de campos
+
             int startX = 320;
-            mInfoLabel.SetBounds(startX, 20, 250, 20);
-            suggestedPriceLabel.SetBounds(startX, 45, 250, 20);
-            mQuantityLabel.SetBounds(startX, 75, 100, 20);
-            mQuantityInput.SetBounds(startX, 95, 100, 30);
-            mPriceLabel.SetBounds(startX + 110, 75, 100, 20);
-            mPriceInput.SetBounds(startX + 110, 95, 100, 30);
-            mTaxLabel.SetBounds(startX, 135, 290, 20);
-            mConfirmButton.SetBounds(startX, 160, 210, 40);
+            int startY = 20;
+            int labelHeight = 20;
+            int inputHeight = 30;
+            int paddingY = 8;
+
+            // 💬 Info y sugerencia de precio
+            mInfoLabel.SetBounds(startX, startY, 250, labelHeight);
+            startY += labelHeight + paddingY;
+
+            suggestedPriceLabel.SetBounds(startX, startY, 250, labelHeight);
+            startY += labelHeight + (paddingY * 2);
+
+            // 🔢 Cantidad y Precio en fila
+            mQuantityLabel.SetBounds(startX, startY, 100, labelHeight);
+            mPriceLabel.SetBounds(startX + 110, startY, 100, labelHeight);
+            startY += labelHeight;
+
+            mQuantityInput.SetBounds(startX, startY, 100, inputHeight);
+            mPriceInput.SetBounds(startX + 110, startY, 100, inputHeight);
+            startY += inputHeight + (paddingY * 2);
+
+            // 💸 Impuesto
+            mTaxLabel.SetBounds(startX, startY, 290, labelHeight);
+            startY += labelHeight + paddingY;
+
+            // 🔘 CheckBox de autoSplit
+            mAutoSplitCheckbox.SetBounds(startX, startY, 250, labelHeight);
+            startY += labelHeight + paddingY;
+
+            // 📤 Botón de publicar
+            mConfirmButton.SetBounds(startX, startY, 210, 40);
 
             mSellWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
             InitItemContainer();
@@ -101,7 +124,7 @@ namespace Intersect.Client.Interface.Game.Market
                 if (quantity > 0)
                 {
                     var tax = (int)Math.Ceiling(price * quantity * 0.02f);
-                    mTaxLabel.Text = $"🧾 Impuesto estimado: {tax} 🪙";
+                    mTaxLabel.Text = $"Impuesto estimado: {tax} 🪙";
                 }
 
                 if (mSelectedItemId != Guid.Empty &&
@@ -109,7 +132,7 @@ namespace Intersect.Client.Interface.Game.Market
                 {
                     if (price < min || price > max)
                     {
-                        PacketSender.SendChatMsg("⚠️ Precio fuera del rango permitido.", 5);
+                        PacketSender.SendChatMsg("Precio fuera del rango permitido.", 5);
                     }
                 }
             }
@@ -117,6 +140,7 @@ namespace Intersect.Client.Interface.Game.Market
             {
                 mTaxLabel.Text = "🧾 Impuesto estimado: 0 🪙";
             }
+            UpdateSuggestedPrice(mSelectedItemId);
         }
 
         public void Update()
@@ -216,83 +240,90 @@ namespace Intersect.Client.Interface.Game.Market
             mQuantityInput.SetText(Globals.Me.Inventory[slotIndex].Quantity.ToString(), false);
             mPriceInput.SetText("", false);
 
-            UpdateSuggestedPrice(mSelectedItemId);
-
             PacketSender.SendRequestMarketInfo(itemId.Value);
             PacketSender.SendChatMsg($"📦 Ítem seleccionado: {item?.Name}", 5);
+            
         }
 
         public void UpdateSuggestedPrice(Guid itemId)
         {
-            MarketPriceCache.TryGet(mSelectedItemId, out var avg, out var min, out var max) ;
-            PacketSender.SendChatMsg($" Promedio: {avg} \n📊 Rango: {min} - {max} 🪙", 5);
-            suggestedPriceLabel = new Label(mSellWindow, "SuggestedLabel");
-            suggestedPriceLabel.Text = $" Promedio: {avg} \n📊 Rango: {min} - {max} 🪙";
-            suggestedPriceLabel.Show();
-            suggestedPriceLabel.SetTextColor(Color.Orange,Label.ControlState.Normal);
-            suggestedPriceLabel.SetBounds(300, 45, 250, 20);
-            if (int.TryParse(mPriceInput.Text, out var price))
+            Console.WriteLine($"[DEBUG] UpdateSuggestedPrice called for: {itemId}");
+
+            if (!MarketPriceCache.TryGet(itemId, out var avg, out var min, out var max))
             {
-                if (price < min || price > max)
-                {
-                    PacketSender.SendChatMsg("⚠️ Precio fuera del rango permitido.", 4);
-                }
+                Console.WriteLine("[DEBUG] No cache data found.");
+                               return;
             }
+
+            suggestedPriceLabel.Text = $"Promedio: {avg}, Rango: {min} - {max}";
+            suggestedPriceLabel.Show();
+            suggestedPriceLabel.SetTextColor(Color.Orange, Label.ControlState.Normal);
         }
 
         private void OnConfirmClicked(Base sender, EventArgs args)
         {
             if (mSelectedSlot < 0 || mSelectedItemId == Guid.Empty)
             {
-                PacketSender.SendChatMsg("❌ Slot inválido o sin ítem.", 5);
+                PacketSender.SendChatMsg("❌ No hay un ítem seleccionado para publicar.", 5);
                 return;
             }
 
+            // Validar campos de entrada
             if (!int.TryParse(mQuantityInput.Text, out var qty) || qty <= 0)
             {
-                PacketSender.SendChatMsg("❌ Cantidad inválida.", 5);
+                PacketSender.SendChatMsg("❌ La cantidad ingresada no es válida. Debe ser mayor que cero.", 5);
                 return;
             }
 
             if (!int.TryParse(mPriceInput.Text, out var price) || price <= 0)
             {
-                PacketSender.SendChatMsg("❌ Precio inválido.", 5);
+                PacketSender.SendChatMsg("❌ El precio ingresado no es válido. Debe ser mayor que cero.", 5);
                 return;
             }
 
+            // Validar existencia del ítem en inventario
+            var slotData = Globals.Me.Inventory[mSelectedSlot];
+            if (slotData == null || slotData.ItemId != mSelectedItemId || slotData.Quantity < qty)
+            {
+                PacketSender.SendChatMsg("❌ No se encontró el ítem en el inventario o la cantidad excede lo disponible.", 5);
+                return;
+            }
+
+            var item = ItemBase.Get(mSelectedItemId);
+            if (item == null)
+            {
+                PacketSender.SendChatMsg("❌ Error: no se encontró el ítem en la base de datos.", 5);
+                return;
+            }
+
+            // Validar el precio contra los márgenes si existen
             if (MarketPriceCache.TryGet(mSelectedItemId, out var avg, out var min, out var max))
             {
                 if (price < min || price > max)
                 {
-                    PacketSender.SendChatMsg("❌ El precio está fuera del rango permitido.", 5);
+                    PacketSender.SendChatMsg($"❌ El precio debe estar entre {min} y {max} 🪙 según el mercado actual.", 5);
                     return;
                 }
             }
 
-            var slotData = Globals.Me.Inventory[mSelectedSlot];
-            if (slotData == null)
-            {
-                PacketSender.SendChatMsg("❌ No se encontró el slot en inventario.", 5);
-                return;
-            }
-
-            var item = ItemBase.Get(slotData.ItemId);
-            if (item == null)
-            {
-                PacketSender.SendChatMsg("❌ ItemBase no encontrado.", 5);
-                return;
-            }
-
+            // Extraer propiedades del ítem
             var itemName = item.Name;
             var properties = slotData.ItemProperties ?? new Network.Packets.Server.ItemProperties();
 
-            PacketSender.SendCreateMarketListing(slotData.ItemId, qty, price, properties);
+            // Enviar solicitud al servidor
+            PacketSender.SendCreateMarketListing(mSelectedItemId, qty, price, properties, mAutoSplitCheckbox.IsChecked);
+
+            // Feedback
             PacketSender.SendChatMsg($"📤 Publicado: {itemName} x{qty} por {price} 🪙", 5);
 
+            // Reset visual
             mPriceInput.SetText("", false);
             mQuantityInput.SetText("", false);
             mInfoLabel.Text = "✅ ¡Ítem publicado con éxito!";
+            InitItemContainer();
+            Update();
         }
+
 
         public void Show() => mSellWindow?.Show();
         public void Hide() => mSellWindow?.Hide();
@@ -308,6 +339,7 @@ namespace Intersect.Client.Interface.Game.Market
         public static void Update(Guid itemId, int avg, int min, int max)
         {
             _cache[itemId] = (avg, min, max);
+            
         }
 
         public static bool TryGet(Guid itemId, out int avg, out int min, out int max)

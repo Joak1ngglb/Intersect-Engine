@@ -3315,21 +3315,25 @@ internal sealed partial class PacketHandler
         var player = client.Entity;
         if (player == null) return;
 
-       
         // Clonar los datos necesarios antes de perder el ítem
         var clone = new Item(packet.ItemId, packet.Quantity)
         {
             Properties = packet.Properties
         };
 
-        var success = MarketManager.TryListItem(player, clone, packet.Quantity, packet.Price);
+        var success = MarketManager.TryListItem(
+            seller: player,
+            item: clone,
+            quantity: packet.Quantity,
+            pricePerUnit: packet.Price,
+            autoSplit: packet.AutoSplit // <-- NUEVO argumento
+        );
 
         if (success)
         {
             PacketSender.SendMarketListingCreated(player);
         }
     }
-
     public void HandlePacket(Client client, CancelMarketListingPacket packet)
     {
         var player = client.Entity;

@@ -27,6 +27,7 @@ using Intersect.Client.Interface.Shared;
 using Intersect.Network.Packets.Client;
 using Intersect.Config;
 using Intersect.Framework.Core.Config;
+using Intersect.Client.Interface.Game.Market;
 
 namespace Intersect.Client.Networking;
 
@@ -2525,23 +2526,25 @@ internal sealed partial class PacketHandler
         Interface.Interface.GameUi?.UpdateTransactionHistory(packet.Transactions);
     }
 
-    public static void HandleMarketPriceInfoPacket(IPacketSender sender, MarketPriceInfoPacket packet)
-{
-    if (packet == null)
-        return;
-       // Guardar o usar los valores directamente
-       // Puedes hacer algo como esto si quieres tenerlo accesible globalmente:
-       Interface.Game.Market.MarketPriceCache.Update(packet.ItemId, packet.SuggestedPrice, packet.MinAllowedPrice, packet.MaxAllowedPrice);
-     
+
+    public void HandlePacket(IPacketSender sender, MarketPriceInfoPacket packet)
+    {
+        // Guardar o usar los valores directamente
+        // Puedes hacer algo como esto si quieres tenerlo accesible globalmente:
+        Interface.Game.Market.MarketPriceCache.Update(packet.ItemId, packet.SuggestedPrice, packet.MinAllowedPrice, packet.MaxAllowedPrice);
+
         // Si la ventana está abierta y el ítem aún es el seleccionado, actualizar visualmente
         if (Interface.Interface.GameUi?.mMarketSellWindow is { } window &&
             window.IsVisible() &&
             window.GetSelectedItemId() == packet.ItemId)
         {
             window.UpdateSuggestedPrice(packet.ItemId);
+            
         }
+    
         // Opcional: mostrar en consola o enviar mensaje
         PacketSender.SendChatMsg($"💡 Precio promedio: {packet.SuggestedPrice} 🪙 (Rango: {packet.MinAllowedPrice} - {packet.MaxAllowedPrice})", 5);
 	}
 }
+
 

@@ -185,6 +185,7 @@ public partial class Player
         if (player != null)
         {
             player.InitializeJobs(); // Inicializar trabajos después de cargar
+            MarketStatisticsManager.LoadFromDatabase();
         }
 
         return player;

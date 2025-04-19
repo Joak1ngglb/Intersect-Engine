@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Intersect.GameObjects;
 using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData;
 
@@ -8,10 +9,9 @@ public static class MarketStatisticsManager
 {
     private static readonly Dictionary<Guid, MarketStatistics> _statisticsCache = new();
 
-  
     public static void LoadFromDatabase()
     {
-        using var context = Intersect.Server.Database.DbInterface.CreatePlayerContext(readOnly: true);
+        using var context = DbInterface.CreatePlayerContext(readOnly: true);
 
         var allTransactions = context.Market_Transactions.ToList();
 
@@ -28,43 +28,57 @@ public static class MarketStatisticsManager
     }
 
     /// <summary>
-    /// Intenta obtener las estadísticas de un ítem específico.
+    /// Devuelve las estadísticas desde caché o base de datos si no existen aún.
     /// </summary>
-    public static bool TryGetStats(Guid itemId, out MarketStatistics stats)
-    {
-        return _statisticsCache.TryGetValue(itemId, out stats);
-    }
-
-    /// <summary>
-    /// Actualiza las estadísticas al realizar una nueva venta.
-    /// </summary>
-    public static void UpdateStatistics(MarketTransaction tx)
-    {
-        if (!_statisticsCache.TryGetValue(tx.ItemId, out var stats))
-        {
-            stats = new MarketStatistics(tx.ItemId, new List<MarketTransaction>());
-            _statisticsCache[tx.ItemId] = stats;
-        }
-
-        stats.AddTransaction(tx);
-    }
     public static MarketStatistics GetStatistics(Guid itemId)
     {
-        if (_statisticsCache.TryGetValue(itemId, out var stats))
+        LoadFromDatabase();
+        if (_statisticsCache.TryGetValue(itemId, out var cachedStats))
         {
-            return stats;
+            return cachedStats;
         }
 
-        // Si no está en caché, lo cargamos desde la base de datos
         using var context = DbInterface.CreatePlayerContext(readOnly: true);
         var transactions = context.Market_Transactions
             .Where(t => t.ItemId == itemId)
             .ToList();
 
-        stats = new MarketStatistics(itemId, transactions);
-        _statisticsCache[itemId] = stats;
+        MarketStatistics stats;
 
+        if (transactions.Any())
+        {
+            stats = new MarketStatistics(itemId, transactions);
+        }
+        else
+        {
+            var basePrice = ItemBase.Get(itemId)?.Price ?? 1;
+            if (basePrice <= 0) basePrice = 1;
+
+            stats = new MarketStatistics(itemId)
+            {
+                TotalRevenue = basePrice,
+                TotalSold = 1,
+                NumberOfSales = 1
+            };
+        }
+
+        _statisticsCache[itemId] = stats;
         return stats;
+    }
+
+    /// <summary>
+    /// Agrega una venta al historial y actualiza el caché.
+    /// </summary>
+    public static void UpdateStatistics(MarketTransaction tx)
+    {
+        LoadFromDatabase();
+        if (!_statisticsCache.TryGetValue(tx.ItemId, out var stats))
+        {
+            stats = new MarketStatistics(tx.ItemId);
+            _statisticsCache[tx.ItemId] = stats;
+        }
+
+        stats.AddTransaction(tx);
     }
 
 }

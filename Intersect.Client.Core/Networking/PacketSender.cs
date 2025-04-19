@@ -586,14 +586,16 @@ public static partial class PacketSender
         });
     }
 
-    public static void SendCreateMarketListing(Guid itemId, int quantity, int price,Intersect.Network.Packets.Server.ItemProperties props)
-    {
+    public static void SendCreateMarketListing(Guid itemId, int quantity, int price,Intersect.Network.Packets.Server.ItemProperties props, bool autoSplit = false)
+    
+        {
         Network.SendPacket(new CreateMarketListingPacket
         {
             ItemId = itemId,
             Quantity = quantity,
             Price = price,
-            Properties = props
+            Properties = props,
+            AutoSplit = autoSplit
         });
     }
     public static void SendCancelMarketListing(Guid listingId)

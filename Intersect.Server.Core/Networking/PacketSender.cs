@@ -2643,5 +2643,24 @@ public static partial class PacketSender
         player.SendPacket(packet);
     }
 
+    public static void SendOpenMarketWindow(Player player)
+    {
+        // Abre la ventana general del mercado
+        player.SendPacket(new MarketWindowPacket(true, false));
+        MarketStatisticsManager.LoadFromDatabase();
+    }
+
+    public static void SendOpenSellMarketWindow(Player player)
+    {
+        // Abre la ventana para vender ítems
+        player.SendPacket(new MarketWindowPacket(false, true));
+        MarketStatisticsManager.LoadFromDatabase();
+    }
+
+    public static void SendCloseMarketWindow(Player player)
+    {
+        // Opción futura si quieres permitir cerrarla desde el servidor
+        player.SendPacket(new MarketWindowPacket(false, false));
+    }
 
 }

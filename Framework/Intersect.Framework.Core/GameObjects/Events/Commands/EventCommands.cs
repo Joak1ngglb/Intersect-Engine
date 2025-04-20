@@ -1016,12 +1016,21 @@ public partial class GiveJobExperienceCommand : EventCommand
         }
     }
 
-    public class SendMailBoxCommand : EventCommand
-    {
-        public override EventCommandType Type { get; } = EventCommandType.SendMail;
-    }
-    public class OpenMailBoxCommand : EventCommand
-    {
-        public override EventCommandType Type { get; } = EventCommandType.OpenMailBox;
-    }
+ }
+public class SendMailBoxCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.SendMail;
+}
+public class OpenMailBoxCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenMailBox;
+}
+public class OpenMarketWindowCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenMarket;
+}
+
+public class OpenMarketSellWindowCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenMarketSell;
 }

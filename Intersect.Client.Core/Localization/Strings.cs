@@ -214,6 +214,63 @@ public static partial class Strings
                                             BindingFlags.NonPublic | BindingFlags.Static
                                         ) ?? throw new InvalidOperationException();
 
+    public partial struct Market
+    {
+        // ───────── Ventana y controles ─────────
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString sellwindow = @"Sell on Market";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString selectitem = @"Select an item from your inventory";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString publish_colon = @"Publish:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString quantity = @"Quantity";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString price = @"Price";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString taxes_estimated = @"🧾 Estimated tax: {0}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString taxes_0 = @"🧾 Estimated tax: 0";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString splitpackages = @"Split into packages (1, 10, 100, 1000)";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString publish = @"Publish";
+
+        // ───────── Mensajes de estado / error ─────────
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString noItemSelected = @"⚠️ No item selected.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString invalidItem = @"⚠️ Item not found in inventory.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString invalidQuantity = @"❌ Quantity must be greater than zero.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString invalidPrice = @"❌ Price must be greater than zero.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString quantityExceeds = @"❌ Quantity exceeds available items ({0}).";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString priceOutOfRange = @"❌ Price must be between {0} and {1} 🪙.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString pricehint = @"Suggested Price: {0}";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString pricerange = @"Suggested Range: {0}/{1}";
+        // ✔️ Mensaje de éxito
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString listedSuccessfully = @"Listing created successfully!";
+    }
     public partial struct MailBox
     {
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]

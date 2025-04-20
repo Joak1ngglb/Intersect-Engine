@@ -118,6 +118,15 @@ namespace Intersect.Server.Entities
         [JsonIgnore]
         public virtual List<MarketListing> MarketListings { get; set; } = new List<MarketListing>();
 
+        public void OpenMarket()
+        {
+            PacketSender.SendOpenMarketWindow(this);
+        }
+
+        public void OpenSellMarket()
+        {
+            PacketSender.SendOpenSellMarketWindow(this);
+        }
     }
 
     public enum MessageType

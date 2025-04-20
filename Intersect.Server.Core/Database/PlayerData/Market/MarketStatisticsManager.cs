@@ -32,7 +32,7 @@ public static class MarketStatisticsManager
     /// </summary>
     public static MarketStatistics GetStatistics(Guid itemId)
     {
-        LoadFromDatabase();
+        //LoadFromDatabase();
         if (_statisticsCache.TryGetValue(itemId, out var cachedStats))
         {
             return cachedStats;
@@ -71,7 +71,7 @@ public static class MarketStatisticsManager
     /// </summary>
     public static void UpdateStatistics(MarketTransaction tx)
     {
-        LoadFromDatabase();
+        //LoadFromDatabase();
         if (!_statisticsCache.TryGetValue(tx.ItemId, out var stats))
         {
             stats = new MarketStatistics(tx.ItemId);

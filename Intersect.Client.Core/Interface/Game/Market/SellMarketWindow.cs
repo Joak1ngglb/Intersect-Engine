@@ -13,135 +13,113 @@ using Intersect.Client.Localization;
 using Intersect.Enums;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Network.Packets.Client;
+using MonoMod.Core.Utils;
+using Newtonsoft.Json.Linq;
 
 namespace Intersect.Client.Interface.Game.Market
 {
-    public class SellMarketWindow
+    /// <summary>
+    /// Ventana para publicar objetos en el mercado.
+    /// </summary>
+    public sealed class SellMarketWindow
     {
-        private WindowControl mSellWindow;
-        private ScrollControl mInventoryScroll;
-        private TextBoxNumeric mPriceInput;
-        private TextBoxNumeric mQuantityInput;
-        private Button mConfirmButton;
-        private Label mInfoLabel;
-        private List<Label> Values = new();
-        private int mSelectedSlot = -1;
-        private Guid mSelectedItemId = Guid.Empty;
-        private bool Initialized = false;
-        public List<InventoryItem> Items = new();
-        private Label mTaxLabel;
-        private Label mPriceLabel;
-        private Label mQuantityLabel;
-        private Label suggestedPriceLabel;
-        private CheckBox mAutoSplitCheckbox;
+        #region === UI ===
+
+        private readonly WindowControl _window;
+        private readonly ScrollControl mInventoryScroll;
+        private readonly TextBoxNumeric _priceInput;
+        private readonly TextBoxNumeric _quantityInput;
+        private readonly Button _confirmButton;
+        private readonly Label _infoLabel;
+        private readonly Label _taxLabel;
+        private readonly Label _suggestedPriceLabel;
+        private readonly CheckBox _autoSplitCheckbox;
+
+        // Render helpers por slot
+        public readonly List<InventoryItem> Items = new();
+        private readonly List<Label> Values = new();
+
+        #endregion
+
+        #region === State ===
+
+        private int _selectedSlot = -1;
+        private Guid _selectedItemId = Guid.Empty;
+
+        private Label _suggestedRangeLabel;
+
+        #endregion
 
         public int X { get; set; }
         public int Y { get; set; }
+        private bool Initialized = false;
 
         public SellMarketWindow(Canvas canvas)
         {
-            mSellWindow = new WindowControl(canvas, "📤 Vender en el Mercado", false, "SellMarketWindow");
-            mSellWindow.SetSize(600, 460);
-            mSellWindow.SetPosition(Graphics.Renderer.GetScreenWidth() / 2 - 300, Graphics.Renderer.GetScreenHeight() / 2 - 230);
-            mSellWindow.DisableResizing();
+            _window = new WindowControl(canvas, "📤 " + Strings.Market.sellwindow, false, "SellMarketWindow");
+            _window.SetSize(600, 460);
+            _window.SetPosition(Graphics.Renderer.GetScreenWidth() / 2 - 300, Graphics.Renderer.GetScreenHeight() / 2 - 230);
+            _window.DisableResizing();
 
-            mInventoryScroll = new ScrollControl(mSellWindow, "SellInventoryScroll");
+            // Panel inventario
+            mInventoryScroll = new ScrollControl(_window, "SellInventoryScroll");
             mInventoryScroll.SetBounds(20, 20, 280, 400);
             mInventoryScroll.EnableScroll(false, true);
 
-            mInfoLabel = new Label(mSellWindow);
-            mInfoLabel.Text = "Selecciona un objeto del inventario";
+            // Etiquetas y campos de entrada
+            _infoLabel = new Label(_window,"SelectedItem") { Text = Strings.Market.selectitem };
+            _suggestedPriceLabel = new Label(_window, "SuggestedLabel");
+            _suggestedRangeLabel = new Label(_window, "SuggestedRange");
 
-            suggestedPriceLabel = new Label(mSellWindow, "SuggestedLabel");
-            suggestedPriceLabel.Text = "";   
+            _quantityInput = new TextBoxNumeric(_window,"QuantityInput");
+            _priceInput = new TextBoxNumeric(_window,"PriceInput");
+            _quantityInput.TextChanged += (_, _) => RefreshTax();
+            _priceInput.TextChanged += (_, _) => RefreshTax();
 
-            mQuantityLabel = new Label(mSellWindow) { Text = "Cantidad" };
-            mQuantityInput = new TextBoxNumeric(mSellWindow);
-            mQuantityInput.SetText("", false);
-            mQuantityInput.TextChanged += (sender, args) => UpdateTaxDisplay();
+            _taxLabel = new Label(_window, "TaxLabel") { Text = Strings.Market.taxes_0 };
 
-            mPriceLabel = new Label(mSellWindow) { Text = "Precio" };
-            mPriceInput = new TextBoxNumeric(mSellWindow);
-            mPriceInput.SetText("", false);
-            mPriceInput.TextChanged += (sender, args) => UpdateTaxDisplay();
+            _autoSplitCheckbox = new CheckBox(_window,"SplitCheckBox") { Text = Strings.Market.splitpackages };
+            _autoSplitCheckbox.IsChecked = true;
+      
+            _confirmButton = new Button(_window,"CorfimButton") { Text = Strings.Market.publish };
+            _confirmButton.Disable();
+            _confirmButton.Clicked += OnConfirmClicked;
 
-            mTaxLabel = new Label(mSellWindow, "TaxLabel");
-            mTaxLabel.Text = "🧾 Impuesto estimado: 0 🪙";
-
-            mConfirmButton = new Button(mSellWindow);
-            mConfirmButton.SetText("Publicar");
-            mConfirmButton.Disable();
-            mConfirmButton.Clicked += OnConfirmClicked;
-            mAutoSplitCheckbox = new CheckBox(mSellWindow);
-            mAutoSplitCheckbox.Text = "Dividir en paquetes (1, 10, 100, 1000)";
-            mAutoSplitCheckbox.IsChecked = true; // activado por defecto
-
-
-            int startX = 320;
-            int startY = 20;
-            int labelHeight = 20;
-            int inputHeight = 30;
-            int paddingY = 8;
-
-            // 💬 Info y sugerencia de precio
-            mInfoLabel.SetBounds(startX, startY, 250, labelHeight);
-            startY += labelHeight + paddingY;
-
-            suggestedPriceLabel.SetBounds(startX, startY, 250, labelHeight);
-            startY += labelHeight + (paddingY * 2);
-
-            // 🔢 Cantidad y Precio en fila
-            mQuantityLabel.SetBounds(startX, startY, 100, labelHeight);
-            mPriceLabel.SetBounds(startX + 110, startY, 100, labelHeight);
-            startY += labelHeight;
-
-            mQuantityInput.SetBounds(startX, startY, 100, inputHeight);
-            mPriceInput.SetBounds(startX + 110, startY, 100, inputHeight);
-            startY += inputHeight + (paddingY * 2);
-
-            // 💸 Impuesto
-            mTaxLabel.SetBounds(startX, startY, 290, labelHeight);
-            startY += labelHeight + paddingY;
-
-            // 🔘 CheckBox de autoSplit
-            mAutoSplitCheckbox.SetBounds(startX, startY, 250, labelHeight);
-            startY += labelHeight + paddingY;
-
-            // 📤 Botón de publicar
-            mConfirmButton.SetBounds(startX, startY, 210, 40);
-
-            mSellWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
-            InitItemContainer();
+            BuildLayout();
+            _window.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
+           InitItemContainer();
         }
 
-        private void UpdateTaxDisplay()
+        #region === Layout ===
+
+        private void BuildLayout()
         {
-            if (string.IsNullOrWhiteSpace(mPriceInput.Text)) return;
+            int startX = 320,
+                startY = 20,
+                labelH = 20,
+                inputH = 30,
+                padY = 8;
 
-            if (int.TryParse(mPriceInput.Text, out var price) && price > 0)
-            {
-                var quantity = mQuantityInput.Value;
-                if (quantity > 0)
-                {
-                    var tax = (int)Math.Ceiling(price * quantity * 0.02f);
-                    mTaxLabel.Text = $"Impuesto estimado: {tax} 🪙";
-                }
+            _infoLabel.SetBounds(startX, startY, 250, labelH); startY += labelH + padY;
+            _suggestedPriceLabel.SetBounds(startX, startY, 250, labelH); startY += labelH + (padY * 2);
+            _suggestedRangeLabel.SetBounds(startX, startY, 250, labelH); startY += labelH + (padY * 2);
+            // Cantidad / Precio etiquetas
+            new Label(_window,"QuantityLabel") { Text = Strings.Market.quantity }.SetBounds(startX, startY + 10, 100, labelH);
+            new Label(_window,"Pricelabel") { Text = Strings.Market.price }.SetBounds(startX + 110, startY + 10, 100, labelH);
+            startY += labelH;
 
-                if (mSelectedItemId != Guid.Empty &&
-                    MarketPriceCache.TryGet(mSelectedItemId, out var avg, out var min, out var max))
-                {
-                    if (price < min || price > max)
-                    {
-                        PacketSender.SendChatMsg("Precio fuera del rango permitido.", 5);
-                    }
-                }
-            }
-            else
-            {
-                mTaxLabel.Text = "🧾 Impuesto estimado: 0 🪙";
-            }
-            UpdateSuggestedPrice(mSelectedItemId);
+            _quantityInput.SetBounds(startX, startY+10, 100, inputH);
+            _priceInput.SetBounds(startX + 110, startY+10, 100, inputH);
+            startY += inputH + (padY * 2);
+
+            _taxLabel.SetBounds(startX, startY, 290, labelH); startY += labelH + padY;
+            _autoSplitCheckbox.SetBounds(startX, startY, 250, labelH); startY += labelH + padY;
+            _confirmButton.SetBounds(startX, startY, 210, 40);
         }
+
+        #endregion
+
+        #region === Inventory UI ===
 
         public void Update()
         {
@@ -220,135 +198,136 @@ namespace Intersect.Client.Interface.Game.Market
             }
         }
 
+        #endregion
+
+        #region === Selection & Validation ===
+
         public void SelectItem(InventoryItem itemSlot, int slotIndex)
         {
-            var itemId = Globals.Me.Inventory[slotIndex]?.ItemId;
-            if (itemId == null || itemId == Guid.Empty)
+            var slot = Globals.Me.Inventory[slotIndex];
+            if (slot?.ItemId == Guid.Empty)
             {
-                PacketSender.SendChatMsg("⚠️ No se ha seleccionado un ítem válido.", 4);
+                PacketSender.SendChatMsg(Strings.Market.invalidItem, (byte)ChatMessageType.Error);
                 return;
             }
 
-            mSelectedSlot = slotIndex;
-            mSelectedItemId = itemId.Value;
+            _selectedSlot = slotIndex;
+            _selectedItemId = slot.ItemId;
+            _confirmButton.Enable();
 
-            mConfirmButton.Enable();
+            var item = ItemBase.Get(slot.ItemId);
+            _infoLabel.Text = Strings.Market.publish_colon + " " + item?.Name;
+            _quantityInput.SetText(string.Empty, false);
+            _priceInput.SetText(string.Empty, false);
 
-            var item = ItemBase.Get(itemId.Value);
-            mInfoLabel.Text = $"Publicar: {item?.Name}";
-
-            mQuantityInput.SetText(Globals.Me.Inventory[slotIndex].Quantity.ToString(), false);
-            mPriceInput.SetText("", false);
-
-            PacketSender.SendRequestMarketInfo(itemId.Value);
-            PacketSender.SendChatMsg($"📦 Ítem seleccionado: {item?.Name}", 5);
-            
+            PacketSender.SendRequestMarketInfo(slot.ItemId);
+            UpdateSuggestedPrice(slot.ItemId);
         }
 
+        private void RefreshTax()
+        {
+            if (!int.TryParse(_priceInput.Text, out var unitPrice) || unitPrice <= 0) { _taxLabel.Text = Strings.Market.taxes_0; return; }
+            int qty = (int)_quantityInput.Value;
+            if (qty <= 0) { _taxLabel.Text = Strings.Market.taxes_0; return; }
+
+            int tax = (int)Math.Ceiling(unitPrice * qty * 0.02f);
+            _taxLabel.Text = Strings.Market.taxes_estimated.ToString(tax);
+        }
         public void UpdateSuggestedPrice(Guid itemId)
         {
-            Console.WriteLine($"[DEBUG] UpdateSuggestedPrice called for: {itemId}");
-
-            if (!MarketPriceCache.TryGet(itemId, out var avg, out var min, out var max))
+            if (!MarketPriceCache.TryGet(itemId, out int avg, out int min, out int max))
             {
-                Console.WriteLine("[DEBUG] No cache data found.");
-                               return;
+                      
+                return;
             }
 
-            suggestedPriceLabel.Text = $"Promedio: {avg}, Rango: {min} - {max}";
-            suggestedPriceLabel.Show();
-            suggestedPriceLabel.SetTextColor(Color.Orange, Label.ControlState.Normal);
+            _suggestedPriceLabel.SetText(Strings.Market.pricehint.ToString(avg));
+            _suggestedRangeLabel.SetText(Strings.Market.pricerange.ToString(min, max)); // 
+
+            _suggestedPriceLabel.Show();
+            _suggestedRangeLabel.Show();
+
+            _suggestedPriceLabel.SetTextColor(Color.Orange, Label.ControlState.Normal);
+            _suggestedRangeLabel.SetTextColor(Color.Orange, Label.ControlState.Normal);
         }
 
-        private void OnConfirmClicked(Base sender, EventArgs args)
+        #endregion
+
+        #region === Publish ===
+
+        private void OnConfirmClicked(Base _, EventArgs __)
         {
-            if (mSelectedSlot < 0 || mSelectedItemId == Guid.Empty)
+            if (_selectedSlot < 0 || _selectedItemId == Guid.Empty) { PacketSender.SendChatMsg(Strings.Market.noItemSelected, 0); return; }
+            if (!int.TryParse(_quantityInput.Text, out int qty) || qty <= 0) { PacketSender.SendChatMsg(Strings.Market.invalidQuantity, 0); return; }
+            if (!int.TryParse(_priceInput.Text, out int price) || price <= 0) { PacketSender.SendChatMsg(Strings.Market.invalidPrice, 0 ); return; }
+
+            var slotData = Globals.Me.Inventory[_selectedSlot];
+            if (slotData == null || slotData.ItemId != _selectedItemId || slotData.Quantity < qty)
             {
-                PacketSender.SendChatMsg("❌ No hay un ítem seleccionado para publicar.", 5);
-                return;
+                PacketSender.SendChatMsg(Strings.Market.quantityExceeds, 0); return;
             }
 
-            // Validar campos de entrada
-            if (!int.TryParse(mQuantityInput.Text, out var qty) || qty <= 0)
-            {
-                PacketSender.SendChatMsg("❌ La cantidad ingresada no es válida. Debe ser mayor que cero.", 5);
-                return;
-            }
-
-            if (!int.TryParse(mPriceInput.Text, out var price) || price <= 0)
-            {
-                PacketSender.SendChatMsg("❌ El precio ingresado no es válido. Debe ser mayor que cero.", 5);
-                return;
-            }
-
-            // Validar existencia del ítem en inventario
-            var slotData = Globals.Me.Inventory[mSelectedSlot];
-            if (slotData == null || slotData.ItemId != mSelectedItemId || slotData.Quantity < qty)
-            {
-                PacketSender.SendChatMsg("❌ No se encontró el ítem en el inventario o la cantidad excede lo disponible.", 5);
-                return;
-            }
-
-            var item = ItemBase.Get(mSelectedItemId);
-            if (item == null)
-            {
-                PacketSender.SendChatMsg("❌ Error: no se encontró el ítem en la base de datos.", 5);
-                return;
-            }
-
-            // Validar el precio contra los márgenes si existen
-            if (MarketPriceCache.TryGet(mSelectedItemId, out var avg, out var min, out var max))
+            if (MarketPriceCache.TryGet(_selectedItemId, out var avg, out var min, out var max))
             {
                 if (price < min || price > max)
                 {
-                    PacketSender.SendChatMsg($"❌ El precio debe estar entre {min} y {max} 🪙 según el mercado actual.", 5);
+                    PacketSender.SendChatMsg(
+               string.Format(Strings.Market.priceOutOfRange.ToString(), min, max),
+               0
+           );
                     return;
                 }
             }
 
-            // Extraer propiedades del ítem
-            var itemName = item.Name;
-            var properties = slotData.ItemProperties ?? new Network.Packets.Server.ItemProperties();
+            // Enviar al servidor
+            var props = slotData.ItemProperties ?? new Network.Packets.Server.ItemProperties();
+            PacketSender.SendCreateMarketListing(_selectedItemId, qty, price, props, _autoSplitCheckbox.IsChecked);
 
-            // Enviar solicitud al servidor
-            PacketSender.SendCreateMarketListing(mSelectedItemId, qty, price, properties, mAutoSplitCheckbox.IsChecked);
+            ResetSelection();
+        }
 
-            // Feedback
-            PacketSender.SendChatMsg($"📤 Publicado: {itemName} x{qty} por {price} 🪙", 5);
-
-            // Reset visual
-            mPriceInput.SetText("", false);
-            mQuantityInput.SetText("", false);
-            mInfoLabel.Text = "✅ ¡Ítem publicado con éxito!";
-            InitItemContainer();
+        private void ResetSelection()
+        {
+            _selectedSlot = -1;
+            _selectedItemId = Guid.Empty;
+            _infoLabel.Text = Strings.Market.selectitem;
+            _priceInput.SetText(string.Empty, false);
+            _quantityInput.SetText(string.Empty, false);
+            _confirmButton.Disable();
+            _suggestedPriceLabel.SetText("");
+            _suggestedRangeLabel.SetText("");
+            _taxLabel.SetText("");
+           InitItemContainer(); // refrescar grid inmediatamente para que el ítem desaparezca si el servidor ya lo descontó
             Update();
         }
 
+        #endregion
 
-        public void Show() => mSellWindow?.Show();
-        public void Hide() => mSellWindow?.Hide();
-        public void Close() => mSellWindow?.Close();
-        public bool IsVisible() => mSellWindow?.IsHidden == false;
-        public Guid GetSelectedItemId() => mSelectedItemId;
+        #region === Public helpers ===
+
+        public void Show() => _window.Show();
+        public void Hide() => _window.Hide();
+        public void Close() => _window.Close();
+        public bool IsVisible() => !_window.IsHidden;
+        public Guid GetSelectedItemId() => _selectedItemId;
+
+        #endregion
     }
 
+    /// <summary>
+    /// Cache local de precios de mercado.
+    /// </summary>
     public static class MarketPriceCache
     {
-        private static readonly Dictionary<Guid, (int Avg, int Min, int Max)> _cache = new();
-        static int average { get; set; }
-        public static void Update(Guid itemId, int avg, int min, int max)
-        {
-            _cache[itemId] = (avg, min, max);
-            
-        }
+        private static readonly Dictionary<Guid, (int Avg, int Min, int Max)> Cache = new();
+
+        public static void Update(Guid itemId, int avg, int min, int max) => Cache[itemId] = (avg, min, max);
 
         public static bool TryGet(Guid itemId, out int avg, out int min, out int max)
         {
-            if (_cache.TryGetValue(itemId, out var tuple))
+            if (Cache.TryGetValue(itemId, out var t))
             {
-                avg = tuple.Avg;
-                min = tuple.Min;
-                max = tuple.Max;
+                (avg, min, max) = t;
                 return true;
             }
 

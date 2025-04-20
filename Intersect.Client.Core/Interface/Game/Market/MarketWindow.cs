@@ -50,21 +50,22 @@ namespace Intersect.Client.Interface.Game.Market
             mMarketWindow.SetSize(800, 600);
             mMarketWindow.DisableResizing();
             mMarketWindow.Focus();
-         
+
             mNameLabel = new Label(mMarketWindow, "MarketNameLabel");
-            mNameLabel.Text = "🔍 Nombre del ítem:";
+            mNameLabel.Text = "Nombre del ítem:";
             mNameLabel.SetBounds(20, 45, 140, 20);
 
             mSearchBox = new TextBox(mMarketWindow, "MarketSearchBox");
            
             mSearchBox.Focus();
+            Interface.FocusElements.Add(mSearchBox);
             mTypeLabel = new Label(mMarketWindow, "MarketTypeLabel");
-            mTypeLabel.Text = "📦 Tipo:";
+            mTypeLabel.Text = "Tipo:";
             
 
             mItemTypeCombo = new ComboBox(mMarketWindow, "MarketItemTypeCombo");
            
-            mItemTypeCombo.AddItem("Todos", "all", "all");
+            mItemTypeCombo.AddItem("All", "all", "all");
             mItemTypeCombo.SelectByUserData("all");
             foreach (ItemType type in Enum.GetValues(typeof(ItemType)))
             {
@@ -75,7 +76,7 @@ namespace Intersect.Client.Interface.Game.Market
             }
 
             mMinLabel = new Label(mMarketWindow, "MarketMinLabel");
-            mMinLabel.Text = "💰 Precio Mínimo:";
+            mMinLabel.Text = "Precio Mínimo:";
           
 
             mMinPriceBox = new TextBoxNumeric(mMarketWindow, "MarketMinPriceBox");
@@ -83,7 +84,7 @@ namespace Intersect.Client.Interface.Game.Market
             mMinPriceBox.SetText("", false);
 
             mMaxLabel = new Label(mMarketWindow, "MarketMaxLabel");
-            mMaxLabel.Text = "💰 Precio Máximo:";
+            mMaxLabel.Text = "Precio Máximo:";
            
 
             mMaxPriceBox = new TextBoxNumeric(mMarketWindow, "MarketMaxPriceBox");
@@ -92,12 +93,12 @@ namespace Intersect.Client.Interface.Game.Market
 
             mSearchButton = new Button(mMarketWindow, "MarketSearchButton");
           
-            mSearchButton.SetText("🔍 Buscar");
+            mSearchButton.SetText("Buscar");
             mSearchButton.Clicked += (s, a) => SendSearch();
 
             mSellButton = new Button(mMarketWindow, "MarketSellButton");
            
-            mSellButton.SetText("📤 Vender");
+            mSellButton.SetText("Vender");
             mSellButton.Clicked += SellMarket_Clicked;
             // Fila 1
             mNameLabel.SetBounds(20, 40, 140, 20);
@@ -161,13 +162,20 @@ namespace Intersect.Client.Interface.Game.Market
             mListingScroll.Show(); // Forzar creación visual
 
         }
+        private SellMarketWindow mSellWindow;
+
         private void SellMarket_Clicked(Base sender, ClickedEventArgs arguments)
         {
+            if (mSellWindow != null && mSellWindow.IsVisible())
+            {
+               return;
+            }
+
             if (mMarketWindow.Parent is Canvas parentCanvas)
             {
-                var sellWindow = new SellMarketWindow(parentCanvas);
-                sellWindow.Show();
-                sellWindow.Update();
+                mSellWindow = new SellMarketWindow(parentCanvas);
+                mSellWindow.Show();
+                mSellWindow.Update();
             }
         }
 

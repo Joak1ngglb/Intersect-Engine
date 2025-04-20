@@ -2242,4 +2242,25 @@ public static partial class CommandProcessing
     {
         player.SendMail();
     }
+    private static void ProcessCommand(
+   OpenMarketWindowCommand command,
+    Player player,
+    Event instance,
+    CommandInstance stackInfo,
+    Stack<CommandInstance> callStack
+)
+    {
+        player.OpenMarket ();
+    }
+    // Sell Market Command  
+    private static void ProcessCommand(
+      OpenMarketSellWindowCommand command,
+       Player player,
+       Event instance,
+       CommandInstance stackInfo,
+       Stack<CommandInstance> callStack
+    )
+    {
+        player.OpenSellMarket();
+    }
 }

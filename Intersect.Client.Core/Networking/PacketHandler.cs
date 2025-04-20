@@ -2541,10 +2541,34 @@ internal sealed partial class PacketHandler
             window.UpdateSuggestedPrice(packet.ItemId);
             
         }
-    
         // Opcional: mostrar en consola o enviar mensaje
         PacketSender.SendChatMsg($"💡 Precio promedio: {packet.SuggestedPrice} 🪙 (Rango: {packet.MinAllowedPrice} - {packet.MaxAllowedPrice})", 5);
 	}
+
+    // PacketHandler.cs  (lado cliente)
+    public void HandlePacket(IPacketSender packetSender, MarketWindowPacket packet)
+    {
+        // 1. Si el servidor envía ambas banderas en false entendemos que quiere cerrar todo
+        if (!packet.OpenMarket && !packet.OpenSell)
+        {
+            Interface.Interface.GameUi.CloseMarket();     // ventana de compra
+            Interface.Interface.GameUi.CloseSellMarket(); // ventana de venta
+            return;
+        }
+
+        // 2. Si solamente quiere abrir una de las dos, primero cerramos la otra
+        if (packet.OpenMarket)
+        {
+            Interface.Interface.GameUi.CloseSellMarket();
+            Interface.Interface.GameUi.OpenMarket();      // muestra la lista de artículos en venta
+        }
+        else if (packet.OpenSell)
+        {
+            Interface.Interface.GameUi.CloseMarket();
+            Interface.Interface.GameUi.OpenSellMarket();  // muestra tu inventario para poner objetos a la venta
+        }
+    }
+
 }
 
 

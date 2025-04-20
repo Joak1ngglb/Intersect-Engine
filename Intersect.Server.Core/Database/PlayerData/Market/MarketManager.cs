@@ -163,7 +163,7 @@ namespace Intersect.Server.Database.PlayerData.Players
 
             if (atLeastOneListed)
             {
-                PacketSender.SendChatMsg(seller, "📤 Publicación realizada con éxito.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+                //PacketSender.SendChatMsg(seller, "📤 Publicación realizada con éxito.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
                 PacketSender.SendRefreshMarket(seller);
                 return true;
             }

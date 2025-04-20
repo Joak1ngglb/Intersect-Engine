@@ -138,9 +138,7 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
         // mJobsWindow = new JobsWindow(GameCanvas);
-        mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
-        mMarketWindow = new MarketWindow(GameCanvas);
-
+       // mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
     }
     public void NotifyOpenGuildCreation()
     {

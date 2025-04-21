@@ -1331,7 +1331,8 @@ internal sealed partial class PacketHandler
             }
             else
             {
-                PacketSender.SendTradeMsg(player, msg, CustomColors.Chat.TradeChat);
+                PacketSender.SendTradeMsg(player, Strings.Chat.Trade.ToString(player.Name, msg), CustomColors.Chat.TradeChat);
+                ChatHistory.LogMessage(player, msg.Trim(), ChatMessageType.Trade,Guid.Empty);
             }
 
         }

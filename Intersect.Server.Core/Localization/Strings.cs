@@ -210,7 +210,7 @@ public static partial class Strings
         public readonly LocalizedString TooFast = @"You are chatting too fast!";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public readonly LocalizedString Trade = @"[TRADE] {00}: {01}";
+        public readonly LocalizedString Trade = @"[MARKET] {00}: {01}";
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString TradeCommand = @"/trade";

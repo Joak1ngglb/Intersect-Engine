@@ -224,6 +224,8 @@ public partial class Entity : IEntity
 
     public byte Z { get; set; }
 
+    public bool HasPermissionToTrade { get; }
+
     public Entity(Guid id, EntityPacket? packet, EntityType entityType)
     {
         Id = id;

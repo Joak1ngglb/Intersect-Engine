@@ -108,6 +108,11 @@ namespace Intersect.Server.Entities
             InMailBox = true;
             PacketSender.SendOpenSendMail(this);
         }
+
+        public bool HasPermissionToTrade()
+        {
+            return Level >= 10; //Nivel minimo para comerciar
+        }
     }
 
     public enum MessageType

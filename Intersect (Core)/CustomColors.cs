@@ -125,6 +125,7 @@ public static partial class CustomColors
 
         public Color GuildChat = new Color(255, 255, 165, 0);
 
+        public Color TradeChat = Color.White;
     }
 
     public sealed partial class QuestAlertNamespace

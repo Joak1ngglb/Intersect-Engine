@@ -2275,6 +2275,11 @@ public static partial class PacketSender
         }
     }
 
+    public static void SendTradeMsg(Player player, string message, Color clr, string target="")
+    {
+        SendChatMsg(player, message, ChatMessageType.Trade, clr, target);
+    }
+
     /// <summary>
     /// Send a player their guild member list.
     /// </summary>

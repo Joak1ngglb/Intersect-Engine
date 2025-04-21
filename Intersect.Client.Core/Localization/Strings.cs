@@ -878,7 +878,8 @@ public static partial class Strings
             {0, @"local"},
             {1, @"global"},
             {2, @"party"},
-            {3, @"guild"}
+            {3, @"guild"},
+            {4, @"trade"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -891,6 +892,7 @@ public static partial class Strings
             { ChatboxTab.Party, @"Party" },
             { ChatboxTab.Global, @"Global" },
             { ChatboxTab.Guild, @"Guild" },
+            { ChatboxTab.Trade, @"Trade" },
             { ChatboxTab.System, @"System" },
         };
 
@@ -2695,6 +2697,21 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString OtherPlayer = @"The other player has accepted the trade.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TooFast = @"You are sending messages too quickly! Please wait.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Muted = @"You cannot send trade messages while muted.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Format = @"[Trade] {00}: {01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString SELL = @"[SELL]";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
+        public static LocalizedString BUY = @"[BUY]";
     }
 
     public partial struct EscapeMenu

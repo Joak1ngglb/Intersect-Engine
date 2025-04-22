@@ -202,7 +202,10 @@ public partial class MonoContentManager : GameContentManager
     {
         LoadTextureGroup("misc", mMiscDict);
     }
-
+    public override void LoadGuilds()
+    {
+        LoadTextureGroup("Guild", mGuildDict);
+    }
     public override void LoadFonts()
     {
         mFontDict.Clear();
@@ -345,6 +348,7 @@ public partial class MonoContentManager : GameContentManager
             case ContentTypes.Interface:
             case ContentTypes.Item:
             case ContentTypes.Miscellaneous:
+            case ContentTypes.Guild:
             case ContentTypes.Paperdoll:
             case ContentTypes.Resource:
             case ContentTypes.Spell:
@@ -369,10 +373,11 @@ public partial class MonoContentManager : GameContentManager
                 var sound = new MonoSoundSource(createStream, name) as TAsset;
                 lookup?.Add(RemoveExtension(name), sound);
                 return sound;
-
+          
             default:
                 throw new ArgumentOutOfRangeException(nameof(contentType), contentType, null);
         }
     }
+
 
 }

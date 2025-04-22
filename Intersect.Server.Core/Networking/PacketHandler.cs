@@ -662,8 +662,80 @@ internal sealed partial class PacketHandler
             PacketSender.SendOpenMailBox(player);
         }
     }
+    public void HandlePacket(Client client, CreateGuildPacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
 
+        var success = false;
 
+        // We only accept Strings as our Guild Names!
+        if (FieldChecking.IsValidGuildName(packet.Name, Strings.Regex.GuildName))
+        {
+            // Is the name already in use?
+            if (Guild.GetGuild(packet.Name) == null)
+            {
+                // Is the player already in a guild?
+                if (player.Guild == null)
+                {
+                    // Finally, we can actually MAKE this guild happen!
+                    var guild = Guild.CreateGuild(player, packet.Name);
+                    if (guild != null)
+                    {
+                        // Set the guild logo
+                        guild.SetLogo(packet.LogoBackground, packet.BackgroundR, packet.BackgroundG, packet.BackgroundB, packet.LogoSymbol, packet.SymbolR, packet.SymbolG, packet.SymbolB);
+
+                        // Send them a welcome message!
+                        PacketSender.SendChatMsg(player, Strings.Guilds.Welcome.ToString(packet.Name), ChatMessageType.Guild, CustomColors.Alerts.Success);
+
+                        // Denote that we were successful.
+                        success = true;
+                    }
+                }
+                else
+                {
+                    // This cheeky bugger is already in a guild, tell him so!
+                    PacketSender.SendChatMsg(player, Strings.Guilds.AlreadyInGuild, ChatMessageType.Guild, CustomColors.Alerts.Error);
+                }
+            }
+            else
+            {
+                // This name already exists, oh dear!
+                PacketSender.SendChatMsg(player, Strings.Guilds.GuildNameInUse, ChatMessageType.Guild, CustomColors.Alerts.Error);
+            }
+        }
+        else
+        {
+            // Let our player know they need to adjust their name.
+            PacketSender.SendChatMsg(player, Strings.Guilds.VariableInvalid, ChatMessageType.Guild, CustomColors.Alerts.Error);
+        }
+
+        if (success)
+        {
+            // Additional logic for success case if needed
+            PacketSender.SendChatMsg(player, Strings.Guilds.GuildCreated, ChatMessageType.Guild, CustomColors.Alerts.Success);
+            Log.Info($"Guild '{packet.Name}' created successfully by player '{player.Name}'.");
+        }
+        else
+        {
+            // Additional logic for failure case if needed
+            PacketSender.SendChatMsg(player, Strings.Guilds.GuildCreationFailed, ChatMessageType.Guild, CustomColors.Alerts.Error);
+            Log.Warn($"Failed to create guild '{packet.Name}' for player '{player.Name}'.");
+        }
+    }
+
+    public void HandlePacket(Client client, GuildExpPercentagePacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null) return;
+
+        player.SetGuildExpPercentage(packet.Percentage);
+        PacketSender.UpdateExpPercent(player);
+
+    }
     #region "Client Packets"
 
     public void HandleDroppedPacket(Client client, IPacket packet)
@@ -1035,14 +1107,20 @@ internal sealed partial class PacketHandler
 
                 case 3:
                     cmd = Strings.Guilds.GuildCommand;
+
                     break;
 
-                case 4: //admin
+                case 4: //trade
+                    cmd = Strings.Chat.TradeCommand;
+                    
+                    break;
+
+                case 5: //admin
                     cmd = Strings.Chat.AdminCommand;
 
                     break;
 
-                case 5: //private
+                case 6: //private
                     PacketSender.SendChatMsg(player, msg, ChatMessageType.Local);
 
                     return;
@@ -1245,6 +1323,24 @@ internal sealed partial class PacketHandler
             else
             {
                 PacketSender.SendChatMsg(player, Strings.Player.Offline, ChatMessageType.PM, CustomColors.Alerts.Error);
+            }
+        }
+        else if (cmd == Strings.Chat.TradeCommand)
+        {
+            if (player.Level < 10)
+            {
+                PacketSender.SendChatMsg(player, Strings.Chat.TradeNotAllowed, ChatMessageType.Error, CustomColors.Alerts.Info);
+                return;
+            }
+
+            if (msg.Trim().Length == 0)
+            {
+                return;
+            }
+            else
+            {
+                PacketSender.SendTradeMsg(player, Strings.Chat.Trade.ToString(player.Name, msg), CustomColors.Chat.TradeChat);
+                ChatHistory.LogMessage(player, msg.Trim(), ChatMessageType.Trade, Guid.Empty);
             }
         }
         else
@@ -2814,6 +2910,30 @@ internal sealed partial class PacketHandler
         PacketSender.SendGuild(player);
     }
 
+    public void HandlePacket(Client client, ApplyGuildUpgradePacket packet)
+    {
+        var player = client.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        var guild = player.Guild;
+        if (player?.Guild != null)
+        {
+            var success = player.Guild.ApplyUpgrade(packet.UpgradeType);
+
+            if (success)
+            {
+                PacketSender.UpdateGuild(player);
+                PacketSender.SendChatMsg(player, "¡Mejora aplicada exitosamente!", ChatMessageType.Notice);
+            }
+            else
+            {
+                PacketSender.SendChatMsg(player, "No se pudo aplicar la mejora.", ChatMessageType.Notice);
+            }
+        }
+    }
 
     //UpdateGuildMemberPacket
     public void HandlePacket(Client client, UpdateGuildMemberPacket packet)
@@ -3201,21 +3321,25 @@ internal sealed partial class PacketHandler
         var player = client.Entity;
         if (player == null) return;
 
-       
         // Clonar los datos necesarios antes de perder el ítem
         var clone = new Item(packet.ItemId, packet.Quantity)
         {
             Properties = packet.Properties
         };
 
-        var success = MarketManager.TryListItem(player, clone, packet.Quantity, packet.Price);
+        var success = MarketManager.TryListItem(
+            seller: player,
+            item: clone,
+            quantity: packet.Quantity,
+            pricePerUnit: packet.Price,
+            autoSplit: packet.AutoSplit // <-- NUEVO argumento
+        );
 
         if (success)
         {
             PacketSender.SendMarketListingCreated(player);
         }
     }
-
     public void HandlePacket(Client client, CancelMarketListingPacket packet)
     {
         var player = client.Entity;
@@ -3239,6 +3363,16 @@ internal sealed partial class PacketHandler
         context.SaveChanges();
         PacketSender.SendChatMsg(player, "🛑 Listado cancelado y objeto devuelto.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
         PacketSender.SendRefreshMarket(player);
+    }
+    public void HandlePacket(Client client, RequestMarketPricePacket packet)
+    {
+        var player = client?.Entity;
+        if (player == null)
+        {
+            return;
+        }
+
+        PacketSender.SendPriceInfo(player, packet.ItemId);
     }
 
 }

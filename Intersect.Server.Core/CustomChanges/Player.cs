@@ -110,9 +110,16 @@ namespace Intersect.Server.Entities
             InMailBox = true;
             PacketSender.SendOpenSendMail(this);
         }
-        [JsonIgnore]
-        public virtual List<MarketListing> MarketListings { get; set; } = new List<MarketListing>();
 
+        public void OpenMarket()
+        {
+            PacketSender.SendOpenMarketWindow(this);
+        }
+
+        public void OpenSellMarket()
+        {
+            PacketSender.SendOpenSellMarketWindow(this);
+        }
     }
 
     public enum MessageType
@@ -120,6 +127,5 @@ namespace Intersect.Server.Entities
         Warning,
         Error,
         Info
-    }      
-
+    }
 }

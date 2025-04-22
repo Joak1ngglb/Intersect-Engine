@@ -185,6 +185,7 @@ public partial class Player
         if (player != null)
         {
             player.InitializeJobs(); // Inicializar trabajos después de cargar
+           
         }
 
         return player;
@@ -329,6 +330,8 @@ public partial class Player
         {
             GuildRank = Options.Instance.Guild.Ranks.Length - 1;
         }
+        PacketSender.UpdateGuild(this);
+
     }
     #endregion
 

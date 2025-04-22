@@ -1009,7 +1009,19 @@ public partial class Player : Entity
 
         pkt.Guild = Guild?.Name;
         pkt.GuildRank = GuildRank;
+        if (Guild != null)
+        {
+            pkt.GuildBackgroundFile = Guild.LogoBackground;
+            pkt.GuildBackgroundR = Guild.BackgroundR;
+            pkt.GuildBackgroundG = Guild.BackgroundG;
+            pkt.GuildBackgroundB = Guild.BackgroundB;
 
+            pkt.GuildSymbolFile = Guild.LogoSymbol;
+            pkt.GuildSymbolR = Guild.SymbolR;
+            pkt.GuildSymbolG = Guild.SymbolG;
+            pkt.GuildSymbolB = Guild.SymbolB;
+
+        }
         return pkt;
     }
 
@@ -1277,7 +1289,29 @@ public partial class Player : Entity
 
     public void GiveExperience(long amount)
     {
-        Exp += (int)Math.Round(amount + (amount * (GetEquipmentBonusEffect(ItemEffect.EXP) / 100f)));
+        if (amount <= 0) return;
+
+        // Bonus por ítems
+        long totalExp = (long)Math.Round(amount + (amount * (GetEquipmentBonusEffect(ItemEffect.EXP) / 100f)));
+
+        // 💡 Bonus adicional por mejoras del gremio
+        if (IsInGuild && Guild.HasUpgrade(GuildUpgradeType.BonusXp))
+        {
+            float guildBonus = Guild.GetXpBonusMultiplier(); // ej: 1.15
+            totalExp = (long)Math.Round(totalExp * guildBonus);
+        }
+
+        // Dividir XP entre jugador y gremio
+        long guildExp = (long)(totalExp * (GuildExpPercentage / 100f));
+        long playerExp = totalExp - guildExp;
+
+        if (IsInGuild && guildExp > 0)
+        {
+            DonateGuildExperience(guildExp);
+        }
+
+        Exp += (int)playerExp;
+
         if (Exp < 0)
         {
             Exp = 0;
@@ -1288,6 +1322,7 @@ public partial class Player : Entity
             PacketSender.SendExperience(this);
         }
     }
+
 
     public void TakeExperience(long amount)
     {

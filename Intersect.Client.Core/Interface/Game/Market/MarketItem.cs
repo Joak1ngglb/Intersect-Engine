@@ -91,7 +91,7 @@ public class MarketItem
 
         var confirmation = new MessageBox(
             Container?.Parent ?? Container,
-            $"¿Comprar {mItemBase.Name} x{mListing.Quantity} por {mListing.Price * mListing.Quantity} 🪙?",
+            $"¿Comprar {mItemBase.Name} x{mListing.Quantity} por {mListing.Price}?",
             "Confirmar Compra"
         );
         confirmation.SetSize(200, 200);

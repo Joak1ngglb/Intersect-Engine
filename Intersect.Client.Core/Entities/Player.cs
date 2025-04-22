@@ -26,6 +26,8 @@ using Intersect.Client.Items;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Config.Guilds;
 using Intersect.Client.Interface.Game.DescriptionWindows;
+using Intersect.Client.Framework.Content;
+using Intersect.Client.Framework.Graphics;
 
 namespace Intersect.Client.Entities;
 
@@ -55,7 +57,7 @@ public partial class Player : Entity, IPlayer
     public long Experience { get; set; } = 0;
 
     public long ExperienceToNextLevel { get; set; } = 0;
-
+    
     IReadOnlyList<IFriendInstance> IPlayer.Friends => Friends;
 
     public List<IFriendInstance> Friends { get; set; } = [];
@@ -133,6 +135,14 @@ public partial class Player : Entity, IPlayer
 
     string IPlayer.GuildName => Guild ?? string.Empty;
 
+    public void ConsultGuildLogo()
+    {
+        if (IsInGuild)
+        {
+            PacketSender.SendRequestGuild();
+
+        }
+    }
     /// <summary>
     /// Index of our rank where 0 is the leader
     /// </summary>
@@ -336,7 +346,15 @@ public partial class Player : Entity, IPlayer
         CombatTimer = playerPacket.CombatTimeRemaining + Timing.Global.Milliseconds;
         Guild = playerPacket.Guild;
         Rank = playerPacket.GuildRank;
+        GuildBackgroundFile = playerPacket.GuildBackgroundFile;
+        GuildBackgroundR = playerPacket.GuildBackgroundR;
+        GuildBackgroundG = playerPacket.GuildBackgroundG;
+        GuildBackgroundB = playerPacket.GuildBackgroundB;
 
+        GuildSymbolFile = playerPacket.GuildSymbolFile;
+        GuildSymbolR = playerPacket.GuildSymbolR;
+        GuildSymbolG = playerPacket.GuildSymbolG;
+        GuildSymbolB = playerPacket.GuildSymbolB;
         if (playerPacket.Equipment != null)
         {
             if (this == Globals.Me && playerPacket.Equipment.InventorySlots != null)
@@ -2573,7 +2591,7 @@ public partial class Player : Entity, IPlayer
 
         var x = (int)Math.Ceiling(Origin.X);
         var y = GetLabelLocation(LabelType.Guild);
-
+  
         backgroundColor ??= Color.Transparent;
         if (backgroundColor != Color.Transparent)
         {
@@ -2597,6 +2615,50 @@ public partial class Player : Entity, IPlayer
             default,
             Color.FromArgb(borderColor.ToArgb())
         );
+
+        // Dibujar el escudo de gremio al lado
+        DrawGuildLogo(x, (int)y, (int)textSize.X);
+
+    }
+    private void DrawGuildLogo(int baseX, int baseY, int guildNameWidth)
+    {
+        if (string.IsNullOrEmpty(GuildBackgroundFile) || string.IsNullOrEmpty(GuildSymbolFile))
+        {
+            return;
+        }
+
+        const int logoSize = 20;
+        int posX = baseX - (int)Math.Ceiling(guildNameWidth / 2f) - logoSize - 5;
+        int posY = baseY;
+        // === Dibujar Fondo ===
+        var backgroundTex = Globals.ContentManager.GetTexture(TextureType.Guild, GuildBackgroundFile);
+        if (backgroundTex != null)
+        {
+            var bgRect = new FloatRect(posX, posY, logoSize, logoSize);
+            var bgColor = new Color(255, GuildBackgroundR, GuildBackgroundG, GuildBackgroundB);
+            Graphics.DrawGameTexture(backgroundTex, new FloatRect(0, 0, backgroundTex.Width, backgroundTex.Height), bgRect, bgColor);
+        }
+
+        // === Dibujar Símbolo centrado en el fondo ===
+        var symbolTex = Globals.ContentManager.GetTexture(TextureType.Guild, GuildSymbolFile);
+        if (symbolTex != null)
+        {
+            float scale = (float)0.65; // ejemplo: 0.8 = 80%
+            int scaledSize = (int)(logoSize * scale);
+        
+
+            // Centrado dentro del logo de fondo
+            var symbolRect = new FloatRect(
+                posX + (logoSize - scaledSize) / 2f,
+                posY + (logoSize - scaledSize) / 2f,
+                scaledSize,
+                scaledSize
+            );
+
+            var symbolColor = new Color(255, GuildSymbolR, GuildSymbolG, GuildSymbolB);
+            Graphics.DrawGameTexture(symbolTex, new FloatRect(0, 0, symbolTex.Width, symbolTex.Height), symbolRect, symbolColor);
+        }
+
     }
 
     protected override bool ShouldDrawHpBar

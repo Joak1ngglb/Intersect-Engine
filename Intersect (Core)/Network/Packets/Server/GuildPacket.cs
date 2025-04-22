@@ -1,4 +1,4 @@
-﻿using MessagePack;
+using MessagePack;
 
 namespace Intersect.Network.Packets.Server;
 
@@ -23,10 +23,12 @@ public partial class GuildPacket : IntersectPacket
     public GuildPacket(GuildMember[] members)
     {
         Members = members;
+      
     }
 
     [Key(0)]
     public GuildMember[] Members { get; set; }
+
 
 }
 
@@ -47,6 +49,11 @@ public partial class GuildMember
     public string Map;
     [Key(6)]
     public bool Online = false;
+    [Key(7)]
+    public float ExperiencePerc;
+    [Key(8)]
+    public long DonatedXp;
+
 
     /// <summary>
     /// Parameterless constructor for messagepack
@@ -55,7 +62,6 @@ public partial class GuildMember
     {
 
     }
-
     public GuildMember(Guid id, string name, int rank, int level, string cls, string map)
     {
         Id = id;
@@ -64,5 +70,17 @@ public partial class GuildMember
         Level = level;
         Class = cls;
         Map = map;
+   
+    }
+    public GuildMember(Guid id, string name, int rank, int level, string cls, string map,float percexp,long xpdoned)
+    {
+        Id = id;
+        Name = name;
+        Rank = rank;
+        Level = level;
+        Class = cls;
+        Map = map;
+        ExperiencePerc = percexp;
+        DonatedXp = xpdoned;
     }
 }

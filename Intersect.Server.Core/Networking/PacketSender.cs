@@ -2276,6 +2276,12 @@ public static partial class PacketSender
         }
     }
 
+    public static void SendTradeMsg(Player player, string message, Color color, string target = "", ChatMessageType type = ChatMessageType.Trade)
+    {
+        //SendChatMsg(player, message, ChatMessageType.Trade, clr, target);
+        SendDataToAllPlayers(new ChatMsgPacket(message, type, color, target));
+    }
+
     /// <summary>
     /// Send a player their guild member list.
     /// </summary>
@@ -2296,7 +2302,7 @@ public static partial class PacketSender
         }
 
         player.SendPacket(new GuildPacket(members));
-    }
+        UpdateGuild(player);    }
 
     //GuildRequestPacket
     public static void SendGuildInvite(Player player, Player from)
@@ -2514,6 +2520,46 @@ public static partial class PacketSender
             SendOpenMailBox(player);
         }
     }
+    public static void UpdateGuild(Player player)
+    {
+        if (player == null || player.Guild == null)
+        {
+            return;
+        }
+        var guild = player.Guild;
+        var guildUpdatePacket = new GuildUpdate
+        (
+               guild.Name,
+    guild.LogoBackground,
+    guild.BackgroundR, guild.BackgroundG, guild.BackgroundB,
+    guild.LogoSymbol,
+    guild.SymbolR, guild.SymbolG, guild.SymbolB,
+    guild.Level,
+    guild.Experience,
+    guild.ExperienceToNextLevel,
+    guild.GuildPoints,
+    guild.SpentGuildPoints,
+    guild.GuildUpgrades.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value)
+
+
+        );
+        player.SendPacket(guildUpdatePacket);
+    }
+
+    public static void UpdateExpPercent(Player player)
+    {
+        if (player == null) return;
+
+        player.SendPacket(new GuildExperienceUpdatePacket(player.GuildExpPercentage));
+    }
+
+    public static void SendOpenGuildWindow(Player player)
+    {
+        if (player == null) return;
+        player.SendPacket(new GuildCreationWindowPacket());
+    }
+    
+
     public static void SendMarketListings(Player player, List<MarketListing> listings)
     {
         var listingPackets = listings.Select(l => new MarketListingPacket
@@ -2575,6 +2621,46 @@ public static partial class PacketSender
 
         // Enviar al cliente
         player.SendPacket(packet);
+    }
+
+    public static void SendPriceInfo(Player player, Guid itemId)
+    {
+        var stats = MarketStatisticsManager.GetStatistics(itemId);
+
+        var avgPrice = (int)(stats?.AveragePricePerUnit ?? (ItemBase.Get(itemId)?.Price ?? 1));
+        var margin = 0.5f;
+
+        var min = (int)Math.Floor(avgPrice * (1 - margin));
+        var max = (int)Math.Ceiling(avgPrice * (1 + margin));
+
+        var packet = new MarketPriceInfoPacket
+        {
+            ItemId = itemId,
+            SuggestedPrice = (int)avgPrice,
+            MinAllowedPrice = min,
+            MaxAllowedPrice = max
+        };
+        player.SendPacket(packet);
+    }
+
+    public static void SendOpenMarketWindow(Player player)
+    {
+        // Abre la ventana general del mercado
+        player.SendPacket(new MarketWindowPacket(true, false));
+        MarketStatisticsManager.LoadFromDatabase();
+    }
+
+    public static void SendOpenSellMarketWindow(Player player)
+    {
+        // Abre la ventana para vender ítems
+        player.SendPacket(new MarketWindowPacket(false, true));
+        MarketStatisticsManager.LoadFromDatabase();
+    }
+
+    public static void SendCloseMarketWindow(Player player)
+    {
+        // Opción futura si quieres permitir cerrarla desde el servidor
+        player.SendPacket(new MarketWindowPacket(false, false));
     }
 
 }

@@ -208,6 +208,15 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString TooFast = @"You are chatting too fast!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString Trade = @"[MARKET] {00}: {01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString TradeCommand = @"/trade";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString TradeNotAllowed = @"You must be at least level 10 to use the trade channel!";
     }
 
     public sealed partial class ClassNamespace : LocaleNamespace
@@ -789,6 +798,30 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString DeleteGuildLeader = @"You cannot delete a character that is a guild {00}. Please disband the guild or transfer ownership before trying again.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString GuildCreated = @"Guild has been created successfully!";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString GuildCreationFailed = @"Failed to create guild. Please try again.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString XpDonated = @"Your guild has received {00} XP.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString Level= @"Your guild has been Level UP to {00}.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString UpgradeBankSlots = @"The guild has upgraded its bank! +10 new slots.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString UpgradeExtraMembers = @"The guild can now accept more members! Limit increased.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString UpgradeBonusXp = @"The guild has improved its experience bonus!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString UpgradeBonusDrop = @"The guild has improved its drop rate bonus!";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString UpgradeBonusJobXp = @"The guild has improved its job experience bonus!";
+
     }
 
     public sealed partial class IntroNamespace : LocaleNamespace

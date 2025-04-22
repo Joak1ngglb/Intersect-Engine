@@ -6,6 +6,7 @@ using Intersect.Client.Interface.Game.Bank;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Game.Crafting;
 using Intersect.Client.Interface.Game.EntityPanel;
+using Intersect.Client.Interface.Game.Guilds;
 using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
 using Intersect.Client.Interface.Game.Mail;
@@ -84,7 +85,8 @@ public partial class GameInterface : MutableInterface
     private bool mShouldUpdateGuildList;
 
     private bool mShouldHideGuildWindow;
-
+    private bool mShouldOpenGuildCreation;
+    private bool mShouldCloseGuildCreation;
     private string mTradingTarget;
 
     private bool mCraftJournal {  get; set; }
@@ -95,6 +97,8 @@ public partial class GameInterface : MutableInterface
 
     public PlayerStatusWindow PlayerStatusWindow;
     private bool mShouldHideJobWindow;
+    private GuildCreationInterface mCreateGuildWindow;
+    internal SellMarketWindow mMarketSellWindow;
 
     public GameInterface(Canvas canvas) : base(canvas)
     {
@@ -134,11 +138,36 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
         // mJobsWindow = new JobsWindow(GameCanvas);
-        mMarketWindow = new MarketWindow(GameCanvas);
-       
+       // mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
+    }
+    public void NotifyOpenGuildCreation()
+    {
+        if (mCreateGuildWindow == null)
+        {
+            mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
+        }
+        mCreateGuildWindow.Show();
+    }
+
+    public void NotifyCloseGuildCreation()
+    {
+        mShouldCloseGuildCreation = true;
+    }
+
+    public void OpenGuildCreationWindow()
+    {
+        if (mCreateGuildWindow == null)
+        {
+            mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
+        }
+        mCreateGuildWindow.Show();
 
     }
 
+    public void CloseGuildCreation()
+    {
+        mCreateGuildWindow?.Hide();
+    }
     //Chatbox
     public void SetChatboxText(string msg)
     {
@@ -361,6 +390,7 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow.Update();
         AnnouncementWindow?.Update();
         mPictureWindow?.Update();
+        mCreateGuildWindow?.Update();
         if (mSendMailBoxWindow != null && !mSendMailBoxWindow.IsVisible())
         {
             mSendMailBoxWindow?.Close();
@@ -405,7 +435,17 @@ public partial class GameInterface : MutableInterface
         {
             OpenAdminWindow();
         }
+        if (mShouldOpenGuildCreation)
+        {
+            OpenGuildCreationWindow();
+            mShouldOpenGuildCreation = false;
+        }
 
+        if (mShouldCloseGuildCreation)
+        {
+            CloseGuildCreation();
+            mShouldCloseGuildCreation = false;
+        }
         //Shop Update
         if (mShouldOpenShop)
         {

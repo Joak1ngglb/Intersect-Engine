@@ -214,6 +214,96 @@ public static partial class Strings
                                             BindingFlags.NonPublic | BindingFlags.Static
                                         ) ?? throw new InvalidOperationException();
 
+    public partial struct Market
+    {
+        // ───────── Ventana y controles ─────────
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString sellwindow = @"Sell on Market";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString selectitem = @"Select an item from your inventory";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString publish_colon = @"Publish:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString quantity = @"Quantity";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString price = @"Price";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString taxes_estimated = @"🧾 Estimated tax: {0}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString taxes_0 = @"🧾 Estimated tax: 0";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString splitpackages = @"Split into packages (1, 10, 100, 1000)";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString publish = @"Publish";
+
+        // ───────── Mensajes de estado / error ─────────
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString noItemSelected = @"⚠️ No item selected.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString invalidItem = @"⚠️ Item not found in inventory.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString invalidQuantity = @"❌ Quantity must be greater than zero.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString invalidPrice = @"❌ Price must be greater than zero.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString quantityExceeds = @"❌ Quantity exceeds available items ({0}).";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString priceOutOfRange = @"❌ Price must be between {0} and {1} 🪙.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString pricehint = @"Suggested Price: {0}";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString pricerange = @"Suggested Range: {0}/{1}";
+        // ✔️ Mensaje de éxito
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString listedSuccessfully = @"Listing created successfully!";
+        // ───────── Market Window específica ─────────
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString windowTitle = @"Global Market";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString itemNameLabel = @"Item Name:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString itemTypeLabel = @"Type:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString minPriceLabel = @"Min Price:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString maxPriceLabel = @"Max Price:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString searchButton = @"Search";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString sellButton = @"Sell";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString headerItemName = @"Item Name";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString headerQuantity = @"Quantity";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString headerPrice = @"Price";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString noResults = @"❌ No results found.";
+    }
     public partial struct MailBox
     {
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -878,7 +968,8 @@ public static partial class Strings
             {0, @"local"},
             {1, @"global"},
             {2, @"party"},
-            {3, @"guild"}
+            {3, @"guild"},
+            {4, @"trade"},
         };
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -891,6 +982,7 @@ public static partial class Strings
             { ChatboxTab.Party, @"Party" },
             { ChatboxTab.Global, @"Global" },
             { ChatboxTab.Guild, @"Guild" },
+            { ChatboxTab.Trade, @"Trade" },
             { ChatboxTab.System, @"System" },
         };
 
@@ -1433,6 +1525,91 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString TransferTitle = @"Transfer Guild";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ShowMembers = @"👥 Members";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ShowUpgrades = @"⭐ Upgrades";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString PointsAvailable = @"Points available: {00}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString PointsSpent = @"Points spent: {00}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString UpgradesTitle = @"Guild Upgrades:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString UpgradeButton = @"Upgrade ({00} pts)";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString LevelLabel = @"Level: {00}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ExpLabel = @"Exp:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ExpBar = @"{00} / {01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString MembersCount = @"Members: {00}/{01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ExpContributionTitle = @"Set XP Contribution";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ExpContributionPrompt = @"Select the percentage of XP you want to donate to the guild (current: {00}%)";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ExpContributionFeedback = @"You've changed your XP contribution to {00}%.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ColumnName = @"Name";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ColumnRank = @"Rank";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ColumnLevel = @"Lvl";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ColumnXpPct = @"% XP";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ColumnXpDonated = @"XP Donated";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString ColumnMap = @"Map";
+    }
+    public partial struct GuildCreation
+    {
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Title = @"Guild Creation";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString NameEmpty = @"Guild name cannot be empty.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString NoBackgroundSelected = @"No background selected.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString NoSymbolSelected = @"No symbol selected.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString CreateButton = @"Create Guild";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString BackgroundButton = @"Backgrounds";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString SymbolButton = @"Symbols";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString BackgroundColor = @"Background Color";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString SymbolColor = @"Symbol Color";
     }
 
     public partial struct InputBox
@@ -2695,6 +2872,21 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString OtherPlayer = @"The other player has accepted the trade.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString TooFast = @"You are sending messages too quickly! Please wait.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Muted = @"You cannot send trade messages while muted.";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString Format = @"[Trade] {00}: {01}";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString SELL = @"[SELL]";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
+        public static LocalizedString BUY = @"[BUY]";
     }
 
     public partial struct EscapeMenu

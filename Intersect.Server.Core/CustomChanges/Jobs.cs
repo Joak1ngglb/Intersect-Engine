@@ -89,6 +89,13 @@ namespace Intersect.Server.Entities
 
         public void AddExperience(long amount, Player player)
         {
+            // Aplicar multiplicador del gremio si pertenece a uno
+            if (player.Guild != null)
+            {
+                var multiplier = player.Guild.GetJobXpBonusMultiplier();
+                amount = (long)(amount * multiplier);
+            }
+
             JobExp += amount;
 
             // Nivelar si se supera la experiencia necesaria para el siguiente nivel
@@ -100,6 +107,7 @@ namespace Intersect.Server.Entities
 
             PacketSender.SendJobSync(player); // Sincroniza los datos después de actualizar
         }
+
 
         public void SetLevel(int newLevel, bool resetExperience, Player player)
         {

@@ -37,11 +37,7 @@ public partial class Guild
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public Guid Id { get; private set; } = Guid.NewGuid();
 
-    /// <summary>
-    /// The name of the guild.
-    /// </summary>
-    public string Name { get; private set; }
-
+   
     /// <summary>
     /// The date on which this guild was founded.
     /// </summary>
@@ -130,20 +126,21 @@ public partial class Guild
                     player.GuildRank = 0;
                     player.GuildJoinDate = DateTime.UtcNow;
 
-
+                   
                     context.ChangeTracker.DetectChanges();
                     context.SaveChanges();
 
-                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName);
+                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage,player.DonateXPGuild);
                     guild.Members.AddOrUpdate(player.Id, member, (key, oldValue) => member);
 
                     creator.Guild = guild;
                     creator.GuildRank = 0;
                     creator.GuildJoinDate = DateTime.UtcNow;
-
+                    creator.GuildExpPercentage = 0;
+                    creator.DonateXPGuild = 0;
                     // Send our entity data to nearby players.
                     PacketSender.SendEntityDataToProximity(Player.FindOnline(creator.Id));
-
+                    PacketSender.UpdateGuild(creator);
                     Guilds.AddOrUpdate(guild.Id, guild, (key, oldValue) => guild);
 
                     LogActivity(guild.Id, creator, null, GuildActivityType.Created, name);
@@ -212,7 +209,8 @@ public partial class Guild
                 member.Value.Level = plyr.Level;
                 member.Value.Map = plyr.MapName;
                 member.Value.Rank = plyr.GuildRank;
-
+                member.Value.ExperiencePerc = plyr.GuildExpPercentage;
+                member.Value.DonatedXp= plyr.DonateXPGuild;
                 online.Add(plyr);
             }
         }
@@ -230,7 +228,16 @@ public partial class Guild
     {
         if (player != null && !Members.Any(m => m.Key == player.Id))
         {
-            using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+            if (Members.Count >= GetMaxMembers())
+            {
+                // Gremio lleno
+                PacketSender.SendChatMsg(player, "Este gremio ha alcanzado el límite de miembros.", ChatMessageType.Guild);
+           
+                return;
+            }
+
+         
+                using (var context = DbInterface.CreatePlayerContext(readOnly: false))
             {
                 var dbPlayer = context.Players.FirstOrDefault(p => p.Id == player.Id);
                 if (dbPlayer != null)
@@ -245,8 +252,9 @@ public partial class Guild
                     player.Guild = this;
                     player.GuildRank = rank;
                     player.GuildJoinDate = DateTime.UtcNow;
-
-                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName);
+                    player.DonateXPGuild = 0;
+                    player.GuildExpPercentage = 0;
+                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage, player.DonateXPGuild);
                     Members.AddOrUpdate(player.Id, member, (key, oldValue) => member);
 
                     // Send our new guild list to everyone that's online.
@@ -298,7 +306,8 @@ public partial class Guild
                 }
             }
 
-
+            targetPlayer.DonateXPGuild = 0;
+            targetPlayer.GuildExpPercentage = 0;
             Members.TryRemove(targetId, out GuildMember _);
 
             // Send our new guild list to everyone that's online.
@@ -690,16 +699,24 @@ public partial class Guild
     /// Updates the number of bank slots alotted to this guild for use, only expanding because we don't want to risk wiping items
     /// </summary>
     /// <param name="count"></param>
-    public void ExpandBankSlots(int count)
+    public void ExpandBankSlots(int requestedCount)
     {
-        if (BankSlotsCount >= count || count > Options.Instance.Bank.MaxSlots)
-        {
+        // El máximo que puede tener el gremio depende del nivel de mejora
+        var extraSlotsFromUpgrade = GetUpgradeLevel(GuildUpgradeType.ExtraBankSlots) * 10;
+        var maxAllowedSlots = Options.Instance.Guild.InitialBankSlots + extraSlotsFromUpgrade;
+
+        // Nunca permitir más que el máximo definido en config general
+        maxAllowedSlots = Math.Min(maxAllowedSlots, Options.Instance.Bank.MaxSlots);
+
+        // Ajustar si la solicitud supera lo permitido
+        requestedCount = Math.Min(requestedCount, maxAllowedSlots);
+
+        if (BankSlotsCount >= requestedCount)
             return;
-        }
 
         lock (mLock)
         {
-            BankSlotsCount = count;
+            BankSlotsCount = requestedCount;
             SlotHelper.ValidateSlotList(Bank, BankSlotsCount);
             DbInterface.Pool.QueueWorkItem(Save);
         }
@@ -823,7 +840,30 @@ public partial class Guild
             }
         }
     }
+    public void SetLogo(
+    string backgroundFile,
+    byte bgR, byte bgG, byte bgB,
+    string symbolFile,
+    byte symR, byte symG, byte symB
+  )
+    {
+        // Asignar propiedades
+        LogoBackground = backgroundFile ?? string.Empty;
+        BackgroundR = bgR;
+        BackgroundG = bgG;
+        BackgroundB = bgB;
 
+        LogoSymbol = symbolFile ?? string.Empty;
+        SymbolR = symR;
+        SymbolG = symG;
+        SymbolB = symB;
+
+        // Guardar en DB
+        Save(); // Usa tu método lock(mLock) { ... context.SaveChanges() }
+
+        // Opcional: notificar a los miembros online que el “logo” cambió
+        UpdateMemberList();
+    }
     /// <summary>
     /// Retrieves a list of guilds from the db as an IList
     /// </summary>

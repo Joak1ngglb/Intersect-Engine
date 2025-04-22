@@ -1,4 +1,4 @@
-﻿using System.Runtime.Serialization;
+using System.Runtime.Serialization;
 
 namespace Intersect.Config.Guilds;
 
@@ -54,7 +54,8 @@ public partial class GuildOptions
                 Promote = true,
                 BankDeposit = true,
                 BankMove = true,
-                BankRetrieve = true
+                BankRetrieve = true,
+                ChangeXP=true
             }
         },
         new GuildRank()
@@ -69,7 +70,8 @@ public partial class GuildOptions
                 Promote = true,
                 BankDeposit = true,
                 BankMove = true,
-                BankRetrieve = true
+                BankRetrieve = true,
+                ChangeXP=true
             }
         },
         new GuildRank()
@@ -84,7 +86,8 @@ public partial class GuildOptions
                 Promote = false,
                 BankDeposit = true,
                 BankMove = false,
-                BankRetrieve = false
+                BankRetrieve = false,
+                ChangeXP=true
             }
         },
         new GuildRank()
@@ -99,12 +102,27 @@ public partial class GuildOptions
                 Promote = false,
                 BankDeposit = false,
                 BankMove = false,
-                BankRetrieve = false
+                BankRetrieve = false,
+                ChangeXP=true
             }
         }
 
     };
+    /// <summary>
+    /// La cantidad base de experiencia requerida para el nivel 2.
+    /// </summary>
+    public long BaseXP { get; set; } = 500000;
 
+    /// <summary>
+    /// Factor de crecimiento de experiencia requerida por nivel.
+    /// </summary>
+    public double GrowthFactor { get; set; } = 1.7;
+
+  
+    /// <summary>
+    /// Número inicial de miembros permitidos en un gremio.
+    /// </summary>
+    public int InitialMaxMembers { get; set; } = 10;
     [OnDeserialized]
     internal void OnDeserializedMethod(StreamingContext context)
     {

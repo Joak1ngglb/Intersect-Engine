@@ -27,6 +27,7 @@ using Intersect.Client.Interface.Shared;
 using Intersect.Network.Packets.Client;
 using Intersect.Config;
 using Intersect.Framework.Core.Config;
+using Intersect.Client.Interface.Game.Market;
 
 namespace Intersect.Client.Networking;
 
@@ -322,7 +323,7 @@ internal sealed partial class PacketHandler
             en.Load(packet);
             if (packet.IsSelf)
             {
-                Globals.Me = (Player) Globals.Entities[packet.EntityId];
+                Globals.Me = (Player)Globals.Entities[packet.EntityId];
             }
         }
         else
@@ -330,7 +331,7 @@ internal sealed partial class PacketHandler
             Globals.Entities.Add(packet.EntityId, new Player(packet.EntityId, packet));
             if (packet.IsSelf)
             {
-                Globals.Me = (Player) Globals.Entities[packet.EntityId];
+                Globals.Me = (Player)Globals.Entities[packet.EntityId];
             }
         }
     }
@@ -772,9 +773,9 @@ internal sealed partial class PacketHandler
         if (entityMap.Attributes[en.X, en.Y] != null &&
             entityMap.Attributes[en.X, en.Y].Type == MapAttributeType.ZDimension)
         {
-            if (((MapZDimensionAttribute) entityMap.Attributes[en.X, en.Y]).GatewayTo > 0)
+            if (((MapZDimensionAttribute)entityMap.Attributes[en.X, en.Y]).GatewayTo > 0)
             {
-                en.Z = (byte) (((MapZDimensionAttribute) entityMap.Attributes[en.X, en.Y]).GatewayTo - 1);
+                en.Z = (byte)(((MapZDimensionAttribute)entityMap.Attributes[en.X, en.Y]).GatewayTo - 1);
             }
         }
     }
@@ -1240,9 +1241,9 @@ internal sealed partial class PacketHandler
         }
 
         map.MapItems.Clear();
-        foreach(var item in packet.Items)
+        foreach (var item in packet.Items)
         {
-            var mapItem = new MapItemInstance(item.TileIndex,item.Id, item.ItemId, item.BagId, item.Quantity, item.Properties);
+            var mapItem = new MapItemInstance(item.TileIndex, item.Id, item.ItemId, item.BagId, item.Quantity, item.Properties);
 
             if (!map.MapItems.ContainsKey(mapItem.TileIndex))
             {
@@ -1266,7 +1267,7 @@ internal sealed partial class PacketHandler
         if (packet.ItemId == Guid.Empty)
         {
             // Find our item based on our unique Id and remove it.
-            foreach(var location in map.MapItems.Keys)
+            foreach (var location in map.MapItems.Keys)
             {
                 var tempItem = map.MapItems[location].Where(item => item.Id == packet.Id).SingleOrDefault();
                 if (tempItem != null)
@@ -1839,7 +1840,7 @@ internal sealed partial class PacketHandler
         {
             foreach (var map in MapInstance.Lookup.Values.ToArray())
             {
-                ((MapInstance) map).Dispose();
+                ((MapInstance)map).Dispose();
             }
         }
 
@@ -2249,37 +2250,30 @@ internal sealed partial class PacketHandler
             return;
         }
 
-        var updatedGuildMembers = packet.Members.OrderByDescending(m => m.Online).ThenBy(m => m.Rank)
-            .ThenBy(m => m.Name).ToArray();
+        var updatedGuildMembers = packet.Members
+            .OrderByDescending(m => m.Online)
+            .ThenBy(m => m.Rank)
+            .ThenBy(m => m.Name)
+            .ToArray();
 
         var currentGuildMembers = Globals.Me.GuildMembers;
         var hasUpdates = currentGuildMembers?.Length != updatedGuildMembers.Length;
+
         if (!hasUpdates)
         {
             for (var index = 0; index < currentGuildMembers.Length; ++index)
             {
-                var currentGuildMember = currentGuildMembers[index];
-                var updatedGuildMember = updatedGuildMembers[index];
+                var current = currentGuildMembers[index];
+                var updated = updatedGuildMembers[index];
 
-                if (currentGuildMember.Id != updatedGuildMember.Id)
-                {
-                    hasUpdates = true;
-                    break;
-                }
-
-                if (currentGuildMember.Online != updatedGuildMember.Online)
-                {
-                    hasUpdates = true;
-                    break;
-                }
-
-                if (currentGuildMember.Rank != updatedGuildMember.Rank)
-                {
-                    hasUpdates = true;
-                    break;
-                }
-
-                if (!string.Equals(currentGuildMember.Name, updatedGuildMember.Name))
+                if (current.Id != updated.Id ||
+                    current.Online != updated.Online ||
+                    current.Rank != updated.Rank ||
+                    current.Name != updated.Name ||
+                    current.Level != updated.Level ||
+                    !string.Equals(current.Map, updated.Map) || 
+                    current.DonatedXp != updated.DonatedXp ||
+                    Math.Abs(current.ExperiencePerc - updated.ExperiencePerc) > 0.01f)
                 {
                     hasUpdates = true;
                     break;
@@ -2294,6 +2288,31 @@ internal sealed partial class PacketHandler
         }
     }
 
+    public void HandlePacket (IPacketHandler packetsender, GuildUpdate packet)
+    {
+        if (Globals.Me == null || Globals.Me.Guild == null)
+        {
+            return;
+        }
+        // Si usas el nombre del gremio en el cliente
+        Globals.Me.Guild = packet.Name; // O la propiedad adecuada para almacenar el nombre
+        // Llamada al método GetLogo con TODOS los parámetros
+        // (Asegúrate de tener un método que coincida con esta firma en tu lado cliente)
+        Globals.Me.GetLogo(
+            packet.LogoBackground,
+            packet.BackgroundR,
+            packet.BackgroundG,
+            packet.BackgroundB,
+            packet.LogoSymbol,
+            packet.SymbolR,
+            packet.SymbolG,
+            packet.SymbolB
+        );
+        Globals.Me.GuildBackgroundFile = packet.LogoBackground;
+        Globals.Me.GuildSymbolFile = packet.LogoSymbol;
+        // Por ejemplo, notificar a la interfaz gráfica de que se actualizó la guild
+        //Interface.Interface.GameUi.NotifyUpdateGuild();
+    }
 
     //GuildInvitePacket
     public void HandlePacket(IPacketSender packetSender, GuildInvitePacket packet)
@@ -2396,6 +2415,76 @@ internal sealed partial class PacketHandler
         }
     }
 
+    public void HandlePacket(IPacketSender packetSender, GuildUpdate packet)
+    {
+        if (Globals.Me == null || Globals.Me.Guild == null)
+        {
+            return;
+        }
+
+        // Nombre del gremio
+        Globals.Me.Guild = packet.Name;
+
+        // Logo visual
+        Globals.Me.GetLogo(
+            packet.LogoBackground,
+            packet.BackgroundR,
+            packet.BackgroundG,
+            packet.BackgroundB,
+            packet.LogoSymbol,
+            packet.SymbolR,
+            packet.SymbolG,
+            packet.SymbolB
+        );
+
+        Globals.Me.GuildBackgroundFile = packet.LogoBackground;
+        Globals.Me.GuildSymbolFile = packet.LogoSymbol;
+        Globals.Me.GuildBackgroundB = packet.BackgroundB;
+        Globals.Me.GuildBackgroundR = packet.BackgroundR;
+        Globals.Me.GuildBackgroundG = packet.BackgroundG;
+
+        // Datos de progreso
+        Guild.GuildLevel = packet.GuildLevel;
+        Guild.GuildExp = packet.GuildExp;
+        Guild.GuildExpToNextLevel = packet.GuildExpToNextLevel;
+
+        // Puntos del gremio
+        Guild.GuildPoints = packet.GuildPoints;
+        Guild.GuildSpent = packet.SpentGuildPoints;
+
+        // Cargar mejoras desde el diccionario
+        Guild.GuildUpgrades.Clear();
+        foreach (var kvp in packet.GuildUpgrades)
+        {
+            if (Enum.TryParse(kvp.Key, out GuildUpgradeType upgradeType))
+            {
+                Guild.GuildUpgrades[upgradeType] = kvp.Value;
+            }
+        }
+
+        // Notificar a la interfaz (si usas bindings o UI dinámica)
+        // Interface.Interface.GameUi.NotifyUpdateGuild();
+    }
+
+    public void HandlePacket(IPacketSender packetSender, GuildExperienceUpdatePacket packet)
+    {
+        if (Globals.Me == null) return;
+
+        // Establecemos el nuevo porcentaje de donación a la guild
+        Globals.Me.GuildXpContribution = Math.Clamp(packet.Experience, 0f, 100f);
+                   
+    }
+ 
+    public void HandleGuildCreationWindow(IPacketSender packetSender, GuildCreationWindowPacket packet)
+    {
+        if (Globals.Me?.Guild != null)
+        {
+            ChatboxMsg.AddMessage(new ChatboxMsg("No puedes crear una nueva guild mientras ya eres miembro de una.", Color.Red, ChatMessageType.Error));
+            return;
+           
+        }
+        Interface.Interface.GameUi.OpenGuildCreationWindow();
+    }
     public void HandlePacket(IPacketSender sender, MarketListingsPacket packet)
     {
         if (packet?.Listings == null)
@@ -2436,4 +2525,48 @@ internal sealed partial class PacketHandler
     }
 
 
+    public void HandlePacket(IPacketSender sender, MarketPriceInfoPacket packet)
+    {
+        // Guardar o usar los valores directamente
+        // Puedes hacer algo como esto si quieres tenerlo accesible globalmente:
+        Interface.Game.Market.MarketPriceCache.Update(packet.ItemId, packet.SuggestedPrice, packet.MinAllowedPrice, packet.MaxAllowedPrice);
+
+        // Si la ventana está abierta y el ítem aún es el seleccionado, actualizar visualmente
+        if (Interface.Interface.GameUi?.mMarketSellWindow is { } window &&
+            window.IsVisible() &&
+            window.GetSelectedItemId() == packet.ItemId)
+        {
+            window.UpdateSuggestedPrice(packet.ItemId);
+            
+        }
+        // Opcional: mostrar en consola o enviar mensaje
+        PacketSender.SendChatMsg($"💡 Precio promedio: {packet.SuggestedPrice} 🪙 (Rango: {packet.MinAllowedPrice} - {packet.MaxAllowedPrice})", 5);
+	}
+
+    // PacketHandler.cs  (lado cliente)
+    public void HandlePacket(IPacketSender packetSender, MarketWindowPacket packet)
+    {
+        // 1. Si el servidor envía ambas banderas en false entendemos que quiere cerrar todo
+        if (!packet.OpenMarket && !packet.OpenSell)
+        {
+            Interface.Interface.GameUi.CloseMarket();     // ventana de compra
+            Interface.Interface.GameUi.CloseSellMarket(); // ventana de venta
+            return;
+        }
+
+        // 2. Si solamente quiere abrir una de las dos, primero cerramos la otra
+        if (packet.OpenMarket)
+        {
+            Interface.Interface.GameUi.CloseSellMarket();
+            Interface.Interface.GameUi.OpenMarket();      // muestra la lista de artículos en venta
+        }
+        else if (packet.OpenSell)
+        {
+            Interface.Interface.GameUi.CloseMarket();
+            Interface.Interface.GameUi.OpenSellMarket();  // muestra tu inventario para poner objetos a la venta
+        }
+    }
+
 }
+
+

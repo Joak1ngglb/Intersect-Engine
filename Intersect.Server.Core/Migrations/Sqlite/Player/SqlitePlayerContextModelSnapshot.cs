@@ -258,7 +258,19 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<byte>("BackgroundB")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("BackgroundG")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("BackgroundR")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("BankSlotsCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("Experience")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("FoundingDate")
@@ -267,8 +279,41 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<Guid>("GuildInstanceId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("GuildPoints")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("GuildUpgradesData")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LogoBackground")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LogoSymbol")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("SpentGuildPoints")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("SymbolB")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("SymbolG")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SymbolPosY")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("SymbolR")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<float>("SymbolScale")
+                        .HasColumnType("REAL");
 
                     b.HasKey("Id");
 
@@ -596,6 +641,9 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<int>("Dir")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long>("DonateXPGuild")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("EquipmentJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("Equipment");
@@ -612,6 +660,9 @@ namespace Intersect.Server.Migrations.Sqlite.Player
 
                     b.Property<int>("Gender")
                         .HasColumnType("INTEGER");
+
+                    b.Property<float>("GuildExpPercentage")
+                        .HasColumnType("REAL");
 
                     b.Property<DateTime>("GuildJoinDate")
                         .HasColumnType("TEXT");

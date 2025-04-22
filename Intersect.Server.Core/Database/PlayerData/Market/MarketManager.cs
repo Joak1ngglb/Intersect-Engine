@@ -12,6 +12,7 @@ using Intersect.Server.Networking;
 using Intersect.Server.Database.PlayerData.Players;
 using Microsoft.EntityFrameworkCore;
 using Intersect.Logging;
+using System.Diagnostics;
 
 namespace Intersect.Server.Database.PlayerData.Players
 
@@ -69,9 +70,9 @@ namespace Intersect.Server.Database.PlayerData.Players
             return result;
         }
 
-        public static bool TryListItem(Player seller, Item item, int quantity, int price)
+        public static bool TryListItem(Player seller, Item item, int quantity, int pricePerUnit, bool autoSplit = false)
         {
-            if (item == null || quantity <= 0 || price <= 0)
+            if (item == null || quantity <= 0 || pricePerUnit <= 0)
             {
                 PacketSender.SendChatMsg(seller, Strings.Market.invalidlisting, ChatMessageType.Error, CustomColors.Alerts.Error);
                 return false;
@@ -84,6 +85,22 @@ namespace Intersect.Server.Database.PlayerData.Players
                 return false;
             }
 
+            var stats = MarketStatisticsManager.GetStatistics(item.ItemId);
+            var avg = stats.AveragePricePerUnit;
+            var min = stats.GetMinAllowedPrice();
+            var max = stats.GetMaxAllowedPrice();
+
+            if (pricePerUnit < min || pricePerUnit > max)
+            {
+                PacketSender.SendChatMsg(
+                    seller,
+                    $"❌ Precio fuera del rango permitido para este ítem. Rango actual: {min} - {max} 🪙",
+                    ChatMessageType.Error,
+                    CustomColors.Alerts.Declined
+                );
+                return false;
+            }
+
             var currencyBase = GetDefaultCurrency();
             if (currencyBase == null)
             {
@@ -91,66 +108,76 @@ namespace Intersect.Server.Database.PlayerData.Players
                 return false;
             }
 
-            var tax = (int)Math.Ceiling(price * GetMarketTaxPercentage());
-            if (!seller.TryTakeItem(currencyBase.Id, tax))
-            {
-                PacketSender.SendChatMsg(seller, Strings.Market.notenoughmoney, ChatMessageType.Error, CustomColors.Alerts.Declined);
-                return false;
-            }
-
-            if (!seller.TryTakeItem(item.ItemId, quantity))
-            {
-                seller.TryGiveItem(currencyBase.Id, tax); // Reembolso
-                PacketSender.SendChatMsg(seller, Strings.Market.cannotremoveitem, ChatMessageType.Error, CustomColors.Alerts.Declined);
-                return false;
-            }
-
             using var context = DbInterface.CreatePlayerContext(readOnly: false);
             context.StopTrackingUsersExcept(seller.User);
-
-            // 💡 Adjuntar entidad `seller` correctamente
             context.Attach(seller);
 
-            // ✅ Crear el listado después de adjuntar seller
-            var listing = new MarketListing
+            var itemProperties = item.Properties;
+            var packageSizes = autoSplit ? new[] { 1000,500, 100,50, 10, 1 } : new[] { quantity };
+
+            int remaining = quantity;
+            bool atLeastOneListed = false;
+
+            foreach (var size in packageSizes)
             {
-                Seller = seller,
-                ItemId = item.ItemId,
-                Quantity = quantity,
-                Price = price,
-                ItemProperties = item.Properties,
-                ListedAt = DateTime.UtcNow,
-                ExpireAt = DateTime.UtcNow.AddDays(7),
-                IsSold = false
-            };
-
-            context.Market_Listings.Add(listing);
-
-            int retries = 3;
-            while (retries > 0)
-            {
-                try
+                while (remaining >= size)
                 {
-                    context.SaveChanges();
-                    break;
-                }
-                catch (DbUpdateException ex)
-                {
-                    Log.Error($"Error al guardar listado en mercado. Reintentos restantes: {retries - 1}", ex);
-                    retries--;
+                    var tax = CalculateTax(pricePerUnit, size);
+                    var totalPrice = pricePerUnit * size;
 
-                    if (retries == 0)
+                    if (!seller.TryTakeItem(item.ItemId, size)) break;
+                    if (!seller.TryTakeItem(currencyBase.Id, tax))
                     {
-                        PacketSender.SendChatMsg(seller, "❌ No se pudo guardar el listado en el mercado.", ChatMessageType.Error, CustomColors.Alerts.Error);
-                        return false;
+                        seller.TryGiveItem(item.ItemId, size);
+                        break;
                     }
+
+                    var listing = new MarketListing
+                    {
+                        Seller = seller,
+                        ItemId = item.ItemId,
+                        Quantity = size,
+                        Price = totalPrice,
+                        ItemProperties = itemProperties,
+                        ListedAt = DateTime.UtcNow,
+                        ExpireAt = DateTime.UtcNow.AddDays(7),
+                        IsSold = false
+                    };
+
+                    context.Market_Listings.Add(listing);
+                    remaining -= size;
+                    atLeastOneListed = true;
                 }
             }
 
-            PacketSender.SendChatMsg(seller, Strings.Market.listingcreated, ChatMessageType.Trading, CustomColors.Alerts.Accepted);
-            PacketSender.SendRefreshMarket(seller);
-            return true;
+            try
+            {
+                context.SaveChanges();
+            }
+            catch (DbUpdateException ex)
+            {
+                Log.Error($"❌ Error guardando listados divididos: {ex}");
+                PacketSender.SendChatMsg(seller, "❌ Error al guardar el listado en el mercado.", ChatMessageType.Error, CustomColors.Alerts.Error);
+                return false;
+            }
+
+            if (atLeastOneListed)
+            {
+                //PacketSender.SendChatMsg(seller, "📤 Publicación realizada con éxito.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+                PacketSender.SendRefreshMarket(seller);
+                return true;
+            }
+
+            PacketSender.SendChatMsg(seller, "❌ No se pudo dividir ni publicar el ítem.", ChatMessageType.Error, CustomColors.Alerts.Error);
+            return false;
         }
+
+        private static int CalculateTax(int pricePerUnit, int quantity)
+        {
+            return (int)Math.Ceiling(pricePerUnit * quantity * GetMarketTaxPercentage());
+        }
+
+
         public static bool TryBuyListing(Player buyer, Guid listingId)
         {
             using var context = DbInterface.CreatePlayerContext(readOnly: false);
@@ -176,7 +203,7 @@ namespace Intersect.Server.Database.PlayerData.Players
                 return false;
             }
 
-            var totalCost = listing.Price * listing.Quantity;
+            var totalCost = listing.Price;
             var currencyAmount = buyer.FindInventoryItemQuantity(currencyBase.Id);
 
             if (currencyAmount < totalCost)
@@ -225,6 +252,7 @@ namespace Intersect.Server.Database.PlayerData.Players
 
             // ✅ Marcar como vendido y dar el ítem
             listing.IsSold = true;
+            context.Remove(listing);
             context.Update(listing);
             buyer.TryGiveItem(itemToGive, -1);
 
@@ -287,9 +315,11 @@ namespace Intersect.Server.Database.PlayerData.Players
                     }
                 }
             }
+            UpdateStatistics(transaction);
 
             PacketSender.SendChatMsg(buyer, Strings.Market.itempurchased, ChatMessageType.Trading, CustomColors.Alerts.Accepted);
             PacketSender.SendRefreshMarket(buyer); // Actualiza al cliente con nuevo mercado
+            MarketStatisticsManager.UpdateStatistics(transaction);
 
             return true;
         }
@@ -309,7 +339,7 @@ namespace Intersect.Server.Database.PlayerData.Players
                 .FirstOrDefault(i => i.ItemType == ItemType.Currency);
         }
 
-       
+
         public static void CleanExpiredListings()
         {
             using var context = DbInterface.CreatePlayerContext(readOnly: false);
@@ -352,5 +382,21 @@ namespace Intersect.Server.Database.PlayerData.Players
                 context.SaveChanges();
             }
         }
+
+        private static readonly Dictionary<Guid, MarketStatistics> _statisticsCache = new();
+
+        public static void UpdateStatistics(MarketTransaction tx)
+        {
+            if (!_statisticsCache.TryGetValue(tx.ItemId, out var stats))
+            {
+                stats = new MarketStatistics(tx.ItemId);
+                _statisticsCache[tx.ItemId] = stats;
+            }
+
+            stats.AddTransaction(tx);
+        }
+
+       
+
     }
 }

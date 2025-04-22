@@ -1,4 +1,4 @@
-﻿using Intersect.Enums;
+using Intersect.Enums;
 using MessagePack;
 
 namespace Intersect.Network.Packets.Server;
@@ -38,4 +38,27 @@ public partial class PlayerEntityPacket : EntityPacket
 
     [Key(30)]
     public int GuildRank { get; set; }
+    [Key(31)]
+    public string GuildSymbolFile { get; set; }
+
+    [Key(32)]
+    public byte GuildSymbolR { get; set; }
+
+    [Key(33)]
+    public byte GuildSymbolG { get; set; }
+
+    [Key(34)]
+    public byte GuildSymbolB { get; set; }
+
+    [Key(35)]
+    public string GuildBackgroundFile { get; set; }
+
+    [Key(36)]
+    public byte GuildBackgroundR { get; set; }
+
+    [Key(37)]
+    public byte GuildBackgroundG { get; set; }
+
+    [Key(38)]
+    public byte GuildBackgroundB { get; set; }
 }

@@ -12,6 +12,7 @@ using Intersect.Client.General;
 using Intersect.Client.Core;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using MonoMod.Core.Utils;
+using Intersect.Client.Localization;
 
 
 namespace Intersect.Client.Interface.Game.Market
@@ -42,17 +43,19 @@ namespace Intersect.Client.Interface.Game.Market
         private ImagePanel mListContainer;
         private bool Initialized=false;
         private MarketItem marketItem;
+        private SellMarketWindow mSellWindow;
 
         public MarketWindow(Canvas parent)
         {
             Instance = this;
-            mMarketWindow = new WindowControl(parent, "📦 Mercado Global", false, "MarketWindow");
+            mMarketWindow = new WindowControl(parent, Strings.Market.windowTitle, false, "MarketWindow");
             mMarketWindow.SetSize(800, 600);
             mMarketWindow.DisableResizing();
             mMarketWindow.Focus();
 
             mNameLabel = new Label(mMarketWindow, "MarketNameLabel");
-            mNameLabel.Text = "Nombre del ítem:";
+            mNameLabel.Text = Strings.Market.itemNameLabel;
+           
             mNameLabel.SetBounds(20, 45, 140, 20);
 
             mSearchBox = new TextBox(mMarketWindow, "MarketSearchBox");
@@ -60,9 +63,7 @@ namespace Intersect.Client.Interface.Game.Market
             mSearchBox.Focus();
             Interface.FocusElements.Add(mSearchBox);
             mTypeLabel = new Label(mMarketWindow, "MarketTypeLabel");
-            mTypeLabel.Text = "Tipo:";
-            
-
+            mTypeLabel.Text = Strings.Market.itemTypeLabel;
             mItemTypeCombo = new ComboBox(mMarketWindow, "MarketItemTypeCombo");
            
             mItemTypeCombo.AddItem("All", "all", "all");
@@ -76,29 +77,27 @@ namespace Intersect.Client.Interface.Game.Market
             }
 
             mMinLabel = new Label(mMarketWindow, "MarketMinLabel");
-            mMinLabel.Text = "Precio Mínimo:";
+            mMinLabel.Text = Strings.Market.minPriceLabel;
           
-
             mMinPriceBox = new TextBoxNumeric(mMarketWindow, "MarketMinPriceBox");
          
             mMinPriceBox.SetText("", false);
 
             mMaxLabel = new Label(mMarketWindow, "MarketMaxLabel");
-            mMaxLabel.Text = "Precio Máximo:";
-           
+            mMaxLabel.Text = Strings.Market.maxPriceLabel;
 
             mMaxPriceBox = new TextBoxNumeric(mMarketWindow, "MarketMaxPriceBox");
           
             mMaxPriceBox.SetText("", false);
 
             mSearchButton = new Button(mMarketWindow, "MarketSearchButton");
-          
-            mSearchButton.SetText("Buscar");
+
+            mSearchButton.SetText(Strings.Market.searchButton);           
             mSearchButton.Clicked += (s, a) => SendSearch();
 
             mSellButton = new Button(mMarketWindow, "MarketSellButton");
-           
-            mSellButton.SetText("Vender");
+            mSellButton.SetText(Strings.Market.sellButton);
+
             mSellButton.Clicked += SellMarket_Clicked;
             // Fila 1
             mNameLabel.SetBounds(20, 40, 140, 20);
@@ -123,21 +122,23 @@ namespace Intersect.Client.Interface.Game.Market
 
             // 🧾 Encabezados dentro del contenedor
             mHeaderNameLabel = new Label(mListContainer, "MarketHeaderName");
-            mHeaderNameLabel.Text = "Nombre del ítem";
+            mHeaderNameLabel.Text = Strings.Market.headerItemName;
             mHeaderNameLabel.SetBounds(10, 0, 200, 20);
 
             mHeaderQuantityLabel = new Label(mListContainer, "MarketHeaderQuantity");
-            mHeaderQuantityLabel.Text = "Cantidad";
+            mHeaderQuantityLabel.Text = Strings.Market.headerQuantity;
+               
             mHeaderQuantityLabel.SetBounds(250, 0, 100, 20);
 
             mHeaderPriceLabel = new Label(mListContainer, "MarketHeaderPrice");
-            mHeaderPriceLabel.Text = "Precio";
+            mHeaderPriceLabel.Text = Strings.Market.headerPrice;
+
             mHeaderPriceLabel.SetBounds(360, 0, 100, 20);
 
         
             // ❌ Mensaje si no hay resultados (fuera del contenedor)
             mNoResultsLabel = new Label(mMarketWindow);
-            mNoResultsLabel.SetText("❌ No se encontraron resultados.");
+            mNoResultsLabel.SetText(Strings.Market.noResults);
             mNoResultsLabel.SetBounds(250, 300, 300, 30);
 
             mNoResultsLabel.Hide(); // Oculto por defecto
@@ -162,8 +163,6 @@ namespace Intersect.Client.Interface.Game.Market
             mListingScroll.Show(); // Forzar creación visual
 
         }
-        private SellMarketWindow mSellWindow;
-
         private void SellMarket_Clicked(Base sender, ClickedEventArgs arguments)
         {
             if (mSellWindow != null && mSellWindow.IsVisible())

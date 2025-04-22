@@ -270,6 +270,39 @@ public static partial class Strings
         // ✔️ Mensaje de éxito
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString listedSuccessfully = @"Listing created successfully!";
+        // ───────── Market Window específica ─────────
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString windowTitle = @"Global Market";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString itemNameLabel = @"Item Name:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString itemTypeLabel = @"Type:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString minPriceLabel = @"Min Price:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString maxPriceLabel = @"Max Price:";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString searchButton = @"Search";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString sellButton = @"Sell";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString headerItemName = @"Item Name";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString headerQuantity = @"Quantity";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString headerPrice = @"Price";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString noResults = @"❌ No results found.";
     }
     public partial struct MailBox
     {

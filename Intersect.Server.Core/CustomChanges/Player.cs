@@ -111,13 +111,6 @@ namespace Intersect.Server.Entities
             PacketSender.SendOpenSendMail(this);
         }
 
-        public bool HasPermissionToTrade()
-        {
-            return Level >= 10; //Nivel minimo para comerciar
-        }
-        [JsonIgnore]
-        public virtual List<MarketListing> MarketListings { get; set; } = new List<MarketListing>();
-
         public void OpenMarket()
         {
             PacketSender.SendOpenMarketWindow(this);

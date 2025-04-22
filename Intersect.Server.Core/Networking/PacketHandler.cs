@@ -1325,7 +1325,14 @@ internal sealed partial class PacketHandler
                 PacketSender.SendChatMsg(player, Strings.Player.Offline, ChatMessageType.PM, CustomColors.Alerts.Error);
             }
         }
-        else if (cmd == Strings.Chat.TradeCommand){
+        else if (cmd == Strings.Chat.TradeCommand)
+        {
+            if (player.Level < 10)
+            {
+                PacketSender.SendChatMsg(player, Strings.Chat.TradeNotAllowed, ChatMessageType.Error, CustomColors.Alerts.Info);
+                return;
+            }
+
             if (msg.Trim().Length == 0)
             {
                 return;
@@ -1333,9 +1340,8 @@ internal sealed partial class PacketHandler
             else
             {
                 PacketSender.SendTradeMsg(player, Strings.Chat.Trade.ToString(player.Name, msg), CustomColors.Chat.TradeChat);
-                ChatHistory.LogMessage(player, msg.Trim(), ChatMessageType.Trade,Guid.Empty);
+                ChatHistory.LogMessage(player, msg.Trim(), ChatMessageType.Trade, Guid.Empty);
             }
-
         }
         else
         {

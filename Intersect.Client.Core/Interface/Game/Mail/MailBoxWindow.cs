@@ -159,7 +159,10 @@ namespace Intersect.Client.Interface.Game.Mail
                     {
                         var attachment = mail.Attachments[i];
                         var item = new Item();
-                        item.Load(attachment.ItemId, attachment.Quantity, null, attachment.Properties);
+
+                        // Update the following line in the Selected_MailListBox method:  
+                        item.Load(attachment.ItemId, attachment.Quantity, null, attachment.Properties, 0);
+                   
                         mAttachmentSlots[i].SetItem(item);
                         mAttachmentSlots[i].SlotPanel.Show();
                     }

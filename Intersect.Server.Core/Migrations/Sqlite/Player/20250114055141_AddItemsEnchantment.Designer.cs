@@ -3,6 +3,7 @@ using System;
 using Intersect.Server.Database.PlayerData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Intersect.Server.Migrations.Sqlite.Player
 {
     [DbContext(typeof(SqlitePlayerContext))]
-    partial class SqlitePlayerContextModelSnapshot : ModelSnapshot
+    [Migration("20250114055141_AddItemsEnchantment")]
+    partial class AddItemsEnchantment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
@@ -83,41 +86,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                         .IsUnique();
 
                     b.ToTable("Bans");
-                });
-
-            modelBuilder.Entity("Intersect.Server.Database.PlayerData.MarketTransaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BuyerName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ItemId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ListingId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Price")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("SellerId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("SoldAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SellerId");
-
-                    b.ToTable("Market_Transactions");
                 });
 
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Mute", b =>
@@ -264,19 +232,7 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
-                    b.Property<byte>("BackgroundB")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte>("BackgroundG")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte>("BackgroundR")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("BankSlotsCount")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("Experience")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("FoundingDate")
@@ -285,41 +241,8 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<Guid>("GuildInstanceId")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("GuildPoints")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("GuildUpgradesData")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("LogoBackground")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LogoSymbol")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("SpentGuildPoints")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte>("SymbolB")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte>("SymbolG")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("SymbolPosY")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte>("SymbolR")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<float>("SymbolScale")
-                        .HasColumnType("REAL");
 
                     b.HasKey("Id");
 
@@ -453,37 +376,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.HasIndex("PlayerId");
 
                     b.ToTable("Player_Items");
-                });
-
-            modelBuilder.Entity("Intersect.Server.Database.PlayerData.Players.MailBox", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AttachmentsJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("Attachments");
-
-                    b.Property<string>("Message")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("PlayerId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("SenderId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Title")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PlayerId");
-
-                    b.HasIndex("SenderId");
-
-                    b.ToTable("Player_MailBox");
                 });
 
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Players.PlayerVariable", b =>
@@ -653,9 +545,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<int>("Dir")
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("DonateXPGuild")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("EquipmentJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("Equipment");
@@ -672,9 +561,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
 
                     b.Property<int>("Gender")
                         .HasColumnType("INTEGER");
-
-                    b.Property<float>("GuildExpPercentage")
-                        .HasColumnType("REAL");
 
                     b.Property<DateTime>("GuildJoinDate")
                         .HasColumnType("TEXT");
@@ -793,49 +679,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.ToTable("Players");
                 });
 
-            modelBuilder.Entity("MarketListing", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("ExpireAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsSold")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("ItemId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ItemPropertiesJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("ItemProperties");
-
-                    b.Property<DateTime>("ListedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("PlayerId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Price")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("SellerId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PlayerId");
-
-                    b.HasIndex("SellerId");
-
-                    b.ToTable("Market_Listings");
-                });
-
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Api.RefreshToken", b =>
                 {
                     b.HasOne("Intersect.Server.Database.PlayerData.User", "User")
@@ -856,17 +699,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Intersect.Server.Database.PlayerData.MarketTransaction", b =>
-                {
-                    b.HasOne("Intersect.Server.Entities.Player", "Seller")
-                        .WithMany()
-                        .HasForeignKey("SellerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Seller");
                 });
 
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Mute", b =>
@@ -987,23 +819,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Navigation("Player");
                 });
 
-            modelBuilder.Entity("Intersect.Server.Database.PlayerData.Players.MailBox", b =>
-                {
-                    b.HasOne("Intersect.Server.Entities.Player", "Player")
-                        .WithMany("MailBoxs")
-                        .HasForeignKey("PlayerId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("Intersect.Server.Entities.Player", "Sender")
-                        .WithMany()
-                        .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Player");
-
-                    b.Navigation("Sender");
-                });
-
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Players.PlayerVariable", b =>
                 {
                     b.HasOne("Intersect.Server.Entities.Player", "Player")
@@ -1065,21 +880,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MarketListing", b =>
-                {
-                    b.HasOne("Intersect.Server.Entities.Player", null)
-                        .WithMany("MarketListings")
-                        .HasForeignKey("PlayerId");
-
-                    b.HasOne("Intersect.Server.Entities.Player", "Seller")
-                        .WithMany()
-                        .HasForeignKey("SellerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Seller");
-                });
-
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Players.Bag", b =>
                 {
                     b.Navigation("Slots");
@@ -1114,10 +914,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Navigation("Hotbar");
 
                     b.Navigation("Items");
-
-                    b.Navigation("MailBoxs");
-
-                    b.Navigation("MarketListings");
 
                     b.Navigation("Quests");
 

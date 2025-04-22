@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Intersect.Client.Core;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
@@ -7,6 +8,7 @@ using Intersect.Client.Framework.Gwen.Input;
 using Intersect.Client.Framework.Input;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.DescriptionWindows;
+using Intersect.Client.Interface.Game.Enchanting;
 using Intersect.Client.Interface.Game.Mail;
 using Intersect.Client.Interface.Game.Market;
 using Intersect.Client.Localization;
@@ -66,6 +68,7 @@ public partial class InventoryItem
     public ImagePanel Pnl;
     private SendMailBoxWindow mSendMailBoxWindow;
     private SellMarketWindow mSellMarketWindow;
+    private EnchantItemWindow mEnchantItemWindow;
    
 
     public InventoryItem(InventoryWindow inventoryWindow, int index)
@@ -83,6 +86,12 @@ public partial class InventoryItem
     public InventoryItem(SellMarketWindow sellMarketWindow, int index)
     {
         mSellMarketWindow = sellMarketWindow;
+        mMySlot = index;
+    }
+
+    public InventoryItem(EnchantItemWindow enchantItemWindow, int index)
+    {
+       mEnchantItemWindow = enchantItemWindow;
         mMySlot = index;
     }
 
@@ -222,6 +231,31 @@ public partial class InventoryItem
             mDescWindow.Dispose();
             mDescWindow = null;
         }
+        if (mEnchantItemWindow != null)
+        {
+            var inventorySlot = Globals.Me.Inventory[mMySlot];
+            if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
+            {
+                return;
+            }
+
+            var itemBase = ItemBase.Get(inventorySlot.ItemId);
+            if (itemBase == null)
+            {
+                return;
+            }
+
+            mDescWindow = new ItemDescriptionWindow(
+                itemBase,
+                inventorySlot.Quantity,
+                mEnchantItemWindow.X,
+                mEnchantItemWindow.Y,
+                inventorySlot.ItemProperties
+            );
+
+            return;
+        }
+
         if (mSellMarketWindow != null)
         {
             var inventorySlot = Globals.Me.Inventory[mMySlot];

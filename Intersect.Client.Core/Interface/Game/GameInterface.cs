@@ -5,6 +5,7 @@ using Intersect.Client.Interface.Game.Bag;
 using Intersect.Client.Interface.Game.Bank;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Game.Crafting;
+using Intersect.Client.Interface.Game.Enchanting;
 using Intersect.Client.Interface.Game.EntityPanel;
 using Intersect.Client.Interface.Game.Guilds;
 using Intersect.Client.Interface.Game.Hotbar;
@@ -52,10 +53,15 @@ public partial class GameInterface : MutableInterface
     private ShopWindow mShopWindow;
 
     private MapItemWindow mMapItemWindow;
+
     private SendMailBoxWindow mSendMailBoxWindow;
     private MailBoxWindow mMailBoxWindow;
     private MarketWindow mMarketWindow;
     private SellMarketWindow mSellMarketWindow;
+    private EnchantItemWindow mEnchantItemWindow;
+    private bool mShouldOpenEnchantWindow;
+    private bool mShouldCloseEnchantWindow;
+
     private bool mShouldCloseBag;
 
     private bool mShouldCloseBank;
@@ -138,6 +144,7 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
         // mJobsWindow = new JobsWindow(GameCanvas);
+        mEnchantItemWindow = new EnchantItemWindow(GameCanvas);
        // mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
     }
     public void NotifyOpenGuildCreation()
@@ -400,6 +407,22 @@ public partial class GameInterface : MutableInterface
         {
             mMailBoxWindow?.Close();
             mMailBoxWindow = null;
+		}
+        if (mShouldOpenEnchantWindow)
+        {
+            OpenEnchantWindow();
+        }
+
+        // Cerrar la ventana de encantamiento
+        if (mShouldCloseEnchantWindow)
+        {
+            CloseEnchantWindow();
+        }
+
+        // Actualizar la ventana de encantamiento si está visible
+        if (mEnchantItemWindow != null && mEnchantItemWindow.IsVisible())
+        {
+            mEnchantItemWindow.Update();
         }
         if (Globals.QuestOffers.Count > 0)
         {
@@ -626,7 +649,33 @@ public partial class GameInterface : MutableInterface
         Globals.InTrade = false;
         PacketSender.SendDeclineTrade();
     }
+    public void NotifyOpenEnchantWindow()
+    {
+        mShouldOpenEnchantWindow = true;
+    }
 
+    public void NotifyCloseEnchantWindow()
+    {
+        mShouldCloseEnchantWindow = true;
+    }
+
+    private void OpenEnchantWindow()
+    {
+        if (mEnchantItemWindow != null)
+        {
+            mEnchantItemWindow.Show();
+        }
+        mShouldOpenEnchantWindow = false;
+    }
+
+    private void CloseEnchantWindow()
+    {
+        if (mEnchantItemWindow != null)
+        {
+            mEnchantItemWindow.Hide();
+        }
+        mShouldCloseEnchantWindow = false;
+    }
     public bool CloseAllWindows()
     {
         var closedWindows = false;

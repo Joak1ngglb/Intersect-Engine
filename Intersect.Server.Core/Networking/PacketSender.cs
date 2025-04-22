@@ -1200,7 +1200,8 @@ public static partial class PacketSender
                 playerItem.ItemId,
                 playerItem.Quantity,
                 playerItem.BagId,
-                playerItem.Properties
+                playerItem.Properties,
+                playerItem.EnchantmentLevel
             );
         }
 
@@ -1218,7 +1219,8 @@ public static partial class PacketSender
         player.SendPacket(
             new InventoryUpdatePacket(
                 slot, player.Items[slot].ItemId, player.Items[slot].Quantity, player.Items[slot].BagId,
-                player.Items[slot].Properties
+                player.Items[slot].Properties, player.Items[slot].EnchantmentLevel
+
             )
         );
     }
@@ -2144,13 +2146,13 @@ public static partial class PacketSender
             player.SendPacket(
                 new TradeUpdatePacket(
                     trader.Id, slot, trader.Trading.Offer[slot].ItemId, trader.Trading.Offer[slot].Quantity,
-                    trader.Trading.Offer[slot].BagId, trader.Trading.Offer[slot].Properties
+                    trader.Trading.Offer[slot].BagId, trader.Trading.Offer[slot].Properties, trader.Trading.Offer[slot].EnchantmentLevel
                 )
             );
         }
         else
         {
-            player.SendPacket(new TradeUpdatePacket(trader.Id, slot, Guid.Empty, 0, null, null));
+            player.SendPacket(new TradeUpdatePacket(trader.Id, slot, Guid.Empty, 0, null, null,0));
         }
     }
 
@@ -2199,11 +2201,11 @@ public static partial class PacketSender
     {
         if (item != null && item.ItemId != Guid.Empty && item.Quantity > 0)
         {
-            player.SendPacket(new BagUpdatePacket(slot, item.ItemId, item.Quantity, item.BagId, item.Properties));
+            player.SendPacket(new BagUpdatePacket(slot, item.ItemId, item.Quantity, item.BagId, item.Properties,item.EnchantmentLevel));
         }
         else
         {
-            player.SendPacket(new BagUpdatePacket(slot, Guid.Empty, 0, null, null));
+            player.SendPacket(new BagUpdatePacket(slot, Guid.Empty, 0, null, null,0));
         }
     }
 
@@ -2473,6 +2475,7 @@ public static partial class PacketSender
         // Depuración en el servidor
       //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
     }
+
     public static void SendOpenMailBox(Player player)
     {
         var mails = new List<MailBoxUpdatePacket>();
@@ -2661,6 +2664,35 @@ public static partial class PacketSender
     {
         // Opción futura si quieres permitir cerrarla desde el servidor
         player.SendPacket(new MarketWindowPacket(false, false));
+    }
+public static void SendUpdateItemLevel(Player player, int itemIndex, int newEnchantmentLevel)
+    {
+        if (player == null)
+        {
+            return;
+        }
+
+        // Validar el índice del ítem
+        if (itemIndex < 0 || itemIndex >= player.Items.Count)
+        {
+            return; // Índice no válido
+        }
+
+        // Obtener el ítem en el índice especificado
+        var item = player.Items[itemIndex];
+        if (item == null)
+        {
+            return; // El ítem no existe en este índice
+        }
+
+        // Actualizar el nivel de encantamiento del ítem
+        item.EnchantmentLevel = newEnchantmentLevel;
+
+        // Crear el paquete con los datos necesarios
+        var packet = new UpdateItemLevelPacket(itemIndex, newEnchantmentLevel);
+
+        // Enviar el paquete al cliente
+        player.SendPacket(packet, TransmissionMode.All);
     }
 
 }

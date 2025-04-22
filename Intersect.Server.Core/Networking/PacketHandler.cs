@@ -3374,5 +3374,41 @@ internal sealed partial class PacketHandler
 
         PacketSender.SendPriceInfo(player, packet.ItemId);
     }
+    public void HandlePacket(Client client, EnchantItemPacket packet)
+    {
+        var player = client.Entity;
+        if (player == null)
+        {
+            return;
+        }
+        // Buscar el ítem por índice
+        if (packet.ItemIndex < 0 || packet.ItemIndex >= player.Items.Count)
+        {
+            PacketSender.SendChatMsg(player, "Ítem no encontrado en el inventario.", ChatMessageType.Error);
+            return;
+        }
+
+        var item = player.Items[packet.ItemIndex];
+        if (item == null)
+        {
+            PacketSender.SendChatMsg(player, "Ítem inválido.", ChatMessageType.Error);
+            return;
+        }
+
+        // Buscar la moneda por ItemId
+        var currency = player.Items.FirstOrDefault(i => i?.ItemId == packet.CurrencyId && i.Quantity >= packet.CurrencyAmount);
+        if (currency == null)
+        {
+            PacketSender.SendChatMsg(player, "No tienes suficiente moneda para encantar el ítem.", ChatMessageType.Error);
+            return;
+        }
+
+        // Intentar encantar el ítem
+        player.TryUpgradeItem(packet.ItemIndex, packet.TargetLevel, packet.CurrencyId, packet.CurrencyAmount, packet.UseAmulet);
+
+        // Actualizar el cliente
+        PacketSender.SendInventoryItemUpdate(player, packet.ItemIndex);
+    }
+
 
 }

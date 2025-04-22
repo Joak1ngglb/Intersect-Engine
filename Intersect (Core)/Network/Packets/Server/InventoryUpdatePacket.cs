@@ -10,13 +10,14 @@ public partial class InventoryUpdatePacket : IntersectPacket
     {
     }
 
-    public InventoryUpdatePacket(int slot, Guid id, int quantity, Guid? bagId, ItemProperties properties)
+    public InventoryUpdatePacket(int slot, Guid id, int quantity, Guid? bagId, ItemProperties properties, int enchantmentLevel)
     {
         Slot = slot;
         ItemId = id;
         BagId = bagId;
         Quantity = quantity;
         Properties = properties;
+        EnchantmentLevel = enchantmentLevel;
     }
 
     [Key(1)]
@@ -33,5 +34,8 @@ public partial class InventoryUpdatePacket : IntersectPacket
 
     [Key(5)]
     public ItemProperties Properties { get; set; }
+
+    [Key(6)]
+    public int EnchantmentLevel { get; set; }
 
 }

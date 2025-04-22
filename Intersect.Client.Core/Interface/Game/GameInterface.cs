@@ -5,16 +5,19 @@ using Intersect.Client.Interface.Game.Bag;
 using Intersect.Client.Interface.Game.Bank;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Game.Crafting;
+using Intersect.Client.Interface.Game.Enchanting;
 using Intersect.Client.Interface.Game.EntityPanel;
 using Intersect.Client.Interface.Game.Guilds;
 using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
 using Intersect.Client.Interface.Game.Mail;
+using Intersect.Client.Interface.Game.Market;
 using Intersect.Client.Interface.Game.Shop;
 using Intersect.Client.Interface.Game.Trades;
 using Intersect.Client.Networking;
 using Intersect.Enums;
 using Intersect.GameObjects;
+using Intersect.Network.Packets.Server;
 
 namespace Intersect.Client.Interface.Game;
 
@@ -50,8 +53,15 @@ public partial class GameInterface : MutableInterface
     private ShopWindow mShopWindow;
 
     private MapItemWindow mMapItemWindow;
+
     private SendMailBoxWindow mSendMailBoxWindow;
     private MailBoxWindow mMailBoxWindow;
+    private MarketWindow mMarketWindow;
+    private SellMarketWindow mSellMarketWindow;
+    private EnchantItemWindow mEnchantItemWindow;
+    private bool mShouldOpenEnchantWindow;
+    private bool mShouldCloseEnchantWindow;
+
     private bool mShouldCloseBag;
 
     private bool mShouldCloseBank;
@@ -94,6 +104,7 @@ public partial class GameInterface : MutableInterface
     public PlayerStatusWindow PlayerStatusWindow;
     private bool mShouldHideJobWindow;
     private GuildCreationInterface mCreateGuildWindow;
+    internal SellMarketWindow mMarketSellWindow;
 
     public GameInterface(Canvas canvas) : base(canvas)
     {
@@ -132,7 +143,9 @@ public partial class GameInterface : MutableInterface
         mQuestOfferWindow = new QuestOfferWindow(GameCanvas);
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
-        
+        // mJobsWindow = new JobsWindow(GameCanvas);
+        mEnchantItemWindow = new EnchantItemWindow(GameCanvas);
+       // mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
     }
     public void NotifyOpenGuildCreation()
     {
@@ -150,7 +163,6 @@ public partial class GameInterface : MutableInterface
 
     public void OpenGuildCreationWindow()
     {
-
         if (mCreateGuildWindow == null)
         {
             mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
@@ -395,6 +407,22 @@ public partial class GameInterface : MutableInterface
         {
             mMailBoxWindow?.Close();
             mMailBoxWindow = null;
+		}
+        if (mShouldOpenEnchantWindow)
+        {
+            OpenEnchantWindow();
+        }
+
+        // Cerrar la ventana de encantamiento
+        if (mShouldCloseEnchantWindow)
+        {
+            CloseEnchantWindow();
+        }
+
+        // Actualizar la ventana de encantamiento si está visible
+        if (mEnchantItemWindow != null && mEnchantItemWindow.IsVisible())
+        {
+            mEnchantItemWindow.Update();
         }
         if (Globals.QuestOffers.Count > 0)
         {
@@ -621,7 +649,33 @@ public partial class GameInterface : MutableInterface
         Globals.InTrade = false;
         PacketSender.SendDeclineTrade();
     }
+    public void NotifyOpenEnchantWindow()
+    {
+        mShouldOpenEnchantWindow = true;
+    }
 
+    public void NotifyCloseEnchantWindow()
+    {
+        mShouldCloseEnchantWindow = true;
+    }
+
+    private void OpenEnchantWindow()
+    {
+        if (mEnchantItemWindow != null)
+        {
+            mEnchantItemWindow.Show();
+        }
+        mShouldOpenEnchantWindow = false;
+    }
+
+    private void CloseEnchantWindow()
+    {
+        if (mEnchantItemWindow != null)
+        {
+            mEnchantItemWindow.Hide();
+        }
+        mShouldCloseEnchantWindow = false;
+    }
     public bool CloseAllWindows()
     {
         var closedWindows = false;
@@ -673,6 +727,50 @@ public partial class GameInterface : MutableInterface
         CloseShop();
         CloseTrading();
         GameCanvas.Dispose();
+    }
+    // Mostrar ventana de mercado
+    public void OpenMarket()
+    {
+        mMarketWindow?.Close();
+        mMarketWindow = new MarketWindow(GameCanvas);
+    }
+
+    // Mostrar ventana de venta
+    public void OpenSellMarket()
+    {
+        mSellMarketWindow?.Close();
+        mSellMarketWindow = new SellMarketWindow(GameCanvas);
+        mSellMarketWindow.Show();
+    }
+
+    public void CloseMarket()
+    {
+        mMarketWindow?.Close();
+        mMarketWindow = null;
+    }
+
+    public void CloseSellMarket()
+    {
+        mSellMarketWindow?.Close();
+        mSellMarketWindow = null;
+    }
+
+  
+    public void UpdateTransactionHistory(List<MarketTransactionPacket> transactions)
+    {
+        MarketWindow.Instance?.UpdateTransactionHistory(transactions);
+    }
+
+    public void RefreshAfterPurchase()
+    {
+        MarketWindow.Instance?.RefreshAfterPurchase();
+    }
+
+
+    public void UpdateListings(List<MarketListingPacket> listings)
+    {
+        MarketWindow.Instance?.UpdateListings(listings);
+      
     }
 
 }

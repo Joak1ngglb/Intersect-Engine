@@ -142,7 +142,9 @@ public partial class FrmItem : EditorForm
             element.Items.Add(Strings.General.None);
             element.Items.AddRange(events);
         }
-
+        cmbUpgradeMaterial.Items.Clear();
+        cmbUpgradeMaterial.Items.Add(Strings.General.None);
+        cmbUpgradeMaterial.Items.AddRange(ItemBase.Names);
         cmbMalePaperdoll.Items.Clear();
         cmbMalePaperdoll.Items.Add(Strings.General.None);
         cmbFemalePaperdoll.Items.Clear();
@@ -155,7 +157,7 @@ public partial class FrmItem : EditorForm
             cmbMalePaperdoll.Items.Add(paperdollnames[i]);
             cmbFemalePaperdoll.Items.Add(paperdollnames[i]);
         }
-
+        chkCanBeUpgraded.Checked = false;
         nudStr.Maximum = Options.MaxStatValue;
         nudMag.Maximum = Options.MaxStatValue;
         nudDef.Maximum = Options.MaxStatValue;
@@ -442,7 +444,8 @@ public partial class FrmItem : EditorForm
             {
                 DrawItemPaperdoll(Gender.Female);
             }
-
+            chkCanBeUpgraded.Checked = mEditorItem.CanBeEnchanted;
+            cmbUpgradeMaterial.SelectedIndex = ItemBase.ListIndex(mEditorItem.UpgradeMaterialId) + 1;
             cmbDamageType.SelectedIndex = mEditorItem.DamageType;
             cmbScalingStat.SelectedIndex = mEditorItem.ScalingStat;
 
@@ -1574,4 +1577,15 @@ public partial class FrmItem : EditorForm
     private void lblPlus9_Click(object sender, EventArgs e)
     {
     }
+
+    private void chkCanBeUpgraded_CheckedChanged(object sender, EventArgs e)
+    {
+        mEditorItem.CanBeEnchanted = chkCanBeUpgraded.Checked;
+    }
+
+    private void cmbUpgradeMaterial_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        mEditorItem.UpgradeMaterialId = ItemBase.IdFromList(cmbUpgradeMaterial.SelectedIndex - 1);
+    }
+
 }

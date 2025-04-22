@@ -27,6 +27,8 @@ using Intersect.Client.Interface.Shared;
 using Intersect.Network.Packets.Client;
 using Intersect.Config;
 using Intersect.Framework.Core.Config;
+using Intersect.Client.Interface.Game;
+
 
 namespace Intersect.Client.Networking;
 
@@ -1316,7 +1318,7 @@ internal sealed partial class PacketHandler
     {
         if (Globals.Me != null)
         {
-            Globals.Me.Inventory[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.Me.Inventory[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties,packet.EnchantmentLevel);
             Globals.Me.InventoryUpdatedDelegate?.Invoke();
         }
     }
@@ -1698,7 +1700,7 @@ internal sealed partial class PacketHandler
         if (packet.ItemId != Guid.Empty)
         {
             Globals.Bank[slot] = new Item();
-            Globals.Bank[slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.Bank[slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties,packet.EnchantmentLevel);
         }
         else
         {
@@ -2053,7 +2055,7 @@ internal sealed partial class PacketHandler
         else
         {
             Globals.Trade[side, slot] = new Item();
-            Globals.Trade[side, slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.Trade[side, slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties, packet.EnchantmentLevel);
         }
     }
 
@@ -2124,7 +2126,7 @@ internal sealed partial class PacketHandler
         else
         {
             Globals.Bag[packet.Slot] = new Item();
-            Globals.Bag[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
+            Globals.Bag[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties, packet.EnchantmentLevel);
         }
     }
 
@@ -2489,5 +2491,29 @@ internal sealed partial class PacketHandler
         Interface.Interface.GameUi.OpenGuildCreationWindow();
     }
 
+    public void HandlePacket(IPacketSender packetSender, UpdateItemLevelPacket packet)
+    {
+        // Validar el índice del ítem
+        if (packet.ItemIndex < 0 || packet.ItemIndex >= Globals.Me.Inventory.Length)
+        {
+            Log.Error($"Índice de ítem inválido: {packet.ItemIndex}.");
+            return;
+        }
 
+        // Obtener el ítem del inventario utilizando el índice
+        var inventoryItem = Globals.Me.Inventory[packet.ItemIndex];
+
+        if (inventoryItem != null)
+        {
+            // Actualizar nivel de encantamiento
+            inventoryItem.ItemProperties.EnchantmentLevel = packet.NewEnchantmentLevel;
+
+            // Opcional: Actualizar la interfaz de usuario si es necesario
+            Log.Info($"Nivel de encantamiento del ítem en el índice {packet.ItemIndex} actualizado a {packet.NewEnchantmentLevel}.");
+        }
+        else
+        {
+            Log.Error($"No se encontró ningún ítem en el índice {packet.ItemIndex}.");
+        }
+    }
 }

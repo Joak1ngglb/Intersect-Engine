@@ -522,6 +522,7 @@ public static partial class PacketSender
     {
         Network.SendPacket(new TargetPacket(targetId));
     }
+
     public static void SendMail(string to, string title, string message, List<Intersect.Network.Packets.Server.MailAttachmentPacket> attachments)
     {
         // Validación básica
@@ -569,6 +570,11 @@ public static partial class PacketSender
     {
         var packet = new ApplyGuildUpgradePacket(type);
         Networking.Network.SendPacket(packet);
+	}
+   
+    public static void SendEnchantItem(int itemId, int targetLevel, Guid currencyId, int currencyAmount, bool useAmulet)
+    {
+        Network.SendPacket(new EnchantItemPacket(itemId, targetLevel, currencyId, currencyAmount, useAmulet));
     }
 
 }

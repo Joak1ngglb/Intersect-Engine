@@ -2472,11 +2472,7 @@ internal sealed partial class PacketHandler
 
         // Establecemos el nuevo porcentaje de donación a la guild
         Globals.Me.GuildXpContribution = Math.Clamp(packet.Experience, 0f, 100f);
-
-        // Mostramos un mensaje al jugador
-        ChatboxMsg.AddMessage(new ChatboxMsg($"Ahora donas {Globals.Me.GuildXpContribution}% de tu XP a la guild.",Color.ForestGreen, ChatMessageType.Notice));
-
-       
+                   
     }
  
     public void HandleGuildCreationWindow(IPacketSender packetSender, GuildCreationWindowPacket packet)
@@ -2485,8 +2481,10 @@ internal sealed partial class PacketHandler
         {
             ChatboxMsg.AddMessage(new ChatboxMsg("No puedes crear una nueva guild mientras ya eres miembro de una.", Color.Red, ChatMessageType.Error));
             return;
+           
         }
-	}
+        Interface.Interface.GameUi.OpenGuildCreationWindow();
+    }
     public void HandlePacket(IPacketSender sender, MarketListingsPacket packet)
     {
         if (packet?.Listings == null)

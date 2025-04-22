@@ -32,12 +32,12 @@ public partial class Player
         // Validaciones básicas
         if (string.IsNullOrEmpty(backgroundFile))
         {
-            PacketSender.SendChatMsg("Error: El fondo del logo está vacío.", 5);
+            //PacketSender.SendChatMsg("Error: El fondo del logo está vacío.", 5);
             return;
         }
         if (string.IsNullOrEmpty(symbolFile))
         {
-            PacketSender.SendChatMsg("Error: El símbolo del logo está vacío.", 5);
+           // PacketSender.SendChatMsg("Error: El símbolo del logo está vacío.", 5);
             return;
         }
 

@@ -7,6 +7,7 @@ using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.Framework.Gwen.Control.Layout;
 using Intersect.Client.General;
+using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Shared;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
@@ -90,17 +91,17 @@ namespace Intersect.Client.Interface.Game
             _panelUpgrades.IsHidden = true;
             // Label: Puntos disponibles
            pointsLabel = new Label(_panelUpgrades, "GuildPointsLabel");
-            pointsLabel.SetText($"Puntos disponibles: {Guild.GuildPoints}");
+            pointsLabel.SetText(Strings.Guilds.PointsAvailable.ToString(Guild.GuildPoints));
             pointsLabel.SetBounds(10, 10, 300, 20);
 
             // Label: Puntos gastados
             spentLabel = new Label(_panelUpgrades, "GuildSpentLabel");
-            spentLabel.SetText($"Puntos usados: {Guild.GuildSpent}");
+            spentLabel.SetText(Strings.Guilds.PointsSpent.ToString(Guild.GuildSpent));
             spentLabel.SetBounds(10, 35, 300, 20);
 
             // Título para mejoras
             var upgradesTitle = new Label(_panelUpgrades, "GuildUpgradesTitle");
-            upgradesTitle.SetText("Mejoras de Gremio:");
+            upgradesTitle.SetText(Strings.Guilds.UpgradesTitle);
             upgradesTitle.SetBounds(10, 60, 200, 20);
 
             // Lista dinámica de mejoras
@@ -121,7 +122,7 @@ namespace Intersect.Client.Interface.Game
 
                 var upgradeBtn = new Button(_panelUpgrades,upgradeName +"_UpButton")
                 {
-                    Text = $"Subir ({cost} pts)"
+                    Text = Strings.Guilds.UpgradeButton.ToString(cost)
                 };
                 upgradeBtn.IsDisabled = currentLevel >= maxLevel || Guild.GuildPoints < cost || Globals.Me.Rank != 0;
 
@@ -145,7 +146,7 @@ namespace Intersect.Client.Interface.Game
             // Botón para mostrar miembros
             var btnShowMembers = new Button(this, "ShowMembersButton")
             {
-                Text = "👥 Miembros"
+                Text = Strings.Guilds.ShowMembers
             };
             btnShowMembers.SetBounds(10, 90, 100, 25);
             btnShowMembers.Clicked += (s, e) =>
@@ -158,7 +159,7 @@ namespace Intersect.Client.Interface.Game
             // Botón para mostrar mejoras
             var btnShowUpgrades = new Button(this, "ShowUpgradesButton")
             {
-                Text = "⭐ Mejoras"
+                Text = Strings.Guilds.ShowUpgrades
             };
             btnShowUpgrades.SetBounds(120, 90, 100, 25);
             btnShowUpgrades.Clicked += (s, e) =>
@@ -271,15 +272,15 @@ namespace Intersect.Client.Interface.Game
             _transferOption = _contextMenu.AddItem(Strings.Guilds.Transfer);
             _transferOption.Clicked += transferOption_Clicked;
             // Change Experience Option
-            _expContributionOption = _contextMenu.AddItem("Modificar contribución de XP");
+            _expContributionOption = _contextMenu.AddItem(Strings.Guilds.ExpContributionTitle);
             _expContributionOption.Clicked += (s, e) =>
             {
                 // Convertimos el valor actual a int (puede estar como float)
                 int currentValue = (int)Math.Round(Globals.Me.GuildXpContribution);
 
                 _ = new InputBox(
-                    title: "Configurar Contribución de XP",
-                    prompt: $"Selecciona el porcentaje de XP que deseas donar al gremio (actual: {currentValue}%)",
+                    title: Strings.Guilds.ExpContributionTitle,
+                    prompt: Strings.Guilds.ExpContributionPrompt.ToString(currentValue),
                     inputType: InputBox.InputType.NumericSliderInput,
                     onSuccess: (sender, args) =>
                     {
@@ -287,7 +288,8 @@ namespace Intersect.Client.Interface.Game
                         {
                             int newPercentage = (int)Math.Clamp(inputBox.Value, 0, 100);
                             PacketSender.SendUpdateGuildXpContribution(newPercentage);
-                            PacketSender.SendChatMsg($"Has cambiado tu contribución de XP a {newPercentage}%.", 5);
+                            ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Guilds.ExpContributionFeedback.ToString(newPercentage), Color.ForestGreen, ChatMessageType.Notice));
+
                         }
                     },
                     quantity: currentValue,      // Valor inicial del slider
@@ -312,14 +314,14 @@ namespace Intersect.Client.Interface.Game
             // Nivel del gremio al lado del logo
             guildLevelLabel = new Label(this, "GuildLevelLabel")
             {
-                Text = $"Nivel: {Guild.GuildLevel}",
+                Text = Strings.Guilds.LevelLabel.ToString(Guild.GuildLevel),
                 TextColor = Color.White
             };
             guildLevelLabel.SetBounds(80, 10, 150, 25);
 
             // Título de experiencia del gremio
             GuildExpTitle = new Label(this, "GuildExpTitle");
-            GuildExpTitle.SetText("Exp:");
+            GuildExpTitle.SetText(Strings.Guilds.ExpLabel);
             GuildExpTitle.SetBounds(80, 40, 150, 20);
             GuildExpTitle.RenderColor = Color.FromArgb(255, 255, 255, 255);
 
@@ -336,7 +338,7 @@ namespace Intersect.Client.Interface.Game
 
             // Label con texto Exp/ExpTNL centrado en la barra
             GuildExpLabel = new Label(GuildExpBackground, "GuildExpLabel");
-            GuildExpLabel.SetText($"{Guild.GuildExp} / {Guild.GuildExpToNextLevel}");
+            GuildExpLabel.SetText(Strings.Guilds.ExpBar.ToString(Guild.GuildExp, Guild.GuildExpToNextLevel));
             GuildExpLabel.SetBounds(0, 0, 200, 20);
             GuildExpLabel.Alignment = Pos.Center;
             GuildExpLabel.RenderColor = Color.White;
@@ -347,7 +349,7 @@ namespace Intersect.Client.Interface.Game
             // Miembros actuales / máximo
           mGuildMembersLabel = new Label(this, "GuildMembersLabel")
             {
-                Text = $"Miembros: {current}/{max}",
+                Text = Strings.Guilds.MembersCount.ToString(current, max),
 
                 TextColor = Color.White
             };
@@ -535,13 +537,13 @@ namespace Intersect.Client.Interface.Game
             GuildExpBar.Width = (int)(GuildExpBackground.Width * ((float)Guild.GuildExp / Guild.GuildExpToNextLevel));
             GuildExpBar.SetTextureRect(0, 0, (int)(200 * (float)Guild.GuildExp / Guild.GuildExpToNextLevel), 20);
             UpdateUpgradesPanel();
-            pointsLabel?.SetText($"Puntos disponibles: {Guild.GuildPoints}");
-            spentLabel?.SetText($"Puntos usados: {Guild.GuildSpent}");
+            pointsLabel?.SetText(Strings.Guilds.PointsAvailable.ToString(Guild.GuildPoints));
+            spentLabel?.SetText(Strings.Guilds.PointsSpent.ToString(Guild.GuildSpent));
             _panelMemberList.IsHidden = _isViewingUpgrades;
             _panelUpgrades.IsHidden = !_isViewingUpgrades;
             var current = Globals.Me?.GuildMembers?.Length ?? 0;
             var max = Guild.GetMaxMembers();
-            mGuildMembersLabel.SetText($"Miembros: {current}/{max}");
+            mGuildMembersLabel.SetText(Strings.Guilds.MembersCount.ToString(current, max));
 
         }
 

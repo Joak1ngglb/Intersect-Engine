@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 
 using Intersect.Enums;
 using Intersect.Server.Networking;
+using Intersect.Server.Localization;
 
 
 namespace Intersect.Server.Database.PlayerData.Players;
@@ -150,7 +151,7 @@ public partial class Guild
             // Notificar a miembros online
             foreach (var member in FindOnlineMembers())
             {
-                PacketSender.SendChatMsg(member, $"¡El gremio ha subido al nivel {Level}!", ChatMessageType.Guild);
+                PacketSender.SendChatMsg(member, Strings.Guilds.Level.ToString(Level), ChatMessageType.Guild);
              
             }
         }
@@ -200,33 +201,28 @@ public partial class Guild
         // Verificación de nivel máximo
         if (!MaxUpgradeLevels.ContainsKey(upgrade))
         {
-            Console.WriteLine($"[GuildUpgrade] Error: MaxUpgradeLevels no contiene la mejora {upgrade}.");
-            return false;
+           return false;
         }
 
         var maxLevel = MaxUpgradeLevels[upgrade];
         if (currentLevel >= maxLevel)
         {
-            Console.WriteLine($"[GuildUpgrade] Ya alcanzado el nivel máximo para {upgrade}.");
-            return false;
+           return false;
         }
 
         // Verificación de costos
         if (!UpgradeCosts.TryGetValue(upgrade, out var costs))
         {
-            Console.WriteLine($"[GuildUpgrade] Error: No hay costos definidos para {upgrade}.");
             return false;
         }
 
         if (currentLevel >= costs.Length)
-        {
-            Console.WriteLine($"[GuildUpgrade] Error: No hay costo definido para nivel {currentLevel} de {upgrade}.");
+        {   
             return false;
         }
         var cost = costs[currentLevel];
         if (GuildPoints < cost)
         {
-            Console.WriteLine($"[GuildUpgrade] No hay suficientes puntos. Requiere {cost}, disponibles {GuildPoints}.");
             return false;
         }
 
@@ -242,46 +238,42 @@ public partial class Guild
                 ExpandBankSlots(BankSlotsCount + 10); // +10 por nivel
                 foreach (var member in FindOnlineMembers())
                 {
-                    PacketSender.SendChatMsg(member, "¡El gremio ha mejorado los espacios del banco! +10 espacios nuevos.", ChatMessageType.Guild);
+                    PacketSender.SendChatMsg(member, Strings.Guilds.UpgradeBankSlots, ChatMessageType.Guild);
                 }
                 break;
 
             case GuildUpgradeType.ExtraMembers:
                 foreach (var member in FindOnlineMembers())
                 {
-                    PacketSender.SendChatMsg(member, "¡El gremio puede aceptar más miembros! Límite aumentado.", ChatMessageType.Guild);
+                    PacketSender.SendChatMsg(member, Strings.Guilds.UpgradeExtraMembers, ChatMessageType.Guild);
                 }
                 break;
 
             case GuildUpgradeType.BonusXp:
                 foreach (var member in FindOnlineMembers())
                 {
-                    PacketSender.SendChatMsg(member, "¡El gremio ha mejorado su bonificación de experiencia!", ChatMessageType.Guild);
+                    PacketSender.SendChatMsg(member, Strings.Guilds.UpgradeBonusXp, ChatMessageType.Guild);
                 }
                 break;
 
             case GuildUpgradeType.BonusDrop:
                 foreach (var member in FindOnlineMembers())
                 {
-                    PacketSender.SendChatMsg(member, "¡El gremio ha mejorado su bonificación de drop!", ChatMessageType.Guild);
+                    PacketSender.SendChatMsg(member, Strings.Guilds.UpgradeBonusDrop, ChatMessageType.Guild);
                 }
                 break;
+
             case GuildUpgradeType.BonusJobXp:
                 foreach (var member in FindOnlineMembers())
                 {
-                    PacketSender.SendChatMsg(member, "¡El gremio ha mejorado su bonificación de experiencia de oficios!", ChatMessageType.Guild);
+                    PacketSender.SendChatMsg(member, Strings.Guilds.UpgradeBonusJobXp, ChatMessageType.Guild);
                 }
                 break;
-
         }
-
 
         // Actualizar y guardar
         UpdateMemberList();
         Save();
-
-        Console.WriteLine($"[GuildUpgrade] Mejora {upgrade} aplicada con éxito. Nuevo nivel: {GuildUpgrades[upgrade]}");
-
         return true;
     }
     public float GetJobXpBonusMultiplier()

@@ -9,8 +9,10 @@ using Intersect.Client.Framework.Gwen;
 using Intersect.Client.Framework.Gwen.Control;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using Intersect.Client.General;
+using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
+using Intersect.Enums;
 using Intersect.Utilities;
 using Graphics = Intersect.Client.Core.Graphics;
 
@@ -76,50 +78,51 @@ namespace Intersect.Client.Interface.Game.Guilds
 
         public GuildCreationInterface(Canvas gameCanvas)
         {
-            // 1) Ventana principal
-            mCreateGuildWindow = new WindowControl(gameCanvas, Strings.Inventory.Title, false, "GuildCreationWindow");
+            // 1) Ventana principal compacta
+            mCreateGuildWindow = new WindowControl(gameCanvas, Strings.GuildCreation.Title, false, "GuildCreationWindow");
             mCreateGuildWindow.DisableResizing();
-            mCreateGuildWindow.SetSize(850, 400);
+            mCreateGuildWindow.SetSize(700, 480);
 
             // 2) Campo de texto: Nombre del gremio
             mGuildNameTextbox = new TextBox(mCreateGuildWindow, "GuildNameTextbox");
-            mGuildNameTextbox.SetBounds(20, 10, 810, 30);
-
-            // 3) Panel principal (arriba) con botones “Símbolo” y “Fondo”
+            mGuildNameTextbox.SetBounds(20, 10, 660, 30);
+            Interface.FocusElements.Add(mGuildNameTextbox);
+            // 3) Panel de selección visual (fondos y símbolos)
             mLogoPanel = new ImagePanel(mCreateGuildWindow, "LogoPanel");
-            mLogoPanel.SetBounds(20, 50, 810, 230);
-
-            mSymbolButton = new Button(mLogoPanel, "SymbolButton");
-            mSymbolButton.Text = "Símbolos";
-            mSymbolButton.SetBounds(0, 0, 405, 40);
+            mLogoPanel.SetBounds(20, 50, 660, 180);
 
             mBackgroundButton = new Button(mLogoPanel, "BackgroundButton");
-            mBackgroundButton.Text = "Fondos";
-            mBackgroundButton.SetBounds(405, 0, 405, 40);
+            mBackgroundButton.Text = Strings.GuildCreation.BackgroundButton;
+            mBackgroundButton.SetBounds(0, 0, 330, 30);
+
+            mSymbolButton = new Button(mLogoPanel, "SymbolButton");
+            mSymbolButton.Text = Strings.GuildCreation.SymbolButton;
+            mSymbolButton.SetBounds(330, 0, 330, 30);
+
+            // Panel de fondos primero
+            mBackgroundPanel = new ScrollControl(mLogoPanel, "BackgroundPanel");
+            mBackgroundPanel.SetBounds(0, 30, 660, 150);
+            mBackgroundPanel.EnableScroll(false, true);
 
             // Panel de símbolos
             mSymbolPanel = new ScrollControl(mLogoPanel, "SymbolPanel");
-            mSymbolPanel.SetBounds(0, 40, 810, 190);
+            mSymbolPanel.SetBounds(0, 30, 660, 150);
             mSymbolPanel.EnableScroll(false, true);
-            // Panel de fondos
-            mBackgroundPanel = new ScrollControl(mLogoPanel, "BackgroundPanel");
-            mBackgroundPanel.SetBounds(0, 40, 810, 190);
-            mBackgroundPanel.EnableScroll(false, true);
 
+            mBackgroundButton.Clicked += (s, e) =>
+            {
+                mBackgroundPanel.Show();
+                mSymbolPanel.Hide();
+            };
             mSymbolButton.Clicked += (s, e) =>
             {
                 mSymbolPanel.Show();
                 mBackgroundPanel.Hide();
             };
-            mBackgroundButton.Clicked += (s, e) =>
-            {
-                mSymbolPanel.Hide();
-                mBackgroundPanel.Show();
-            };
 
-            // 4) Panel de previsualización (fondo + símbolo)
+            // 4) Previsualización y botón
             mLogoCompositionPanel = new ImagePanel(mCreateGuildWindow, "LogoCompositionPanel");
-            mLogoCompositionPanel.SetBounds(20, 290, COMPOSITION_SIZE + 5, COMPOSITION_SIZE + 5);
+            mLogoCompositionPanel.SetBounds(20, 240, COMPOSITION_SIZE + 5, COMPOSITION_SIZE + 5);
 
             mBackgroundPreview = new ImagePanel(mLogoCompositionPanel, "BackgroundPreview");
             mBackgroundPreview.SetBounds(0, 0, COMPOSITION_SIZE, COMPOSITION_SIZE);
@@ -128,34 +131,32 @@ namespace Intersect.Client.Interface.Game.Guilds
             mSymbolPreview = new ImagePanel(mLogoCompositionPanel, "SymbolPreview");
             mSymbolPreview.SetBounds(0, 0, 56, 56);
             mSymbolPreview.Show();
+
             mCreateGuildButton = new Button(mCreateGuildWindow, "CreateGuildButton");
-            mCreateGuildButton.Text = "Crear Gremio";
-            // Ajusta su posición y tamaño donde mejor quede en tu UI
-            mCreateGuildButton.SetBounds(650, 620, 150, 40);
+            mCreateGuildButton.Text = Strings.GuildCreation.CreateButton;
+
+            mCreateGuildButton.SetBounds(530, 400, 150, 40);
             mCreateGuildButton.Clicked += OnCreateGuildButtonClicked;
+            
+       
+            // 5) Sliders de color
+            InitializeBackgroundColorSliders();  // fondo primero
+            InitializeSymbolColorSliders();      // luego símbolo
 
-
-            // 5) Estructuras para las texturas
+            // 6) Texturas
             mLogoElements = new List<GameTexture> { null, null };
             mOriginalLogoElements = new List<GameTexture> { null, null };
 
-            // Inicializamos los paneles
+            // 7) Inicializar listas y estados por defecto
+            InitializeBackgroundPanel();  // mostrar primero
             InitializeSymbolPanel();
-            InitializeBackgroundPanel();
-            // Por defecto, mostramos la lista de símbolos
-            mSymbolPanel.Show();
-            mBackgroundPanel.Hide();
+            mBackgroundPanel.Show();
+            mSymbolPanel.Hide();
 
-            // 6) Sliders de color
-            InitializeBackgroundColorSliders();
-            InitializeSymbolColorSliders();
-
-            // 7) Sliders para mover en Y + escalar el símbolo
-            //InitializeSymbolTransformSliders();
-
-            // Cargamos la UI
+            // 8) Cargar JSON visual
             mCreateGuildWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
         }
+
 
         private void OnCreateGuildButtonClicked(Base sender, ClickedEventArgs arguments)
         {
@@ -163,19 +164,17 @@ namespace Intersect.Client.Interface.Game.Guilds
             string guildName = mGuildNameTextbox.Text.Trim();
             if (string.IsNullOrEmpty(guildName))
             {
-                PacketSender.SendChatMsg("El nombre del gremio está vacío.", 5);
+                ChatboxMsg.AddMessage(new ChatboxMsg(Strings.GuildCreation.NameEmpty, Color.ForestGreen, ChatMessageType.Notice));
                 return;
             }
-
-            // 2) Verificar que tenemos archivos para fondo / símbolo
             if (string.IsNullOrEmpty(selectedBackgroundFile))
             {
-                PacketSender.SendChatMsg("No se ha seleccionado un fondo.", 5);
+                ChatboxMsg.AddMessage(new ChatboxMsg(Strings.GuildCreation.NoBackgroundSelected, Color.ForestGreen, ChatMessageType.Notice));
                 return;
             }
             if (string.IsNullOrEmpty(selectedSymbolFile))
             {
-                PacketSender.SendChatMsg("No se ha seleccionado un símbolo.", 5);
+                ChatboxMsg.AddMessage(new ChatboxMsg(Strings.GuildCreation.NoSymbolSelected, Color.ForestGreen, ChatMessageType.Notice));
                 return;
             }
 
@@ -186,8 +185,6 @@ namespace Intersect.Client.Interface.Game.Guilds
                 bgR, bgG, bgB,
                 selectedSymbolFile,
                 symR, symG, symB
-              // ,symbolPosY,
-               // symbolScale
             );
 
             // Opcional: Cerrar la ventana, o dejarla abierta
@@ -321,106 +318,106 @@ namespace Intersect.Client.Interface.Game.Guilds
         // =====================================================
         private void InitializeBackgroundColorSliders()
         {
-            // Título "Color de Fondo"
+            // Fondo
             mBackgroundColorLabel = new Label(mCreateGuildWindow, "BackgroundColorLabel");
-            mBackgroundColorLabel.Text = "Color de Fondo:";
-            mBackgroundColorLabel.SetBounds(220, 290, 200, 30);
+            mBackgroundColorLabel.Text = Strings.GuildCreation.BackgroundColor;
+            mBackgroundColorLabel.SetBounds(140, 240, 160, 20);
 
-            // Slider R
+            int baseY = 265;
+            int height = 20;
+            int spacing = 25;
+
+            // R
             mBgRedSlider = new HorizontalSlider(mCreateGuildWindow, "BgRedSlider");
-            mBgRedSlider.SetBounds(220, 320, 150, 20);
+            mBgRedSlider.SetBounds(140, baseY, 120, height);
             mBgRedSlider.SetRange(0, 255);
             mBgRedSlider.Value = bgR;
             mBgRedSlider.ValueChanged += OnBgColorSliderChanged;
 
-            // Text R
             mBgRedText = new TextBoxNumeric(mCreateGuildWindow, "BgRedText");
-            mBgRedText.SetBounds(380, 320, 50, 20);
+            mBgRedText.SetBounds(270, baseY, 40, height);
             mBgRedText.SetText(bgR.ToString());
             mBgRedText.SetMaxLength(255);
             mBgRedText.SubmitPressed += OnBgColorTextChanged;
 
-            // Slider G
+            // G
             mBgGreenSlider = new HorizontalSlider(mCreateGuildWindow, "BgGreenSlider");
-            mBgGreenSlider.SetBounds(220, 350, 150, 20);
+            mBgGreenSlider.SetBounds(140, baseY + spacing, 120, height);
             mBgGreenSlider.SetRange(0, 255);
             mBgGreenSlider.Value = bgG;
             mBgGreenSlider.ValueChanged += OnBgColorSliderChanged;
 
-            // Text G
             mBgGreenText = new TextBoxNumeric(mCreateGuildWindow, "BgGreenText");
-            mBgGreenText.SetBounds(380, 350, 50, 20);
+            mBgGreenText.SetBounds(270, baseY + spacing, 40, height);
             mBgGreenText.SetText(bgG.ToString());
             mBgGreenText.SetMaxLength(255);
             mBgGreenText.SubmitPressed += OnBgColorTextChanged;
 
-            // Slider B
+            // B
             mBgBlueSlider = new HorizontalSlider(mCreateGuildWindow, "BgBlueSlider");
-            mBgBlueSlider.SetBounds(220, 380, 150, 20);
+            mBgBlueSlider.SetBounds(140, baseY + spacing * 2, 120, height);
             mBgBlueSlider.SetRange(0, 255);
             mBgBlueSlider.Value = bgB;
             mBgBlueSlider.ValueChanged += OnBgColorSliderChanged;
 
-            // Text B
             mBgBlueText = new TextBoxNumeric(mCreateGuildWindow, "BgBlueText");
-            mBgBlueText.SetBounds(380, 380, 50, 20);
+            mBgBlueText.SetBounds(270, baseY + spacing * 2, 40, height);
             mBgBlueText.SetText(bgB.ToString());
             mBgBlueText.SetMaxLength(255);
             mBgBlueText.SubmitPressed += OnBgColorTextChanged;
         }
 
-        // =====================================================
-        //  Sliders de color para el SÍMBOLO (3 sliders)
-        // =====================================================
         private void InitializeSymbolColorSliders()
         {
-            // Título "Color de Símbolo"
+            // Símbolo
             mSymbolColorLabel = new Label(mCreateGuildWindow, "SymbolColorLabel");
-            mSymbolColorLabel.Text = "Color del Símbolo:";
-            mSymbolColorLabel.SetBounds(220, 410, 200, 30);
+            mSymbolColorLabel.Text = Strings.GuildCreation.SymbolColor;
+            mSymbolColorLabel.SetBounds(360, 240, 180, 20);
 
-            // Slider R
+            int baseY = 265;
+            int height = 20;
+            int spacing = 25;
+
+            // R
             mSymRedSlider = new HorizontalSlider(mCreateGuildWindow, "SymRedSlider");
-            mSymRedSlider.SetBounds(220, 440, 150, 20);
+            mSymRedSlider.SetBounds(360, baseY, 120, height);
             mSymRedSlider.SetRange(0, 255);
             mSymRedSlider.Value = symR;
             mSymRedSlider.ValueChanged += OnSymColorSliderChanged;
 
-            // Text R
             mSymRedText = new TextBoxNumeric(mCreateGuildWindow, "SymRedText");
-            mSymRedText.SetBounds(380, 440, 50, 20);
+            mSymRedText.SetBounds(490, baseY, 40, height);
             mSymRedText.SetText(symR.ToString());
             mSymRedText.SetMaxLength(255);
             mSymRedText.SubmitPressed += OnSymColorTextChanged;
 
-            // Slider G
+            // G
             mSymGreenSlider = new HorizontalSlider(mCreateGuildWindow, "SymGreenSlider");
-            mSymGreenSlider.SetBounds(220, 470, 150, 20);
+            mSymGreenSlider.SetBounds(360, baseY + spacing, 120, height);
             mSymGreenSlider.SetRange(0, 255);
             mSymGreenSlider.Value = symG;
             mSymGreenSlider.ValueChanged += OnSymColorSliderChanged;
 
-            // Text G
             mSymGreenText = new TextBoxNumeric(mCreateGuildWindow, "SymGreenText");
-            mSymGreenText.SetBounds(380, 470, 50, 20);
+            mSymGreenText.SetBounds(490, baseY + spacing, 40, height);
             mSymGreenText.SetText(symG.ToString());
             mSymGreenText.SetMaxLength(255);
             mSymGreenText.SubmitPressed += OnSymColorTextChanged;
 
-            // Slider B
+            // B
             mSymBlueSlider = new HorizontalSlider(mCreateGuildWindow, "SymBlueSlider");
-            mSymBlueSlider.SetBounds(220, 500, 150, 20);
+            mSymBlueSlider.SetBounds(360, baseY + spacing * 2, 120, height);
             mSymBlueSlider.SetRange(0, 255);
             mSymBlueSlider.Value = symB;
             mSymBlueSlider.ValueChanged += OnSymColorSliderChanged;
 
-            // Text B
             mSymBlueText = new TextBoxNumeric(mCreateGuildWindow, "SymBlueText");
-            mSymBlueText.SetBounds(380, 500, 50, 20);
+            mSymBlueText.SetBounds(490, baseY + spacing * 2, 40, height);
             mSymBlueText.SetText(symB.ToString());
             mSymBlueText.SetMaxLength(255);
             mSymBlueText.SubmitPressed += OnSymColorTextChanged;
         }
+
 
         // =====================================================
         //  Sliders para mover en Y y escalar el símbolo
@@ -601,8 +598,8 @@ namespace Intersect.Client.Interface.Game.Guilds
                 var (scaledW, scaledH) = ScaleToFit(mLogoElements[1].Width, mLogoElements[1].Height, baseSize, baseSize);
                 mSymbolPreview.SetSize(scaledW, scaledH);
 
-                int centerX = (previewSize - scaledW) / 2;
-                int centerY = (previewSize - scaledH) / 2;
+               // int centerX = (previewSize - scaledW) / 2;
+                //int centerY = (previewSize - scaledH) / 2;
                 Align.Center(mSymbolPreview);
             }
             else
@@ -611,7 +608,7 @@ namespace Intersect.Client.Interface.Game.Guilds
             }
 
             // Reaplicamos el transform (pos Y / escala) que el usuario haya movido
-            UpdateSymbolTransform();
+            //UpdateSymbolTransform();
 
             // Volvemos a aplicar los colores que tengan los sliders
             // (por si se cambió la textura recién)

@@ -107,74 +107,107 @@ namespace Intersect.Server.Entities
         }
         public void TryUpgradeItem(int itemIndex, int level, Guid currencyId, int currencyAmountRequired, bool useAmulet = false)
         {
-            // Validar que el índice sea válido
+            // Validación de índice e ítem
             if (itemIndex < 0 || itemIndex >= Items.Count)
             {
                 PacketSender.SendChatMsg(this, "Índice de ítem no válido.", ChatMessageType.Error);
                 return;
             }
 
-            // Obtener el ítem por su índice
             var item = Items[itemIndex];
-
-            // Validar si el ítem es válido para mejorar
-            if (item == null || item.Descriptor?.ItemType != ItemType.Equipment || level <= item.EnchantmentLevel)
+            if (item == null || item.Descriptor?.ItemType != ItemType.Equipment || item.Properties == null)
             {
                 PacketSender.SendChatMsg(this, "El ítem no es válido o no se puede mejorar.", ChatMessageType.Error);
                 return;
             }
 
-            // Verificar si el jugador tiene suficiente moneda
+            if (level <= item.Properties.EnchantmentLevel)
+            {
+                PacketSender.SendChatMsg(this, "El nivel de encantamiento debe ser superior al actual.", ChatMessageType.Error);
+                return;
+            }
+
             if (!HasSufficientCurrency(currencyId, currencyAmountRequired))
             {
                 PacketSender.SendChatMsg(this, "No tienes suficientes recursos para mejorar el ítem.", ChatMessageType.Error);
                 return;
             }
 
-            // Deduce la cantidad necesaria de moneda
             if (!DeductCurrency(currencyId, currencyAmountRequired))
             {
                 PacketSender.SendChatMsg(this, "Error al deducir la moneda necesaria.", ChatMessageType.Error);
                 return;
             }
 
-            // Determinar si la mejora es exitosa
-            var successRate = item.Descriptor.GetUpgradeSuccessRate(level);
-            if (Random.Shared.NextDouble() <= successRate)
+            bool success = Random.Shared.NextDouble() <= item.Descriptor.GetUpgradeSuccessRate(level);
+            using (var playerContext = DbInterface.CreatePlayerContext(readOnly: false))
             {
-                // Aplicar la mejora
-                item.ApplyEnchantment(level);
-
-                PacketSender.SendChatMsg(this, $"¡Encantamiento exitoso! El ítem ahora está en nivel +{level}.", ChatMessageType.Experience);
-
-                // Guardar cambios en la base de datos
-                using (var playerContext = DbInterface.CreatePlayerContext(readOnly: false))
+                try
                 {
-                    playerContext.Players.Update(this); // Actualizar al jugador
-                    playerContext.Player_Items.Update(item); // Actualizar el ítem en la base de datos
+                    int[] previousStats = (int[])item.Properties.StatModifiers.Clone();
+
+                    if (success)
+                    {
+                        item.ApplyEnchantment(level);
+                        PacketSender.SendChatMsg(this, $"¡Encantamiento exitoso! El ítem ahora está en nivel +{level}.", ChatMessageType.Experience);
+
+                        // Mostrar diferencias
+                        ShowEnchantmentFeedback(previousStats, item.Properties.StatModifiers);
+                    }
+                    else
+                    {
+                        if (!useAmulet)
+                        {
+                            int newLevel = Math.Max(0, item.Properties.EnchantmentLevel - 1);
+                            item.ApplyEnchantment(newLevel);
+                            PacketSender.SendChatMsg(this, "El encantamiento falló y el nivel del ítem ha disminuido.", ChatMessageType.Error);
+
+                            // Mostrar diferencias tras perder nivel
+                            ShowEnchantmentFeedback(previousStats, item.Properties.StatModifiers);
+                        }
+                        else
+                        {
+                            PacketSender.SendChatMsg(this, "El encantamiento falló, pero el amuleto protegió el nivel del ítem.", ChatMessageType.Notice);
+                        }
+                    }
+
+                    // Guardar cambios
+                    playerContext.Players.Update(this);
+                    playerContext.Player_Items.Update(item);
                     playerContext.SaveChanges();
+
+                    // Notificar al cliente
+                    PacketSender.SendUpdateItemLevel(this, itemIndex, item.Properties.EnchantmentLevel);
                 }
-
-                // Notificar al cliente sobre la actualización del nivel del ítem
-                PacketSender.SendUpdateItemLevel(this, itemIndex, level);
-            }
-            else if (!useAmulet)
-            {
-                // Fallo: Reducir nivel de encantamiento
-                item.EnchantmentLevel = Math.Max(0, item.EnchantmentLevel - 1);
-                item.ApplyEnchantment(item.EnchantmentLevel);
-
-                PacketSender.SendChatMsg(this, "El encantamiento falló y el nivel del ítem ha disminuido.", ChatMessageType.Error);
-
-                // Notificar al cliente sobre la actualización del nivel y stats
-                PacketSender.SendUpdateItemLevel(this, itemIndex, item.EnchantmentLevel);
-            }
-            else
-            {
-                PacketSender.SendChatMsg(this, "El encantamiento falló, pero el amuleto protegió el nivel del ítem.", ChatMessageType.Notice);
+                catch (Exception ex)
+                {
+                    PacketSender.SendChatMsg(this, "Ocurrió un error durante la mejora del ítem.", ChatMessageType.Error);
+                    Log.Error(ex);
+                }
             }
         }
+        public void ShowEnchantmentFeedback(int[] previousStats, int[] newStats)
+        {
+            for (int i = 0; i < previousStats.Length; i++)
+            {
+                int before = previousStats[i];
+                int after = newStats[i];
+                Stat stat = (Stat)i;
 
+                // Replace the problematic line with the following code to fix the error:  
+                string statName = stat.ToString();
+
+                if (after > before)
+                {
+                    PacketSender.SendChatMsg(this, $"{statName}: {before} → {after}", ChatMessageType.Notice, Color.Green);
+                }
+                else if (after < before)
+                {
+                    PacketSender.SendChatMsg(this, $"{statName}: {before} → {after}", ChatMessageType.Notice, Color.Red);
+                }
+               
+            }
+        }
 
         [JsonIgnore]
         public virtual List<MailBox> MailBoxs { get; set; } = new List<MailBox>();

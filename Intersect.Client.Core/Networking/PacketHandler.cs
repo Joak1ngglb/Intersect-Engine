@@ -2507,9 +2507,8 @@ internal sealed partial class PacketHandler
         {
             // Actualizar nivel de encantamiento
             inventoryItem.ItemProperties.EnchantmentLevel = packet.NewEnchantmentLevel;
+            Interface.Interface.GameUi?.mEnchantItemWindow.UpdateProjection();
 
-            // Opcional: Actualizar la interfaz de usuario si es necesario
-            Log.Info($"Nivel de encantamiento del ítem en el índice {packet.ItemIndex} actualizado a {packet.NewEnchantmentLevel}.");
         }
         else
         {

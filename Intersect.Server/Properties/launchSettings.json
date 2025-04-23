@@ -3,7 +3,7 @@
     "Development": {
       "commandName": "Project",
       "commandLineArgs": "--migrate-automatically",
-      "workingDirectory": "C:\\Users\\jlroo\\Desktop\\Broken Bridge Online 2025\\Server",
+          "workingDirectory": "C:\\Users\\jlroo\\Desktop\\Broken Bridge Online 2025 - copia\\Server",
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development",
         "LD_LIBRARY_PATH": "."

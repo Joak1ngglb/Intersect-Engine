@@ -58,7 +58,7 @@ public partial class GameInterface : MutableInterface
     private MailBoxWindow mMailBoxWindow;
     private MarketWindow mMarketWindow;
     private SellMarketWindow mSellMarketWindow;
-    private EnchantItemWindow mEnchantItemWindow;
+    public EnchantItemWindow mEnchantItemWindow;
     private bool mShouldOpenEnchantWindow;
     private bool mShouldCloseEnchantWindow;
 

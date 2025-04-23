@@ -124,6 +124,19 @@ public partial class InventoryItem
         {
             mSellMarketWindow.SelectItem(mSellMarketWindow.Items[mMySlot], mMySlot);
         }
+        if (mEnchantItemWindow != null)
+        {
+            if (Globals.Me == null || Globals.Me.Inventory == null || mMySlot < 0 || mMySlot >= Globals.Me.Inventory.Length)
+            {
+                return; // Salir si el inventario no está configurado o el índice es inválido
+            }
+
+            var item = Globals.Me.Inventory[mMySlot];
+            if (item?.Base != null)
+            {
+                mEnchantItemWindow.SelectCurrencyItem((Items.Item)item);// Notificar a la ventana que se ha seleccionado un ítem
+            }
+        }
         else if (Globals.GameShop != null)
         {
             Globals.Me.TrySellItem(mMySlot);
@@ -164,11 +177,25 @@ public partial class InventoryItem
 
     void pnl_Clicked(Base sender, ClickedEventArgs arguments)
     {
+        if (mEnchantItemWindow != null)
+        {
+            if (Globals.Me == null || Globals.Me.Inventory == null || mMySlot < 0 || mMySlot >= Globals.Me.Inventory.Length)
+            {
+                return; // Salir si el inventario no está configurado o el índice es inválido
+            }
+
+            var item = Globals.Me.Inventory[mMySlot];
+            if (item?.Base != null)
+            {
+                mEnchantItemWindow.SelectItem((Items.Item)item); // Notificar a la ventana que se ha seleccionado un ítem
+            }
+        }
         mClickTime = Timing.Global.MillisecondsUtc + 500;
     }
 
     void pnl_RightClicked(Base sender, ClickedEventArgs arguments)
     {
+       
         if (ClientConfiguration.Instance.EnableContextMenus)
         {
             mInventoryWindow.OpenContextMenu(mMySlot);

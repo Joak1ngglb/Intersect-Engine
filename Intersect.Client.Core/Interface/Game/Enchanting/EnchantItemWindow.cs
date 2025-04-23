@@ -35,8 +35,14 @@ namespace Intersect.Client.Interface.Game.Enchanting
 
         private Item mSelectedItem;
         private Item mSelectedCurrency;
+        private Label lblCurrentLevel;
+        private Label lblProjectedLevel;
+        private Label lblSuccessRate;
+        private Label lblCost;
+        private Label lblStat;
+
         // Sección de proyección de encantamiento
-  
+
         public int Y { get; set; }
         public int X { get;  set; }
 
@@ -95,25 +101,63 @@ namespace Intersect.Client.Interface.Game.Enchanting
             mCloseButton.SetSize(120, 40);
             mCloseButton.Text = Strings.Enchanting.Close;
             mCloseButton.Clicked += (sender, args) => mEnchantWindow.IsHidden = true;
+     
+    // Crear controles para los labels en el contenedor de proyección
+            lblCurrentLevel = new Label(mProjectionContainer, "CurrentLevelLabel")
+            {
+                
+                TextColor = Color.Yellow
+            };
+            lblCurrentLevel.SetPosition(10, 10);
+            lblCurrentLevel.SetSize(240, 20);
+            lblCurrentLevel.FontName = "sourcesansproblack";
+            lblCurrentLevel.FontSize = 10;
+
+            lblProjectedLevel = new Label(mProjectionContainer, "ProjectedLevelLabel")
+            {
+           
+                TextColor = Color.Green
+            };
+            lblProjectedLevel.SetPosition(10, 40);
+            lblProjectedLevel.SetSize(240, 20);
+            lblProjectedLevel.FontName = "sourcesansproblack";
+            lblProjectedLevel.FontSize = 10;
+
+            lblSuccessRate = new Label(mProjectionContainer, "SuccessRateLabel")
+            {
+              
+                TextColor = Color.Yellow
+            };
+            lblSuccessRate.SetPosition(10, 70);
+            lblSuccessRate.SetSize(240, 20);
+            lblSuccessRate.FontName = "sourcesansproblack";
+            lblSuccessRate.FontSize = 10;
+
+            lblCost = new Label(mProjectionContainer, "UpgradeCostLabel")
+            {
+               
+                TextColor = Color.Yellow
+            };
+            lblCost.SetPosition(10, 100);
+            lblCost.SetSize(240, 20);
+            lblCost.FontName = "sourcesansproblack";
+            lblCost.FontSize = 10;
+
+            lblStat = new Label(mProjectionContainer, "StatLabel")
+            {
+       
+                TextColor = Color.White
+            };
+            lblStat.SetPosition(10, 130);
+            lblStat.SetSize(240, 20);
+            lblStat.FontName = "sourcesansproblack";
+            lblStat.FontSize = 10;
             mEnchantWindow.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
             // Inicializar contenedor de ítems
             InitItemContainer();
-            CreateProjectionSection();
+     
         }
-        private void CreateProjectionSection()
-        {
-            // Etiqueta de proyección
-            mLblProjection = new Label(mEnchantWindow, "ProjectionLabel");
-            mLblProjection.SetPosition(20, 20);
-            mLblProjection.SetSize(260, 30);
-            mLblProjection.Text = Strings.Enchanting.Projection;
-
-            // Contenedor para la proyección
-            mProjectionContainer = new ScrollControl(mEnchantWindow, "ProjectionContainer");
-            mProjectionContainer.SetPosition(20, 60);
-            mProjectionContainer.SetSize(260, 400);
-            mProjectionContainer.EnableScroll(false, true);
-        }
+       
         private void InitItemContainer()
         {
             Items.Clear();
@@ -134,36 +178,42 @@ namespace Intersect.Client.Interface.Game.Enchanting
                 int xPadding = Items[i].Container.Margin.Left + Items[i].Container.Margin.Right;
                 int yPadding = Items[i].Container.Margin.Top + Items[i].Container.Margin.Bottom;
 
+                int containerWidth = Items[i].Container.Width + xPadding;
+                int containerHeight = Items[i].Container.Height + yPadding;
+                int scrollWidth = Math.Max(1, mInventoryScroll.Width); // Evita división por cero
+
+                int columns = Math.Max(1, scrollWidth / containerWidth); // Asegura al menos una columna
+
                 Items[i].Container.SetPosition(
-                    i % (mInventoryScroll.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Width + xPadding) + xPadding,
-                    i / (mInventoryScroll.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Height + yPadding) + yPadding
+                    (i % columns) * containerWidth + xPadding,
+                    (i / columns) * containerHeight + yPadding
                 );
 
-                // Agregar un evento para seleccionar un ítem al hacer clic
-                Items[i].Container.Clicked += (sender, args) =>
-                {
-                    var selectedItem = Globals.Me.Inventory[i];
+                // Captura segura del índice
+                int index = i;
 
-                    // Validar que el ítem seleccionado es válido
+                Items[index].Container.Clicked += (sender, args) =>
+                {
+                    var selectedItem = Globals.Me.Inventory[index];
+
                     if (selectedItem != null)
                     {
                         mSelectedItem = (Item)selectedItem;
-
                         SelectItem((Item)selectedItem);
                     }
                 };
-                // Agregar evento para seleccionar el ítem de currency con clic derecho
-                Items[i].Container.RightClicked += (sender, args) =>
+
+                Items[index].Container.DoubleClicked += (sender, args) =>
                 {
-                    var selectedItem = Globals.Me.Inventory[i];
+                    var selectedItem = Globals.Me.Inventory[index];
                     if (selectedItem != null)
                     {
                         SelectCurrencyItem((Item)selectedItem);
                     }
                 };
-
             }
         }
+
         public void SelectItem(Item item)
         {
             if (item == null || item.Base == null)
@@ -195,62 +245,114 @@ namespace Intersect.Client.Interface.Game.Enchanting
             mCurrencySlot.Texture = itemTexture ?? Graphics.Renderer.GetWhiteTexture();
         }
 
-        private void UpdateProjection()
+        public void UpdateProjection()
         {
             if (mSelectedItem == null || mSelectedItem.Base == null)
             {
-                mProjectionContainer.Hide(); // Limpia la vista si no hay ítem seleccionado
+                mProjectionContainer.Hide();
                 return;
             }
 
-          // mProjectionContainer.RemoveChild(base,true); // Reiniciar la vista previa
+            foreach (var child in mProjectionContainer.Children.ToList())
+            {
+                mProjectionContainer.RemoveChild(child, true);
+            }
+            mProjectionContainer.Show();
 
-            var projectedLevel = mSelectedItem.EnchantmentLevel + 1;
+            var projectedLevel = mSelectedItem.ItemProperties.EnchantmentLevel + 1;
             var successRate = mSelectedItem.Base.GetUpgradeSuccessRate(projectedLevel);
+            var upgradeCost = mSelectedItem.Base.GetUpgradeCost(projectedLevel); // Supuesto método para obtener costo
 
-            // Si se usa un potenciador de éxito, aumenta la tasa de éxito
-            /*if (mSelectedRateBoostItem != null)
-            {
-                successRate += mSelectedRateBoostItem.Base.GetBoostAmount();
-            }*/
+            int yOffset = 0;
+            int spacing = 25;
+            int labelWidth = 240;
+            int labelHeight = 20;
 
-            // Agregar nivel actual y proyectado
-            var lblCurrentLevel = new Label(mProjectionContainer, "CurrentLevelLabel")
+            // Nivel Actual
+           lblCurrentLevel = new Label(mProjectionContainer, "CurrentLevelLabel")
             {
-                Text = $"Nivel Actual: {mSelectedItem.EnchantmentLevel}",
-                TextColor = Color.White
+                Text = $"Nivel Actual: {mSelectedItem.ItemProperties.EnchantmentLevel}",
+                TextColor = Color.Yellow
             };
+            lblCurrentLevel.SetPosition(10, yOffset);
+            lblCurrentLevel.SetSize(labelWidth, labelHeight);
+            lblCurrentLevel.FontName = "sourcesansproblack";
+            lblCurrentLevel.FontSize = 10;
 
-            var lblProjectedLevel = new Label(mProjectionContainer, "ProjectedLevelLabel")
+            yOffset += spacing;
+
+            // Nivel Proyectado
+            lblProjectedLevel = new Label(mProjectionContainer, "ProjectedLevelLabel")
             {
                 Text = $"Nivel Proyectado: {projectedLevel}",
                 TextColor = Color.Green
             };
+            lblProjectedLevel.SetPosition(10, yOffset);
+            lblProjectedLevel.SetSize(labelWidth, labelHeight);
+            lblProjectedLevel.FontName = "sourcesansproblack";
+            lblProjectedLevel.FontSize = 10;
 
-            var lblSuccessRate = new Label(mProjectionContainer, "SuccessRateLabel")
+            yOffset += spacing;
+
+            // Tasa de éxito
+            lblSuccessRate = new Label(mProjectionContainer, "SuccessRateLabel")
             {
                 Text = $"Tasa de éxito: {successRate * 100:F1}%",
-                TextColor = successRate >= 1.0 ? Color.Green : Color.Yellow
+                TextColor = Color.Yellow
             };
+            lblSuccessRate.SetPosition(10, yOffset);
+            lblSuccessRate.SetSize(labelWidth, labelHeight);
+            lblSuccessRate.FontName = "sourcesansproblack";
+            lblSuccessRate.FontSize = 10;
 
-            // Agregar las estadísticas proyectadas
+            yOffset += spacing;
+
+            // Costo de encantamiento
+           lblCost = new Label(mProjectionContainer, "UpgradeCostLabel")
+            {
+                Text = $"Costo: {upgradeCost} monedas",
+                TextColor = Color.Yellow
+            };
+            lblCost.SetPosition(10, yOffset);
+            lblCost.SetSize(labelWidth, labelHeight);
+            lblCost.FontName = "sourcesansproblack";
+            lblCost.FontSize = 10;
+
+            yOffset += spacing * 2;
+
+            // Stats proyectados
             for (var i = 0; i < Enum.GetValues<Stat>().Length; i++)
             {
                 var statName = Strings.ItemDescription.StatCounts[i];
                 var currentStat = mSelectedItem.Base.StatsGiven[i] + (mSelectedItem.ItemProperties?.StatModifiers[i] ?? 0);
-                var projectedStat = currentStat + (int)(currentStat * 0.05 * projectedLevel); // Mejora basada en nivel
+                var projectedStat = currentStat + (int)(currentStat * 0.07 * projectedLevel);
 
-                var statColor = projectedStat > currentStat ? Color.Green : (projectedStat < currentStat ? Color.Red : Color.White);
-                var lblStat = new Label(mProjectionContainer, $"StatLabel_{i}")
+                if (currentStat == 0 && projectedStat == 0)
+                {
+                    continue; // Ocultar stats que son 0
+                }
+
+                var statColor = projectedStat > currentStat ? Color.Green :
+                                (projectedStat < currentStat ? Color.Red : Color.White);
+
+                lblStat = new Label(mProjectionContainer, $"StatLabel_{i}")
                 {
                     Text = $"{statName}: {currentStat} → {projectedStat}",
-                    TextColor = statColor
+                    
                 };
+                lblStat.SetPosition(10, yOffset);
+                lblStat.SetSize(labelWidth, labelHeight);
+                lblStat.SetTextColor(statColor,Label.ControlState.Normal);
+                lblStat.FontName = "sourcesansproblack";
+                lblStat.FontSize = 10;
+
+                yOffset += spacing;
             }
 
-            // Ajustar la vista
             mProjectionContainer.SizeToChildren(true, true);
         }
+
+
         /* public void SelectRateBoostItem(Item item)
          {
              if (item == null || item.Base == null) return;
@@ -348,6 +450,7 @@ namespace Intersect.Client.Interface.Game.Enchanting
 
             // Enviar paquete al servidor con el índice del ítem y el ItemId de la moneda
             PacketSender.SendEnchantItem(itemIndex, targetLevel, currencyId, currencyAmount, useAmulet);
+            
         }
 
 

@@ -1201,7 +1201,7 @@ public static partial class PacketSender
                 playerItem.Quantity,
                 playerItem.BagId,
                 playerItem.Properties,
-                playerItem.EnchantmentLevel
+                playerItem.Properties.EnchantmentLevel
             );
         }
 
@@ -1219,7 +1219,7 @@ public static partial class PacketSender
         player.SendPacket(
             new InventoryUpdatePacket(
                 slot, player.Items[slot].ItemId, player.Items[slot].Quantity, player.Items[slot].BagId,
-                player.Items[slot].Properties, player.Items[slot].EnchantmentLevel
+                player.Items[slot].Properties, player.Items[slot].Properties?.EnchantmentLevel ?? 0
 
             )
         );
@@ -2145,8 +2145,9 @@ public static partial class PacketSender
         {
             player.SendPacket(
                 new TradeUpdatePacket(
-                    trader.Id, slot, trader.Trading.Offer[slot].ItemId, trader.Trading.Offer[slot].Quantity,
-                    trader.Trading.Offer[slot].BagId, trader.Trading.Offer[slot].Properties, trader.Trading.Offer[slot].EnchantmentLevel
+                    trader.Id, slot, trader.Trading.Offer[slot].ItemId, trader.Trading.Offer[slot].Quantity,trader.Trading.Offer[slot].BagId, 
+                    trader.Trading.Offer[slot].Properties, trader.Trading.Offer[slot].Properties?.EnchantmentLevel ?? 0
+
                 )
             );
         }
@@ -2201,7 +2202,7 @@ public static partial class PacketSender
     {
         if (item != null && item.ItemId != Guid.Empty && item.Quantity > 0)
         {
-            player.SendPacket(new BagUpdatePacket(slot, item.ItemId, item.Quantity, item.BagId, item.Properties,item.EnchantmentLevel));
+            player.SendPacket(new BagUpdatePacket(slot, item.ItemId, item.Quantity, item.BagId, item.Properties,item.Properties?.EnchantmentLevel ?? 0));
         }
         else
         {
@@ -2686,7 +2687,7 @@ public static void SendUpdateItemLevel(Player player, int itemIndex, int newEnch
         }
 
         // Actualizar el nivel de encantamiento del ítem
-        item.EnchantmentLevel = newEnchantmentLevel;
+        item.Properties.EnchantmentLevel = newEnchantmentLevel;
 
         // Crear el paquete con los datos necesarios
         var packet = new UpdateItemLevelPacket(itemIndex, newEnchantmentLevel);

@@ -22,5 +22,8 @@ public partial class ItemProperties
     public int[] StatModifiers { get; set; } = new int[Enum.GetValues<Stat>().Length];
 
     [Key(1)]
-    public int EnchantmentLevel { get; set; } = 0; // Nivel de encantamiento
+    public int EnchantmentLevel { get; set; }  // Nivel de encantamiento
+    [Key(2)]
+    public Dictionary<int, int[]> EnchantmentRolls { get; set; } = new Dictionary<int, int[]>();
+
 }

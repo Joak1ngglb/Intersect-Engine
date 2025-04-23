@@ -3381,7 +3381,8 @@ internal sealed partial class PacketHandler
         {
             return;
         }
-        // Buscar el ítem por índice
+
+        // Validar índice del ítem
         if (packet.ItemIndex < 0 || packet.ItemIndex >= player.Items.Count)
         {
             PacketSender.SendChatMsg(player, "Ítem no encontrado en el inventario.", ChatMessageType.Error);
@@ -3389,13 +3390,20 @@ internal sealed partial class PacketHandler
         }
 
         var item = player.Items[packet.ItemIndex];
-        if (item == null)
+        if (item == null || item.Descriptor == null)
         {
             PacketSender.SendChatMsg(player, "Ítem inválido.", ChatMessageType.Error);
             return;
         }
 
-        // Buscar la moneda por ItemId
+        // ✅ Validar si el ítem es mejorable
+        if (!item.Descriptor.CanBeEnchanted)
+        {
+            PacketSender.SendChatMsg(player, "Este ítem no se puede encantar.", ChatMessageType.Error);
+            return;
+        }
+
+        // Validar la moneda
         var currency = player.Items.FirstOrDefault(i => i?.ItemId == packet.CurrencyId && i.Quantity >= packet.CurrencyAmount);
         if (currency == null)
         {
@@ -3406,9 +3414,10 @@ internal sealed partial class PacketHandler
         // Intentar encantar el ítem
         player.TryUpgradeItem(packet.ItemIndex, packet.TargetLevel, packet.CurrencyId, packet.CurrencyAmount, packet.UseAmulet);
 
-        // Actualizar el cliente
+        // Actualizar cliente
         PacketSender.SendInventoryItemUpdate(player, packet.ItemIndex);
     }
+
 
 
 }

@@ -77,7 +77,7 @@ public class Item : IItem
     public Guid ItemId { get; set; } = Guid.Empty;
 
     [NotMapped] public string ItemName => ItemBase.GetName(ItemId);
-    public int EnchantmentLevel { get; set; } = 0;
+    // public int EnchantmentLevel { get; set; } = 0;
 
     public int Quantity { get; set; }
 
@@ -381,7 +381,7 @@ public class Item : IItem
         BagId = item.BagId;
         Bag = item.Bag;
         Properties = new ItemProperties(item.Properties);
-        EnchantmentLevel = item.EnchantmentLevel;
+        // EnchantmentLevel = item.EnchantmentLevel;
     }
 
     /// <summary>
@@ -418,27 +418,66 @@ public class Item : IItem
 
         return default != bag;
     }
-    public void ApplyEnchantment(int level)
+    public void ApplyEnchantment(int newLevel)
     {
-        if (Descriptor?.ItemType != ItemType.Equipment)
+        if (Descriptor?.ItemType != ItemType.Equipment || Properties == null)
         {
-            return; // Solo aplica a equipos
+            return;
         }
 
-        EnchantmentLevel = Math.Clamp(level, 0, 10);
+        newLevel = Math.Clamp(newLevel, 0, 10);
+        int currentLevel = Properties.EnchantmentLevel;
 
-        // Reiniciar los modificadores de stats
-        foreach (var stat in Enum.GetValues<Stat>())
+        if (newLevel == currentLevel)
         {
-            Properties.StatModifiers[(int)stat] = 0;
+            return; // No hay cambio
+        }
 
-            // Calcular y aplicar los nuevos valores
-            if (Descriptor.TryGetRangeFor(stat, out var range))
+        if (newLevel > currentLevel)
+        {
+            // Subir: aplicar bonus y guardar rolls
+            for (int lvl = currentLevel + 1; lvl <= newLevel; lvl++)
             {
-                Properties.StatModifiers[(int)stat] += (int)(range.Roll() * (0.05 * EnchantmentLevel));
+                double bonusFactor = 0.07 * lvl;
+                int[] levelBonuses = new int[Enum.GetValues(typeof(Stat)).Length];
+
+                foreach (Stat stat in Enum.GetValues(typeof(Stat)))
+                {
+                    if (Descriptor.TryGetRangeFor(stat, out var range))
+                    {
+                        double rollValue = range.Roll();
+                        int bonus = (int)(rollValue * bonusFactor);
+
+                        Properties.StatModifiers[(int)stat] += bonus;
+                        levelBonuses[(int)stat] = bonus;
+                    }
+                }
+
+                // Guardar roll exacto de este nivel
+                Properties.EnchantmentRolls[lvl] = levelBonuses;
             }
         }
+        else // newLevel < currentLevel
+        {
+            // Bajar: restar usando rolls guardados
+            for (int lvl = currentLevel; lvl > newLevel; lvl--)
+            {
+                if (Properties.EnchantmentRolls.TryGetValue(lvl, out var levelBonuses))
+                {
+                    foreach (Stat stat in Enum.GetValues(typeof(Stat)))
+                    {
+                        int bonus = levelBonuses[(int)stat];
+                        Properties.StatModifiers[(int)stat] -= bonus;
+                        Properties.StatModifiers[(int)stat] = Math.Max(0, Properties.StatModifiers[(int)stat]);
+                    }
+
+                    // Remover roll aplicado de este nivel
+                    Properties.EnchantmentRolls.Remove(lvl);
+                }
+            }
+        }
+
+        Properties.EnchantmentLevel = newLevel;
     }
-   
 
 }

@@ -37,10 +37,12 @@ namespace Intersect.Editor.Forms.Editors
             grpItems = new DarkGroupBox();
             btnClearSearch = new DarkButton();
             txtSearch = new DarkTextBox();
-            lstGameObjects = new Controls.GameObjectList();
+            lstGameObjects = new Intersect.Editor.Forms.Controls.GameObjectList();
             btnCancel = new DarkButton();
             btnSave = new DarkButton();
             grpGeneral = new DarkGroupBox();
+            label3 = new Label();
+            cmbSubType = new DarkComboBox();
             grpEvents = new DarkGroupBox();
             cmbEventTriggers = new DarkComboBox();
             lblEventForTrigger = new Label();
@@ -416,6 +418,8 @@ namespace Intersect.Editor.Forms.Editors
             // 
             grpGeneral.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
             grpGeneral.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            grpGeneral.Controls.Add(label3);
+            grpGeneral.Controls.Add(cmbSubType);
             grpGeneral.Controls.Add(grpEvents);
             grpGeneral.Controls.Add(grpStack);
             grpGeneral.Controls.Add(grpCooldown);
@@ -471,6 +475,38 @@ namespace Intersect.Editor.Forms.Editors
             grpGeneral.TabIndex = 2;
             grpGeneral.TabStop = false;
             grpGeneral.Text = "General";
+            // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Location = new System.Drawing.Point(9, 147);
+            label3.Margin = new Padding(4, 0, 4, 0);
+            label3.Name = "label3";
+            label3.Size = new Size(54, 15);
+            label3.TabIndex = 104;
+            label3.Text = "SubType:";
+            // 
+            // cmbSubType
+            // 
+            cmbSubType.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            cmbSubType.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            cmbSubType.BorderStyle = ButtonBorderStyle.Solid;
+            cmbSubType.ButtonColor = System.Drawing.Color.FromArgb(43, 43, 43);
+            cmbSubType.DrawDropdownHoverOutline = false;
+            cmbSubType.DrawFocusRectangle = false;
+            cmbSubType.DrawMode = DrawMode.OwnerDrawFixed;
+            cmbSubType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbSubType.FlatStyle = FlatStyle.Flat;
+            cmbSubType.ForeColor = System.Drawing.Color.Gainsboro;
+            cmbSubType.FormattingEnabled = true;
+            cmbSubType.Location = new System.Drawing.Point(62, 143);
+            cmbSubType.Margin = new Padding(4, 3, 4, 3);
+            cmbSubType.Name = "cmbSubType";
+            cmbSubType.Size = new Size(221, 24);
+            cmbSubType.TabIndex = 103;
+            cmbSubType.Text = "None";
+            cmbSubType.TextPadding = new Padding(2);
+            cmbSubType.SelectedIndexChanged += cmbSubType_SelectedIndexChanged;
             // 
             // grpEvents
             // 
@@ -1052,7 +1088,7 @@ namespace Intersect.Editor.Forms.Editors
             cmbRarity.ForeColor = System.Drawing.Color.Gainsboro;
             cmbRarity.FormattingEnabled = true;
             cmbRarity.Items.AddRange(new object[] { "None", "Common", "Uncommon", "Rare", "Epic", "Legendary" });
-            cmbRarity.Location = new System.Drawing.Point(62, 147);
+            cmbRarity.Location = new System.Drawing.Point(62, 179);
             cmbRarity.Margin = new Padding(4, 3, 4, 3);
             cmbRarity.Name = "cmbRarity";
             cmbRarity.Size = new Size(221, 24);
@@ -1064,7 +1100,7 @@ namespace Intersect.Editor.Forms.Editors
             // lblRarity
             // 
             lblRarity.AutoSize = true;
-            lblRarity.Location = new System.Drawing.Point(9, 150);
+            lblRarity.Location = new System.Drawing.Point(9, 182);
             lblRarity.Margin = new Padding(4, 0, 4, 0);
             lblRarity.Name = "lblRarity";
             lblRarity.Size = new Size(40, 15);
@@ -1120,7 +1156,7 @@ namespace Intersect.Editor.Forms.Editors
             // lblDesc
             // 
             lblDesc.AutoSize = true;
-            lblDesc.Location = new System.Drawing.Point(13, 175);
+            lblDesc.Location = new System.Drawing.Point(13, 216);
             lblDesc.Margin = new Padding(4, 0, 4, 0);
             lblDesc.Name = "lblDesc";
             lblDesc.Size = new Size(35, 15);
@@ -1132,11 +1168,11 @@ namespace Intersect.Editor.Forms.Editors
             txtDesc.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
             txtDesc.BorderStyle = BorderStyle.FixedSingle;
             txtDesc.ForeColor = System.Drawing.Color.FromArgb(220, 220, 220);
-            txtDesc.Location = new System.Drawing.Point(14, 194);
+            txtDesc.Location = new System.Drawing.Point(14, 241);
             txtDesc.Margin = new Padding(4, 3, 4, 3);
             txtDesc.Multiline = true;
             txtDesc.Name = "txtDesc";
-            txtDesc.Size = new Size(269, 153);
+            txtDesc.Size = new Size(269, 106);
             txtDesc.TabIndex = 12;
             txtDesc.TextChanged += txtDesc_TextChanged;
             // 
@@ -1226,7 +1262,7 @@ namespace Intersect.Editor.Forms.Editors
             cmbType.FlatStyle = FlatStyle.Flat;
             cmbType.ForeColor = System.Drawing.Color.Gainsboro;
             cmbType.FormattingEnabled = true;
-            cmbType.Items.AddRange(new object[] { "None", "Equipment", "Consumable", "Currency", "Spell", "Event", "Bag" });
+            cmbType.Items.AddRange(new object[] { "None", "Equipment", "Consumable", "Currency", "Spell", "Event", "Bag", "Resource" });
             cmbType.Location = new System.Drawing.Point(62, 107);
             cmbType.Margin = new Padding(4, 3, 4, 3);
             cmbType.Name = "cmbType";
@@ -3631,5 +3667,7 @@ namespace Intersect.Editor.Forms.Editors
         private DarkNumericUpDown darkNumericUpDown2;
         private DarkCheckBox chkCanBeUpgraded;
         private DarkComboBox cmbUpgradeMaterial;
+        private Label label3;
+        private DarkComboBox cmbSubType;
     }
 }

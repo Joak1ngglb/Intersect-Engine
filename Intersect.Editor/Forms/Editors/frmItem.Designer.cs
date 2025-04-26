@@ -41,6 +41,15 @@ namespace Intersect.Editor.Forms.Editors
             btnCancel = new DarkButton();
             btnSave = new DarkButton();
             grpGeneral = new DarkGroupBox();
+            grpEnchanting = new DarkGroupBox();
+            chkCanBeUpgraded = new DarkCheckBox();
+            label5 = new Label();
+            label4 = new Label();
+            nudSuccesRate = new DarkNumericUpDown();
+            label1 = new Label();
+            label2 = new Label();
+            darkNumericUpDown1 = new DarkNumericUpDown();
+            darkNumericUpDown2 = new DarkNumericUpDown();
             label3 = new Label();
             cmbSubType = new DarkComboBox();
             grpEvents = new DarkGroupBox();
@@ -129,14 +138,6 @@ namespace Intersect.Editor.Forms.Editors
             lblPlus10 = new Label();
             lblPlus11 = new Label();
             grpEquipment = new DarkGroupBox();
-            grpEnchanting = new DarkGroupBox();
-            chkCanBeUpgraded = new DarkCheckBox();
-            cmbUpgradeMaterial = new DarkComboBox();
-            lblUpgradeMaterial = new Label();
-            label1 = new Label();
-            label2 = new Label();
-            darkNumericUpDown1 = new DarkNumericUpDown();
-            darkNumericUpDown2 = new DarkNumericUpDown();
             grpStatRanges = new DarkGroupBox();
             lblStatRangeFrom = new Label();
             lblStatRangeTo = new Label();
@@ -257,6 +258,10 @@ namespace Intersect.Editor.Forms.Editors
             tooltips = new ToolTip(components);
             grpItems.SuspendLayout();
             grpGeneral.SuspendLayout();
+            grpEnchanting.SuspendLayout();
+            ((ISupportInitialize)nudSuccesRate).BeginInit();
+            ((ISupportInitialize)darkNumericUpDown1).BeginInit();
+            ((ISupportInitialize)darkNumericUpDown2).BeginInit();
             grpEvents.SuspendLayout();
             grpStack.SuspendLayout();
             ((ISupportInitialize)nudInvStackLimit).BeginInit();
@@ -280,9 +285,6 @@ namespace Intersect.Editor.Forms.Editors
             ((ISupportInitialize)nudBag).BeginInit();
             grpSpell.SuspendLayout();
             grpEquipment.SuspendLayout();
-            grpEnchanting.SuspendLayout();
-            ((ISupportInitialize)darkNumericUpDown1).BeginInit();
-            ((ISupportInitialize)darkNumericUpDown2).BeginInit();
             grpStatRanges.SuspendLayout();
             ((ISupportInitialize)nudStatRangeLow).BeginInit();
             ((ISupportInitialize)nudStatRangeHigh).BeginInit();
@@ -418,6 +420,8 @@ namespace Intersect.Editor.Forms.Editors
             // 
             grpGeneral.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
             grpGeneral.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            grpGeneral.Controls.Add(chkCanBeUpgraded);
+            grpGeneral.Controls.Add(grpEnchanting);
             grpGeneral.Controls.Add(label3);
             grpGeneral.Controls.Add(cmbSubType);
             grpGeneral.Controls.Add(grpEvents);
@@ -475,6 +479,118 @@ namespace Intersect.Editor.Forms.Editors
             grpGeneral.TabIndex = 2;
             grpGeneral.TabStop = false;
             grpGeneral.Text = "General";
+            // 
+            // grpEnchanting
+            // 
+            grpEnchanting.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+            grpEnchanting.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            grpEnchanting.Controls.Add(label5);
+            grpEnchanting.Controls.Add(label4);
+            grpEnchanting.Controls.Add(nudSuccesRate);
+            grpEnchanting.Controls.Add(label1);
+            grpEnchanting.Controls.Add(label2);
+            grpEnchanting.Controls.Add(darkNumericUpDown1);
+            grpEnchanting.Controls.Add(darkNumericUpDown2);
+            grpEnchanting.ForeColor = System.Drawing.Color.Gainsboro;
+            grpEnchanting.Location = new System.Drawing.Point(321, 466);
+            grpEnchanting.Margin = new Padding(4, 3, 4, 3);
+            grpEnchanting.Name = "grpEnchanting";
+            grpEnchanting.Padding = new Padding(4, 3, 4, 3);
+            grpEnchanting.Size = new Size(252, 57);
+            grpEnchanting.TabIndex = 105;
+            grpEnchanting.TabStop = false;
+            grpEnchanting.Text = "Enchanting";
+            // 
+            // chkCanBeUpgraded
+            // 
+            chkCanBeUpgraded.AutoSize = true;
+            chkCanBeUpgraded.Location = new System.Drawing.Point(27, 435);
+            chkCanBeUpgraded.Margin = new Padding(4, 3, 4, 3);
+            chkCanBeUpgraded.Name = "chkCanBeUpgraded";
+            chkCanBeUpgraded.Size = new Size(127, 19);
+            chkCanBeUpgraded.TabIndex = 65;
+            chkCanBeUpgraded.Text = "Can be Enchanted?";
+            chkCanBeUpgraded.CheckedChanged += chkCanBeUpgraded_CheckedChanged_1;
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Location = new System.Drawing.Point(17, 24);
+            label5.Margin = new Padding(4, 0, 4, 0);
+            label5.Name = "label5";
+            label5.Size = new Size(72, 15);
+            label5.TabIndex = 76;
+            label5.Text = "Succes Rate:";
+            // 
+            // label4
+            // 
+            label4.AutoSize = true;
+            label4.Location = new System.Drawing.Point(158, 22);
+            label4.Margin = new Padding(2, 0, 2, 0);
+            label4.Name = "label4";
+            label4.Size = new Size(17, 15);
+            label4.TabIndex = 75;
+            label4.Text = "%";
+            // 
+            // nudSuccesRate
+            // 
+            nudSuccesRate.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            nudSuccesRate.ForeColor = System.Drawing.Color.Gainsboro;
+            nudSuccesRate.Location = new System.Drawing.Point(96, 22);
+            nudSuccesRate.Margin = new Padding(4, 3, 4, 3);
+            nudSuccesRate.Name = "nudSuccesRate";
+            nudSuccesRate.Size = new Size(59, 23);
+            nudSuccesRate.TabIndex = 74;
+            nudSuccesRate.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            nudSuccesRate.ValueChanged += nudSuccesRate_ValueChanged;
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new System.Drawing.Point(10, 177);
+            label1.Margin = new Padding(4, 0, 4, 0);
+            label1.Name = "label1";
+            label1.Size = new Size(35, 15);
+            label1.TabIndex = 62;
+            label1.Text = "From";
+            label1.TextAlign = ContentAlignment.TopRight;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new System.Drawing.Point(124, 177);
+            label2.Margin = new Padding(4, 0, 4, 0);
+            label2.Name = "label2";
+            label2.Size = new Size(18, 15);
+            label2.TabIndex = 61;
+            label2.Text = "to";
+            label2.TextAlign = ContentAlignment.TopCenter;
+            // 
+            // darkNumericUpDown1
+            // 
+            darkNumericUpDown1.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            darkNumericUpDown1.ForeColor = System.Drawing.Color.Gainsboro;
+            darkNumericUpDown1.Location = new System.Drawing.Point(54, 175);
+            darkNumericUpDown1.Margin = new Padding(4, 3, 4, 3);
+            darkNumericUpDown1.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            darkNumericUpDown1.Minimum = new decimal(new int[] { 1000, 0, 0, int.MinValue });
+            darkNumericUpDown1.Name = "darkNumericUpDown1";
+            darkNumericUpDown1.Size = new Size(54, 23);
+            darkNumericUpDown1.TabIndex = 60;
+            darkNumericUpDown1.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            // 
+            // darkNumericUpDown2
+            // 
+            darkNumericUpDown2.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            darkNumericUpDown2.ForeColor = System.Drawing.Color.Gainsboro;
+            darkNumericUpDown2.Location = new System.Drawing.Point(152, 175);
+            darkNumericUpDown2.Margin = new Padding(4, 3, 4, 3);
+            darkNumericUpDown2.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            darkNumericUpDown2.Minimum = new decimal(new int[] { 1000, 0, 0, int.MinValue });
+            darkNumericUpDown2.Name = "darkNumericUpDown2";
+            darkNumericUpDown2.Size = new Size(54, 23);
+            darkNumericUpDown2.TabIndex = 53;
+            darkNumericUpDown2.Value = new decimal(new int[] { 0, 0, 0, 0 });
             // 
             // label3
             // 
@@ -760,7 +876,7 @@ namespace Intersect.Editor.Forms.Editors
             // 
             nudItemDespawnTime.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
             nudItemDespawnTime.ForeColor = System.Drawing.Color.Gainsboro;
-            nudItemDespawnTime.Location = new System.Drawing.Point(13, 501);
+            nudItemDespawnTime.Location = new System.Drawing.Point(13, 530);
             nudItemDespawnTime.Margin = new Padding(4, 3, 4, 3);
             nudItemDespawnTime.Maximum = new decimal(new int[] { int.MaxValue, 0, 0, 0 });
             nudItemDespawnTime.Name = "nudItemDespawnTime";
@@ -772,7 +888,7 @@ namespace Intersect.Editor.Forms.Editors
             // lblDespawnTime
             // 
             lblDespawnTime.AutoSize = true;
-            lblDespawnTime.Location = new System.Drawing.Point(9, 479);
+            lblDespawnTime.Location = new System.Drawing.Point(9, 508);
             lblDespawnTime.Margin = new Padding(4, 0, 4, 0);
             lblDespawnTime.Name = "lblDespawnTime";
             lblDespawnTime.Size = new Size(262, 15);
@@ -877,7 +993,7 @@ namespace Intersect.Editor.Forms.Editors
             // 
             nudDeathDropChance.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
             nudDeathDropChance.ForeColor = System.Drawing.Color.Gainsboro;
-            nudDeathDropChance.Location = new System.Drawing.Point(175, 442);
+            nudDeathDropChance.Location = new System.Drawing.Point(175, 471);
             nudDeathDropChance.Margin = new Padding(4, 3, 4, 3);
             nudDeathDropChance.Name = "nudDeathDropChance";
             nudDeathDropChance.Size = new Size(108, 23);
@@ -888,7 +1004,7 @@ namespace Intersect.Editor.Forms.Editors
             // lblDeathDropChance
             // 
             lblDeathDropChance.AutoSize = true;
-            lblDeathDropChance.Location = new System.Drawing.Point(9, 447);
+            lblDeathDropChance.Location = new System.Drawing.Point(9, 476);
             lblDeathDropChance.Margin = new Padding(4, 0, 4, 0);
             lblDeathDropChance.Name = "lblDeathDropChance";
             lblDeathDropChance.Size = new Size(149, 15);
@@ -1638,7 +1754,6 @@ namespace Intersect.Editor.Forms.Editors
             // 
             grpEquipment.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
             grpEquipment.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
-            grpEquipment.Controls.Add(grpEnchanting);
             grpEquipment.Controls.Add(grpStatRanges);
             grpEquipment.Controls.Add(grpPaperdoll);
             grpEquipment.Controls.Add(grpEffects);
@@ -1659,119 +1774,6 @@ namespace Intersect.Editor.Forms.Editors
             grpEquipment.TabStop = false;
             grpEquipment.Text = "Equipment";
             grpEquipment.Visible = false;
-            // 
-            // grpEnchanting
-            // 
-            grpEnchanting.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
-            grpEnchanting.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
-            grpEnchanting.Controls.Add(chkCanBeUpgraded);
-            grpEnchanting.Controls.Add(cmbUpgradeMaterial);
-            grpEnchanting.Controls.Add(lblUpgradeMaterial);
-            grpEnchanting.Controls.Add(label1);
-            grpEnchanting.Controls.Add(label2);
-            grpEnchanting.Controls.Add(darkNumericUpDown1);
-            grpEnchanting.Controls.Add(darkNumericUpDown2);
-            grpEnchanting.ForeColor = System.Drawing.Color.Gainsboro;
-            grpEnchanting.Location = new System.Drawing.Point(327, 794);
-            grpEnchanting.Margin = new Padding(4, 3, 4, 3);
-            grpEnchanting.Name = "grpEnchanting";
-            grpEnchanting.Padding = new Padding(4, 3, 4, 3);
-            grpEnchanting.Size = new Size(217, 105);
-            grpEnchanting.TabIndex = 84;
-            grpEnchanting.TabStop = false;
-            grpEnchanting.Text = "Enchanting";
-            // 
-            // chkCanBeUpgraded
-            // 
-            chkCanBeUpgraded.AutoSize = true;
-            chkCanBeUpgraded.Location = new System.Drawing.Point(8, 23);
-            chkCanBeUpgraded.Margin = new Padding(4, 3, 4, 3);
-            chkCanBeUpgraded.Name = "chkCanBeUpgraded";
-            chkCanBeUpgraded.Size = new Size(127, 19);
-            chkCanBeUpgraded.TabIndex = 65;
-            chkCanBeUpgraded.Text = "Can be Enchanted?";
-            chkCanBeUpgraded.CheckedChanged += chkCanBeUpgraded_CheckedChanged;
-            // 
-            // cmbUpgradeMaterial
-            // 
-            cmbUpgradeMaterial.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
-            cmbUpgradeMaterial.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
-            cmbUpgradeMaterial.BorderStyle = ButtonBorderStyle.Solid;
-            cmbUpgradeMaterial.ButtonColor = System.Drawing.Color.FromArgb(43, 43, 43);
-            cmbUpgradeMaterial.DrawDropdownHoverOutline = false;
-            cmbUpgradeMaterial.DrawFocusRectangle = false;
-            cmbUpgradeMaterial.DrawMode = DrawMode.OwnerDrawFixed;
-            cmbUpgradeMaterial.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbUpgradeMaterial.FlatStyle = FlatStyle.Flat;
-            cmbUpgradeMaterial.ForeColor = System.Drawing.Color.Gainsboro;
-            cmbUpgradeMaterial.FormattingEnabled = true;
-            cmbUpgradeMaterial.Location = new System.Drawing.Point(9, 67);
-            cmbUpgradeMaterial.Margin = new Padding(4, 3, 4, 3);
-            cmbUpgradeMaterial.Name = "cmbUpgradeMaterial";
-            cmbUpgradeMaterial.Size = new Size(197, 24);
-            cmbUpgradeMaterial.TabIndex = 64;
-            cmbUpgradeMaterial.Text = null;
-            cmbUpgradeMaterial.TextPadding = new Padding(2);
-            cmbUpgradeMaterial.SelectedIndexChanged += cmbUpgradeMaterial_SelectedIndexChanged;
-            // 
-            // lblUpgradeMaterial
-            // 
-            lblUpgradeMaterial.AutoSize = true;
-            lblUpgradeMaterial.Location = new System.Drawing.Point(6, 49);
-            lblUpgradeMaterial.Margin = new Padding(4, 0, 4, 0);
-            lblUpgradeMaterial.Name = "lblUpgradeMaterial";
-            lblUpgradeMaterial.Size = new Size(97, 15);
-            lblUpgradeMaterial.TabIndex = 63;
-            lblUpgradeMaterial.Text = "Item To Upgrade:";
-            lblUpgradeMaterial.TextAlign = ContentAlignment.TopRight;
-            // 
-            // label1
-            // 
-            label1.AutoSize = true;
-            label1.Location = new System.Drawing.Point(9, 177);
-            label1.Margin = new Padding(4, 0, 4, 0);
-            label1.Name = "label1";
-            label1.Size = new Size(35, 15);
-            label1.TabIndex = 62;
-            label1.Text = "From";
-            label1.TextAlign = ContentAlignment.TopRight;
-            // 
-            // label2
-            // 
-            label2.AutoSize = true;
-            label2.Location = new System.Drawing.Point(123, 177);
-            label2.Margin = new Padding(4, 0, 4, 0);
-            label2.Name = "label2";
-            label2.Size = new Size(18, 15);
-            label2.TabIndex = 61;
-            label2.Text = "to";
-            label2.TextAlign = ContentAlignment.TopCenter;
-            // 
-            // darkNumericUpDown1
-            // 
-            darkNumericUpDown1.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
-            darkNumericUpDown1.ForeColor = System.Drawing.Color.Gainsboro;
-            darkNumericUpDown1.Location = new System.Drawing.Point(54, 175);
-            darkNumericUpDown1.Margin = new Padding(4, 3, 4, 3);
-            darkNumericUpDown1.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-            darkNumericUpDown1.Minimum = new decimal(new int[] { 1000, 0, 0, int.MinValue });
-            darkNumericUpDown1.Name = "darkNumericUpDown1";
-            darkNumericUpDown1.Size = new Size(54, 23);
-            darkNumericUpDown1.TabIndex = 60;
-            darkNumericUpDown1.Value = new decimal(new int[] { 0, 0, 0, 0 });
-            // 
-            // darkNumericUpDown2
-            // 
-            darkNumericUpDown2.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
-            darkNumericUpDown2.ForeColor = System.Drawing.Color.Gainsboro;
-            darkNumericUpDown2.Location = new System.Drawing.Point(152, 175);
-            darkNumericUpDown2.Margin = new Padding(4, 3, 4, 3);
-            darkNumericUpDown2.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
-            darkNumericUpDown2.Minimum = new decimal(new int[] { 1000, 0, 0, int.MinValue });
-            darkNumericUpDown2.Name = "darkNumericUpDown2";
-            darkNumericUpDown2.Size = new Size(54, 23);
-            darkNumericUpDown2.TabIndex = 53;
-            darkNumericUpDown2.Value = new decimal(new int[] { 0, 0, 0, 0 });
             // 
             // grpStatRanges
             // 
@@ -3352,6 +3354,11 @@ namespace Intersect.Editor.Forms.Editors
             grpItems.PerformLayout();
             grpGeneral.ResumeLayout(false);
             grpGeneral.PerformLayout();
+            grpEnchanting.ResumeLayout(false);
+            grpEnchanting.PerformLayout();
+            ((ISupportInitialize)nudSuccesRate).EndInit();
+            ((ISupportInitialize)darkNumericUpDown1).EndInit();
+            ((ISupportInitialize)darkNumericUpDown2).EndInit();
             grpEvents.ResumeLayout(false);
             grpEvents.PerformLayout();
             grpStack.ResumeLayout(false);
@@ -3384,10 +3391,6 @@ namespace Intersect.Editor.Forms.Editors
             grpSpell.PerformLayout();
             grpEquipment.ResumeLayout(false);
             grpEquipment.PerformLayout();
-            grpEnchanting.ResumeLayout(false);
-            grpEnchanting.PerformLayout();
-            ((ISupportInitialize)darkNumericUpDown1).EndInit();
-            ((ISupportInitialize)darkNumericUpDown2).EndInit();
             grpStatRanges.ResumeLayout(false);
             grpStatRanges.PerformLayout();
             ((ISupportInitialize)nudStatRangeLow).EndInit();
@@ -3659,15 +3662,16 @@ namespace Intersect.Editor.Forms.Editors
         private DarkComboBox cmbEventTriggers;
         private Label lblEventForTrigger;
         private ListBox lstEventTriggers;
+        private Label label3;
+        private DarkComboBox cmbSubType;
         private DarkGroupBox grpEnchanting;
-        private Label lblUpgradeMaterial;
         private Label label1;
         private Label label2;
         private DarkNumericUpDown darkNumericUpDown1;
         private DarkNumericUpDown darkNumericUpDown2;
         private DarkCheckBox chkCanBeUpgraded;
-        private DarkComboBox cmbUpgradeMaterial;
-        private Label label3;
-        private DarkComboBox cmbSubType;
+        private Label label5;
+        private Label label4;
+        private DarkNumericUpDown nudSuccesRate;
     }
 }

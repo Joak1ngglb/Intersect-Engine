@@ -30,7 +30,7 @@ namespace Intersect.Client.Interface.Game.Enchanting
         private Button mEnchantButton, mCloseButton;
 
         private bool Initialized = false;
-        private List<InventoryItem> Items = new List<InventoryItem>();
+        private List<EnchantInventoryItem> Items = new List<EnchantInventoryItem>();
         private List<Label> Values = new List<Label>();
 
         private Item mSelectedItem;
@@ -166,7 +166,7 @@ namespace Intersect.Client.Interface.Game.Enchanting
 
             for (int i = 0; i < Options.MaxInvItems; i++)
             {
-                Items.Add(new InventoryItem(this, i));
+                Items.Add(new EnchantInventoryItem(this, i));
                 Items[i].Container = new ImagePanel(mInventoryScroll, "Enchanttem");
                 Items[i].Setup();
 
@@ -203,7 +203,7 @@ namespace Intersect.Client.Interface.Game.Enchanting
                     }
                 };
 
-                Items[index].Container.DoubleClicked += (sender, args) =>
+                Items[index].Container.RightClicked += (sender, args) =>
                 {
                     var selectedItem = Globals.Me.Inventory[index];
                     if (selectedItem != null)
@@ -267,15 +267,14 @@ namespace Intersect.Client.Interface.Game.Enchanting
             int spacing = 25;
             int labelWidth = 240;
             int labelHeight = 20;
-
             // Nivel Actual
-           lblCurrentLevel = new Label(mProjectionContainer, "CurrentLevelLabel")
+            lblCurrentLevel = new Label(mProjectionContainer, "CurrentLevelLabel")
             {
-                Text = $"Nivel Actual: {mSelectedItem.ItemProperties.EnchantmentLevel}",
-                TextColor = Color.Yellow
+                Text = $"Nivel Actual: {mSelectedItem.ItemProperties.EnchantmentLevel}"
             };
             lblCurrentLevel.SetPosition(10, yOffset);
             lblCurrentLevel.SetSize(labelWidth, labelHeight);
+            lblCurrentLevel.SetTextColor(Color.Yellow, Label.ControlState.Normal);
             lblCurrentLevel.FontName = "sourcesansproblack";
             lblCurrentLevel.FontSize = 10;
 
@@ -284,11 +283,11 @@ namespace Intersect.Client.Interface.Game.Enchanting
             // Nivel Proyectado
             lblProjectedLevel = new Label(mProjectionContainer, "ProjectedLevelLabel")
             {
-                Text = $"Nivel Proyectado: {projectedLevel}",
-                TextColor = Color.Green
+                Text = $"Nivel Proyectado: {projectedLevel}"
             };
             lblProjectedLevel.SetPosition(10, yOffset);
             lblProjectedLevel.SetSize(labelWidth, labelHeight);
+            lblProjectedLevel.SetTextColor(Color.Green, Label.ControlState.Normal);
             lblProjectedLevel.FontName = "sourcesansproblack";
             lblProjectedLevel.FontSize = 10;
 
@@ -297,52 +296,67 @@ namespace Intersect.Client.Interface.Game.Enchanting
             // Tasa de éxito
             lblSuccessRate = new Label(mProjectionContainer, "SuccessRateLabel")
             {
-                Text = $"Tasa de éxito: {successRate * 100:F1}%",
-                TextColor = Color.Yellow
+                Text = $"Tasa de éxito: {successRate * 100:F1}%"
             };
             lblSuccessRate.SetPosition(10, yOffset);
             lblSuccessRate.SetSize(labelWidth, labelHeight);
+            lblSuccessRate.SetTextColor(Color.Yellow, Label.ControlState.Normal);
             lblSuccessRate.FontName = "sourcesansproblack";
             lblSuccessRate.FontSize = 10;
 
             yOffset += spacing;
 
             // Costo de encantamiento
-           lblCost = new Label(mProjectionContainer, "UpgradeCostLabel")
+            lblCost = new Label(mProjectionContainer, "UpgradeCostLabel")
             {
-                Text = $"Costo: {upgradeCost} monedas",
-                TextColor = Color.Yellow
+                Text = $"Costo: {upgradeCost} monedas"
             };
             lblCost.SetPosition(10, yOffset);
             lblCost.SetSize(labelWidth, labelHeight);
+            lblCost.SetTextColor(Color.Yellow, Label.ControlState.Normal);
             lblCost.FontName = "sourcesansproblack";
             lblCost.FontSize = 10;
 
+            yOffset += spacing;
+
+
             yOffset += spacing * 2;
 
-            // Stats proyectados
             for (var i = 0; i < Enum.GetValues<Stat>().Length; i++)
             {
                 var statName = Strings.ItemDescription.StatCounts[i];
-                var currentStat = mSelectedItem.Base.StatsGiven[i] + (mSelectedItem.ItemProperties?.StatModifiers[i] ?? 0);
-                var projectedStat = currentStat + (int)(currentStat * 0.07 * projectedLevel);
+                int baseStat = mSelectedItem.Base.StatsGiven[i];
+                int modStat = mSelectedItem.ItemProperties?.StatModifiers[i] ?? 0;
+                int currentStat = baseStat + modStat;
+
+                int projectedStat = currentStat;
+
+           
+                double bonusFactor = 0.05;
+
+                for (int lvl = mSelectedItem.ItemProperties.EnchantmentLevel + 1; lvl <= projectedLevel; lvl++)
+                {
+                    int bonus = (int)Math.Ceiling(projectedStat * bonusFactor);
+                    projectedStat += bonus;
+
+                    // Solo simulación visual, no modificar EnchantmentRolls reales si no es necesario
+                }
 
                 if (currentStat == 0 && projectedStat == 0)
                 {
-                    continue; // Ocultar stats que son 0
+                    continue;
                 }
 
                 var statColor = projectedStat > currentStat ? Color.Green :
                                 (projectedStat < currentStat ? Color.Red : Color.White);
 
-                lblStat = new Label(mProjectionContainer, $"StatLabel_{i}")
+                var lblStat = new Label(mProjectionContainer, $"StatLabel_{i}")
                 {
                     Text = $"{statName}: {currentStat} → {projectedStat}",
-                    
                 };
                 lblStat.SetPosition(10, yOffset);
                 lblStat.SetSize(labelWidth, labelHeight);
-                lblStat.SetTextColor(statColor,Label.ControlState.Normal);
+                lblStat.SetTextColor(statColor, Label.ControlState.Normal);
                 lblStat.FontName = "sourcesansproblack";
                 lblStat.FontSize = 10;
 
@@ -350,8 +364,8 @@ namespace Intersect.Client.Interface.Game.Enchanting
             }
 
             mProjectionContainer.SizeToChildren(true, true);
-        }
 
+        }
 
         /* public void SelectRateBoostItem(Item item)
          {

@@ -64,11 +64,17 @@ public class EnchantInventoryItem
     public void Setup()
     {
         // Configurar el contenedor del ítem
-        ItemIcon = new ImagePanel(Container, "EnchantInventoryItemIcon");
-        ItemIcon.HoverEnter += OnHoverEnter;
-        ItemIcon.HoverLeave += OnHoverLeave;
-        ItemIcon.Clicked += OnClicked;
-        ItemIcon.RightClicked += Onrightclick;
+        Pnl = new ImagePanel(Container, "EnchantInventoryItemIcon");
+        Pnl.HoverEnter += OnHoverEnter;
+        Pnl.HoverLeave += OnHoverLeave;
+        Pnl.Clicked += OnClicked;
+        Pnl.RightClicked += Onrightclick;
+        Pnl.DoubleClicked += Pnl_DoubleClicked;
+
+              // Configurar la etiqueta de cooldown
+        mCooldownLabel = new Label(Pnl, "EnchantInventoryItemCooldownLabel");
+        mCooldownLabel.IsHidden = true;
+        mCooldownLabel.TextColor = new Color(0, 255, 255, 255);
     }
 
     private void OnHoverEnter(Base sender, EventArgs arguments)
@@ -165,6 +171,19 @@ public class EnchantInventoryItem
         {
             var cooldownTime = Globals.Me.GetItemRemainingCooldown(mMySlot);
             mCooldownLabel.Text = TimeSpan.FromMilliseconds(cooldownTime).WithSuffix("0.0");
+        }
+    }
+    private void Pnl_DoubleClicked(Base sender, ClickedEventArgs arguments)
+    {
+        if (Globals.Me == null || Globals.Me.Inventory == null || mMySlot < 0 || mMySlot >= Globals.Me.Inventory.Length)
+        {
+            return; // Salir si el inventario no está configurado o el índice es inválido
+        }
+
+        var item = Globals.Me.Inventory[mMySlot];
+        if (item?.Base != null)
+        {
+            return;
         }
     }
 

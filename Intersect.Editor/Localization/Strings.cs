@@ -9,6 +9,7 @@ using Intersect.Logging;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using static Intersect.Config.ItemOptions;
 
 namespace Intersect.Editor.Localization;
 
@@ -3977,7 +3978,25 @@ Tick timer saved in server config.json.";
             {4, @"Spell"},
             {5, @"Event"},
             {6, @"Bag"},
+            {7, @"Resource"},
         };
+        // Diccionario dinámico de subtipos
+        public static Dictionary<ItemType, List<string>> SubtypesDynamic = new();
+
+        public static void LoadDynamicSubtypes()
+        {
+            SubtypesDynamic.Clear();
+
+            // 🔥 Corrected: Accessing ItemOptions through Intersect.Options.Instance
+            if (Intersect.Options.Instance?.Items?.ItemSubtypes != null)
+            {
+                foreach (var kvp in Intersect.Options.Instance.Items.ItemSubtypes)
+                {
+                    SubtypesDynamic[kvp.Key] = new List<string>(kvp.Value); // Copia defensiva
+                }
+            }
+        }
+
 
         public static LocalizedString undo = @"Undo Changes";
 

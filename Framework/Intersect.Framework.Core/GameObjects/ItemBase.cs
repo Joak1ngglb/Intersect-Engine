@@ -10,6 +10,7 @@ using Intersect.Utilities;
 using Microsoft.EntityFrameworkCore;
 
 using Newtonsoft.Json;
+using static Intersect.Config.ItemOptions;
 
 namespace Intersect.GameObjects;
 
@@ -439,6 +440,20 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
             return;
         }
         effectToEdit.Percentage = value;
+    }
+       
+    public string Subtype { get; set; } = string.Empty;
+
+    public void SetSubtype(string subtype)
+    {
+        if (Intersect.Options.Instance.Items.GetSubtypesFor(ItemType).Contains(subtype))
+        {
+            Subtype = subtype;
+        }
+        else
+        {
+            throw new Exception($"Invalid subtype '{subtype}' for type '{ItemType}'");
+        }
     }
 
     /// <inheritdoc />

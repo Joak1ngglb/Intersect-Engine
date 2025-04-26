@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Intersect.Enums;
 using Newtonsoft.Json;
 
 namespace Intersect.Config;
@@ -28,4 +29,23 @@ public class ItemOptions
         rarityName = RarityTiers.Skip(rarityLevel).FirstOrDefault();
         return rarityName != default;
     }
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public Dictionary<ItemType, List<string>> ItemSubtypes { get; set; } = new()
+{
+    { ItemType.Consumable, new() { "Drink", "Food", "Potion", "Scroll" } },
+    { ItemType.Equipment, new() { "Axe", "Bow", "Dagger", "Hammer", "Spear", "Staff", "Sword", "Wand" } },
+    { ItemType.Resource, new()
+        {
+            "Blood", "Bone", "Cereal", "Claw", "Crystal", "Ear", "Essence", "Eye", "Fabric", "Feather", "Fiber", "Fish",
+            "Fruits", "Gem", "Hair", "Herb", "Hide", "Horn", "Ink", "Leather", "Meat", "Mushrooms", "Oil", "Ore", "Orb",
+            "Paw", "Plant", "Powder", "Root", "Rune", "Scale", "Seed", "Shell", "Soul", "Tail", "Vegetables", "Wing", "Wood"
+        }
+    }
+};
+
+    public List<string> GetSubtypesFor(ItemType type)
+    {
+        return ItemSubtypes.TryGetValue(type, out var subtypes) ? subtypes : new List<string>();
+    }
+
 }

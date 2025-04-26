@@ -11,6 +11,7 @@ using Intersect.GameObjects;
 using Intersect.GameObjects.Events;
 using Intersect.Localization;
 using Intersect.Utilities;
+using static Intersect.Config.ItemOptions;
 using Graphics = System.Drawing.Graphics;
 
 namespace Intersect.Editor.Forms.Editors;
@@ -30,12 +31,13 @@ public partial class FrmItem : EditorForm
     private List<string> mKnownCooldownGroups = new List<string>();
 
     private bool EffectValueUpdating = false;
-
+ 
     public FrmItem()
     {
         ApplyHooks();
         InitializeComponent();
         Icon = Program.Icon;
+        Strings.ItemEditor.LoadDynamicSubtypes();
 
         cmbEquipmentSlot.Items.Clear();
         cmbEquipmentSlot.Items.AddRange(Options.EquipmentSlots.ToArray());
@@ -54,6 +56,7 @@ public partial class FrmItem : EditorForm
         mEditorItem = ItemBase.Get(id);
         UpdateEditor();
     }
+ 
 
     protected override void GameObjectUpdatedDelegate(GameObjectType type)
     {
@@ -448,6 +451,45 @@ public partial class FrmItem : EditorForm
             cmbUpgradeMaterial.SelectedIndex = ItemBase.ListIndex(mEditorItem.UpgradeMaterialId) + 1;
             cmbDamageType.SelectedIndex = mEditorItem.DamageType;
             cmbScalingStat.SelectedIndex = mEditorItem.ScalingStat;
+            // Actualizar `cmbSubType` según el tipo de ítem cargado
+            cmbSubType.Items.Clear();
+            cmbSubType.Enabled = false;
+
+            var itemType = mEditorItem.ItemType;
+
+            // Validar si es Equipment y WeaponSlot
+            if (itemType == ItemType.Equipment && mEditorItem.EquipmentSlot == Options.Equipment.WeaponSlot)
+            {
+                if (Strings.ItemEditor.SubtypesDynamic.TryGetValue(ItemType.Equipment, out var weaponSubtypes))
+                {
+                    cmbSubType.Items.AddRange(weaponSubtypes.ToArray());
+                    cmbSubType.Enabled = weaponSubtypes.Count > 0;
+                }
+            }
+            else
+            {
+                if (Strings.ItemEditor.SubtypesDynamic.TryGetValue(itemType, out var subtypes))
+                {
+                    cmbSubType.Items.AddRange(subtypes.ToArray());
+                    cmbSubType.Enabled = subtypes.Count > 0;
+                }
+            }
+
+            // Si el ítem tiene un subtipo válido, seleccionarlo
+            if (!string.IsNullOrWhiteSpace(mEditorItem.Subtype) && cmbSubType.Items.Contains(mEditorItem.Subtype))
+            {
+                cmbSubType.SelectedItem = mEditorItem.Subtype;
+            }
+            else if (cmbSubType.Items.Count > 0)
+            {
+                cmbSubType.SelectedIndex = 0;
+                mEditorItem.Subtype = cmbSubType.SelectedItem.ToString();
+            }
+            else
+            {
+                mEditorItem.Subtype = null;
+            }
+
 
             //External References
             cmbProjectile.SelectedIndex = ProjectileBase.ListIndex(mEditorItem.ProjectileId) + 1;
@@ -604,11 +646,48 @@ public partial class FrmItem : EditorForm
             lstEventTriggers.SelectedIndex = lastIndex;
         }
     }
-
     private void cmbType_SelectedIndexChanged(object sender, EventArgs e)
     {
         RefreshExtendedData();
+
+        var selectedType = (ItemType)cmbType.SelectedIndex;
+
+        cmbSubType.Items.Clear();
+        cmbSubType.Enabled = false;
+
+        // Validar si es Equipment y WeaponSlot
+        if (selectedType == ItemType.Equipment && cmbEquipmentSlot.SelectedIndex == Options.Equipment.WeaponSlot)
+        {
+            // Cargar subtipos dinámicos específicos para armas (si los hay)
+            if (Strings.ItemEditor.SubtypesDynamic.TryGetValue(ItemType.Equipment, out var weaponSubtypes))
+            {
+                cmbSubType.Items.Add("None");
+                cmbSubType.Items.AddRange(weaponSubtypes.ToArray());
+                cmbSubType.Enabled = weaponSubtypes.Count > 0;
+            }
+        }
+        else
+        {
+            // Para otros tipos como Resource, Consumable, etc.
+            if (Strings.ItemEditor.SubtypesDynamic.TryGetValue(selectedType, out var dynamicSubtypes))
+            {
+                cmbSubType.Items.Add("None");
+                cmbSubType.Items.AddRange(dynamicSubtypes.ToArray());
+                cmbSubType.Enabled = dynamicSubtypes.Count > 0;
+            }
+        }
+
+        // 🔥 Asignar subtipo actual o el primero por defecto
+        if (cmbSubType.Items.Count > 0)
+        {
+            cmbSubType.SelectedItem = mEditorItem.Subtype ?? cmbSubType.Items[0];
+        }
+        else
+        {
+            mEditorItem.Subtype = null;
+        }
     }
+
 
     private void txtName_TextChanged(object sender, EventArgs e)
     {
@@ -1587,5 +1666,13 @@ public partial class FrmItem : EditorForm
     {
         mEditorItem.UpgradeMaterialId = ItemBase.IdFromList(cmbUpgradeMaterial.SelectedIndex - 1);
     }
+    private void cmbSubType_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (cmbSubType.SelectedIndex >= 0)
+        {
+            mEditorItem.Subtype = cmbSubType.SelectedItem.ToString();
+        }
+    }
+
 
 }

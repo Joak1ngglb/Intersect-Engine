@@ -303,12 +303,17 @@ internal static class Bootstrapper
     {
         Console.Clear();
         Console.WriteLine();
-        Console.WriteLine(@"  _____       _                          _   ");
-        Console.WriteLine(@" |_   _|     | |                        | |  ");
-        Console.WriteLine(@"   | |  _ __ | |_ ___ _ __ ___  ___  ___| |_ ");
-        Console.WriteLine(@"   | | | '_ \| __/ _ \ '__/ __|/ _ \/ __| __|");
-        Console.WriteLine(@"  _| |_| | | | ||  __/ |  \__ \  __/ (__| |_ ");
-        Console.WriteLine(@" |_____|_| |_|\__\___|_|  |___/\___|\___|\__|");
+        Console.WriteLine(@" ____   ____    ___   _  __  _____   _   _ ");
+        Console.WriteLine(@"| __ ) |  _ \  / _ \ | |/ / | ____| | \ | |");
+        Console.WriteLine(@"|  _ \ | |_) || | | || ' /  |  _|   |  \| |");
+        Console.WriteLine(@"| |_) ||  _ < | |_| || . \  | |___  | |\  |");
+        Console.WriteLine(@"|____/ |_| \_\ \___/ |_|\_\ |_____| |_| \_|");
+        Console.WriteLine(@"                                           ");
+        Console.WriteLine(@" ____   ____   ___   ____     ____   _____ ");
+        Console.WriteLine(@"| __ ) |  _ \ |_ _| |  _ \   / ___| | ____|");
+        Console.WriteLine(@"|  _ \ | |_) | | |  | | | | | |  _  |  _|  ");
+        Console.WriteLine(@"| |_) ||  _ <  | |  | |_| | | |_| | | |___ ");
+        Console.WriteLine(@"|____/ |_| \_\|___| |____/   \____| |_____|");
         Console.WriteLine(Strings.Intro.Tagline);
         Console.WriteLine(@"Copyright (C) 2020 Ascension Game Dev");
         Console.WriteLine(Strings.Intro.Version.ToString(Assembly.GetExecutingAssembly().GetName().Version));

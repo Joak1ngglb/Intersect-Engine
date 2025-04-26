@@ -435,16 +435,18 @@ public class Item : IItem
 
         if (newLevel > currentLevel)
         {
+            double factor = 0.01;
             for (int lvl = currentLevel + 1; lvl <= newLevel; lvl++)
             {
-                double bonusFactor = 0.05 * lvl; // O 0.05 si prefieres 5%
                 int[] levelBonuses = new int[Enum.GetValues(typeof(Stat)).Length];
 
                 foreach (Stat stat in Enum.GetValues(typeof(Stat)))
                 {
                     var statIndex = (int)stat;
-                    int currentStatValue = Descriptor.StatsGiven[statIndex] + Properties.StatModifiers[statIndex];
-                    int bonus = (int)Math.Ceiling(currentStatValue * bonusFactor);
+                    int baseStat = Descriptor.StatsGiven[statIndex]; // Solo base
+
+                    double levelInfluence = Math.Log2(lvl + 1) + Math.Sqrt(lvl);
+                    int bonus = (int)Math.Ceiling(baseStat * factor * levelInfluence);
 
                     Properties.StatModifiers[statIndex] += bonus;
                     levelBonuses[statIndex] = bonus;
@@ -452,6 +454,8 @@ public class Item : IItem
 
                 Properties.EnchantmentRolls[lvl] = levelBonuses;
             }
+
+
         }
         else
         {

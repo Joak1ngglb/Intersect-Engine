@@ -31,7 +31,7 @@ public partial class FrmItem : EditorForm
     private List<string> mKnownCooldownGroups = new List<string>();
 
     private bool EffectValueUpdating = false;
- 
+
     public FrmItem()
     {
         ApplyHooks();
@@ -56,7 +56,7 @@ public partial class FrmItem : EditorForm
         mEditorItem = ItemBase.Get(id);
         UpdateEditor();
     }
- 
+
 
     protected override void GameObjectUpdatedDelegate(GameObjectType type)
     {
@@ -145,9 +145,7 @@ public partial class FrmItem : EditorForm
             element.Items.Add(Strings.General.None);
             element.Items.AddRange(events);
         }
-        cmbUpgradeMaterial.Items.Clear();
-        cmbUpgradeMaterial.Items.Add(Strings.General.None);
-        cmbUpgradeMaterial.Items.AddRange(ItemBase.Names);
+
         cmbMalePaperdoll.Items.Clear();
         cmbMalePaperdoll.Items.Add(Strings.General.None);
         cmbFemalePaperdoll.Items.Clear();
@@ -447,8 +445,8 @@ public partial class FrmItem : EditorForm
             {
                 DrawItemPaperdoll(Gender.Female);
             }
-            chkCanBeUpgraded.Checked = mEditorItem.CanBeEnchanted;
-            cmbUpgradeMaterial.SelectedIndex = ItemBase.ListIndex(mEditorItem.UpgradeMaterialId) + 1;
+            chkCanBeUpgraded.Checked = Convert.ToBoolean(mEditorItem.CanBeEnchanted);
+            nudSuccesRate.Value = (decimal)(mEditorItem.UpgradeMaterialSuccessRate * 100.0);
             cmbDamageType.SelectedIndex = mEditorItem.DamageType;
             cmbScalingStat.SelectedIndex = mEditorItem.ScalingStat;
             // Actualizar `cmbSubType` según el tipo de ítem cargado
@@ -523,7 +521,11 @@ public partial class FrmItem : EditorForm
         grpEquipment.Visible = false;
         grpEvent.Visible = false;
         grpBags.Visible = false;
+        grpEnchanting.Visible = false; // 🔥 Ocultar por defecto
+
         chkStackable.Enabled = true;
+        var selectedType = (ItemType)cmbType.SelectedIndex;
+        var selectedSubType = cmbSubType.SelectedItem?.ToString();
 
         if ((int)mEditorItem.ItemType != cmbType.SelectedIndex)
         {
@@ -572,10 +574,10 @@ public partial class FrmItem : EditorForm
 
             cmbEquipmentSlot.SelectedIndex = mEditorItem.EquipmentSlot;
 
-            // Whether this item type is stackable is not up for debate.
             chkStackable.Checked = false;
             chkStackable.Enabled = false;
-
+            chkCanBeUpgraded.Enabled = true;
+            chkCanBeUpgraded.Checked = true;
             RefreshBonusList();
             RefreshStatRangeList();
         }
@@ -596,7 +598,10 @@ public partial class FrmItem : EditorForm
             chkStackable.Checked = true;
             chkStackable.Enabled = false;
         }
-
+        else if (selectedType == ItemType.Resource && selectedSubType == "Rune")
+        {
+            grpEnchanting.Visible = true; // Mostrar grupo de runas y success rate
+        }
         mEditorItem.ItemType = (ItemType)cmbType.SelectedIndex;
 
         PopulateEventTriggerList();
@@ -1656,16 +1661,6 @@ public partial class FrmItem : EditorForm
     private void lblPlus9_Click(object sender, EventArgs e)
     {
     }
-
-    private void chkCanBeUpgraded_CheckedChanged(object sender, EventArgs e)
-    {
-        mEditorItem.CanBeEnchanted = chkCanBeUpgraded.Checked;
-    }
-
-    private void cmbUpgradeMaterial_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        mEditorItem.UpgradeMaterialId = ItemBase.IdFromList(cmbUpgradeMaterial.SelectedIndex - 1);
-    }
     private void cmbSubType_SelectedIndexChanged(object sender, EventArgs e)
     {
         if (cmbSubType.SelectedIndex >= 0)
@@ -1674,5 +1669,14 @@ public partial class FrmItem : EditorForm
         }
     }
 
+    private void nudSuccesRate_ValueChanged(object sender, EventArgs e)
+    {
+        // Corrige aquí:
+        mEditorItem.UpgradeMaterialSuccessRate = (double)nudSuccesRate.Value / 100.0;
+    }
 
+    private void chkCanBeUpgraded_CheckedChanged_1(object sender, EventArgs e)
+    {
+        mEditorItem.CanBeEnchanted = chkCanBeUpgraded.Checked;
+    }
 }

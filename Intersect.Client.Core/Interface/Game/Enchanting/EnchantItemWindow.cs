@@ -10,6 +10,7 @@ using Intersect.Client.Networking;
 using Intersect.Enums;
 using Intersect.Extensions;
 using Intersect.GameObjects;
+using Newtonsoft.Json.Linq;
 
 
 namespace Intersect.Client.Interface.Game.Enchanting
@@ -69,6 +70,7 @@ namespace Intersect.Client.Interface.Game.Enchanting
             mInventoryScroll = new ScrollControl(mEnchantWindow, "ItemContainer");
             mInventoryScroll.SetPosition(300, 20);
             mInventoryScroll.SetSize(260, 200);
+            mInventoryScroll.GetVerticalScrollBar();
             mInventoryScroll.EnableScroll(false, true);
 
             // Slot del ítem a encantar
@@ -157,17 +159,14 @@ namespace Intersect.Client.Interface.Game.Enchanting
             InitItemContainer();
      
         }
-       
         private void InitItemContainer()
         {
             Items.Clear();
             Values.Clear();
-            mInventoryScroll.DeleteAllChildren();
-
-            for (int i = 0; i < Options.MaxInvItems; i++)
+            for (var i = 0; i < Options.MaxInvItems; i++)
             {
                 Items.Add(new EnchantInventoryItem(this, i));
-                Items[i].Container = new ImagePanel(mInventoryScroll, "Enchanttem");
+                Items[i].Container = new ImagePanel(mInventoryScroll, "EnchantItem");
                 Items[i].Setup();
 
                 Values.Add(new Label(Items[i].Container, "InventoryItemValue"));
@@ -175,44 +174,17 @@ namespace Intersect.Client.Interface.Game.Enchanting
 
                 Items[i].Container.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
 
-                int xPadding = Items[i].Container.Margin.Left + Items[i].Container.Margin.Right;
-                int yPadding = Items[i].Container.Margin.Top + Items[i].Container.Margin.Bottom;
-
-                int containerWidth = Items[i].Container.Width + xPadding;
-                int containerHeight = Items[i].Container.Height + yPadding;
-                int scrollWidth = Math.Max(1, mInventoryScroll.Width); // Evita división por cero
-
-                int columns = Math.Max(1, scrollWidth / containerWidth); // Asegura al menos una columna
+                var xPadding = Items[i].Container.Margin.Left + Items[i].Container.Margin.Right;
+                var yPadding = Items[i].Container.Margin.Top + Items[i].Container.Margin.Bottom;
 
                 Items[i].Container.SetPosition(
-                    (i % columns) * containerWidth + xPadding,
-                    (i / columns) * containerHeight + yPadding
+                    i % (mInventoryScroll.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Width + xPadding) + xPadding,
+                    i / (mInventoryScroll.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Height + yPadding) + yPadding
                 );
-
-                // Captura segura del índice
-                int index = i;
-
-                Items[index].Container.Clicked += (sender, args) =>
-                {
-                    var selectedItem = Globals.Me.Inventory[index];
-
-                    if (selectedItem != null)
-                    {
-                        mSelectedItem = (Item)selectedItem;
-                        SelectItem((Item)selectedItem);
-                    }
-                };
-
-                Items[index].Container.RightClicked += (sender, args) =>
-                {
-                    var selectedItem = Globals.Me.Inventory[index];
-                    if (selectedItem != null)
-                    {
-                        SelectCurrencyItem((Item)selectedItem);
-                    }
-                };
             }
+
         }
+   
 
         public void SelectItem(Item item)
         {
@@ -243,11 +215,12 @@ namespace Intersect.Client.Interface.Game.Enchanting
             // Actualizar el icono en el slot de currency
             var itemTexture = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, item.Base.Icon);
             mCurrencySlot.Texture = itemTexture ?? Graphics.Renderer.GetWhiteTexture();
+
         }
 
         public void UpdateProjection()
         {
-            if (mSelectedItem == null || mSelectedItem.Base == null)
+            if (mSelectedItem == null || mSelectedItem.Base == null || mSelectedItem.ItemProperties == null || mSelectedCurrency == null)
             {
                 mProjectionContainer.Hide();
                 return;
@@ -257,16 +230,18 @@ namespace Intersect.Client.Interface.Game.Enchanting
             {
                 mProjectionContainer.RemoveChild(child, true);
             }
+
             mProjectionContainer.Show();
 
             var projectedLevel = mSelectedItem.ItemProperties.EnchantmentLevel + 1;
-            var successRate = mSelectedItem.Base.GetUpgradeSuccessRate(projectedLevel);
-            var upgradeCost = mSelectedItem.Base.GetUpgradeCost(projectedLevel); // Supuesto método para obtener costo
+            var successRate = mSelectedCurrency.Base.UpgradeMaterialSuccessRate;
+            var upgradeCost = mSelectedItem.Base.GetUpgradeMaterialAmount(projectedLevel);
 
             int yOffset = 0;
             int spacing = 25;
             int labelWidth = 240;
             int labelHeight = 20;
+
             // Nivel Actual
             lblCurrentLevel = new Label(mProjectionContainer, "CurrentLevelLabel")
             {
@@ -317,38 +292,27 @@ namespace Intersect.Client.Interface.Game.Enchanting
             lblCost.FontName = "sourcesansproblack";
             lblCost.FontSize = 10;
 
-            yOffset += spacing;
-
-
             yOffset += spacing * 2;
 
+            // Proyección de Stats usando la fórmula combinada
             for (var i = 0; i < Enum.GetValues<Stat>().Length; i++)
             {
                 var statName = Strings.ItemDescription.StatCounts[i];
                 int baseStat = mSelectedItem.Base.StatsGiven[i];
-                int modStat = mSelectedItem.ItemProperties?.StatModifiers[i] ?? 0;
-                int currentStat = baseStat + modStat;
+                int currentStat = baseStat + (mSelectedItem.ItemProperties?.StatModifiers[i] ?? 0);
 
-                int projectedStat = currentStat;
+                double bonusFactor = 0.025;
+                double levelFactor = Math.Log(projectedLevel + 1) / Math.Log(2); // Más controlado
 
-           
-                double bonusFactor = 0.05;
-
-                for (int lvl = mSelectedItem.ItemProperties.EnchantmentLevel + 1; lvl <= projectedLevel; lvl++)
-                {
-                    int bonus = (int)Math.Ceiling(projectedStat * bonusFactor);
-                    projectedStat += bonus;
-
-                    // Solo simulación visual, no modificar EnchantmentRolls reales si no es necesario
-                }
+                int bonus = (int)Math.Ceiling(baseStat * bonusFactor * levelFactor);
+                int projectedStat = currentStat + bonus;
 
                 if (currentStat == 0 && projectedStat == 0)
                 {
                     continue;
                 }
 
-                var statColor = projectedStat > currentStat ? Color.Green :
-                                (projectedStat < currentStat ? Color.Red : Color.White);
+                var statColor = projectedStat > currentStat ? Color.Green : Color.White;
 
                 var lblStat = new Label(mProjectionContainer, $"StatLabel_{i}")
                 {
@@ -364,7 +328,6 @@ namespace Intersect.Client.Interface.Game.Enchanting
             }
 
             mProjectionContainer.SizeToChildren(true, true);
-
         }
 
         /* public void SelectRateBoostItem(Item item)
@@ -452,13 +415,13 @@ namespace Intersect.Client.Interface.Game.Enchanting
             // Obtener datos necesarios
             var currencyId = mSelectedCurrency.ItemId; // Usar ItemId para la moneda
             var targetLevel = mSelectedItem.EnchantmentLevel + 1;
-            var currencyAmount = mSelectedItem.Base.GetUpgradeCost(targetLevel);
+            var currencyAmount = mSelectedItem.Base.GetUpgradeMaterialAmount(targetLevel);
             var useAmulet = mUseAmuletCheckbox.IsChecked;
 
             // Validar nivel máximo de encantamiento
             if (targetLevel > 10)
             {
-                PacketSender.SendChatMsg("Item is already at max enchantment level.", 4);
+                PacketSender.SendChatMsg("Item is already at max enchantment level.", 5);
                 return;
             }
 

@@ -346,9 +346,22 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
     {
         AddDivider();
         var rows = AddRowContainer();
-        rows.AddKeyValueRow("Resource Info", mItem.Subtype ?? "Generic resource.");
+
+        // Mostrar el subtipo siempre
+        rows.AddKeyValueRow("Tipo de Recurso", mItem.Subtype ?? "Genérico");
+
+        // Si es una Runa, mostrar detalles especiales
+        if (mItem.Subtype == "Rune")
+        {
+            // Mostrar directamente como valor sin multiplicar por 100
+            var successRate = mItem.UpgradeMaterialSuccessRate;
+            rows.AddKeyValueRow("Tasa de Éxito", $"{successRate * 100 :0.##}%", CustomColors.ItemDesc.Muted, Color.White);
+        }
+
+
         rows.SizeToChildren(true, true);
     }
+
 
     protected void SetupExtraInfo()
     {

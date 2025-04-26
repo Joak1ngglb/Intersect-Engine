@@ -406,20 +406,19 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
             range.Validate();
         }
     }
-    [NotMapped]
+ 
     [JsonProperty("canBeEnchanted")]
     public bool CanBeEnchanted { get; set; }
     [NotMapped]
-    [JsonProperty("upgradeMaterialId")]
-    public Guid UpgradeMaterialId { get; set; }
-    public int GetUpgradeCost(int level)
-    {
-        return level * 100; // Ejemplo: costo incremental
-    }
+    [JsonProperty("upgradeMaterialAmountPerLevel")]
+    public int UpgradeMaterialAmountPerLevel { get; set; } = 1;
+       
+    [JsonProperty("upgradeMaterialSuccessRate")]
+    public double UpgradeMaterialSuccessRate { get; set; } = 1.0;
 
-    public double GetUpgradeSuccessRate(int level)
+    public int GetUpgradeMaterialAmount(int targetLevel)
     {
-        return Math.Max(0.1, 1.0 - (0.1 * level)); // Probabilidad decreciente
+        return UpgradeMaterialAmountPerLevel * targetLevel;
     }
     public int GetEffectPercentage(ItemEffect type)
     {
@@ -444,19 +443,7 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
        
     public string Subtype { get; set; } = string.Empty;
 
-    public void SetSubtype(string subtype)
-    {
-        if (Intersect.Options.Instance.Items.GetSubtypesFor(ItemType).Contains(subtype))
-        {
-            Subtype = subtype;
-        }
-        else
-        {
-            throw new Exception($"Invalid subtype '{subtype}' for type '{ItemType}'");
-        }
-    }
-
-    /// <inheritdoc />
+      /// <inheritdoc />
     public string Folder { get; set; } = "";
 
     /// <summary>

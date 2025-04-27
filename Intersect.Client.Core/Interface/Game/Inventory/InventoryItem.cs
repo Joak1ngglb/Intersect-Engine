@@ -59,40 +59,32 @@ public partial class InventoryItem
     private int mMouseX = -1;
 
     private int mMouseY = -1;
-
-    //Slot info
-    private int mMySlot;
+    public int DisplaySlot { get; set; } // Slot real dinámico
 
     private string mTexLoaded = "";
 
     public ImagePanel Pnl;
     private SendMailBoxWindow mSendMailBoxWindow;
     private SellMarketWindow mSellMarketWindow;
-    private EnchantItemWindow mEnchantItemWindow;
+
    
 
     public InventoryItem(InventoryWindow inventoryWindow, int index)
     {
         mInventoryWindow = inventoryWindow;
-        mMySlot = index;
+        DisplaySlot = index;
     }
 
     public InventoryItem(SendMailBoxWindow sendMailBoxWindow, int index)
     {
        mSendMailBoxWindow = sendMailBoxWindow;
-        mMySlot = index;
+        DisplaySlot = index;
     }
 
     public InventoryItem(SellMarketWindow sellMarketWindow, int index)
     {
         mSellMarketWindow = sellMarketWindow;
-        mMySlot = index;
-    }
-
-    public InventoryItem(EnchantItemWindow enchantItemWindow, int index)
-    {
-       mEnchantItemWindow = enchantItemWindow;
-        mMySlot = index;
+        DisplaySlot = index;
     }
 
     public void Setup()
@@ -118,43 +110,32 @@ public partial class InventoryItem
     {
         if (mSendMailBoxWindow != null)
         {
-            mSendMailBoxWindow.SelectItem(mSendMailBoxWindow.Items[mMySlot], mMySlot);
+            mSendMailBoxWindow.SelectItem(mSendMailBoxWindow.Items[DisplaySlot], DisplaySlot);
         }
         if (mSellMarketWindow != null)
         {
-            mSellMarketWindow.SelectItem(mSellMarketWindow.Items[mMySlot], mMySlot);
+            mSellMarketWindow.SelectItem(mSellMarketWindow.Items[DisplaySlot], DisplaySlot);
+            mSellMarketWindow.UpdateSuggestedPrice(mCurrentItemId);
         }
-        if (mEnchantItemWindow != null)
-        {
-            if (Globals.Me == null || Globals.Me.Inventory == null || mMySlot < 0 || mMySlot >= Globals.Me.Inventory.Length)
-            {
-                return; // Salir si el inventario no está configurado o el índice es inválido
-            }
-
-            var item = Globals.Me.Inventory[mMySlot];
-            if (item?.Base != null)
-            {
-                mEnchantItemWindow.SelectCurrencyItem((Items.Item)item);// Notificar a la ventana que se ha seleccionado un ítem
-            }
-        }
+      
         else if (Globals.GameShop != null)
         {
-            Globals.Me.TrySellItem(mMySlot);
+            Globals.Me.TrySellItem(DisplaySlot);
         }
         else if (Globals.InBank)
         {
             if (Globals.InputManager.KeyDown(Keys.Shift))
             {
                 Globals.Me.TryDepositItem(
-                    mMySlot,
+                    DisplaySlot,
                     skipPrompt: true
                 );
             }
             else
             {
-                var slot = Globals.Me.Inventory[mMySlot];
+                var slot = Globals.Me.Inventory[DisplaySlot];
                 Globals.Me.TryDepositItem(
-                    mMySlot,
+                    DisplaySlot,
                     slot,
                     quantityHint: slot.Quantity,
                     skipPrompt: false
@@ -163,33 +144,20 @@ public partial class InventoryItem
         }
         else if (Globals.InBag)
         {
-            Globals.Me.TryStoreBagItem(mMySlot, -1);
+            Globals.Me.TryStoreBagItem(DisplaySlot, -1);
         }
         else if (Globals.InTrade)
         {
-            Globals.Me.TryTradeItem(mMySlot);
+            Globals.Me.TryTradeItem(DisplaySlot);
         }
         else
         {
-            Globals.Me.TryUseItem(mMySlot);
+            Globals.Me.TryUseItem(DisplaySlot);
         }
     }
 
     void pnl_Clicked(Base sender, ClickedEventArgs arguments)
-    {
-        if (mEnchantItemWindow != null)
-        {
-            if (Globals.Me == null || Globals.Me.Inventory == null || mMySlot < 0 || mMySlot >= Globals.Me.Inventory.Length)
-            {
-                return; // Salir si el inventario no está configurado o el índice es inválido
-            }
-
-            var item = Globals.Me.Inventory[mMySlot];
-            if (item?.Base != null)
-            {
-                mEnchantItemWindow.SelectItem((Items.Item)item); // Notificar a la ventana que se ha seleccionado un ítem
-            }
-        }
+    {       
         mClickTime = Timing.Global.MillisecondsUtc + 500;
     }
 
@@ -198,29 +166,29 @@ public partial class InventoryItem
        
         if (ClientConfiguration.Instance.EnableContextMenus)
         {
-            mInventoryWindow.OpenContextMenu(mMySlot);
+            mInventoryWindow.OpenContextMenu(DisplaySlot);
         }
         else
         {
             if (Globals.GameShop != null)
             {
-                Globals.Me.TrySellItem(mMySlot);
+                Globals.Me.TrySellItem(DisplaySlot);
             }
             else if (Globals.InBank)
             {
-                Globals.Me.TryDepositItem(mMySlot);
+                Globals.Me.TryDepositItem(DisplaySlot);
             }
             else if (Globals.InBag)
             {
-                Globals.Me.TryStoreBagItem(mMySlot, -1);
+                Globals.Me.TryStoreBagItem(DisplaySlot, -1);
             }
             else if (Globals.InTrade)
             {
-                Globals.Me.TryTradeItem(mMySlot);
+                Globals.Me.TryTradeItem(DisplaySlot);
             }
             else
             {
-                Globals.Me.TryDropItem(mMySlot);
+                Globals.Me.TryDropItem(DisplaySlot);
             }
         }
     }
@@ -258,34 +226,10 @@ public partial class InventoryItem
             mDescWindow.Dispose();
             mDescWindow = null;
         }
-        if (mEnchantItemWindow != null)
-        {
-            var inventorySlot = Globals.Me.Inventory[mMySlot];
-            if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
-            {
-                return;
-            }
-
-            var itemBase = ItemBase.Get(inventorySlot.ItemId);
-            if (itemBase == null)
-            {
-                return;
-            }
-
-            mDescWindow = new ItemDescriptionWindow(
-                itemBase,
-                inventorySlot.Quantity,
-                mEnchantItemWindow.X,
-                mEnchantItemWindow.Y,
-                inventorySlot.ItemProperties
-            );
-
-            return;
-        }
-
+       
         if (mSellMarketWindow != null)
         {
-            var inventorySlot = Globals.Me.Inventory[mMySlot];
+            var inventorySlot = Globals.Me.Inventory[DisplaySlot];
             if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
             {
                 return;
@@ -311,7 +255,7 @@ public partial class InventoryItem
         // 🔍 Nueva verificación: Si el ítem pertenece a SendMailBoxWindow
         if (mSendMailBoxWindow != null)
         {
-            var inventorySlot = Globals.Me.Inventory[mMySlot];
+            var inventorySlot = Globals.Me.Inventory[DisplaySlot];
             if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
             {
                 return;
@@ -338,20 +282,20 @@ public partial class InventoryItem
         // 🛒 Lógica normal para la tienda o inventario
         if (Globals.GameShop == null)
         {
-            if (Globals.Me.Inventory[mMySlot]?.Base != null)
+            if (Globals.Me.Inventory[DisplaySlot]?.Base != null)
             {
                 mDescWindow = new ItemDescriptionWindow(
-                    Globals.Me.Inventory[mMySlot].Base,
-                    Globals.Me.Inventory[mMySlot].Quantity,
+                    Globals.Me.Inventory[DisplaySlot].Base,
+                    Globals.Me.Inventory[DisplaySlot].Quantity,
                     mInventoryWindow.X,
                     mInventoryWindow.Y,
-                    Globals.Me.Inventory[mMySlot].ItemProperties
+                    Globals.Me.Inventory[DisplaySlot].ItemProperties
                 );
             }
         }
         else
         {
-            var invItem = Globals.Me.Inventory[mMySlot];
+            var invItem = Globals.Me.Inventory[DisplaySlot];
             ShopItem shopItem = null;
             for (var i = 0; i < Globals.GameShop.BuyingItems.Count; i++)
             {
@@ -367,14 +311,14 @@ public partial class InventoryItem
             if (Globals.GameShop.BuyingWhitelist && shopItem != null)
             {
                 var hoveredItem = ItemBase.Get(shopItem.CostItemId);
-                if (hoveredItem != null && Globals.Me.Inventory[mMySlot]?.Base != null)
+                if (hoveredItem != null && Globals.Me.Inventory[DisplaySlot]?.Base != null)
                 {
                     mDescWindow = new ItemDescriptionWindow(
-                        Globals.Me.Inventory[mMySlot].Base,
-                        Globals.Me.Inventory[mMySlot].Quantity,
+                        Globals.Me.Inventory[DisplaySlot].Base,
+                        Globals.Me.Inventory[DisplaySlot].Quantity,
                         mInventoryWindow.X,
                         mInventoryWindow.Y,
-                        Globals.Me.Inventory[mMySlot].ItemProperties,
+                        Globals.Me.Inventory[DisplaySlot].ItemProperties,
                         "",
                         Strings.Shop.SellsFor.ToString(shopItem.CostItemQuantity, hoveredItem.Name)
                     );
@@ -383,14 +327,14 @@ public partial class InventoryItem
             else if (shopItem == null)
             {
                 var costItem = Globals.GameShop.DefaultCurrency;
-                if (invItem.Base != null && costItem != null && Globals.Me.Inventory[mMySlot]?.Base != null)
+                if (invItem.Base != null && costItem != null && Globals.Me.Inventory[DisplaySlot]?.Base != null)
                 {
                     mDescWindow = new ItemDescriptionWindow(
-                        Globals.Me.Inventory[mMySlot].Base,
-                        Globals.Me.Inventory[mMySlot].Quantity,
+                        Globals.Me.Inventory[DisplaySlot].Base,
+                        Globals.Me.Inventory[DisplaySlot].Quantity,
                         mInventoryWindow.X,
                         mInventoryWindow.Y,
-                        Globals.Me.Inventory[mMySlot].ItemProperties,
+                        Globals.Me.Inventory[DisplaySlot].ItemProperties,
                         "",
                         Strings.Shop.SellsFor.ToString(invItem.Base.Price.ToString(), costItem.Name)
                     );
@@ -432,7 +376,7 @@ public partial class InventoryItem
         var equipped = false;
         for (var i = 0; i < Options.EquipmentSlots.Count; i++)
         {
-            if (Globals.Me.MyEquipment[i] == mMySlot)
+            if (Globals.Me.MyEquipment[i] == DisplaySlot)
             {
                 equipped = true;
 
@@ -440,7 +384,7 @@ public partial class InventoryItem
             }
         }
 
-        var item = ItemBase.Get(Globals.Me.Inventory[mMySlot].ItemId);
+        var item = ItemBase.Get(Globals.Me.Inventory[DisplaySlot].ItemId);
 
         if (item != null)
         {
@@ -454,16 +398,16 @@ public partial class InventoryItem
                 Container.RenderColor = Color.White; // Color por defecto si no se encuentra la rareza
             }
         }
-        if (Globals.Me.Inventory[mMySlot].ItemId != mCurrentItemId ||
-            Globals.Me.Inventory[mMySlot].Quantity != mCurrentAmt ||
+        if (Globals.Me.Inventory[DisplaySlot].ItemId != mCurrentItemId ||
+            Globals.Me.Inventory[DisplaySlot].Quantity != mCurrentAmt ||
             equipped != mIsEquipped ||
             item == null && mTexLoaded != "" ||
             item != null && mTexLoaded != item.Icon ||
-            mIconCd != Globals.Me.IsItemOnCooldown(mMySlot) ||
-            Globals.Me.IsItemOnCooldown(mMySlot))
+            mIconCd != Globals.Me.IsItemOnCooldown(DisplaySlot) ||
+            Globals.Me.IsItemOnCooldown(DisplaySlot))
         {
-            mCurrentItemId = Globals.Me.Inventory[mMySlot].ItemId;
-            mCurrentAmt = Globals.Me.Inventory[mMySlot].Quantity;
+            mCurrentItemId = Globals.Me.Inventory[DisplaySlot].ItemId;
+            mCurrentAmt = Globals.Me.Inventory[DisplaySlot].Quantity;
             mIsEquipped = equipped;
             EquipPanel.IsHidden = !mIsEquipped;
             EquipLabel.IsHidden = !mIsEquipped;
@@ -474,7 +418,7 @@ public partial class InventoryItem
                 if (itemTex != null)
                 {
                     Pnl.Texture = itemTex;
-                    if (Globals.Me.IsItemOnCooldown(mMySlot))
+                    if (Globals.Me.IsItemOnCooldown(DisplaySlot))
                     {
                         Pnl.RenderColor = new Color(100, item.Color.R, item.Color.G, item.Color.B);
                     }
@@ -492,10 +436,10 @@ public partial class InventoryItem
                 }
 
                 mTexLoaded = item.Icon;
-                mIconCd = Globals.Me.IsItemOnCooldown(mMySlot);
+                mIconCd = Globals.Me.IsItemOnCooldown(DisplaySlot);
                 if (mIconCd)
                 {
-                    var itemCooldownRemaining = Globals.Me.GetItemRemainingCooldown(mMySlot);
+                    var itemCooldownRemaining = Globals.Me.GetItemRemainingCooldown(DisplaySlot);
                     mCooldownLabel.IsHidden = false;
                     mCooldownLabel.Text = TimeSpan.FromMilliseconds(itemCooldownRemaining).WithSuffix("0.0");
                 }
@@ -598,14 +542,21 @@ public partial class InventoryItem
                             }
                         }
                     }
-
-                    if (bestIntersectIndex > -1)
+                    if (DisplaySlot != bestIntersectIndex)
                     {
-                        if (mMySlot != bestIntersectIndex)
-                        {
-                            Globals.Me.SwapItems(mMySlot, bestIntersectIndex);
-                        }
+                        Globals.Me.SwapItems(DisplaySlot, bestIntersectIndex);
+
+                        // 🔥 Refrescar color incluso si queda vacío
+                        var item1 = mInventoryWindow.Items.FirstOrDefault(x => x.DisplaySlot == DisplaySlot);
+                        item1?.RefreshContainerColor();
+
+                        var item2 = mInventoryWindow.Items.FirstOrDefault(x => x.DisplaySlot == bestIntersectIndex);
+                        item2?.RefreshContainerColor();
+                        item1?.Update();
+                        item2?.Update();
+
                     }
+
                 }
                 else if (Interface.GameUi.Hotbar.RenderBounds().IntersectsWith(dragRect))
                 {
@@ -634,7 +585,7 @@ public partial class InventoryItem
 
                     if (bestIntersectIndex > -1)
                     {
-                        Globals.Me.AddToHotbar((byte) bestIntersectIndex, 0, mMySlot);
+                        Globals.Me.AddToHotbar((byte) bestIntersectIndex, 0, DisplaySlot);
                     }
                 }
                 else if (Globals.InBag)
@@ -661,7 +612,7 @@ public partial class InventoryItem
 
                         if (bestIntersectIndex > -1)
                         {
-                            Globals.Me.TryStoreBagItem(mMySlot, bestIntersectIndex);
+                            Globals.Me.TryStoreBagItem(DisplaySlot, bestIntersectIndex);
                         }
                     }
                 }
@@ -689,9 +640,9 @@ public partial class InventoryItem
 
                         if (bestIntersectIndex > -1)
                         {
-                            var slot = Globals.Me.Inventory[mMySlot];
+                            var slot = Globals.Me.Inventory[DisplaySlot];
                             Globals.Me.TryDepositItem(
-                                mMySlot,
+                                DisplaySlot,
                                 bankSlotIndex: bestIntersectIndex,
                                 quantityHint: slot.Quantity,
                                 skipPrompt: true
@@ -701,30 +652,36 @@ public partial class InventoryItem
                 }
                 else if (!Globals.Me.IsBusy)
                 {
-                    PacketSender.SendDropItem(mMySlot, Globals.Me.Inventory[mMySlot].Quantity);
+                    PacketSender.SendDropItem(DisplaySlot, Globals.Me.Inventory[DisplaySlot].Quantity);
                 }
 
                 mDragIcon.Dispose();
             }
         }
     }
-    public static int GetItemRarity(ItemBase item)
+    public void RefreshContainerColor()
     {
-        if (item == null)
-        {
-            return 0; // Rarity None
-        }
+        var inventorySlot = Globals.Me.Inventory[DisplaySlot];
 
-        return Math.Max(0, Math.Min(item.Rarity, Options.Instance.Items.RarityTiers.Count - 1));
-    }
-    public static Color GetRarityColor(int rarity)
-    {
-        if (CustomColors.Items.Rarities.TryGetValue(rarity, out Color rarityColor))
+        if (inventorySlot != null && inventorySlot.ItemId != Guid.Empty)
         {
-            return rarityColor;
-        }
+            var item = ItemBase.Get(inventorySlot.ItemId);
 
-        return Color.White; // Color por defecto si no se encuentra la rareza
+            if (item != null && CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+            {
+                Container.RenderColor = rarityColor;
+            }
+            else
+            {
+                Container.RenderColor = Color.White;
+            }
+        }
+        else
+        {
+            // Slot vacío = sin ítem
+            Container.RenderColor = Color.White;
+        }
     }
+
 
 }

@@ -3,9 +3,11 @@ using Intersect.Client.Core;
 using Intersect.Client.Framework.File_Management;
 using Intersect.Client.Framework.GenericClasses;
 using Intersect.Client.Framework.Gwen.Control;
+using Intersect.Client.Framework.Items;
 using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Bank;
 using Intersect.Client.Localization;
+using Intersect.Client.Networking;
 using Intersect.Enums;
 using Intersect.GameObjects;
 
@@ -42,7 +44,8 @@ public partial class InventoryWindow
     private ComboBox mTypeFilterBox;
     private ComboBox mSubTypeFilterBox;
     private Button mClearFiltersButton;
-
+    private bool mIsSortedView = false; // FALSE = vista normal, TRUE = vista ordenada
+    private Button mSortButton; // Nuevo botón
     private string mCurrentSearch = "";
     private ItemType? mCurrentTypeFilter = null;
     private string mCurrentSubTypeFilter = null;
@@ -59,13 +62,13 @@ public partial class InventoryWindow
         mSearchBox.TextChanged += (sender, args) =>
         {
             mCurrentSearch = mSearchBox.Text;
-           Update(); // O llama directamente a Update si lo prefieres
+            Update(); // O llama directamente a Update si lo prefieres
         };
-
-        Interface.InputBlockingElements.Add(mSearchBox);
+        mSearchBox.Focus();
+        Interface.FocusElements.Add(mSearchBox);
         // 🧹 Botón Limpiar Filtros
         mClearFiltersButton = new Button(mInventoryWindow, "ClearFiltersButton");
-        mClearFiltersButton.SetBounds(270, 10, 100, 30);
+        mClearFiltersButton.SetBounds(250, 10, 50, 30);
         mClearFiltersButton.Text = "Limpiar";
         mClearFiltersButton.Clicked += (sender, args) =>
         {
@@ -75,16 +78,28 @@ public partial class InventoryWindow
 
             mCurrentSearch = "";
             mCurrentTypeFilter = null;
-            mCurrentSubTypeFilter = null;        
+            mCurrentSubTypeFilter = null;
+            mIsSortedView = false;
+
+            Update(); // 👈 Esto ya lo haces
         };
 
+        // Dentro del constructor
+        mSortButton = new Button(mInventoryWindow, "SortButton");
+        mSortButton.SetBounds(300, 10, 50, 30);
+        mSortButton.Text = "Sort";
+        mSortButton.Clicked += (sender, args) =>
+        {
+            //  mIsSortedView = true; // Activa la vista ordenada
+            SortAndApplyInventory();
+        };
         // 📂 Filtro por Tipo
         mTypeFilterBox = new ComboBox(mInventoryWindow, "InventoryTypeFilter");
         mTypeFilterBox.SetBounds(10, 50, 180, 30);
         mTypeFilterBox.AddItem("Todos", null);
         mTypeFilterBox.ItemSelected += (sender, args) =>
         {
-            mCurrentTypeFilter = (ItemType?)args.SelectedItem.UserData; 
+            mCurrentTypeFilter = (ItemType?)args.SelectedItem.UserData;
             Update();
         };
 
@@ -94,7 +109,7 @@ public partial class InventoryWindow
         mSubTypeFilterBox.AddItem("Todos", null);
         mSubTypeFilterBox.ItemSelected += (sender, args) =>
         {
-            mCurrentSubTypeFilter = args.SelectedItem.UserData?.ToString();     
+            mCurrentSubTypeFilter = args.SelectedItem.UserData?.ToString();
             Update();
         };
 
@@ -169,7 +184,7 @@ public partial class InventoryWindow
                 {
                     mUseItemContextItem.SetText(Strings.ItemContextMenu.Equip.ToString(item.Name));
                 }
-                
+
                 break;
         }
 
@@ -242,11 +257,10 @@ public partial class InventoryWindow
 
     private void MDropItemContextItem_Clicked(Base sender, Framework.Gwen.Control.EventArguments.ClickedEventArgs arguments)
     {
-        var slot = (int) sender.Parent.UserData;
+        var slot = (int)sender.Parent.UserData;
         Globals.Me.TryDropItem(slot);
     }
 
-    //Location
     //Location
     public int X => mInventoryWindow.X;
 
@@ -265,71 +279,108 @@ public partial class InventoryWindow
         {
             return;
         }
+
         if (Items.Count != Options.MaxInvItems || mValues.Count != Options.MaxInvItems)
         {
-            InitItemContainer(); // Re-sincronizar listas
+            InitItemContainer();
         }
+
         mInventoryWindow.IsClosable = Globals.CanCloseInventory;
 
-        for (var i = 0; i < Options.MaxInvItems; i++)
-        {
-            var inventorySlot = Globals.Me.Inventory[i];
-            if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
-            {
-                // Si el slot es nulo o no tiene un ítem, oculta el panel
-                Items[i].Pnl.IsHidden = true;
-                mValues[i].IsHidden = true;
-                continue;
-            }
+        var isFiltering = !string.IsNullOrEmpty(mCurrentSearch) || mCurrentTypeFilter != null || !string.IsNullOrEmpty(mCurrentSubTypeFilter);
 
-            var item = ItemBase.Get(inventorySlot.ItemId);
-            if (item != null)
+        if (!isFiltering)
+        {
+            // 🔄 Modo FÍSICO como antes, y reconstruir TODO
+            for (var i = 0; i < Options.MaxInvItems; i++)
             {
-                if (!SearchHelper.IsSearchable(item, mCurrentSearch, mCurrentTypeFilter, mCurrentSubTypeFilter))
+                var inventorySlot = Globals.Me.Inventory[i];
+                if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
                 {
                     Items[i].Pnl.IsHidden = true;
                     mValues[i].IsHidden = true;
                     continue;
                 }
-              
-                Items[i].Pnl.IsHidden = false;
 
-                // Aplicar color de rareza
-                if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+                var item = ItemBase.Get(inventorySlot.ItemId);
+                if (item != null)
                 {
-                    Items[i].Container.RenderColor = rarityColor;
-
+                    Items[i].Pnl.IsHidden = false;
+                    Items[i].DisplaySlot = i; // 👈 Reafirma el slot físico real
+                    RenderItem(i, item, inventorySlot);
                 }
                 else
-                {
-                    Items[i].Container.RenderColor = Color.White;
-                }
-
-                if (item.IsStackable)
-                {
-                    mValues[i].IsHidden = inventorySlot.Quantity <= 1;
-                    mValues[i].Text = Strings.FormatQuantityAbbreviated(inventorySlot.Quantity);
-                }
-                else
-                {
-                    mValues[i].IsHidden = true;
-                }
-
-                if (Items[i].IsDragging)
                 {
                     Items[i].Pnl.IsHidden = true;
                     mValues[i].IsHidden = true;
                 }
-
-                Items[i].Update();
-            }
-            else
-            {
-                Items[i].Pnl.IsHidden = true;
-                mValues[i].IsHidden = true;
             }
         }
 
+        else
+        {
+            // 🔄 Modo visual ORDENADO al buscar/filtrar
+            var visibleItems = Globals.Me.Inventory
+                .Select((slot, index) => new { Slot = slot, Index = index, ItemBase = ItemBase.Get(slot.ItemId) })
+                .Where(x => x.Slot != null && x.ItemBase != null)
+                .Where(x => SearchHelper.IsSearchable(x.ItemBase, mCurrentSearch, mCurrentTypeFilter, mCurrentSubTypeFilter))
+                .OrderByDescending(x => GetItemRelevance(x.ItemBase, mCurrentSearch))
+                .ThenByDescending(x => x.ItemBase.Rarity)
+                .ThenByDescending(x => x.Slot.Quantity)
+                .ToList();
+
+            for (int visualIndex = 0; visualIndex < Items.Count; visualIndex++)
+            {
+                if (visualIndex < visibleItems.Count)
+                {
+                    var entry = visibleItems[visualIndex];
+                    var item = entry.ItemBase;
+                    var inventorySlot = entry.Slot;
+
+                    var visualItem = Items[visualIndex];
+                    visualItem.Pnl.IsHidden = false;
+                    visualItem.DisplaySlot = entry.Index;
+
+                    RenderItem(visualIndex, item, inventorySlot);
+                }
+                else
+                {
+                    Items[visualIndex].Pnl.IsHidden = true;
+                    mValues[visualIndex].IsHidden = true;
+                }
+            }
+        }
+    }
+
+    // 📦 Render común
+    private void RenderItem(int index, ItemBase item, IItem inventorySlot)
+    {
+        if (CustomColors.Items.Rarities.TryGetValue(item.Rarity, out var rarityColor))
+        {
+            Items[index].Container.RenderColor = rarityColor;
+        }
+        else
+        {
+            Items[index].Container.RenderColor = Color.White;
+        }
+
+        if (item.IsStackable)
+        {
+            mValues[index].IsHidden = inventorySlot.Quantity <= 1;
+            mValues[index].Text = Strings.FormatQuantityAbbreviated(inventorySlot.Quantity);
+        }
+        else
+        {
+            mValues[index].IsHidden = true;
+        }
+
+        if (Items[index].IsDragging)
+        {
+            Items[index].Pnl.IsHidden = true;
+            mValues[index].IsHidden = true;
+        }
+        Items[index].RefreshContainerColor();
+        Items[index].Update();
     }
 
     private void InitItemContainer()
@@ -388,18 +439,22 @@ public partial class InventoryWindow
 
     public FloatRect RenderBounds()
     {
-        var rect = new FloatRect()
+        if (Items.Count == 0)
         {
-            X = mInventoryWindow.LocalPosToCanvas(new Point(0, 0)).X -
-                (Items[0].Container.Padding.Left + Items[0].Container.Padding.Right) / 2,
-            Y = mInventoryWindow.LocalPosToCanvas(new Point(0, 0)).Y -
-                (Items[0].Container.Padding.Top + Items[0].Container.Padding.Bottom) / 2,
-            Width = mInventoryWindow.Width + Items[0].Container.Padding.Left + Items[0].Container.Padding.Right,
-            Height = mInventoryWindow.Height + Items[0].Container.Padding.Top + Items[0].Container.Padding.Bottom
-        };
+            return new FloatRect(mInventoryWindow.X, mInventoryWindow.Y, mInventoryWindow.Width, mInventoryWindow.Height);
+        }
 
-        return rect;
+        var padding = Items[0].Container.Padding;
+
+        return new FloatRect
+        {
+            X = mInventoryWindow.LocalPosToCanvas(new Point(0, 0)).X - (padding.Left + padding.Right) / 2,
+            Y = mInventoryWindow.LocalPosToCanvas(new Point(0, 0)).Y - (padding.Top + padding.Bottom) / 2,
+            Width = mInventoryWindow.Width + padding.Left + padding.Right,
+            Height = mInventoryWindow.Height + padding.Top + padding.Bottom
+        };
     }
+
     public void RefreshFilters()
     {
         // Filtrar subtipos en inventario
@@ -415,7 +470,7 @@ public partial class InventoryWindow
         mSubTypeFilterBox.AddItem("Todos", null);
         foreach (var subtype in subtypesInInventory)
         {
-            mSubTypeFilterBox.AddItem(subtype, subtype,subtype);
+            mSubTypeFilterBox.AddItem(subtype, subtype, subtype);
         }
 
         // Filtrar tipos en inventario
@@ -427,7 +482,7 @@ public partial class InventoryWindow
             .Distinct()
             .ToList();
 
-    
+
         // With the corrected code:
         mTypeFilterBox.DeleteAll();
         mTypeFilterBox.AddItem("Todos", null);
@@ -437,10 +492,60 @@ public partial class InventoryWindow
             // Fix for CS1503: The second argument of AddItem should be a string, not a method group.
             // Corrected the second argument to properly convert the ItemType to a string.
 
-            mTypeFilterBox.AddItem(itemType.ToString(), itemType.ToString(),itemType);
-         
+            mTypeFilterBox.AddItem(itemType.ToString(), itemType.ToString(), itemType);
+
 
         }
     }
+    private int GetItemRelevance(ItemBase item, string searchTerm)
+    {
+        if (string.IsNullOrEmpty(searchTerm)) return 0;
+
+        var name = item.Name.ToLower();
+        var search = searchTerm.ToLower();
+
+        if (name.StartsWith(search)) return 3; // Muy relevante
+        if (name.EndsWith(search)) return 2;   // Medio
+        if (name.Contains(search)) return 1;   // Poco relevante
+
+        return 0;
+    }
+    private int CompareInventoryItems(ItemBase x, ItemBase y)
+    {
+        if (x == null && y == null) return 0;
+        if (x == null) return -1;
+        if (y == null) return 1;
+
+        if (x.ItemType == y.ItemType)
+        {
+            return string.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) * -1; // Descendente
+        }
+        else
+        {
+            // Orden por tipo (ejemplo básico, ajusta según tus preferencias)
+            return x.ItemType.CompareTo(y.ItemType) * -1; // Descendente por tipo
+        }
+    }
+    private void SortAndApplyInventory()
+    {
+        var maxSlots = Globals.Me.Inventory.Length;
+
+        for (var slot = 0; slot < maxSlots - 1; slot++)
+        {
+            for (var compareSlot = 0; compareSlot < maxSlots - slot - 1; compareSlot++)
+            {
+                var item1 = ItemBase.Get(Globals.Me.Inventory[compareSlot].ItemId);
+                var item2 = ItemBase.Get(Globals.Me.Inventory[compareSlot + 1].ItemId);
+
+                if (CompareInventoryItems(item1, item2) < 0) // Si item1 < item2, los intercambiamos
+                {
+                    Globals.Me.SwapItems(compareSlot, compareSlot + 1);
+                }
+            }
+        }
+
+        //  Update(); // Refrescar visualmente
+    }
+
 
 }

@@ -2525,24 +2525,23 @@ internal sealed partial class PacketHandler
         // Mostrar historial al usuario (en una pestaña de la ventana de mercado, por ejemplo)
         Interface.Interface.GameUi?.UpdateTransactionHistory(packet.Transactions);
     }
-
     public void HandlePacket(IPacketSender sender, MarketPriceInfoPacket packet)
     {
-        // Guardar o usar los valores directamente
-        // Puedes hacer algo como esto si quieres tenerlo accesible globalmente:
         Interface.Game.Market.MarketPriceCache.Update(packet.ItemId, packet.SuggestedPrice, packet.MinAllowedPrice, packet.MaxAllowedPrice);
 
-        // Si la ventana está abierta y el ítem aún es el seleccionado, actualizar visualmente
-        if (Interface.Interface.GameUi?.mMarketSellWindow is { } window &&
-            window.IsVisible() &&
-            window.GetSelectedItemId() == packet.ItemId)
+        var sellWindow = Interface.Interface.GameUi.mSellMarketWindow;
+
+        if (sellWindow != null && sellWindow.IsVisible())
         {
-            window.UpdateSuggestedPrice(packet.ItemId);
-            
+            // Si aún está esperando ese ítem, forzar refresco
+            if (sellWindow.GetSelectedItemId() == packet.ItemId || sellWindow._waitingPriceForItemId == packet.ItemId)
+            {
+                sellWindow.UpdateSuggestedPrice(packet.ItemId);
+                 }
         }
-        // Opcional: mostrar en consola o enviar mensaje
-        PacketSender.SendChatMsg($"💡 Precio promedio: {packet.SuggestedPrice} 🪙 (Rango: {packet.MinAllowedPrice} - {packet.MaxAllowedPrice})", 5);
-	}
+       
+    }
+
 
     // PacketHandler.cs  (lado cliente)
     public void HandlePacket(IPacketSender packetSender, MarketWindowPacket packet)

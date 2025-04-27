@@ -15,6 +15,9 @@ using Intersect.Client.Framework.GenericClasses;
 using Intersect.Network.Packets.Client;
 using MonoMod.Core.Utils;
 using Newtonsoft.Json.Linq;
+using Intersect.Client.Interface.Game.Chat;
+using System.Runtime.Intrinsics.X86;
+using Intersect.Logging;
 
 namespace Intersect.Client.Interface.Game.Market
 {
@@ -53,7 +56,7 @@ namespace Intersect.Client.Interface.Game.Market
         public int X { get; set; }
         public int Y { get; set; }
         private bool Initialized = false;
-
+        public Guid _waitingPriceForItemId = Guid.Empty;
         public SellMarketWindow(Canvas canvas)
         {
             _window = new WindowControl(canvas, "📤 " + Strings.Market.sellwindow, false, "SellMarketWindow");
@@ -63,16 +66,22 @@ namespace Intersect.Client.Interface.Game.Market
 
             // Panel inventario
             mInventoryScroll = new ScrollControl(_window, "SellInventoryScroll");
-            mInventoryScroll.SetBounds(20, 20, 280, 400);
+            mInventoryScroll.GetVerticalScrollBar();
             mInventoryScroll.EnableScroll(false, true);
-
+            mInventoryScroll.SetBounds(20, 20, 280, 400);
             // Etiquetas y campos de entrada
             _infoLabel = new Label(_window,"SelectedItem") { Text = Strings.Market.selectitem };
             _suggestedPriceLabel = new Label(_window, "SuggestedLabel");
             _suggestedRangeLabel = new Label(_window, "SuggestedRange");
+            _suggestedPriceLabel.SetText(Strings.Market.pricehint.ToString(0));
+            _suggestedRangeLabel.SetText(Strings.Market.pricerange.ToString(0, 0)); // 
+            _quantityInput = new TextBoxNumeric(_window, "QuantityInput");
+            _priceInput = new TextBoxNumeric(_window, "PriceInput");
+            _quantityInput.Focus();
+            Interface.FocusElements.Add(_quantityInput);
+            _priceInput.Focus();
+            Interface.FocusElements.Add(_priceInput);
 
-            _quantityInput = new TextBoxNumeric(_window,"QuantityInput");
-            _priceInput = new TextBoxNumeric(_window,"PriceInput");
             _quantityInput.TextChanged += (_, _) => RefreshTax();
             _priceInput.TextChanged += (_, _) => RefreshTax();
 
@@ -87,7 +96,7 @@ namespace Intersect.Client.Interface.Game.Market
 
             BuildLayout();
             _window.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
-           InitItemContainer();
+   
         }
 
         #region === Layout ===
@@ -173,9 +182,8 @@ namespace Intersect.Client.Interface.Game.Market
         {
             Items.Clear();
             Values.Clear();
-            mInventoryScroll.DeleteAllChildren();
 
-            for (int i = 0; i < Options.MaxInvItems; i++)
+            for (var i = 0; i < Options.MaxInvItems; i++)
             {
                 Items.Add(new InventoryItem(this, i));
                 Items[i].Container = new ImagePanel(mInventoryScroll, "SellInvItem");
@@ -186,21 +194,16 @@ namespace Intersect.Client.Interface.Game.Market
 
                 Items[i].Container.LoadJsonUi(GameContentManager.UI.InGame, Graphics.Renderer.GetResolutionString());
 
-                int xPadding = Items[i].Container.Margin.Left + Items[i].Container.Margin.Right;
-                int yPadding = Items[i].Container.Margin.Top + Items[i].Container.Margin.Bottom;
+          
+                var xPadding = Items[i].Container.Margin.Left + Items[i].Container.Margin.Right;
+                var yPadding = Items[i].Container.Margin.Top + Items[i].Container.Margin.Bottom;
 
                 Items[i].Container.SetPosition(
                     i % (mInventoryScroll.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Width + xPadding) + xPadding,
                     i / (mInventoryScroll.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Height + yPadding) + yPadding
                 );
-
-                Items[i].Container.DoubleClicked += (sender, args) => SelectItem(Items[i], i);
             }
         }
-
-        #endregion
-
-        #region === Selection & Validation ===
 
         public void SelectItem(InventoryItem itemSlot, int slotIndex)
         {
@@ -213,15 +216,28 @@ namespace Intersect.Client.Interface.Game.Market
 
             _selectedSlot = slotIndex;
             _selectedItemId = slot.ItemId;
-            _confirmButton.Enable();
-
+            _waitingPriceForItemId = slot.ItemId;
             var item = ItemBase.Get(slot.ItemId);
+            _confirmButton.Enable();
             _infoLabel.Text = Strings.Market.publish_colon + " " + item?.Name;
-            _quantityInput.SetText(string.Empty, false);
-            _priceInput.SetText(string.Empty, false);
 
-            PacketSender.SendRequestMarketInfo(slot.ItemId);
+            GetSelectedItemId();
             UpdateSuggestedPrice(slot.ItemId);
+
+            // Luego pide al servidor para actualizar si es necesario.
+            PacketSender.SendRequestMarketInfo(slot.ItemId);
+            // Cargar cantidad y precio del ítem
+            _quantityInput.SetText(slot.Quantity.ToString(), false);
+            if (MarketPriceCache.TryGet(slot.ItemId, out var avg, out var min, out var max))
+            {
+                _priceInput.SetText(avg.ToString(), false);
+            }
+            else
+            {
+                _priceInput.SetText(string.Empty, false);
+            }
+            // Calcular y mostrar el impuesto
+            RefreshTax();
         }
 
         private void RefreshTax()
@@ -237,19 +253,22 @@ namespace Intersect.Client.Interface.Game.Market
         {
             if (!MarketPriceCache.TryGet(itemId, out int avg, out int min, out int max))
             {
-                      
+                // Nada en cache aún, esperar.
+                Log.Debug($"⏳ Esperando precio para {itemId}...");
                 return;
             }
 
             _suggestedPriceLabel.SetText(Strings.Market.pricehint.ToString(avg));
-            _suggestedRangeLabel.SetText(Strings.Market.pricerange.ToString(min, max)); // 
-
+            _suggestedRangeLabel.SetText(Strings.Market.pricerange.ToString(min, max));
             _suggestedPriceLabel.Show();
             _suggestedRangeLabel.Show();
-
             _suggestedPriceLabel.SetTextColor(Color.Orange, Label.ControlState.Normal);
             _suggestedRangeLabel.SetTextColor(Color.Orange, Label.ControlState.Normal);
+
+            _waitingPriceForItemId = Guid.Empty;
+            Log.Debug($"✅ Precio actualizado visualmente para {itemId}");
         }
+
 
         #endregion
 
@@ -257,34 +276,75 @@ namespace Intersect.Client.Interface.Game.Market
 
         private void OnConfirmClicked(Base _, EventArgs __)
         {
-            if (_selectedSlot < 0 || _selectedItemId == Guid.Empty) { PacketSender.SendChatMsg(Strings.Market.noItemSelected, 0); return; }
-            if (!int.TryParse(_quantityInput.Text, out int qty) || qty <= 0) { PacketSender.SendChatMsg(Strings.Market.invalidQuantity, 0); return; }
-            if (!int.TryParse(_priceInput.Text, out int price) || price <= 0) { PacketSender.SendChatMsg(Strings.Market.invalidPrice, 0 ); return; }
-
-            var slotData = Globals.Me.Inventory[_selectedSlot];
-            if (slotData == null || slotData.ItemId != _selectedItemId || slotData.Quantity < qty)
+            if (_selectedSlot < 0 || _selectedItemId == Guid.Empty)
             {
-                PacketSender.SendChatMsg(Strings.Market.quantityExceeds, 0); return;
+                ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Market.noItemSelected, Color.Red, ChatMessageType.Error));
+                return;
+            }
+
+            if (!int.TryParse(_quantityInput.Text, out int qty) || qty <= 0)
+            {
+                ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Market.invalidQuantity, Color.Red, ChatMessageType.Error));
+                return;
+            }
+
+            if (!int.TryParse(_priceInput.Text, out int price) || price <= 0)
+            {
+                ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Market.invalidPrice, Color.Red, ChatMessageType.Error));
+                return;
+            }
+
+            // Sumar todas las cantidades de ese ítem
+            var matchingSlots = Globals.Me.Inventory
+                .Select((slot, index) => new { Slot = slot, Index = index })
+                .Where(x => x.Slot != null && x.Slot.ItemId == _selectedItemId)
+                .ToList();
+
+            int totalQuantity = matchingSlots.Sum(x => x.Slot.Quantity);
+
+            if (totalQuantity < qty)
+            {
+                ChatboxMsg.AddMessage(new ChatboxMsg(Strings.Market.quantityExceeds, Color.Red, ChatMessageType.Error));
+                return;
             }
 
             if (MarketPriceCache.TryGet(_selectedItemId, out var avg, out var min, out var max))
             {
                 if (price < min || price > max)
                 {
-                    PacketSender.SendChatMsg(
-               string.Format(Strings.Market.priceOutOfRange.ToString(), min, max),
-               0
-           );
+                    ChatboxMsg.AddMessage(new ChatboxMsg(
+                        string.Format(Strings.Market.priceOutOfRange.ToString(), min, max),
+                        Color.Red,
+                        ChatMessageType.Error
+                    ));
                     return;
                 }
             }
 
-            // Enviar al servidor
-            var props = slotData.ItemProperties ?? new Network.Packets.Server.ItemProperties();
+            // Tomar los ítems necesarios para alcanzar la cantidad
+            int quantityToTake = qty;
+            List<(int SlotIndex, int Amount)> slotsToUse = new();
+
+            foreach (var entry in matchingSlots)
+            {
+                int takeFromThisSlot = Math.Min(entry.Slot.Quantity, quantityToTake);
+                slotsToUse.Add((entry.Index, takeFromThisSlot));
+                quantityToTake -= takeFromThisSlot;
+
+                if (quantityToTake <= 0)
+                    break;
+            }
+
+            // Enviar al servidor (simplificado: usa solo el primer slot en PacketSender actual)
+            var firstSlot = slotsToUse.First();
+            var props = Globals.Me.Inventory[firstSlot.SlotIndex].ItemProperties ?? new Network.Packets.Server.ItemProperties();
             PacketSender.SendCreateMarketListing(_selectedItemId, qty, price, props, _autoSplitCheckbox.IsChecked);
+
+            // Luego puedes ajustar para enviar info de múltiples slots si el servidor lo permite
 
             ResetSelection();
         }
+
 
         private void ResetSelection()
         {
@@ -334,5 +394,6 @@ namespace Intersect.Client.Interface.Game.Market
             avg = min = max = 0;
             return false;
         }
+     
     }
 }

@@ -57,7 +57,7 @@ public partial class GameInterface : MutableInterface
     private SendMailBoxWindow mSendMailBoxWindow;
     private MailBoxWindow mMailBoxWindow;
     private MarketWindow mMarketWindow;
-    private SellMarketWindow mSellMarketWindow;
+    public SellMarketWindow mSellMarketWindow;
     public EnchantItemWindow mEnchantItemWindow;
     private bool mShouldOpenEnchantWindow;
     private bool mShouldCloseEnchantWindow;
@@ -104,8 +104,7 @@ public partial class GameInterface : MutableInterface
     public PlayerStatusWindow PlayerStatusWindow;
     private bool mShouldHideJobWindow;
     private GuildCreationInterface mCreateGuildWindow;
-    internal SellMarketWindow mMarketSellWindow;
-
+ 
     public GameInterface(Canvas canvas) : base(canvas)
     {
         GameCanvas = canvas;

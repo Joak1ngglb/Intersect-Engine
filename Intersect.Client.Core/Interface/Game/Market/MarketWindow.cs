@@ -165,16 +165,16 @@ namespace Intersect.Client.Interface.Game.Market
         }
         private void SellMarket_Clicked(Base sender, ClickedEventArgs arguments)
         {
-            if (mSellWindow != null && mSellWindow.IsVisible())
+            if (Interface.GameUi.mSellMarketWindow != null && Interface.GameUi.mSellMarketWindow.IsVisible())
             {
-               return;
+                return;
             }
 
             if (mMarketWindow.Parent is Canvas parentCanvas)
             {
-                mSellWindow = new SellMarketWindow(parentCanvas);
-                mSellWindow.Show();
-                mSellWindow.Update();
+                Interface.GameUi.mSellMarketWindow = new SellMarketWindow(parentCanvas);
+                Interface.GameUi.mSellMarketWindow.Show();
+                Interface.GameUi.mSellMarketWindow.Update();
             }
         }
 

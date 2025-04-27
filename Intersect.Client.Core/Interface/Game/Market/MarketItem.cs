@@ -7,6 +7,7 @@ using Intersect.GameObjects;
 using Intersect.Network.Packets.Server;
 using Intersect.Client.Networking;
 using Intersect.Client.General;
+using Intersect;
 
 public class MarketItem
 {
@@ -45,7 +46,7 @@ public class MarketItem
 
         mIconPanel.HoverEnter += OnHoverEnter;
         mIconPanel.HoverLeave += OnHoverLeave;
-        mIconPanel.DoubleClicked += OnDoubleClick;
+        mIconPanel.Clicked += OnClick;
 
         mNameLabel = new Label(Container, "MarketItemName")
         {
@@ -89,19 +90,32 @@ public class MarketItem
     {
         if (mItemBase == null) return;
 
-        var confirmation = new MessageBox(
+        // Cadena sin etiquetas HTML, sólo un salto de línea
+        var mensaje = $"¿Estás seguro de que quieres comprar {mItemBase.Name} x{mListing.Quantity}\npor {mListing.Price} Boins?";
+
+        var confirmation = new ConfirmBox(
             Container?.Parent ?? Container,
-            $"¿Comprar {mItemBase.Name} x{mListing.Quantity} por {mListing.Price}?",
-            "Confirmar Compra"
+            mensaje,
+            "🛒 Confirmar Compra"
         );
-        confirmation.SetSize(200, 200);
-        confirmation.Dismissed += (s, e) =>
+
+        confirmation.SetSize(320, 220);
+
+        confirmation.SetTextScale(1.1f);
+
+        confirmation.Confirmed += (ctrl, evt) =>
         {
-            PacketSender.SendBuyMarketListing(mListing.ListingId);
+            if (evt.Result == ConfirmBox.ConfirmResult.Yes)
+            {
+                PacketSender.SendBuyMarketListing(mListing.ListingId);
+            }
+            // si es No o Closed, no hacemos nada
         };
 
         confirmation.Show();
     }
+
+
 
     private void OnHoverEnter(Base sender, EventArgs args)
     {
@@ -117,7 +131,7 @@ public class MarketItem
         mDescWindow = null;
     }
 
-    private void OnDoubleClick(Base sender, ClickedEventArgs args)
+    private void OnClick(Base sender, ClickedEventArgs args)
     {
         PacketSender.SendBuyMarketListing(mListing.ListingId);
     }
@@ -136,7 +150,7 @@ public class MarketItem
 
         mNameLabel.Text = mItemBase.Name;
         mQuantityLabel.Text = $"x{mListing.Quantity}";
-        mPriceLabel.Text = $"{mListing.Price} 🪙";
+        mPriceLabel.Text = $"{mListing.Price}";
         mIconPanel.Texture = Globals.ContentManager.GetTexture(Intersect.Client.Framework.Content.TextureType.Item, mItemBase.Icon);
         mIconPanel.RenderColor = mItemBase.Color;
     }

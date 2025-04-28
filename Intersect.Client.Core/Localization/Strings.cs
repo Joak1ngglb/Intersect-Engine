@@ -347,6 +347,8 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString noResults = @"❌ No results found.";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString itemSubTypeLabel= @"SubTypes";
     }
     public partial struct MailBox
     {

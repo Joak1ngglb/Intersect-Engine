@@ -103,6 +103,7 @@ namespace Intersect.Client.Interface.Game.Mail
             mItemContainer = new ScrollControl(mSendMailBoxWindow, "ItemContainer");
             mItemContainer.SetBounds(400, 40, 300, 240);
             mItemContainer.EnableScroll(false, true);
+            Interface.FocusElements.Add(mItemContainer);
             mSendMailBoxWindow.AddChild(mItemContainer); 
             mQuantityLabel = new Label(mSendMailBoxWindow, "QuantityLabel") { Text = "Quantity" };
             mQuantityLabel.SetBounds(400, 290, 100, 20);
@@ -158,7 +159,7 @@ namespace Intersect.Client.Interface.Game.Mail
                     i % (mItemContainer.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Width + xPadding) + xPadding,
                     i / (mItemContainer.Width / (Items[i].Container.Width + xPadding)) * (Items[i].Container.Height + yPadding) + yPadding
                 );
-                Items[i].Container.DoubleClicked += (sender, args) => SelectItem(Items[i], i);
+                
 
             }
         }
@@ -232,13 +233,13 @@ namespace Intersect.Client.Interface.Game.Mail
             var itemId = Globals.Me.Inventory[slotIndex]?.ItemId;
             if (itemId == null || itemId == Guid.Empty)
             {
-                PacketSender.SendChatMsg("⚠️ No item selected or item is invalid!", 4);
+                PacketSender.SendChatMsg("⚠️ No item selected or item is invalid!", 5);
                 return;
             }
 
             mSelectedItem = itemSlot;
             mSelectedSlot = slotIndex;
-            PacketSender.SendChatMsg($"📦 Selected item: {ItemBase.Get(itemId.Value)?.Name}", 4);
+            PacketSender.SendChatMsg($"📦 Selected item: {ItemBase.Get(itemId.Value)?.Name}", 5);
         }
 
         private void AddItemButton_Clicked(Base sender, ClickedEventArgs arguments)

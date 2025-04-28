@@ -576,14 +576,15 @@ public static partial class PacketSender
         Network.SendPacket(new BuyMarketListingPacket(listingId));
     }
 
-    public static void SendSearchMarket(string name = "", int? min = null, int? max = null, ItemType? type = null)
+    public static void SendSearchMarket(string name = "", int? min = null, int? max = null, ItemType? type = null, string? subType = null)
     {
         Network.SendPacket(new SearchMarketPacket
         {
             ItemName = name,
             MinPrice = min,
             MaxPrice = max,
-            Type = type
+            Type = type,
+            Subtype= subType    
         });
     }
 

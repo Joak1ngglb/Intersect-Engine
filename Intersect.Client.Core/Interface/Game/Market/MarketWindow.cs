@@ -13,6 +13,7 @@ using Intersect.Client.Core;
 using Intersect.Client.Framework.Gwen.Control.EventArguments;
 using MonoMod.Core.Utils;
 using Intersect.Client.Localization;
+using Intersect.Config;
 
 
 namespace Intersect.Client.Interface.Game.Market
@@ -41,9 +42,9 @@ namespace Intersect.Client.Interface.Game.Market
         private Label mHeaderQuantityLabel;
         private Label mHeaderPriceLabel;
         private ImagePanel mListContainer;
-        private bool Initialized=false;
-        private MarketItem marketItem;
-        private SellMarketWindow mSellWindow;
+        private Label mSubTypeLabel;
+        private ComboBox mItemSubTypeCombo;
+
 
         public MarketWindow(Canvas parent)
         {
@@ -52,6 +53,7 @@ namespace Intersect.Client.Interface.Game.Market
             mMarketWindow.SetSize(800, 600);
             mMarketWindow.DisableResizing();
             mMarketWindow.Focus();
+           
 
             mNameLabel = new Label(mMarketWindow, "MarketNameLabel");
             mNameLabel.Text = Strings.Market.itemNameLabel;
@@ -64,17 +66,31 @@ namespace Intersect.Client.Interface.Game.Market
             Interface.FocusElements.Add(mSearchBox);
             mTypeLabel = new Label(mMarketWindow, "MarketTypeLabel");
             mTypeLabel.Text = Strings.Market.itemTypeLabel;
+            // Crear mItemTypeCombo
             mItemTypeCombo = new ComboBox(mMarketWindow, "MarketItemTypeCombo");
-           
             mItemTypeCombo.AddItem("All", "all", "all");
             mItemTypeCombo.SelectByUserData("all");
             foreach (ItemType type in Enum.GetValues(typeof(ItemType)))
             {
                 if (type != ItemType.Currency)
                 {
-                    mItemTypeCombo.AddItem(type.ToString(), type.ToString(),type.ToString());
+                    mItemTypeCombo.AddItem(type.ToString(), type.ToString(), type.ToString());
                 }
             }
+
+            // Subtipo Label y ComboBox (antes de usar UpdateSubTypeCombo)
+            mSubTypeLabel = new Label(mMarketWindow, "MarketSubTypeLabel");
+            mSubTypeLabel.Text = Strings.Market.itemSubTypeLabel;
+            mSubTypeLabel.SetBounds(560, 40, 60, 20);
+
+            mItemSubTypeCombo = new ComboBox(mMarketWindow, "MarketItemSubTypeCombo");
+            mItemSubTypeCombo.SetBounds(620, 40, 160, 25);
+            mItemSubTypeCombo.AddItem("All", "all", "all");
+            mItemSubTypeCombo.SelectByUserData("all");
+
+       
+            mItemTypeCombo.ItemSelected += (s, a) => UpdateSubTypeCombo();
+
 
             mMinLabel = new Label(mMarketWindow, "MarketMinLabel");
             mMinLabel.Text = Strings.Market.minPriceLabel;
@@ -201,8 +217,57 @@ namespace Intersect.Client.Interface.Game.Market
                     type = parsed;
                 }
             }
+            string subType = null;
+            if (mItemSubTypeCombo.SelectedItem?.UserData?.ToString() != "all")
+            {
+                subType = mItemSubTypeCombo.SelectedItem.UserData.ToString();
+            }
 
-            PacketSender.SendSearchMarket(name, minPrice, maxPrice, type);
+            // Enviar con subtipo adicional
+            PacketSender.SendSearchMarket(name, minPrice, maxPrice, type, subType);
+
+        }
+        private void UpdateSubTypeCombo()
+        {
+            mItemSubTypeCombo.DeleteAllChildren();
+            mItemSubTypeCombo.AddItem("Todos", "all", "all");
+
+            var selectedType = mItemTypeCombo.SelectedItem?.UserData?.ToString();
+            if (selectedType == null || selectedType == "all")
+            {
+                // Mostrar todos los subtipos si no hay tipo específico seleccionado
+                if (Intersect.Options.Instance?.Items?.ItemSubtypes != null)
+                {
+                    var allSubtypes = Intersect.Options.Instance.Items.ItemSubtypes
+                        .SelectMany(kvp => kvp.Value)
+                        .Distinct()
+                        .OrderBy(subtype => subtype)
+                        .ToList();
+
+                    foreach (var subtype in allSubtypes)
+                    {
+                        mItemSubTypeCombo.AddItem(subtype, subtype, subtype);
+                    }
+                }
+
+                mItemSubTypeCombo.SelectByUserData("all"); // Reset al seleccionar "All"
+                return;
+            }
+
+            // Mostrar solo los subtipos asociados al tipo seleccionado
+            if (Enum.TryParse<ItemType>(selectedType, out var parsedType))
+            {
+                if (Intersect.Options.Instance?.Items?.ItemSubtypes != null &&
+                    Intersect.Options.Instance.Items.ItemSubtypes.TryGetValue(parsedType, out var subtypes))
+                {
+                    foreach (var subtype in subtypes.Distinct().OrderBy(sub => sub))
+                    {
+                        mItemSubTypeCombo.AddItem(subtype, subtype, subtype);
+                    }
+                }
+            }
+
+            mItemSubTypeCombo.SelectByUserData("all"); // Reset selección cada vez que cambias tipo
         }
 
         public void UpdateListings(List<MarketListingPacket> listings)

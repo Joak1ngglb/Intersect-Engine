@@ -159,11 +159,18 @@ public partial class InventoryItem
     void pnl_Clicked(Base sender, ClickedEventArgs arguments)
     {       
         mClickTime = Timing.Global.MillisecondsUtc + 500;
+        if (mSendMailBoxWindow != null)
+        {
+            mSendMailBoxWindow.SelectItem(mSendMailBoxWindow.Items[DisplaySlot], DisplaySlot);
+        }
     }
 
     void pnl_RightClicked(Base sender, ClickedEventArgs arguments)
     {
-       
+        if (mSendMailBoxWindow != null)
+        {
+            return;
+        }
         if (ClientConfiguration.Instance.EnableContextMenus)
         {
             mInventoryWindow.OpenContextMenu(DisplaySlot);

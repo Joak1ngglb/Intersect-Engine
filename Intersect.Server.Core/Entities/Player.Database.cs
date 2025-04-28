@@ -441,7 +441,7 @@ public partial class Player
                 .Include(p => p.Items)
                 .Include(p => p.Spells)
                 .Include(p => p.MailBoxs)
-                    .ThenInclude(p => p.Sender)
+                 
             .AsSplitQuery()
         ) ??
         throw new InvalidOperationException();
@@ -460,7 +460,7 @@ public partial class Player
                 .Include(p => p.Items)
                 .Include(p => p.Spells)
              .Include(p => p.MailBoxs)
-                    .ThenInclude(p => p.Sender)
+                    
                 .AsSplitQuery()
         ) ??
         throw new InvalidOperationException();
@@ -475,7 +475,7 @@ public partial class Player
                 .Include(p => p.Items)
                 .Include(p => p.Spells)
                .Include(p => p.MailBoxs)
-                    .ThenInclude(p => p.Sender)
+                    
                 .AsSplitQuery()
                 .FirstOrDefault()
         ) ??
@@ -492,7 +492,7 @@ public partial class Player
                 .Include(p => p.Items)
                 .Include(p => p.Spells)
             .Include(p => p.MailBoxs)
-                    .ThenInclude(p => p.Sender)
+                   
                 .AsSplitQuery()
                 .FirstOrDefault()
         ) ??

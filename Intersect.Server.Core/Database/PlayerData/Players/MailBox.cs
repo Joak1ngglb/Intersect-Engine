@@ -33,10 +33,10 @@ namespace Intersect.Server.Database.PlayerData.Players
         private Guid JsonTargetId => Sender?.Id ?? Guid.Empty;
 
         [JsonIgnore]
-        public virtual Player Player { get;  set; }
+        public  Player Player { get;  set; }
 
         [JsonIgnore]
-        public virtual Player Sender { get;  set; }
+        public  Player Sender { get;  set; }
 
         public string Title { get;  set; }
         public string Message { get;  set; }

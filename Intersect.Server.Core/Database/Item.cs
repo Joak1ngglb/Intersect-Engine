@@ -478,6 +478,103 @@ public class Item : IItem
 
         Properties.EnchantmentLevel = newLevel;
     }
+    public bool ApplyOrbUpgrade(Item equipment, Item orbItem, out bool success, out string resultMessage)
+    {
+        success = false;
+        resultMessage = "";
+
+        if (Descriptor?.ItemType != ItemType.Equipment || Properties == null)
+        {
+            resultMessage = "El ítem no es un equipamiento válido.";
+            return false;
+        }
+
+        if (Properties.EnchantmentLevel < 8)
+        {
+            resultMessage = "El ítem debe tener nivel de encantamiento +8 o más.";
+            return false;
+        }
+
+        if (orbItem == null || orbItem.Descriptor.ItemType != ItemType.Resource || orbItem.Descriptor.Subtype != "Orb")
+        {
+            resultMessage = "El ítem usado no es un Orbe válido.";
+            return false;
+        }
+
+        var stat = orbItem.Descriptor.TargetStat;
+        var amount = orbItem.Descriptor.AmountModifier;
+
+        if (amount == 0)
+        {
+            resultMessage = $"Este Orbe no tiene un modificador válido.";
+            return false;
+        }
+
+        int orbUses = Properties.StatOrbUpgradeCounts[(int)stat];
+        int maxOrbUsesPerStat = 5;
+
+        if (orbUses >= maxOrbUsesPerStat)
+        {
+            resultMessage = $"Este ítem ya alcanzó el máximo de orbes en {stat}.";
+            return false;
+        }
+
+        double baseSuccessRate = orbItem.Descriptor.UpgradeMaterialSuccessRate > 0
+            ? orbItem.Descriptor.UpgradeMaterialSuccessRate
+            : 1.0;
+
+        // ✅ Penalización por éxitos previos
+        double reductionPerUse = 0.05; // -5% por éxito previo
+        double penalty = reductionPerUse * orbUses;
+        double adjustedSuccessRate = baseSuccessRate - penalty;
+
+        // ✅ Bonus/penalización según stat base
+        int baseStatValue = Descriptor.StatsGiven[(int)stat];
+        if (baseStatValue > 0)
+        {
+            adjustedSuccessRate += 0.02; // +10% bonus si tiene base
+        }
+        else
+        {
+            adjustedSuccessRate -= 0.10; // -10% castigo si no tiene nada
+        }
+
+        // ✅ Clamp entre 10% y 100%
+        adjustedSuccessRate = Math.Clamp(adjustedSuccessRate, 0.10, 1.0);
+
+        if (Random.Shared.NextDouble() <= adjustedSuccessRate)
+        {
+            Properties.StatModifiers[(int)stat] += amount;
+            Properties.StatOrbUpgradeCounts[(int)stat]++; // ✅ cuenta solo éxitos
+            success = true;
+            resultMessage = $"¡Éxito! {stat} aumentado en +{amount}.";
+        }
+        else
+        {
+            resultMessage = $"Falló el intento de mejora en {stat}.";
+
+            // ✅ Castigo al fallar: bajar stat si tiene puntos
+            if (Properties.StatModifiers[(int)stat] > 0)
+            {
+                Properties.StatModifiers[(int)stat] -= amount;
+                resultMessage += $" Además, {stat} disminuyó en {amount} por el fallo.";
+            }
+
+            // ✅ Castigo: bajar contador si hubo éxitos previos
+            if (Properties.StatOrbUpgradeCounts[(int)stat] > 0)
+            {
+                Properties.StatOrbUpgradeCounts[(int)stat] -= amount;
+                resultMessage += $" Además, perdiste un progreso previo de orbe en {stat}.";
+            }
+
+            // ✅ (Opcional extremo → romper ítem)
+            // equipment = null;
+            // resultMessage += " El ítem se rompió por completo 😱.";
+        }
+
+        orbItem.Quantity -= 1;
+        return true;
+    }
 
 
 }

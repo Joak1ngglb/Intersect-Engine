@@ -3417,7 +3417,74 @@ internal sealed partial class PacketHandler
         // Actualizar cliente
         PacketSender.SendInventoryItemUpdate(player, packet.ItemIndex);
     }
+    public void HandlePacket(Client client, UpgradeItemStatPacket packet)
+    {
+        var player = client.Entity;
+        if (player == null)
+        {
+            return;
+        }
 
+        // Validación de slots
+        if (packet.ItemSlot < 0 || packet.ItemSlot >= player.Items.Count ||
+            packet.OrbSlot < 0 || packet.OrbSlot >= player.Items.Count)
+        {
+            PacketSender.SendChatMsg(player, "Ítem u Orbe inválido.", ChatMessageType.Error);
+            return;
+        }
 
+        var equipment = player.Items[packet.ItemSlot];
+        var orb = player.Items[packet.OrbSlot];
 
+        // Validación de ítems
+        if (equipment == null || orb == null)
+        {
+            PacketSender.SendChatMsg(player, "Faltan ítems para el proceso.", ChatMessageType.Error);
+            return;
+        }
+
+        // Aplicar el uso del Orbe (ya no necesitamos StatToUpgrade porque lo tomamos del descriptor)
+        if (!equipment.ApplyOrbUpgrade(equipment,orb, out var success, out var message))
+        {
+            PacketSender.SendChatMsg(player, message, ChatMessageType.Error);
+            return;
+        }
+        using (var playerContext = DbInterface.CreatePlayerContext(readOnly: false))
+        {
+            try
+            {
+                playerContext.Players.Update(player);
+                playerContext.Player_Items.Update(equipment);
+                playerContext.Player_Items.Update(orb);
+                playerContext.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                PacketSender.SendChatMsg(player, "Ocurrió un error al guardar en la base de datos.", ChatMessageType.Error);
+                Log.Error(ex);
+            }
+        }
+
+        // Enviar resultado
+        PacketSender.SendChatMsg(player, message, ChatMessageType.Notice);
+
+        // Si se consumió todo el Orbe, vaciar el slot
+        if (orb.Quantity <= 0)
+        {
+            player.Items[packet.OrbSlot] = null;
+        }
+
+        // Enviar inventario actualizado al cliente
+        PacketSender.SendInventory(player);
+    }
+    public void HandlePacket(Client client, BrokeItemPacket packet)
+    {
+        var player = client.Entity;
+        if (player == null)
+        {
+            return;
+        }
+        ItemBreakHelper.InitializeOrbs();
+        player.BreakItem(packet.ItemSlot);
+    }
 }

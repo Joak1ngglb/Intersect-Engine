@@ -1,3 +1,4 @@
+using Intersect.Enums;
 using MessagePack;
 
 namespace Intersect.Network.Packets.Client;
@@ -34,4 +35,39 @@ public partial class EnchantItemPacket : IntersectPacket
 
     [Key(4)]
     public bool UseAmulet { get; set; }
+}
+[MessagePackObject]
+public partial class UpgradeItemStatPacket : IntersectPacket
+{
+    public UpgradeItemStatPacket() { }
+
+    public UpgradeItemStatPacket(int itemSlot, int orbSlot)
+    {
+        ItemSlot = itemSlot;
+        OrbSlot = orbSlot;
+    
+    }
+
+    [Key(0)]
+    public int ItemSlot { get; set; }
+
+    [Key(1)]
+    public int OrbSlot { get; set; }
+
+}
+[MessagePackObject]
+public partial class BrokeItemPacket : IntersectPacket
+{
+    public BrokeItemPacket() { }
+
+    public BrokeItemPacket(int itemSlot)
+    {
+        ItemSlot = itemSlot;
+    }
+
+    [Key(0)]
+    public int ItemSlot { get; set; }
+
+  
+
 }

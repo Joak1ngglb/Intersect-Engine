@@ -174,6 +174,12 @@ public partial class FrmItem : EditorForm
         nudARP.Minimum = -Options.MaxStatValue;
         nudVit.Minimum = -Options.MaxStatValue;
         nudWis.Minimum = -Options.MaxStatValue;
+        cmbRuneStat.Items.Clear();
+        foreach (var stat in Enum.GetValues<Stat>())
+        {
+            cmbRuneStat.Items.Add("None");
+            cmbRuneStat.Items.Add(stat.ToString());
+        }
 
         InitLocalization();
         UpdateEditor();
@@ -452,7 +458,10 @@ public partial class FrmItem : EditorForm
             // Actualizar `cmbSubType` según el tipo de ítem cargado
             cmbSubType.Items.Clear();
             cmbSubType.Enabled = false;
+            if (cmbRuneStat.Items.Count > 0)
+                cmbRuneStat.SelectedIndex = (int)mEditorItem.TargetStat;
 
+            nudRuneValue.Value = mEditorItem.AmountModifier;
             var itemType = mEditorItem.ItemType;
 
             // Validar si es Equipment y WeaponSlot
@@ -488,6 +497,26 @@ public partial class FrmItem : EditorForm
                 mEditorItem.Subtype = null;
             }
 
+            var subtype = cmbSubType.SelectedItem?.ToString();
+
+            if (subtype != null && subtype.Equals("Orb", StringComparison.OrdinalIgnoreCase))
+            {
+                grpEnchanting.Visible = true;
+
+                cmbRuneStat.Items.Clear();
+                // Cargar los nombres de los stats desde el enum Stat
+                foreach (var stat in Enum.GetValues<Stat>())
+                {
+                    cmbRuneStat.Items.Add(stat.ToString());
+                }
+
+                if (cmbRuneStat.Items.Count > 0)
+                    cmbRuneStat.SelectedIndex = (int)mEditorItem.TargetStat;
+            }
+            else
+            {
+                grpEnchanting.Visible = false;
+            }
 
             //External References
             cmbProjectile.SelectedIndex = ProjectileBase.ListIndex(mEditorItem.ProjectileId) + 1;
@@ -598,10 +627,11 @@ public partial class FrmItem : EditorForm
             chkStackable.Checked = true;
             chkStackable.Enabled = false;
         }
-        else if (selectedType == ItemType.Resource && selectedSubType == "Rune")
+        else if (selectedType == ItemType.Resource && selectedSubType == "Rune" || selectedType == ItemType.Resource && selectedSubType == "Orb")
         {
             grpEnchanting.Visible = true; // Mostrar grupo de runas y success rate
         }
+
         mEditorItem.ItemType = (ItemType)cmbType.SelectedIndex;
 
         PopulateEventTriggerList();
@@ -1666,7 +1696,7 @@ public partial class FrmItem : EditorForm
         if (cmbSubType.SelectedIndex >= 0)
         {
             mEditorItem.Subtype = cmbSubType.SelectedItem.ToString();
-        }
+        }            
     }
 
     private void nudSuccesRate_ValueChanged(object sender, EventArgs e)
@@ -1679,4 +1709,14 @@ public partial class FrmItem : EditorForm
     {
         mEditorItem.CanBeEnchanted = chkCanBeUpgraded.Checked;
     }
+
+    private void cmbRuneStat_SelectedIndexChanged(object sender, EventArgs e)
+    {
+          mEditorItem.TargetStat = (Stat)cmbRuneStat.SelectedIndex;
+    }
+    private void nudRuneValue_ValueChanged(object sender, EventArgs e)
+    {
+        mEditorItem.AmountModifier = (int)nudRuneValue.Value;
+    }
+
 }

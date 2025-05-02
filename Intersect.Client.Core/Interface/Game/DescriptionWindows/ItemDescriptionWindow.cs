@@ -236,6 +236,29 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
 
         SetupVitalsAndStats(rows);
         SetupBonusEffects(rows);
+        // Mostrar conteo de orbes aplicados por stat (uno por fila)
+        if (mItemProperties?.StatOrbUpgradeCounts != null)
+        {
+            bool hasOrbs = false;
+            AddDivider(); // 🔥 Divisor visual antes de mostrar los orbes
+            for (int i = 0; i < mItemProperties.StatOrbUpgradeCounts.Length; i++)
+            {
+                int orbCount = mItemProperties.StatOrbUpgradeCounts[i];
+                if (orbCount > 0)
+                {
+                    if (!hasOrbs)
+                    {
+                      
+                        hasOrbs = true;
+                    }
+
+                    Strings.ItemDescription.Stats.TryGetValue(i, out var statName);
+                    rows.AddKeyValueRow($"{statName} (Orbes)", $"+{orbCount}", CustomColors.ItemDesc.Muted, Color.Orange);
+                }
+            }
+        }
+
+
         rows.SizeToChildren(true, true);
     }
 
@@ -347,17 +370,23 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         AddDivider();
         var rows = AddRowContainer();
 
-        // Mostrar el subtipo siempre
-        rows.AddKeyValueRow("Tipo de Recurso", mItem.Subtype ?? "Genérico");
-
-        // Si es una Runa, mostrar detalles especiales
+      
         if (mItem.Subtype == "Rune")
         {
-            // Mostrar directamente como valor sin multiplicar por 100
             var successRate = mItem.UpgradeMaterialSuccessRate;
-            rows.AddKeyValueRow("Tasa de Éxito", $"{successRate * 100 :0.##}%", CustomColors.ItemDesc.Muted, Color.White);
+            rows.AddKeyValueRow("Tasa de Éxito", $"{successRate * 100:0.##}%", CustomColors.ItemDesc.Muted, Color.White);
         }
 
+        if (mItem.Subtype == "Orb")
+        {
+            var successRate = mItem.UpgradeMaterialSuccessRate;
+            var statName = mItem.TargetStat.ToString();
+            var amount = mItem.AmountModifier;
+
+            rows.AddKeyValueRow("Tasa de Éxito", $"{successRate * 100:0.##}%", CustomColors.ItemDesc.Muted, Color.White);
+            rows.AddKeyValueRow("Stat Modificado", statName, CustomColors.ItemDesc.Muted, Color.White);
+            rows.AddKeyValueRow("Cantidad", $"+{amount}", CustomColors.ItemDesc.Muted, Color.White);
+        }
 
         rows.SizeToChildren(true, true);
     }

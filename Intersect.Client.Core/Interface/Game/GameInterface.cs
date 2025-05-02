@@ -3,6 +3,7 @@ using Intersect.Client.General;
 using Intersect.Client.Interface.Game.Admin;
 using Intersect.Client.Interface.Game.Bag;
 using Intersect.Client.Interface.Game.Bank;
+using Intersect.Client.Interface.Game.Breaking;
 using Intersect.Client.Interface.Game.Chat;
 using Intersect.Client.Interface.Game.Crafting;
 using Intersect.Client.Interface.Game.Enchanting;
@@ -59,6 +60,8 @@ public partial class GameInterface : MutableInterface
     private MarketWindow mMarketWindow;
     private SellMarketWindow mSellMarketWindow;
     public EnchantItemWindow mEnchantItemWindow;
+    public OrbItemWindow OrbItemWindow;
+    public BreakItemWindow mBreakItemWindow;
     private bool mShouldOpenEnchantWindow;
     private bool mShouldCloseEnchantWindow;
 
@@ -145,7 +148,8 @@ public partial class GameInterface : MutableInterface
         mBankWindow = new BankWindow(GameCanvas);
         // mJobsWindow = new JobsWindow(GameCanvas);
         mEnchantItemWindow = new EnchantItemWindow(GameCanvas);
-       // mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
+        OrbItemWindow = new OrbItemWindow(GameCanvas);
+    mBreakItemWindow = new BreakItemWindow(GameCanvas);
     }
     public void NotifyOpenGuildCreation()
     {
@@ -154,6 +158,14 @@ public partial class GameInterface : MutableInterface
             mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
         }
         mCreateGuildWindow.Show();
+    }
+    public void ShowOrbItemWindow()
+    {
+        OrbItemWindow.Show();
+    }
+    public void HideOrbItemWindow()
+    {
+        OrbItemWindow.Hide();
     }
 
     public void NotifyCloseGuildCreation()
@@ -398,6 +410,7 @@ public partial class GameInterface : MutableInterface
         AnnouncementWindow?.Update();
         mPictureWindow?.Update();
         mCreateGuildWindow?.Update();
+        mBreakItemWindow?.Update();
         if (mSendMailBoxWindow != null && !mSendMailBoxWindow.IsVisible())
         {
             mSendMailBoxWindow?.Close();
@@ -418,7 +431,10 @@ public partial class GameInterface : MutableInterface
         {
             CloseEnchantWindow();
         }
-
+        if (OrbItemWindow != null && OrbItemWindow.IsVisible())
+        {
+            OrbItemWindow.Update();
+        }
         // Actualizar la ventana de encantamiento si está visible
         if (mEnchantItemWindow != null && mEnchantItemWindow.IsVisible())
         {

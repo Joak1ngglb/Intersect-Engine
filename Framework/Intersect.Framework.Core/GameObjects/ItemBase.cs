@@ -501,6 +501,9 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
         Effects = new List<EffectData>();
         Color = new Color(255, 255, 255, 255);
     }
+    public Stat TargetStat { get; set; }
+    public int AmountModifier { get; set; }
+
 }
 
 [Owned]
@@ -532,3 +535,7 @@ public partial class EffectData
 
     public int Percentage { get; set; }
 }
+
+  
+
+

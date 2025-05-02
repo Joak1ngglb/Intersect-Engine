@@ -419,7 +419,7 @@ namespace Intersect.Client.Interface.Game.Enchanting
             var useAmulet = mUseAmuletCheckbox.IsChecked;
 
             // Validar nivel máximo de encantamiento
-            if (targetLevel > 10)
+            if (targetLevel > 8)
             {
                 PacketSender.SendChatMsg("Item is already at max enchantment level.", 5);
                 return;

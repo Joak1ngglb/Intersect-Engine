@@ -216,6 +216,71 @@ namespace Intersect.Server.Entities
         {
             return Level >= 10; //Nivel minimo para comerciar
         }
+        public void BreakItem(int itemSlot)
+        {
+            if (itemSlot < 0 || itemSlot >= Items.Count)
+            {
+                PacketSender.SendChatMsg(this, "Índice de ítem inválido.", ChatMessageType.Error);
+                return;
+            }
+
+            var item = Items[itemSlot];
+            if (item == null || item.ItemId == Guid.Empty)
+            {
+                PacketSender.SendChatMsg(this, "No hay ítem en ese slot.", ChatMessageType.Error);
+                return;
+            }
+
+            var descriptor = item.Descriptor;
+            if (descriptor == null || descriptor.ItemType != ItemType.Equipment)
+            {
+                PacketSender.SendChatMsg(this, "Solo puedes romper equipamientos.", ChatMessageType.Error);
+                return;
+            }
+
+            // Calcula orbes a generar
+            var orbs = ItemBreakHelper.CalculateOrbsFromItem(descriptor);
+            if (orbs.Count == 0)
+            {
+                PacketSender.SendChatMsg(this, $"{descriptor.Name} no generó orbes al romperse.", ChatMessageType.Notice);
+            }
+            else
+            {
+                // Verifica espacio para todos los orbes
+                foreach (var orb in orbs)
+                {
+                    if (!CanGiveItem(orb.Id, 1))
+                    {
+                        PacketSender.SendChatMsg(this, "No tienes suficiente espacio en el inventario para los orbes.", ChatMessageType.Error);
+                        return;
+                    }
+                }
+
+                // Quita el ítem a romper
+                if (!TryTakeItem(descriptor.Id, 1))
+                {
+                    PacketSender.SendChatMsg(this, "Error al quitar el ítem.", ChatMessageType.Error);
+                    return;
+                }
+
+                // Da los orbes calculados
+                foreach (var orb in orbs)
+                {
+                    TryGiveItem(orb.Id, 1);
+                }
+
+                // Prepara resumen visual
+                var orbSummary = string.Join(", ", orbs
+                    .GroupBy(o => o.Name)
+                    .Select(g => $"{g.Count()}x {g.Key}"));
+
+                PacketSender.SendChatMsg(this, $"Rompiste {descriptor.Name} y obtuviste: {orbSummary}.", ChatMessageType.Experience);
+            }
+
+            // Actualiza inventario en cliente
+            PacketSender.SendInventory(this);
+        }
+
     }
 
     public enum MessageType

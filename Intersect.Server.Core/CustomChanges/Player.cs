@@ -159,7 +159,7 @@ namespace Intersect.Server.Entities
                     {
                         item.ApplyEnchantment(level);
                         PacketSender.SendChatMsg(this, $"¡Encantamiento exitoso! {item.Descriptor.Name} ahora está en nivel +{level}.", ChatMessageType.Experience);
-                     
+
                     }
                     else
                     {
@@ -168,7 +168,7 @@ namespace Intersect.Server.Entities
                             int newLevel = Math.Max(0, item.Properties.EnchantmentLevel - 1);
                             item.ApplyEnchantment(newLevel);
                             PacketSender.SendChatMsg(this, $"El encantamiento falló y el nivel de {item.Descriptor.Name} ha disminuido a +{newLevel}.", ChatMessageType.Error);
-                         
+
                         }
                         else
                         {
@@ -281,6 +281,19 @@ namespace Intersect.Server.Entities
             PacketSender.SendInventory(this);
         }
 
+        public void OpenEnchantment()
+        {
+            PacketSender.SendOpenEnchantmentWindow(this);
+        }
+
+        public void OpenMage()
+        {
+            PacketSender.SendOpenMageWindow(this);
+        }
+        public void OpenBrokeItem()
+        {
+            PacketSender.SendOpenBrokeItemWindow(this);
+        }
     }
 
     public enum MessageType

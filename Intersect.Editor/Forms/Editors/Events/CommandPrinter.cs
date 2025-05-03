@@ -52,11 +52,11 @@ public static partial class CommandPrinter
                 switch (commandList[i].Type)
                 {
                     case EventCommandType.ShowOptions:
-                        var cmd = (ShowOptionsCommand) commandList[i];
+                        var cmd = (ShowOptionsCommand)commandList[i];
                         lstEventCommands.Items.Add(
                             indent +
                             Strings.EventCommandList.linestart +
-                            GetCommandText((dynamic) commandList[i], map)
+                            GetCommandText((dynamic)commandList[i], map)
                         );
 
                         clp = new CommandListProperties
@@ -112,11 +112,11 @@ public static partial class CommandPrinter
 
                         break;
                     case EventCommandType.InputVariable:
-                        var cid = (InputVariableCommand) commandList[i];
+                        var cid = (InputVariableCommand)commandList[i];
                         lstEventCommands.Items.Add(
                             indent +
                             Strings.EventCommandList.linestart +
-                            GetCommandText((dynamic) commandList[i], map)
+                            GetCommandText((dynamic)commandList[i], map)
                         );
 
                         clp = new CommandListProperties
@@ -166,11 +166,11 @@ public static partial class CommandPrinter
 
                         break;
                     case EventCommandType.ConditionalBranch:
-                        var cnd = (ConditionalBranchCommand) commandList[i];
+                        var cnd = (ConditionalBranchCommand)commandList[i];
                         lstEventCommands.Items.Add(
                             indent +
                             Strings.EventCommandList.linestart +
-                            GetCommandText((dynamic) commandList[i], map)
+                            GetCommandText((dynamic)commandList[i], map)
                         );
 
                         clp = new CommandListProperties
@@ -202,7 +202,8 @@ public static partial class CommandPrinter
                         if (cnd.Condition.ElseEnabled)
                         {
                             lstEventCommands.Items.Add(indent + "      : " + Strings.EventCommandList.conditionalelse);
-                            clp = new CommandListProperties {
+                            clp = new CommandListProperties
+                            {
                                 Editable = false,
                                 MyIndex = i,
                                 MyList = commandList,
@@ -222,7 +223,7 @@ public static partial class CommandPrinter
                                 mCommandProperties, map
                             );
                         }
-                        
+
                         lstEventCommands.Items.Add(indent + "      : " + Strings.EventCommandList.conditionalend);
                         clp = new CommandListProperties
                         {
@@ -237,11 +238,11 @@ public static partial class CommandPrinter
 
                         break;
                     case EventCommandType.ChangeSpells:
-                        var spl = (ChangeSpellsCommand) commandList[i];
+                        var spl = (ChangeSpellsCommand)commandList[i];
                         lstEventCommands.Items.Add(
                             indent +
                             Strings.EventCommandList.linestart +
-                            GetCommandText((dynamic) commandList[i], map)
+                            GetCommandText((dynamic)commandList[i], map)
                         );
 
                         clp = new CommandListProperties
@@ -303,11 +304,11 @@ public static partial class CommandPrinter
 
                         break;
                     case EventCommandType.ChangeItems:
-                        var itm = (ChangeItemsCommand) commandList[i];
+                        var itm = (ChangeItemsCommand)commandList[i];
                         lstEventCommands.Items.Add(
                             indent +
                             Strings.EventCommandList.linestart +
-                            GetCommandText((dynamic) commandList[i], map)
+                            GetCommandText((dynamic)commandList[i], map)
                         );
 
                         clp = new CommandListProperties
@@ -370,11 +371,11 @@ public static partial class CommandPrinter
                         break;
 
                     case EventCommandType.StartQuest:
-                        var qst = (StartQuestCommand) commandList[i];
+                        var qst = (StartQuestCommand)commandList[i];
                         lstEventCommands.Items.Add(
                             indent +
                             Strings.EventCommandList.linestart +
-                            GetCommandText((dynamic) commandList[i], map)
+                            GetCommandText((dynamic)commandList[i], map)
                         );
 
                         clp = new CommandListProperties
@@ -443,7 +444,8 @@ public static partial class CommandPrinter
                             GetCommandText((dynamic)commandList[i], map)
                         );
 
-                        clp = new CommandListProperties {
+                        clp = new CommandListProperties
+                        {
                             Editable = true,
                             MyIndex = i,
                             MyList = commandList,
@@ -455,7 +457,8 @@ public static partial class CommandPrinter
 
                         //When the name was successfully changed:
                         lstEventCommands.Items.Add(indent + "      : " + Strings.EventCommandList.namesucceeded);
-                        clp = new CommandListProperties {
+                        clp = new CommandListProperties
+                        {
                             Editable = false,
                             MyIndex = i,
                             MyList = commandList,
@@ -471,7 +474,8 @@ public static partial class CommandPrinter
 
                         //When the name failed to change:
                         lstEventCommands.Items.Add(indent + "      : " + Strings.EventCommandList.namefailed);
-                        clp = new CommandListProperties {
+                        clp = new CommandListProperties
+                        {
                             Editable = false,
                             MyIndex = i,
                             MyList = commandList,
@@ -486,7 +490,8 @@ public static partial class CommandPrinter
                         );
 
                         lstEventCommands.Items.Add(indent + "      : " + Strings.EventCommandList.endname);
-                        clp = new CommandListProperties {
+                        clp = new CommandListProperties
+                        {
                             Editable = false,
                             MyIndex = i,
                             MyList = commandList,
@@ -501,7 +506,7 @@ public static partial class CommandPrinter
                         lstEventCommands.Items.Add(
                             indent +
                             Strings.EventCommandList.linestart +
-                            GetCommandText((dynamic) commandList[i], map)
+                            GetCommandText((dynamic)commandList[i], map)
                         );
 
                         clp = new CommandListProperties
@@ -588,7 +593,7 @@ public static partial class CommandPrinter
         }
 
         lstEventCommands.Items.Add(indent + Strings.EventCommandList.linestart);
-        clp = new CommandListProperties {Editable = true, MyIndex = -1, MyList = commandList};
+        clp = new CommandListProperties { Editable = true, MyIndex = -1, MyList = commandList };
         mCommandProperties.Add(clp);
     }
 
@@ -646,7 +651,7 @@ public static partial class CommandPrinter
 
     private static string GetCommandText(SetVariableCommand command, MapInstance map)
     {
-        return GetVariableModText(command, (dynamic) command.Modification);
+        return GetVariableModText(command, (dynamic)command.Modification);
     }
 
     private static string GetCommandText(SetSelfSwitchCommand command, MapInstance map)
@@ -669,14 +674,14 @@ public static partial class CommandPrinter
         {
             return Strings.EventCommandList.conditionalbranch.ToString(
                 Strings.EventConditionDesc.negated.ToString(
-                    Strings.GetEventConditionalDesc((dynamic) command.Condition)
+                    Strings.GetEventConditionalDesc((dynamic)command.Condition)
                 )
             );
         }
         else
         {
             return Strings.EventCommandList.conditionalbranch.ToString(
-                Strings.GetEventConditionalDesc((dynamic) command.Condition)
+                Strings.GetEventConditionalDesc((dynamic)command.Condition)
             );
         }
     }
@@ -798,7 +803,7 @@ public static partial class CommandPrinter
     {
         var commandText = string.Empty;
 
-        if(!command.Unequip)
+        if (!command.Unequip)
         {
             commandText = Strings.EventCommandList.equipitem.ToString(ItemBase.GetName(command.ItemId));
         }
@@ -806,7 +811,7 @@ public static partial class CommandPrinter
         {
             if (command.IsItem)
             {
-                 commandText = Strings.EventCommandList.unequipitem.ToString(ItemBase.GetName(command.ItemId));
+                commandText = Strings.EventCommandList.unequipitem.ToString(ItemBase.GetName(command.ItemId));
             }
             else
             {
@@ -882,7 +887,8 @@ public static partial class CommandPrinter
             return Strings.EventCommandList.InstancedWarp.ToString(
                 mapName, command.X, command.Y, Strings.Direction.dir[(Direction)command.Direction - 1], command.InstanceType.ToString()
             );
-        } else
+        }
+        else
         {
             return Strings.EventCommandList.warp.ToString(
                 mapName, command.X, command.Y, Strings.Direction.dir[(Direction)command.Direction - 1]
@@ -1034,7 +1040,7 @@ public static partial class CommandPrinter
                         AnimationBase.GetName(command.AnimationId),
                         Strings.EventCommandList.animationonmap.ToString(
                             MapList.OrderedMaps[i].Name, command.X, command.Y,
-                            Strings.Direction.dir[(Direction) command.Dir]
+                            Strings.Direction.dir[(Direction)command.Dir]
                         )
                     ));
                 }
@@ -1258,7 +1264,7 @@ public static partial class CommandPrinter
         {
             return Strings.EventCommandList.FadeCancel.ToString(commandType, command.WaitForCompletion);
         }
-        
+
         return Strings.EventCommandList.Fade.ToString(commandType, command.WaitForCompletion, command.DurationMs);
     }
 
@@ -1677,4 +1683,16 @@ public static partial class CommandPrinter
         return Strings.EventCommandList.sendmail;
     }
 
+    private static string GetCommandText(OpenEnchantmentWindowCommand command, MapInstance map)
+    {
+        return Strings.EventCommandList.openenchantment;
+    }
+    private static string GetCommandText(OpenMageWindowCommand command, MapInstance map)
+    {
+        return Strings.EventCommandList.openmage;
+    }
+    private static string GetCommandText(OpenBrokeItemWindowCommand command, MapInstance map)
+    {
+        return Strings.EventCommandList.openbrokeitem;
+    }
 }

@@ -3392,4 +3392,5 @@ internal sealed partial class PacketHandler
         ItemBreakHelper.InitializeOrbs();
         player.BreakItem(packet.ItemSlot);
     }
+   
 }

@@ -594,9 +594,9 @@ public static partial class CommandProcessing
             {
                 player.UnequipItem(command.ItemId);
             }
-            else if(!command.IsItem && command.Slot > -1 && player.TryGetEquippedItem(command.Slot, out var equippedItem))
+            else if (!command.IsItem && command.Slot > -1 && player.TryGetEquippedItem(command.Slot, out var equippedItem))
             {
-                 player.UnequipItem(equippedItem.ItemId);
+                player.UnequipItem(equippedItem.ItemId);
             }
         }
         else
@@ -2255,5 +2255,38 @@ public static partial class CommandProcessing
     )
     {
         player.SendMail();
+    }
+   
+    private static void ProcessCommand(
+    OpenEnchantmentWindowCommand command,
+     Player player,
+     Event instance,
+     CommandInstance stackInfo,
+     Stack<CommandInstance> callStack
+  )
+    {
+        player.OpenEnchantment();
+    }
+
+    private static void ProcessCommand(
+    OpenMageWindowCommand command,
+     Player player,
+     Event instance,
+     CommandInstance stackInfo,
+     Stack<CommandInstance> callStack
+  )
+    {
+        player.OpenMage();
+    }
+
+    private static void ProcessCommand(
+  OpenBrokeItemWindowCommand command,
+   Player player,
+   Event instance,
+   CommandInstance stackInfo,
+   Stack<CommandInstance> callStack
+)
+    {
+        player.OpenBrokeItem();
     }
 }

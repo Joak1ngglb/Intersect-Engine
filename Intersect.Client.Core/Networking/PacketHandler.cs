@@ -2515,4 +2515,18 @@ internal sealed partial class PacketHandler
             Log.Error($"No se encontró ningún ítem en el índice {packet.ItemIndex}.");
         }
     }
+
+    public void HandlePacket(IPacketSender packetSender, EnchantmentWindowPacket packet)
+    {
+        Interface.Interface.GameUi?.OpenEnchantWindow();
+    }
+    public void HandlePacket(IPacketSender packetSender, MageWindowPacket packet)
+    {
+        Interface.Interface.GameUi?.OpenOrbItemWindow();
+    }
+    public void HandlePacket(IPacketSender packetSender, BrokeItemWindowPacket packet)
+    {
+        Interface.Interface.GameUi?.OpenBrokeItemWindow();
+    }
 }
+

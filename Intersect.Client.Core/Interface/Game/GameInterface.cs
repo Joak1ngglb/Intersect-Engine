@@ -60,7 +60,7 @@ public partial class GameInterface : MutableInterface
     private MarketWindow mMarketWindow;
     private SellMarketWindow mSellMarketWindow;
     public EnchantItemWindow mEnchantItemWindow;
-    public OrbItemWindow OrbItemWindow;
+    public OrbItemWindow mOrbItemWindow;
     public BreakItemWindow mBreakItemWindow;
     private bool mShouldOpenEnchantWindow;
     private bool mShouldCloseEnchantWindow;
@@ -146,28 +146,28 @@ public partial class GameInterface : MutableInterface
         mQuestOfferWindow = new QuestOfferWindow(GameCanvas);
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
-        // mJobsWindow = new JobsWindow(GameCanvas);
-        mEnchantItemWindow = new EnchantItemWindow(GameCanvas);
-        OrbItemWindow = new OrbItemWindow(GameCanvas);
-    mBreakItemWindow = new BreakItemWindow(GameCanvas);
     }
-    public void NotifyOpenGuildCreation()
+ 
+    public void OpenOrbItemWindow()
     {
-        if (mCreateGuildWindow == null)
+        if (mOrbItemWindow == null)
         {
-            mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
+            mOrbItemWindow = new OrbItemWindow(GameCanvas);
         }
-        mCreateGuildWindow.Show();
-    }
-    public void ShowOrbItemWindow()
-    {
-        OrbItemWindow.Show();
+        mOrbItemWindow.Show();
     }
     public void HideOrbItemWindow()
     {
-        OrbItemWindow.Hide();
+        mOrbItemWindow.Hide();
     }
-
+    public void OpenBrokeItemWindow()
+    {
+        if (mBreakItemWindow == null)
+        {
+            mBreakItemWindow = new BreakItemWindow(GameCanvas);
+        }
+        mBreakItemWindow.Show();
+    }
     public void NotifyCloseGuildCreation()
     {
         mShouldCloseGuildCreation = true;
@@ -411,6 +411,8 @@ public partial class GameInterface : MutableInterface
         mPictureWindow?.Update();
         mCreateGuildWindow?.Update();
         mBreakItemWindow?.Update();
+        mEnchantItemWindow?.Update();
+        mOrbItemWindow?.Update();
         if (mSendMailBoxWindow != null && !mSendMailBoxWindow.IsVisible())
         {
             mSendMailBoxWindow?.Close();
@@ -431,9 +433,9 @@ public partial class GameInterface : MutableInterface
         {
             CloseEnchantWindow();
         }
-        if (OrbItemWindow != null && OrbItemWindow.IsVisible())
+        if (mOrbItemWindow != null && mOrbItemWindow.IsVisible())
         {
-            OrbItemWindow.Update();
+            mOrbItemWindow.Update();
         }
         // Actualizar la ventana de encantamiento si está visible
         if (mEnchantItemWindow != null && mEnchantItemWindow.IsVisible())
@@ -675,7 +677,7 @@ public partial class GameInterface : MutableInterface
         mShouldCloseEnchantWindow = true;
     }
 
-    private void OpenEnchantWindow()
+    public void OpenEnchantWindow()
     {
         if (mEnchantItemWindow != null)
         {

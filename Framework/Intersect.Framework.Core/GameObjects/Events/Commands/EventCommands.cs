@@ -1016,12 +1016,25 @@ public partial class GiveJobExperienceCommand : EventCommand
         }
     }
 
-    public class SendMailBoxCommand : EventCommand
-    {
-        public override EventCommandType Type { get; } = EventCommandType.SendMail;
-    }
-    public class OpenMailBoxCommand : EventCommand
-    {
-        public override EventCommandType Type { get; } = EventCommandType.OpenMailBox;
-    }
+ }
+public class SendMailBoxCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.SendMail;
+}
+public class OpenMailBoxCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenMailBox;
+}
+
+public class OpenEnchantmentWindowCommand:EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenEnchantment;
+}
+public class OpenMageWindowCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenMage;
+}
+public class OpenBrokeItemWindowCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenMage;
 }

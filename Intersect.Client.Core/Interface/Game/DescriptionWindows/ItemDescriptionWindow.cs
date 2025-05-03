@@ -93,7 +93,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
             // 🔥 Si es arma y tiene subtipo, mostrar solo el subtipo
             if (mItem.EquipmentSlot == Options.WeaponIndex && !string.IsNullOrWhiteSpace(mItem.Subtype))
             {
-                header.SetSubtitle($"{typeDesc} - {mItem.Subtype}", Color.White);
+                header.SetSubtitle($"{mItem.Subtype}", Color.White);
             }
             else
             {
@@ -102,14 +102,14 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
                     ? $"{Strings.ItemDescription.TwoHand} {equipSlot}"
                     : equipSlot;
 
-                header.SetSubtitle($"{typeDesc} - {extraInfo}", Color.White);
+                header.SetSubtitle($"{extraInfo}", Color.White);
             }
         }
         else
         {
             // 🔥 Para ítems que NO son equipo: mostrar tipo + subtipo si hay.
             var subtypeInfo = !string.IsNullOrWhiteSpace(mItem.Subtype) ? $"{mItem.Subtype}" : "";
-            header.SetSubtitle($"{typeDesc}{subtypeInfo}", Color.White);
+            header.SetSubtitle($"{subtypeInfo}", Color.White);
         }
 
 
@@ -240,7 +240,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         if (mItemProperties?.StatOrbUpgradeCounts != null)
         {
             bool hasOrbs = false;
-            AddDivider(); // 🔥 Divisor visual antes de mostrar los orbes
+           
             for (int i = 0; i < mItemProperties.StatOrbUpgradeCounts.Length; i++)
             {
                 int orbCount = mItemProperties.StatOrbUpgradeCounts[i];
@@ -248,7 +248,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
                 {
                     if (!hasOrbs)
                     {
-                      
+                        AddDivider(); // 🔥 Divisor visual antes de mostrar los orbes
                         hasOrbs = true;
                     }
 

@@ -1034,3 +1034,16 @@ public class OpenMarketSellWindowCommand : EventCommand
 {
     public override EventCommandType Type { get; } = EventCommandType.OpenMarketSell;
 }
+
+public class OpenEnchantmentWindowCommand:EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenEnchantment;
+}
+public class OpenMageWindowCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenMage;
+}
+public class OpenBrokeItemWindowCommand : EventCommand
+{
+    public override EventCommandType Type { get; } = EventCommandType.OpenMage;
+}

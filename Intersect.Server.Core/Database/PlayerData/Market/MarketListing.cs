@@ -10,7 +10,7 @@ public class MarketListing
     public Guid Id { get; set; } = Guid.NewGuid();
 
     [Required]
-    public virtual Player Seller { get; set; }
+    public  Player Seller { get; set; }
 
     [Required]
     public Guid ItemId { get; set; }

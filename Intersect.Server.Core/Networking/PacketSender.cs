@@ -116,7 +116,7 @@ public static partial class PacketSender
 
             // Send our friend list over so the UI can adjust accordingly without having to open it client-side first.
             PacketSender.SendFriends(player);
-         NotifyPlayerOnLogin(player);
+            NotifyPlayerOnLogin(player);
         }
     }
     //MapAreaPacket
@@ -2145,7 +2145,7 @@ public static partial class PacketSender
         {
             player.SendPacket(
                 new TradeUpdatePacket(
-                    trader.Id, slot, trader.Trading.Offer[slot].ItemId, trader.Trading.Offer[slot].Quantity,trader.Trading.Offer[slot].BagId, 
+                    trader.Id, slot, trader.Trading.Offer[slot].ItemId, trader.Trading.Offer[slot].Quantity, trader.Trading.Offer[slot].BagId,
                     trader.Trading.Offer[slot].Properties, trader.Trading.Offer[slot].Properties?.EnchantmentLevel ?? 0
 
                 )
@@ -2153,7 +2153,7 @@ public static partial class PacketSender
         }
         else
         {
-            player.SendPacket(new TradeUpdatePacket(trader.Id, slot, Guid.Empty, 0, null, null,0));
+            player.SendPacket(new TradeUpdatePacket(trader.Id, slot, Guid.Empty, 0, null, null, 0));
         }
     }
 
@@ -2202,11 +2202,11 @@ public static partial class PacketSender
     {
         if (item != null && item.ItemId != Guid.Empty && item.Quantity > 0)
         {
-            player.SendPacket(new BagUpdatePacket(slot, item.ItemId, item.Quantity, item.BagId, item.Properties,item.Properties?.EnchantmentLevel ?? 0));
+            player.SendPacket(new BagUpdatePacket(slot, item.ItemId, item.Quantity, item.BagId, item.Properties, item.Properties?.EnchantmentLevel ?? 0));
         }
         else
         {
-            player.SendPacket(new BagUpdatePacket(slot, Guid.Empty, 0, null, null,0));
+            player.SendPacket(new BagUpdatePacket(slot, Guid.Empty, 0, null, null, 0));
         }
     }
 
@@ -2305,7 +2305,8 @@ public static partial class PacketSender
         }
 
         player.SendPacket(new GuildPacket(members));
-        UpdateGuild(player);    }
+        UpdateGuild(player);
+    }
 
     //GuildRequestPacket
     public static void SendGuildInvite(Player player, Player from)
@@ -2420,16 +2421,16 @@ public static partial class PacketSender
             }
         }
     }
-        public static void SendTradeAcceptPacketTo(Player player)
+    public static void SendTradeAcceptPacketTo(Player player)
+    {
+        if (player == null)
         {
-            if (player == null)
-            {
-                return;
-            }
-            player?.SendPacket(new TradeAcceptedPacket());
+            return;
         }
+        player?.SendPacket(new TradeAcceptedPacket());
+    }
 
-        public static void SendDataToAll(IPacket packet, TransmissionMode mode = TransmissionMode.All)
+    public static void SendDataToAll(IPacket packet, TransmissionMode mode = TransmissionMode.All)
     {
         lock (Globals.ClientLock)
         {
@@ -2454,7 +2455,7 @@ public static partial class PacketSender
 
         var jobData = new Dictionary<JobType, JobData>();
         // Inicializar trabajos si no están presentes
-       
+
         foreach (var job in player.Jobs)
         {
             var jobType = job.Key;
@@ -2474,7 +2475,7 @@ public static partial class PacketSender
         player.SendPacket(packet, TransmissionMode.Any);
 
         // Depuración en el servidor
-      //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
+        //  PacketSender.SendChatMsg(player,$"[DEBUG] Paquete de trabajos enviado a {player.Name} con {jobData.Count} trabajos.",ChatMessageType.Notice);
     }
 
     public static void SendOpenMailBox(Player player)
@@ -2508,10 +2509,10 @@ public static partial class PacketSender
         SendInventory(player);
 
         // Enviar paquete para abrir la ventana de envío de correos
-        
+
         player.SendPacket(new MailBoxPacket(true, true));
     }
-   
+
     public static void NotifyPlayerOnLogin(Player player)
     {
         // Cargar correos pendientes desde la base de datos
@@ -2562,7 +2563,7 @@ public static partial class PacketSender
         if (player == null) return;
         player.SendPacket(new GuildCreationWindowPacket());
     }
-    
+
 
     public static void SendMarketListings(Player player, List<MarketListing> listings)
     {
@@ -2666,7 +2667,7 @@ public static partial class PacketSender
         // Opción futura si quieres permitir cerrarla desde el servidor
         player.SendPacket(new MarketWindowPacket(false, false));
     }
-public static void SendUpdateItemLevel(Player player, int itemIndex, int newEnchantmentLevel)
+    public static void SendUpdateItemLevel(Player player, int itemIndex, int newEnchantmentLevel)
     {
         if (player == null)
         {
@@ -2696,4 +2697,19 @@ public static void SendUpdateItemLevel(Player player, int itemIndex, int newEnch
         player.SendPacket(packet, TransmissionMode.All);
     }
 
+    public static void SendOpenEnchantmentWindow(Player player)
+    {
+        // Abre la ventana para vender ítems
+        player.SendPacket(new EnchantmentWindowPacket());
+    }
+    public static void SendOpenMageWindow(Player player)
+    {
+        // Abre la ventana para vender ítems
+        player.SendPacket(new MageWindowPacket());
+    }
+    public static void SendOpenBrokeItemWindow(Player player)
+    {
+        // Abre la ventana para vender ítems
+        player.SendPacket(new BrokeItemWindowPacket());
+    }
 }

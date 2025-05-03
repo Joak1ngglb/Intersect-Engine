@@ -243,6 +243,9 @@ public enum EventCommandType
     OpenMailBox = 202,
     OpenMarket = 203,
     OpenMarketSell = 204,
+    OpenEnchantment = 205,
+    OpenMage = 206,
+    OpenBrokeItem = 207,
 }
 
 public enum FadeType

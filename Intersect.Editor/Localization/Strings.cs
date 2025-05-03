@@ -2299,6 +2299,12 @@ Tick timer saved in server config.json.";
         public static LocalizedString openmarket= @"Open Market";
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString opensellmarket = @"Open SellMarket";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString openenchantment = @"Open Enchant Window";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString openmage = @"Open Mage Window";
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString openbrokeitem = @"Open Broke Items Window";
     }
     public partial struct EventChangePlayerColor
     {

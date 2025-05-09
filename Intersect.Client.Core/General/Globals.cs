@@ -221,6 +221,7 @@ public static partial class Globals
 
     //Scene management
     private static bool _waitingOnServer;
+    public static bool QuestDirty;
 
     public static bool WaitingOnServer
     {

@@ -145,8 +145,29 @@ public partial class GameInterface : MutableInterface
         mQuestOfferWindow = new QuestOfferWindow(GameCanvas);
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
+        mEnchantItemWindow = new EnchantItemWindow(GameCanvas);
+        mOrbItemWindow = new OrbItemWindow(GameCanvas);
+        mBreakItemWindow = new BreakItemWindow(GameCanvas);
     }
+    public void OpenEnchantWindow()
+    {
+        if (mEnchantItemWindow != null)
+        {
+            mEnchantItemWindow = new EnchantItemWindow(GameCanvas);
+           
+        }
+        mEnchantItemWindow.Show(); 
  
+    }
+
+    private void CloseEnchantWindow()
+    {
+        if (mEnchantItemWindow != null)
+        {
+            mEnchantItemWindow.Hide();
+        }
+        mShouldCloseEnchantWindow = false;
+    }
     public void OpenOrbItemWindow()
     {
         if (mOrbItemWindow == null)
@@ -676,23 +697,7 @@ public partial class GameInterface : MutableInterface
         mShouldCloseEnchantWindow = true;
     }
 
-    public void OpenEnchantWindow()
-    {
-        if (mEnchantItemWindow != null)
-        {
-            mEnchantItemWindow.Show();
-        }
-        mShouldOpenEnchantWindow = false;
-    }
-
-    private void CloseEnchantWindow()
-    {
-        if (mEnchantItemWindow != null)
-        {
-            mEnchantItemWindow.Hide();
-        }
-        mShouldCloseEnchantWindow = false;
-    }
+  
     public bool CloseAllWindows()
     {
         var closedWindows = false;

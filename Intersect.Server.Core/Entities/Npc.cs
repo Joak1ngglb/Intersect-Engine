@@ -450,6 +450,11 @@ public partial class Npc : Entity
             if (enemy is Player)
             {
                 return true;
+
+            }
+            if (enemy.IsDead())
+            {
+                return false;
             }
         }
         else if (enemy is Npc enemyNpc && Base != null && enemyNpc.Base == Base && Base.AttackAllies == false)

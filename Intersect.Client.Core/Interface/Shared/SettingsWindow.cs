@@ -321,7 +321,7 @@ public partial class SettingsWindow : ImagePanel
             }
         );
 
-        Globals.Database.WorldZoom = MathHelper.Clamp(Globals.Database.WorldZoom, 1, 4);
+        Globals.Database.WorldZoom = MathHelper.Clamp(Globals.Database.WorldZoom, 2, 4);
 
         var worldScaleNotches = new double[] { 1, 2, 4 }.Select(n => n * Graphics.BaseWorldScale).ToArray();
         _worldScale = new LabeledHorizontalSlider(_videoSettingsContainer, "WorldScale")

@@ -2161,7 +2161,12 @@ public partial class Player : Entity, IPlayer
             return false;
         }
 
-        // Are we trying to pick up anything in particular, or everything?
+        if (Globals.Me?.IsDead() == true)
+        {
+            return false;
+        }
+
+        // Are we trying to pick up anything in particular, or everything?  
         if (uniqueId != Guid.Empty || firstOnly)
         {
             if (!map.MapItems.TryGetValue(tileIndex, out var value) || value.Count < 1)
@@ -2171,7 +2176,7 @@ public partial class Player : Entity, IPlayer
 
             foreach (var item in value)
             {
-                // Check if we are trying to pick up a specific item, and if this is the one.
+                // Check if we are trying to pick up a specific item, and if this is the one.  
                 if (uniqueId != Guid.Empty && item.Id != uniqueId)
                 {
                     continue;
@@ -2183,7 +2188,7 @@ public partial class Player : Entity, IPlayer
         }
         else
         {
-            // Let the server worry about what we can and can not pick up.
+            // Let the server worry about what we can and cannot pick up.  
             PacketSender.SendPickupItem(mapId, tileIndex, uniqueId);
             return true;
         }

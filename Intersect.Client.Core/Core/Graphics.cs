@@ -542,7 +542,7 @@ public static partial class Graphics
             return;
         }
 
-        Renderer.Scale = Globals.GameState == GameStates.InGame ? Globals.Database.WorldZoom : 1.0f;
+        Renderer.Scale = Globals.GameState == GameStates.InGame ? Globals.Database.WorldZoom : 2.0f;
 
         if (!Renderer.Begin())
         {

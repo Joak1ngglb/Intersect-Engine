@@ -2006,6 +2006,7 @@ internal sealed partial class PacketHandler
             {
                 Interface.Interface.GameUi.NotifyQuestsUpdated();
             }
+            Globals.QuestDirty = true;  
         }
     }
 

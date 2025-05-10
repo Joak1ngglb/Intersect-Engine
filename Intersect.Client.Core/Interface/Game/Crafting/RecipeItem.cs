@@ -54,11 +54,11 @@ public partial class RecipeItem
         Pnl = new ImagePanel(Container, name);
         if (Pnl == null)
         {
-            PacketSender.SendChatMsg($"Error: Pnl not created for {name}",5);
+            
         }
         else
         {
-            PacketSender.SendChatMsg($"Pnl created for {name}", 5);
+
         }
         Pnl.HoverEnter += pnl_HoverEnter;
         Pnl.HoverLeave += pnl_HoverLeave;
@@ -85,17 +85,17 @@ public partial class RecipeItem
             {
                 Pnl.Texture = itemTex;
                 Pnl.RenderColor = item.Color;
-                PacketSender.SendChatMsg($"Texture loaded for item: {item.Name}, Icon: {item.Icon}", 5);
+             
             }
             else
             {
-                PacketSender.SendChatMsg($"Texture missing for item: {item.Name}, Icon: {item.Icon}", 5);
+        
                 Pnl.Texture = null;
             }
         }
         else
         {
-            PacketSender.SendChatMsg($"Item not found with ID: {mIngredient.ItemId}",5);
+
             Pnl.Texture = null;
         }
     }

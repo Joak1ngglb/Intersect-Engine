@@ -12,5 +12,7 @@ public enum SpellType
 
     Event = 4,
 
-    Resurrection = 5
+    Resurrection = 5,
+
+          SummonNpc = 6
 }

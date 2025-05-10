@@ -824,10 +824,10 @@ public static partial class CommandProcessing
         }
     }
 
-    //Spawn Npc Command
+    //Spawn Npc Command (modificado para aceptar Entity, no solo Player)
     private static void ProcessCommand(
         SpawnNpcCommand command,
-        Player player,
+        Entity caller,
         Event eventInstance,
         CommandInstance stackInfo,
         Stack<CommandInstance> callStack
@@ -838,7 +838,9 @@ public static partial class CommandProcessing
         var tileX = 0;
         var tileY = 0;
         Direction direction = (byte)Direction.Up;
-        var targetEntity = (Entity)player;
+
+        var targetEntity = caller; // Aquí ya puede ser Player o NpcInstance
+
         if (mapId != Guid.Empty)
         {
             tileX = command.X;
@@ -849,18 +851,21 @@ public static partial class CommandProcessing
         {
             if (command.EntityId != Guid.Empty)
             {
-                foreach (var evt in player.EventLookup)
+                // Solo si el caller es Player buscamos en sus eventos
+                if (caller is Player player)
                 {
-                    if (evt.Value.MapId != eventInstance.MapId)
+                    foreach (var evt in player.EventLookup)
                     {
-                        continue;
-                    }
+                        if (evt.Value.MapId != eventInstance.MapId)
+                        {
+                            continue;
+                        }
 
-                    if (evt.Value.BaseEvent.Id == command.EntityId)
-                    {
-                        targetEntity = evt.Value.PageInstance;
-
-                        break;
+                        if (evt.Value.BaseEvent.Id == command.EntityId)
+                        {
+                            targetEntity = evt.Value.PageInstance;
+                            break;
+                        }
                     }
                 }
             }
@@ -877,19 +882,16 @@ public static partial class CommandProcessing
                         case Direction.Down:
                             yDiff *= -1;
                             xDiff *= -1;
-
                             break;
                         case Direction.Left:
                             tmp = yDiff;
                             yDiff = xDiff;
                             xDiff = tmp;
-
                             break;
                         case Direction.Right:
                             tmp = yDiff;
                             yDiff = xDiff;
                             xDiff = -tmp;
-
                             break;
                     }
 
@@ -907,12 +909,24 @@ public static partial class CommandProcessing
         }
 
         var tile = new TileHelper(mapId, tileX, tileY);
-        if (tile.TryFix() && MapController.TryGetInstanceFromMap(mapId, player.MapInstanceId, out var instance))
+        if (tile.TryFix() && MapController.TryGetInstanceFromMap(mapId, caller.MapInstanceId, out var instance))
         {
             var npc = instance.SpawnNpc((byte)tileX, (byte)tileY, direction, npcId, true);
-            player.SpawnedNpcs.Add(npc);
+
+            // Si quien llama es un player, seguimos guardando en su lista
+            if (caller is Player playerCaller)
+            {
+                playerCaller.SpawnedNpcs.Add(npc);
+            }
+            // Si quien llama es un NPC, podrías agregar lógica aquí si quieres rastrear
+            // Por ahora lo dejamos sin guardar porque los NPCs no manejan lista
+            // else if (caller is NpcInstance npcCaller)
+            // {
+            //     npcCaller.SpawnedNpcs.Add(npc); // <-- solo si decides implementar esta lista
+            // }
         }
     }
+
 
     //Despawn Npcs Command
     private static void ProcessCommand(

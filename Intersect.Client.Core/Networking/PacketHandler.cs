@@ -2478,7 +2478,7 @@ internal sealed partial class PacketHandler
                    
     }
  
-    public void HandleGuildCreationWindow(IPacketSender packetSender, GuildCreationWindowPacket packet)
+    public void HandlePacket(IPacketSender packetSender, GuildCreationWindowPacket packet)
     {
         if (Globals.Me?.Guild != null)
         {

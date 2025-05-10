@@ -5445,6 +5445,7 @@ Tick timer saved in server config.json.";
             {3, @"Dash"},
             {4, @"Event"},
             {5, @"Resurrection"},
+            {6, @"Summon NPC" },
         };
 
         public static LocalizedString undo = @"Undo Changes";

@@ -105,7 +105,9 @@ public partial class FrmSpell : EditorForm
         cmbTickAnimation.Items.Clear();
         cmbTickAnimation.Items.Add(Strings.General.None);
         cmbTickAnimation.Items.AddRange(AnimationBase.Names);
-
+        cmbSummonNpc.Items.Clear();
+        cmbSummonNpc.Items.Add(Strings.General.None);
+        cmbSummonNpc.Items.AddRange(NpcBase.Names);
         cmbSprite.Items.Clear();
         cmbSprite.Items.Add(Strings.General.None);
         var spellNames = GameContentManager.GetSmartSortedTextureNames(GameContentManager.TextureType.Spell);
@@ -307,6 +309,21 @@ public partial class FrmSpell : EditorForm
             );
 
             chkBound.Checked = mEditorItem.Bound;
+            var index = 0;
+            if (mEditorItem.SummonNpcId != Guid.Empty)
+            {
+                var npcs = NpcBase.Lookup.Values.ToList();
+                for (var i = 0; i < npcs.Count; i++)
+                {
+                    if (npcs[i].Id == mEditorItem.SummonNpcId)
+                    {
+                        index = i + 1; // +1 porque el índice 0 es "None"
+                        break;
+                    }
+                }
+            }
+
+            cmbSummonNpc.SelectedIndex = index;
 
             cmbSprite.SelectedIndex = cmbSprite.FindString(TextUtils.NullToNone(mEditorItem.Icon));
             picSpell.BackgroundImage?.Dispose();
@@ -442,6 +459,20 @@ public partial class FrmSpell : EditorForm
             cmbTargetType.Enabled = false;
             UpdateTargetTypePanel();
         }
+        if (cmbType.SelectedIndex == (int)SpellType.SummonNpc)
+        {
+            lblSummonNpc.Show();
+            cmbSummonNpc.Show();
+            grpTargetInfo.Show();
+            cmbTargetType.SelectedIndex = (int)SpellTargetType.Single;
+            cmbTargetType.Enabled = false;
+            UpdateTargetTypePanel();
+        }
+        else
+        {
+            lblSummonNpc.Hide();
+            cmbSummonNpc.Hide();
+        }
     }
 
 
@@ -504,6 +535,8 @@ public partial class FrmSpell : EditorForm
             nudDuration.Show();
             nudDuration.Value = mEditorItem.Combat.TrapDuration;
         }
+
+
     }
 
     private void txtName_TextChanged(object sender, EventArgs e)
@@ -1144,5 +1177,18 @@ public partial class FrmSpell : EditorForm
     {
         Guid animationId = AnimationBase.IdFromList(cmbTickAnimation.SelectedIndex - 1);
         mEditorItem.TickAnimation = AnimationBase.Get(animationId);
+    }
+
+    private void cmbSummonNpc_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (cmbSummonNpc.SelectedIndex > 0) // Ensure a valid selection
+        {
+            var npcs = NpcBase.Lookup.Values.ToList();
+            mEditorItem.SummonNpcId = npcs[cmbSummonNpc.SelectedIndex - 1].Id; // Adjust index to match the list
+        }
+        else
+        {
+            mEditorItem.SummonNpcId = Guid.Empty; // Reset to empty if "None" is selected
+        }
     }
 }

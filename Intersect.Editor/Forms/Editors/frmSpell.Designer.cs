@@ -53,6 +53,8 @@ namespace Intersect.Editor.Forms.Editors
             cmbType = new DarkComboBox();
             lblName = new Label();
             txtName = new DarkTextBox();
+            lblSummonNpc = new Label();
+            cmbSummonNpc = new DarkComboBox();
             grpSpellCost = new DarkGroupBox();
             chkIgnoreCdr = new DarkCheckBox();
             chkIgnoreGlobalCooldown = new DarkCheckBox();
@@ -191,7 +193,7 @@ namespace Intersect.Editor.Forms.Editors
             grpSpells = new DarkGroupBox();
             btnClearSearch = new DarkButton();
             txtSearch = new DarkTextBox();
-            lstGameObjects = new Controls.GameObjectList();
+            lstGameObjects = new Intersect.Editor.Forms.Controls.GameObjectList();
             pnlContainer.SuspendLayout();
             grpGeneral.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picSpell).BeginInit();
@@ -286,12 +288,14 @@ namespace Intersect.Editor.Forms.Editors
             grpGeneral.Controls.Add(cmbType);
             grpGeneral.Controls.Add(lblName);
             grpGeneral.Controls.Add(txtName);
+            grpGeneral.Controls.Add(lblSummonNpc);
+            grpGeneral.Controls.Add(cmbSummonNpc);
             grpGeneral.ForeColor = System.Drawing.Color.Gainsboro;
             grpGeneral.Location = new System.Drawing.Point(9, 6);
             grpGeneral.Margin = new Padding(4, 3, 4, 3);
             grpGeneral.Name = "grpGeneral";
             grpGeneral.Padding = new Padding(4, 3, 4, 3);
-            grpGeneral.Size = new Size(315, 448);
+            grpGeneral.Size = new Size(315, 470);
             grpGeneral.TabIndex = 17;
             grpGeneral.TabStop = false;
             grpGeneral.Text = "General";
@@ -569,6 +573,35 @@ namespace Intersect.Editor.Forms.Editors
             txtName.TabIndex = 0;
             txtName.TextChanged += txtName_TextChanged;
             // 
+            // lblSummonNpc
+            // 
+            lblSummonNpc.AutoSize = true;
+            lblSummonNpc.Location = new System.Drawing.Point(6, 442);
+            lblSummonNpc.Name = "lblSummonNpc";
+            lblSummonNpc.Size = new Size(86, 15);
+            lblSummonNpc.TabIndex = 62;
+            lblSummonNpc.Text = "Summon NPC:";
+            // 
+            // cmbSummonNpc
+            // 
+            cmbSummonNpc.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            cmbSummonNpc.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            cmbSummonNpc.BorderStyle = ButtonBorderStyle.Solid;
+            cmbSummonNpc.ButtonColor = System.Drawing.Color.FromArgb(43, 43, 43);
+            cmbSummonNpc.DrawDropdownHoverOutline = false;
+            cmbSummonNpc.DrawFocusRectangle = false;
+            cmbSummonNpc.DrawMode = DrawMode.OwnerDrawVariable;
+            cmbSummonNpc.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbSummonNpc.FlatStyle = FlatStyle.Flat;
+            cmbSummonNpc.ForeColor = System.Drawing.Color.Gainsboro;
+            cmbSummonNpc.Location = new System.Drawing.Point(112, 438);
+            cmbSummonNpc.Name = "cmbSummonNpc";
+            cmbSummonNpc.Size = new Size(188, 24);
+            cmbSummonNpc.TabIndex = 63;
+            cmbSummonNpc.Text = null;
+            cmbSummonNpc.TextPadding = new Padding(2);
+            cmbSummonNpc.SelectedIndexChanged += cmbSummonNpc_SelectedIndexChanged;
+            // 
             // grpSpellCost
             // 
             grpSpellCost.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
@@ -763,7 +796,7 @@ namespace Intersect.Editor.Forms.Editors
             grpRequirements.Controls.Add(txtCannotCast);
             grpRequirements.Controls.Add(btnDynamicRequirements);
             grpRequirements.ForeColor = System.Drawing.Color.Gainsboro;
-            grpRequirements.Location = new System.Drawing.Point(9, 466);
+            grpRequirements.Location = new System.Drawing.Point(9, 479);
             grpRequirements.Margin = new Padding(4, 3, 4, 3);
             grpRequirements.Name = "grpRequirements";
             grpRequirements.Padding = new Padding(4, 3, 4, 3);
@@ -2675,5 +2708,8 @@ namespace Intersect.Editor.Forms.Editors
         private DarkComboBox cmbTickAnimation;
         private System.Windows.Forms.Label lblSpriteCastAnimation;
         private DarkComboBox cmbCastSprite;
+        private DarkComboBox cmbSummonNpc;
+        private Label lblSummonNpc;
+
     }
 }

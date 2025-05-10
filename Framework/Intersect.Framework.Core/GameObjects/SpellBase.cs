@@ -159,6 +159,8 @@ public partial class SpellBase : DatabaseObject<SpellBase>, IFolderable
             .Select(i => (SpellBase)i.Value)
             .ToArray();
     }
+    public Guid SummonNpcId { get; set; } = Guid.Empty;
+
 }
 
 [Owned]

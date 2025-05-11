@@ -236,36 +236,41 @@ public partial class Guild
                 return;
             }
 
-         
-                using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+
+            using (var context = DbInterface.CreatePlayerContext(readOnly: false))
             {
                 var dbPlayer = context.Players.FirstOrDefault(p => p.Id == player.Id);
                 if (dbPlayer != null)
                 {
-                    dbPlayer.DbGuild = this;
+                    // Asignar solo Guild por ID para evitar tracking completo
+                    dbPlayer.DbGuild = context.Guilds.Local.FirstOrDefault(g => g.Id == this.Id)
+                        ?? context.Guilds.Attach(new Guild { Id = this.Id }).Entity;
+
                     dbPlayer.GuildRank = rank;
                     dbPlayer.GuildJoinDate = DateTime.UtcNow;
+
                     context.ChangeTracker.DetectChanges();
-                   
                     context.SaveChanges();
+
+                    // Luego sí puedes desconectar el Guild completo si quieres
                     DetachGuildFromDbContext(context, this);
+
+                    // Actualizar en memoria
                     player.Guild = this;
                     player.GuildRank = rank;
                     player.GuildJoinDate = DateTime.UtcNow;
                     player.DonateXPGuild = 0;
                     player.GuildExpPercentage = 0;
-                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName,player.GuildExpPercentage, player.DonateXPGuild);
+
+                    var member = new GuildMember(player.Id, player.Name, player.GuildRank, player.Level, player.ClassName, player.MapName, player.GuildExpPercentage, player.DonateXPGuild);
                     Members.AddOrUpdate(player.Id, member, (key, oldValue) => member);
 
-                    // Send our new guild list to everyone that's online.
                     UpdateMemberList();
-
-                    // Send our entity data to nearby players.
                     PacketSender.SendEntityDataToProximity(Player.FindOnline(player.Id));
-
                     LogActivity(Id, player, initiator, GuildActivityType.Joined);
                 }
             }
+
         }
     }
 

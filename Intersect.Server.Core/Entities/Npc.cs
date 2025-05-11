@@ -991,7 +991,11 @@ public partial class Npc : Entity
                                                 {
                                                     if (CanAttack(blockingEntity, default))
                                                     {
-                                                        Log.Debug($"Trying to attack {blockingEntity.Name} because they're blocking the path to {Target.Name}");
+                                                        if (blockingEntity != null && Target != null)
+                                                        {
+                                                            Log.Debug($"Trying to attack {blockingEntity.Name} because they're blocking the path to {Target.Name}");
+                                                        }
+
                                                         ChangeDir(nextPathDirection);
                                                         TryAttack(blockingEntity);
                                                         blockerAttacked = true;

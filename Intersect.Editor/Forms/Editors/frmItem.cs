@@ -361,7 +361,7 @@ public partial class FrmItem : EditorForm
             nudRgbaA.Value = mEditorItem.Color.A;
             cmbEquipmentAnimation.SelectedIndex = AnimationBase.ListIndex(mEditorItem.EquipmentAnimationId) + 1;
             nudPrice.Value = mEditorItem.Price;
-            cmbRarity.Select(mEditorItem.Rarity, 1);
+            cmbRarity.SelectedIndex = mEditorItem.Rarity;
 
             nudStr.Value = mEditorItem.StatsGiven[0];
             nudMag.Value = mEditorItem.StatsGiven[1];

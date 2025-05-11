@@ -246,9 +246,9 @@ public partial class Guild
                     dbPlayer.GuildRank = rank;
                     dbPlayer.GuildJoinDate = DateTime.UtcNow;
                     context.ChangeTracker.DetectChanges();
-                    DetachGuildFromDbContext(context, this);
+                   
                     context.SaveChanges();
-
+                    DetachGuildFromDbContext(context, this);
                     player.Guild = this;
                     player.GuildRank = rank;
                     player.GuildJoinDate = DateTime.UtcNow;

@@ -200,7 +200,6 @@ public partial class GameInterface : MutableInterface
             mCreateGuildWindow = new GuildCreationInterface(GameCanvas);
         }
         mCreateGuildWindow.Show();
-
     }
 
     public void CloseGuildCreation()

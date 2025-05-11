@@ -84,7 +84,7 @@ namespace Intersect.Client.Interface.Game.Guilds
             // 2) Campo de texto: Nombre del gremio
             mGuildNameTextbox = new TextBox(mCreateGuildWindow, "GuildNameTextbox");
             mGuildNameTextbox.SetBounds(20, 10, 810, 30);
-
+         Interface.FocusElements.Add(mGuildNameTextbox);
             // 3) Panel principal (arriba) con botones “Símbolo” y “Fondo”
             mLogoPanel = new ImagePanel(mCreateGuildWindow, "LogoPanel");
             mLogoPanel.SetBounds(20, 50, 810, 230);

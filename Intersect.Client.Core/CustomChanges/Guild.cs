@@ -29,18 +29,7 @@ public partial class Player
      byte symbolB
   )
     {
-        // Validaciones básicas
-        if (string.IsNullOrEmpty(backgroundFile))
-        {
-            PacketSender.SendChatMsg("Error: El fondo del logo está vacío.", 5);
-            return;
-        }
-        if (string.IsNullOrEmpty(symbolFile))
-        {
-            PacketSender.SendChatMsg("Error: El símbolo del logo está vacío.", 5);
-            return;
-        }
-
+       
         // Guardar los valores en propiedades
         GuildBackgroundFile = backgroundFile;
         GuildBackgroundR = backgroundR;

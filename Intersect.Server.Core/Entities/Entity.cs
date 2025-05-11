@@ -2657,8 +2657,8 @@ public abstract partial class Entity : IEntity
                             break;
                         case SpellTargetType.AoE:
                             HandleAoESpell(spellId, spellBase.Combat.HitRadius, MapId, X, Y, null);
-
                             break;
+
                         case SpellTargetType.Projectile:
                             var projectileBase = spellBase.Combat.Projectile;
                             if (projectileBase != null)
@@ -2801,48 +2801,51 @@ public abstract partial class Entity : IEntity
     }
 
     private void HandleAoESpell(
-        Guid spellId,
-        int range,
-        Guid startMapId,
-        int startX,
-        int startY,
-        Entity spellTarget
-    )
+      Guid spellId,
+      int range,
+      Guid startMapId,
+      int startX,
+      int startY,
+      Entity spellTarget
+  )
     {
         var spellBase = SpellBase.Get(spellId);
-        if (spellBase != null)
-        {
-            var startMap = MapController.Get(startMapId);
-            foreach (var instance in MapController.GetSurroundingMapInstances(startMapId, MapInstanceId, true))
-            {
-                foreach (var entity in instance.GetCachedEntities())
-                {
-                    if (entity != null && (entity is Player || entity is Npc))
-                    {
-                        if (spellTarget == null || spellTarget == entity)
-                        {
-                            if (entity.GetDistanceTo(startMap, startX, startY) <= range)
-                            {
-                                //Check to handle a warp to spell
-                                if (spellBase.SpellType == SpellType.WarpTo)
-                                {
-                                    if (spellTarget != null)
-                                    {
-                                        //Spelltarget used to be Target. I don't know if this is correct or not.
-                                        int[] position = GetPositionNearTarget(spellTarget.MapId, spellTarget.X, spellTarget.Y);
-                                        Warp(spellTarget.MapId, (byte)position[0], (byte)position[1], Dir);
-                                        ChangeDir(DirectionToTarget(spellTarget));
-                                    }
-                                }
+        if (spellBase == null)
+            return;
 
-                                TryAttack(entity, spellBase); //Handle damage
-                            }
-                        }
-                    }
-                }
-            }
+        // Asegura que estamos en el mismo mapa/instancia
+        if (!MapController.TryGetInstanceFromMap(MapId, MapInstanceId, out var instance))
+            return;
+
+        // Crea un nuevo AOE con forma personalizada
+        var aoe = new AreaEffectInstance(
+            this,
+            spellBase,
+            (byte)startX,
+            (byte)startY,
+            (byte)Z,
+            spellBase.Combat.AreaShape, // ← usa la forma definida en SpellBase
+            Dir // útil para cono y línea
+        );
+
+        instance.AddAreaEffect(aoe);
+
+        // Enviar animación si hay
+        if (spellBase.HitAnimationId != Guid.Empty)
+        {
+            PacketSender.SendAnimationToProximity(
+                spellBase.HitAnimationId,
+                1,
+                Id,
+                MapId,
+                startX,
+                startY,
+                Dir,
+                MapInstanceId
+            );
         }
     }
+
 
     private int[] GetPositionNearTarget(Guid mapId, int x, int y)
     {

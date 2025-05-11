@@ -23,6 +23,7 @@ using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
 
 using Newtonsoft.Json;
+using Intersect.Client.Entities.Combat;
 
 namespace Intersect.Client.Maps;
 
@@ -860,6 +861,10 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             {
                 Graphics.Renderer?.DrawTileBuffer(buffer);
             }
+        }
+        if (layer == 0) // 0 = Lower
+        {
+            SpellPreviewManager.Draw();
         }
     }
 

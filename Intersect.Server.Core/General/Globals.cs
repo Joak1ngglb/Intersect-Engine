@@ -55,4 +55,8 @@ public static partial class Globals
         }
     }
 
+    public static int GetDistance(int x1, int y1, int x2, int y2)
+    {
+        return Math.Abs(x1 - x2) + Math.Abs(y1 - y2);
+    }
 }

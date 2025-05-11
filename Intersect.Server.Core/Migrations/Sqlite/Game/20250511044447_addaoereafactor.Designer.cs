@@ -3,6 +3,7 @@ using System;
 using Intersect.Server.Database.GameData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Intersect.Server.Migrations.Sqlite.Game
 {
     [DbContext(typeof(SqliteGameContext))]
-    partial class SqliteGameContextModelSnapshot : ModelSnapshot
+    [Migration("20250511044447_addaoereafactor")]
+    partial class addaoereafactor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
@@ -483,18 +486,6 @@ namespace Intersect.Server.Migrations.Sqlite.Game
 
                     b.Property<int>("ScalingStat")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("SetDescription")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("SetDescription");
-
-                    b.Property<Guid>("SetId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("SetId");
-
-                    b.Property<string>("SetName")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("SetName");
 
                     b.Property<bool>("SingleUse")
                         .HasColumnType("INTEGER")
@@ -993,53 +984,6 @@ namespace Intersect.Server.Migrations.Sqlite.Game
                     b.HasKey("Id");
 
                     b.ToTable("ServerVariables");
-                });
-
-            modelBuilder.Entity("Intersect.GameObjects.SetBase", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("EffectsJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("Effects");
-
-                    b.Property<string>("Folder")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ItemIdsJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("ItemIds");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PercentageStatsJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("PercentageStatsGiven");
-
-                    b.Property<string>("PercentageVitalsJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("PercentageVitalsGiven");
-
-                    b.Property<string>("StatsJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("StatsGiven");
-
-                    b.Property<long>("TimeCreated")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("VitalsJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("VitalsGiven");
-
-                    b.Property<string>("VitalsRegenJson")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("VitalsRegen");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Sets");
                 });
 
             modelBuilder.Entity("Intersect.GameObjects.ShopBase", b =>

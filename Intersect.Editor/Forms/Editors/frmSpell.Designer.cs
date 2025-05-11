@@ -74,6 +74,8 @@ namespace Intersect.Editor.Forms.Editors
             txtCannotCast = new DarkTextBox();
             btnDynamicRequirements = new DarkButton();
             grpTargetInfo = new DarkGroupBox();
+            cmbAreaShape = new DarkComboBox();
+            lblAreaShape = new Label();
             nudDuration = new DarkNumericUpDown();
             lblDuration = new Label();
             nudHitRadius = new DarkNumericUpDown();
@@ -842,6 +844,8 @@ namespace Intersect.Editor.Forms.Editors
             // 
             grpTargetInfo.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
             grpTargetInfo.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            grpTargetInfo.Controls.Add(cmbAreaShape);
+            grpTargetInfo.Controls.Add(lblAreaShape);
             grpTargetInfo.Controls.Add(nudDuration);
             grpTargetInfo.Controls.Add(lblDuration);
             grpTargetInfo.Controls.Add(nudHitRadius);
@@ -862,6 +866,38 @@ namespace Intersect.Editor.Forms.Editors
             grpTargetInfo.TabStop = false;
             grpTargetInfo.Text = "Targetting Info";
             grpTargetInfo.Visible = false;
+            // 
+            // cmbAreaShape
+            // 
+            cmbAreaShape.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            cmbAreaShape.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            cmbAreaShape.BorderStyle = ButtonBorderStyle.Solid;
+            cmbAreaShape.ButtonColor = System.Drawing.Color.FromArgb(43, 43, 43);
+            cmbAreaShape.DrawDropdownHoverOutline = false;
+            cmbAreaShape.DrawFocusRectangle = false;
+            cmbAreaShape.DrawMode = DrawMode.OwnerDrawFixed;
+            cmbAreaShape.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbAreaShape.FlatStyle = FlatStyle.Flat;
+            cmbAreaShape.ForeColor = System.Drawing.Color.Gainsboro;
+            cmbAreaShape.FormattingEnabled = true;
+            cmbAreaShape.Items.AddRange(new object[] { "Circle", "", "Square", "Cross", "Line", "Cone" });
+            cmbAreaShape.Location = new System.Drawing.Point(16, 226);
+            cmbAreaShape.Margin = new Padding(4, 3, 4, 3);
+            cmbAreaShape.Name = "cmbAreaShape";
+            cmbAreaShape.Size = new Size(234, 24);
+            cmbAreaShape.TabIndex = 1000;
+            cmbAreaShape.Text = "Circle";
+            cmbAreaShape.TextPadding = new Padding(2);
+            cmbAreaShape.SelectedIndexChanged += cmbAreaShape_SelectedIndexChanged;
+            // 
+            // lblAreaShape
+            // 
+            lblAreaShape.AutoSize = true;
+            lblAreaShape.Location = new System.Drawing.Point(11, 210);
+            lblAreaShape.Name = "lblAreaShape";
+            lblAreaShape.Size = new Size(69, 15);
+            lblAreaShape.TabIndex = 999;
+            lblAreaShape.Text = "Área Shape:";
             // 
             // nudDuration
             // 
@@ -2710,6 +2746,7 @@ namespace Intersect.Editor.Forms.Editors
         private DarkComboBox cmbCastSprite;
         private DarkComboBox cmbSummonNpc;
         private Label lblSummonNpc;
-
+        private System.Windows.Forms.Label lblAreaShape;
+        private DarkComboBox cmbAreaShape;
     }
 }

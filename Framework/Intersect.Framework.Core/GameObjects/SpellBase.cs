@@ -247,6 +247,9 @@ public partial class SpellCombatData
 
     [Column("Trap")]
     public int TrapDuration { get; set; }
+    public long AoeDuration { get; set; }
+    public AreaShape AreaShape { get; set; } = AreaShape.Circle;
+
 }
 
 [Owned]

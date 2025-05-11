@@ -15,6 +15,7 @@ using Intersect.Server.Core.MapInstancing;
 using Intersect.Server.Framework.Items;
 using Intersect.Server.Framework.Maps;
 using Intersect.Server.Plugins.Helpers;
+using Intersect.Server.Entities.Combat;
 
 namespace Intersect.Server.Maps;
 
@@ -109,6 +110,8 @@ public partial class MapInstance : IMapInstance
     private readonly ConcurrentDictionary<Guid, Entity> mEntities = new ConcurrentDictionary<Guid, Entity>();
     private Entity[] mCachedEntities = new Entity[0];
     private MapEntityMovements mEntityMovements = new MapEntityMovements();
+    public ConcurrentDictionary<Guid, AreaEffectInstance> AreaEffects = new();
+    public AreaEffectInstance[] AreaEffectsCached = Array.Empty<AreaEffectInstance>();
 
     // NPCs
     public ConcurrentDictionary<NpcSpawn, MapNpcSpawn> NpcSpawnInstances = new ConcurrentDictionary<NpcSpawn, MapNpcSpawn>();
@@ -276,6 +279,11 @@ public partial class MapInstance : IMapInstance
             // If there are no players on this or surrounding processing layers, stop processing updates.
             mIsProcessing = GetPlayers(true).Any();
             LastRequestedUpdateTime = timeMs;
+            foreach (var aoe in AreaEffectsCached)
+            {
+                aoe.Update();
+            }
+
         }
     }
 
@@ -376,6 +384,17 @@ public partial class MapInstance : IMapInstance
                 player.SendEvents();
             }
         }
+    }
+    public void AddAreaEffect(AreaEffectInstance aoe)
+    {
+        AreaEffects.TryAdd(aoe.Id, aoe);
+        AreaEffectsCached = AreaEffects.Values.ToArray();
+    }
+
+    public void RemoveAreaEffect(AreaEffectInstance aoe)
+    {
+        AreaEffects.TryRemove(aoe.Id, out _);
+        AreaEffectsCached = AreaEffects.Values.ToArray();
     }
 
     #region Players

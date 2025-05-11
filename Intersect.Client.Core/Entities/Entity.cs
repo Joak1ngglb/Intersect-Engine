@@ -1,4 +1,5 @@
 using Intersect.Client.Core;
+using Intersect.Client.Entities.Combat;
 using Intersect.Client.Entities.Events;
 using Intersect.Client.Entities.Projectiles;
 using Intersect.Client.Framework.Content;
@@ -161,20 +162,43 @@ public partial class Entity : IEntity
     public HashSet<Entity>? RenderList { get; set; }
 
     private Guid _spellCast;
-
+         private Guid _lastPreviewedSpell = Guid.Empty;
     public Guid SpellCast
     {
         get => _spellCast;
-        set
-        {
-            if (value == SpellCast)
-            {
-                return;
-            }
+  
 
-            _spellCast = value;
+    set
+{
+    if (_spellCast == value && _lastPreviewedSpell == value)
+        return;
+
+    _spellCast = value;
+
             LoadAnimationTexture(string.IsNullOrWhiteSpace(TransformedSprite) ? Sprite : TransformedSprite, SpriteAnimations.Cast);
-        }
+
+    if (this == Globals.Me && SpellBase.TryGet(_spellCast, out var spell) &&
+        spell.SpellType == SpellType.CombatSpell &&
+        spell.Combat.TargetType == SpellTargetType.AoE)
+    {
+        SpellPreviewManager.ShowPreview(
+            spell.Combat.AreaShape,
+            spell.Combat.HitRadius,
+            X,
+            Y,
+            Dir,
+            spell.CastDuration
+        );
+
+        _lastPreviewedSpell = _spellCast;
+    }
+    else
+    {
+        SpellPreviewManager.ClearPreview();
+        _lastPreviewedSpell = Guid.Empty;
+    }
+    }
+
     }
 
     public Spell[] Spells { get; set; } = new Spell[Options.Instance.PlayerOpts.MaxSpells];
@@ -1871,12 +1895,13 @@ public partial class Entity : IEntity
     }
 
     public bool ShouldDrawCastingBar => ShouldDraw && IsCasting && LatestMap != default;
-
+ 
     public void DrawCastingBar()
     {
-        // Are we supposed to hide this cast bar?
+
         if (!ShouldDrawCastingBar)
         {
+            
             return;
         }
 
@@ -1885,7 +1910,7 @@ public partial class Entity : IEntity
         {
             return;
         }
-
+       
         var castBackground = Globals.ContentManager.GetTexture(TextureType.Misc, "castbackground.png");
         var castForeground = Globals.ContentManager.GetTexture(TextureType.Misc, "castbar.png");
         var boundingTexture = GameTexture.GetBoundingTexture(BoundsComparison.Height, castBackground, castForeground);

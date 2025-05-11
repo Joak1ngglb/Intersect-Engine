@@ -2945,4 +2945,5 @@ public partial class Player : Entity, IPlayer
         // En otros casos, usar la lógica normal de Entity
         return base.IsInFrontOf(other);
     }
+   
 }

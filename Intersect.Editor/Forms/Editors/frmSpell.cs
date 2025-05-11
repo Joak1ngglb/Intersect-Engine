@@ -112,6 +112,11 @@ public partial class FrmSpell : EditorForm
         cmbSprite.Items.Add(Strings.General.None);
         var spellNames = GameContentManager.GetSmartSortedTextureNames(GameContentManager.TextureType.Spell);
         cmbSprite.Items.AddRange(spellNames);
+        cmbAreaShape.Items.Clear();
+        foreach (var shape in Enum.GetValues(typeof(AreaShape)))
+        {
+            cmbAreaShape.Items.Add(shape);
+        }
 
         cmbTransform.Items.Clear();
         cmbTransform.Items.Add(Strings.General.None);
@@ -307,7 +312,7 @@ public partial class FrmSpell : EditorForm
             cmbCastSprite.SelectedIndex = cmbCastSprite.FindString(
                     TextUtils.NullToNone(mEditorItem.CastSpriteOverride)
             );
-
+            cmbAreaShape.SelectedIndex = (int)mEditorItem.Combat.AreaShape;
             chkBound.Checked = mEditorItem.Bound;
             var index = 0;
             if (mEditorItem.SummonNpcId != Guid.Empty)
@@ -506,6 +511,8 @@ public partial class FrmSpell : EditorForm
             lblHitRadius.Show();
             nudHitRadius.Show();
             nudHitRadius.Value = mEditorItem.Combat.HitRadius;
+            cmbAreaShape.Show();
+            cmbAreaShape.SelectedIndex = (int)SpellType.CombatSpell;
         }
 
         if (cmbTargetType.SelectedIndex < (int)SpellTargetType.Self)
@@ -1190,5 +1197,10 @@ public partial class FrmSpell : EditorForm
         {
             mEditorItem.SummonNpcId = Guid.Empty; // Reset to empty if "None" is selected
         }
+    }
+
+    private void cmbAreaShape_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        mEditorItem.Combat.AreaShape= (AreaShape)cmbAreaShape.SelectedIndex;
     }
 }

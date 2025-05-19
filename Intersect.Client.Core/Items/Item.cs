@@ -23,13 +23,12 @@ public class Item : IItem
 
 
 
-    public void Load(Guid id, int quantity, Guid? bagId, ItemProperties itemProperties,int enchantlevel)
+    public void Load(Guid id, int quantity, Guid? bagId, ItemProperties itemProperties)
     {
         ItemId = id;
         Quantity = quantity;
         BagId = bagId;
         ItemProperties = itemProperties;
-        EnchantmentLevel = enchantlevel;
     }
 
     public static int FindQuantityOfItem<TItem>(Guid itemDescriptorId, TItem?[] slots) where TItem : IItem

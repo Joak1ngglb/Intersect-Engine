@@ -42,8 +42,8 @@ public partial class BankInterface<TSlot> : IBankInterface where TSlot : Item, I
                     slotItem?.ItemId ?? Guid.Empty,
                     slotItem?.Quantity ?? 0,
                     slotItem?.BagId,
-                    slotItem?.Properties,
-                    slotItem?.Properties.EnchantmentLevel ?? 0
+                    slotItem?.Properties
+                   
                 )
             );
         }
@@ -72,13 +72,13 @@ public partial class BankInterface<TSlot> : IBankInterface where TSlot : Item, I
             _player?.SendPacket(
                 new BankUpdatePacket(
                     slot, _bank[slot].ItemId, _bank[slot].Quantity, _bank[slot].BagId,
-                    _bank[slot].Properties, _bank[slot].Properties.EnchantmentLevel
+                    _bank[slot].Properties
                 )
             );
         }
         else
         {
-            _player?.SendPacket(new BankUpdatePacket(slot, Guid.Empty, 0, null, null,0));
+            _player?.SendPacket(new BankUpdatePacket(slot, Guid.Empty, 0, null, null));
         }
     }
 

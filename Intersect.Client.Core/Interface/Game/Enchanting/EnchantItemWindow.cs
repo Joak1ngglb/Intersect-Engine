@@ -414,7 +414,7 @@ namespace Intersect.Client.Interface.Game.Enchanting
 
             // Obtener datos necesarios
             var currencyId = mSelectedCurrency.ItemId; // Usar ItemId para la moneda
-            var targetLevel = mSelectedItem.EnchantmentLevel + 1;
+            var targetLevel = mSelectedItem.ItemProperties.EnchantmentLevel + 1;
             var currencyAmount = mSelectedItem.Base.GetUpgradeMaterialAmount(targetLevel);
             var useAmulet = mUseAmuletCheckbox.IsChecked;
 

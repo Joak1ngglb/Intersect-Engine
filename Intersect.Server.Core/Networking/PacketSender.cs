@@ -1200,8 +1200,7 @@ public static partial class PacketSender
                 playerItem.ItemId,
                 playerItem.Quantity,
                 playerItem.BagId,
-                playerItem.Properties,
-                playerItem.Properties.EnchantmentLevel
+                playerItem.Properties
             );
         }
 
@@ -1219,7 +1218,7 @@ public static partial class PacketSender
         player.SendPacket(
             new InventoryUpdatePacket(
                 slot, player.Items[slot].ItemId, player.Items[slot].Quantity, player.Items[slot].BagId,
-                player.Items[slot].Properties, player.Items[slot].Properties?.EnchantmentLevel ?? 0
+                player.Items[slot].Properties
 
             )
         );
@@ -2146,14 +2145,14 @@ public static partial class PacketSender
             player.SendPacket(
                 new TradeUpdatePacket(
                     trader.Id, slot, trader.Trading.Offer[slot].ItemId, trader.Trading.Offer[slot].Quantity, trader.Trading.Offer[slot].BagId,
-                    trader.Trading.Offer[slot].Properties, trader.Trading.Offer[slot].Properties?.EnchantmentLevel ?? 0
+                    trader.Trading.Offer[slot].Properties
 
                 )
             );
         }
         else
         {
-            player.SendPacket(new TradeUpdatePacket(trader.Id, slot, Guid.Empty, 0, null, null, 0));
+            player.SendPacket(new TradeUpdatePacket(trader.Id, slot, Guid.Empty, 0, null, null));
         }
     }
 
@@ -2202,11 +2201,11 @@ public static partial class PacketSender
     {
         if (item != null && item.ItemId != Guid.Empty && item.Quantity > 0)
         {
-            player.SendPacket(new BagUpdatePacket(slot, item.ItemId, item.Quantity, item.BagId, item.Properties, item.Properties?.EnchantmentLevel ?? 0));
+            player.SendPacket(new BagUpdatePacket(slot, item.ItemId, item.Quantity, item.BagId, item.Properties));
         }
         else
         {
-            player.SendPacket(new BagUpdatePacket(slot, Guid.Empty, 0, null, null, 0));
+            player.SendPacket(new BagUpdatePacket(slot, Guid.Empty, 0, null, null));
         }
     }
 

@@ -1319,7 +1319,7 @@ internal sealed partial class PacketHandler
     {
         if (Globals.Me != null)
         {
-            Globals.Me.Inventory[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties,packet.EnchantmentLevel);
+            Globals.Me.Inventory[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
             Globals.Me.InventoryUpdatedDelegate?.Invoke();
         }
     }
@@ -1701,7 +1701,7 @@ internal sealed partial class PacketHandler
         if (packet.ItemId != Guid.Empty)
         {
             Globals.Bank[slot] = new Item();
-            Globals.Bank[slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties,packet.EnchantmentLevel);
+            Globals.Bank[slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
         }
         else
         {
@@ -2056,7 +2056,7 @@ internal sealed partial class PacketHandler
         else
         {
             Globals.Trade[side, slot] = new Item();
-            Globals.Trade[side, slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties, packet.EnchantmentLevel);
+            Globals.Trade[side, slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
         }
     }
 
@@ -2127,7 +2127,7 @@ internal sealed partial class PacketHandler
         else
         {
             Globals.Bag[packet.Slot] = new Item();
-            Globals.Bag[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties, packet.EnchantmentLevel);
+            Globals.Bag[packet.Slot].Load(packet.ItemId, packet.Quantity, packet.BagId, packet.Properties);
         }
     }
 

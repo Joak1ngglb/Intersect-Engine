@@ -10,6 +10,6 @@ public interface IItem
     Guid ItemId { get; set; }
     int Quantity { get; set; }
     ItemProperties ItemProperties { get; set; }
-    int EnchantmentLevel { get; set; }
-    void Load(Guid id, int quantity, Guid? bagId, ItemProperties ItemProperties, int enchantmentLevel);
+ 
+    void Load(Guid id, int quantity, Guid? bagId, ItemProperties ItemProperties);
 }

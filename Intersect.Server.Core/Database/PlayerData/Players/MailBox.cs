@@ -15,7 +15,7 @@ namespace Intersect.Server.Database.PlayerData.Players
 
         public MailBox(Player sender, Player to, string title, string msg, List<MailAttachment> attachments)
         {
-            Sender = sender;
+            Sender = sender.Name;
             Player = to;
             Title = title;
             Message = msg;
@@ -23,23 +23,15 @@ namespace Intersect.Server.Database.PlayerData.Players
         }
 
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get;  set; }
-        
+        public Guid Id { get; set; }
 
-        [JsonProperty(nameof(Player))]
-        private Guid JsonPlayerId => Player?.Id ?? Guid.Empty;
-
-        [JsonProperty(nameof(Sender))]
-        private Guid JsonTargetId => Sender?.Id ?? Guid.Empty;
+        public string Sender { get; set; }
 
         [JsonIgnore]
-        public  Player Player { get;  set; }
+        public Player Player { get; set; }
 
-        [JsonIgnore]
-        public  Player Sender { get;  set; }
-
-        public string Title { get;  set; }
-        public string Message { get;  set; }
+        public string Title { get; set; }
+        public string Message { get; set; }
 
         [Column("Attachments")]
         public string AttachmentsJson
@@ -49,7 +41,7 @@ namespace Intersect.Server.Database.PlayerData.Players
         }
 
         [NotMapped]
-        public List<MailAttachment> Attachments { get; set; } = new List<MailAttachment>();
+        public List<MailAttachment> Attachments { get; set; } = new();
 
         public void AddAttachment(Item item)
         {
@@ -61,16 +53,12 @@ namespace Intersect.Server.Database.PlayerData.Players
             });
         }
 
-        public List<MailAttachment> GetAttachments()
-        {
-            return Attachments;
-        }
+        public List<MailAttachment> GetAttachments() => Attachments;
 
         public static void GetMails(PlayerContext context, Player player)
         {
             var mails = context.Player_MailBox
                 .Where(p => player.Id == p.Player.Id)
-                .Include(p => p.Sender)
                 .ToList();
 
             if (mails != null)
@@ -82,13 +70,13 @@ namespace Intersect.Server.Database.PlayerData.Players
                                         ?? new List<MailAttachment>();
                 }
             }
-        }      
-            }
+        }
+    }
 
     public class MailAttachment
     {
         public Guid ItemId { get; set; }
         public int Quantity { get; set; }
-        public ItemProperties Properties { get; set; } = new ItemProperties();
+        public ItemProperties Properties { get; set; } = new();
     }
 }

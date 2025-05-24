@@ -418,7 +418,7 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<Guid?>("PlayerId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("SenderId")
+                    b.Property<string>("Sender")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
@@ -427,8 +427,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.HasKey("Id");
 
                     b.HasIndex("PlayerId");
-
-                    b.HasIndex("SenderId");
 
                     b.ToTable("Player_MailBox");
                 });
@@ -887,14 +885,7 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                         .HasForeignKey("PlayerId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Intersect.Server.Entities.Player", "Sender")
-                        .WithMany()
-                        .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.Navigation("Player");
-
-                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Players.PlayerVariable", b =>

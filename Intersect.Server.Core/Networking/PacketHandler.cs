@@ -485,101 +485,93 @@ internal sealed partial class PacketHandler
         }
         player.CloseMailBox();
     }
-   
     public void HandlePacket(Client client, MailBoxSendPacket packet)
     {
-        // Validar que el remitente es válido
         var sender = client?.Entity;
         if (sender == null)
         {
             return;
         }
 
-       
-
-        using (var context = DbInterface.CreatePlayerContext(readOnly: false))
+        // Prevenir enviar correo a sí mismo
+        if (string.Equals(sender.Name, packet.To, StringComparison.OrdinalIgnoreCase))
         {
-            // Buscar al destinatario en la base de datos asegurando que esté referenciado correctamente
-            var recipient = context.Players.Include(p => p.MailBoxs).SingleOrDefault(p => p.Name == packet.To);
-            if (recipient == null)
+            PacketSender.SendChatMsg(sender, "⚠️ No puedes enviarte un correo a ti mismo.", ChatMessageType.Error, CustomColors.Alerts.Info);
+            sender.CloseMailBox();
+            return;
+        }
+
+        // Manejar adjuntos
+        var attachments = new List<MailAttachment>();
+        foreach (var attachment in packet.Attachments)
+        {
+            if (sender.TryTakeItem(attachment.ItemId, attachment.Quantity))
             {
-                PacketSender.SendChatMsg(sender, $"{Strings.Mails.playernotfound} ({packet.To})", ChatMessageType.Error, CustomColors.Alerts.Info);
-                sender.CloseMailBox();
-                return;
-            }
-            // ❌ PREVENIR correo a uno mismo
-            if (string.Equals(sender.Name, recipient.Name, StringComparison.OrdinalIgnoreCase))
-            {
-                PacketSender.SendChatMsg(sender, "⚠️ No puedes enviarte un correo a ti mismo.", ChatMessageType.Error, CustomColors.Alerts.Info);
-                sender.CloseMailBox();
-                return;
-            }
-            // Manejar adjuntos
-            var attachments = new List<MailAttachment>();
-            foreach (var attachment in packet.Attachments)
-            {
-                if (sender.TryTakeItem(attachment.ItemId, attachment.Quantity))
+                attachments.Add(new MailAttachment
                 {
-                    attachments.Add(new MailAttachment
-                    {
-                        ItemId = attachment.ItemId,
-                        Quantity = attachment.Quantity,
-                        Properties = attachment.Properties
-                    });
-                }
-                else
-                {
-                    PacketSender.SendChatMsg(sender, Strings.Mails.invaliditem, ChatMessageType.Error, CustomColors.Alerts.Info);
-                    sender.CloseMailBox();
-                    return;
-                }
-            }
-            // Asegurar que el objeto `recipient` está correctamente referenciado en el contexto
-            context.Attach(recipient);
-            context.Attach(sender);
-
-            // Crear el correo y asegurarse de que se registre correctamente
-            var mail = new MailBox(sender, recipient, packet.Title, packet.Message, attachments);
-
-            // Agregarlo a la lista de correos del destinatario
-            recipient.MailBoxs.Add(mail);
-            context.Entry(mail).State = EntityState.Added;
-
-            var onlineRecipient = Player.FindOnline(packet.To);
-            if (onlineRecipient != null)
-            {
-                onlineRecipient.MailBoxs.Add(mail);
-                PacketSender.SendChatMsg(onlineRecipient, Strings.Mails.newmail, ChatMessageType.Trading, CustomColors.Alerts.Accepted);
-                PacketSender.SendOpenMailBox(onlineRecipient);
+                    ItemId = attachment.ItemId,
+                    Quantity = attachment.Quantity,
+                    Properties = attachment.Properties
+                });
             }
             else
             {
-                // Intentar guardar hasta 3 veces si hay conflictos de concurrencia
-                int retries = 3;
-                while (retries > 0)
-                {
-                    try
-                    {
-                        context.SaveChanges();
-                        break; // Si se guarda correctamente, salir del loop
-                    }
-                    catch (DbUpdateException ex)
-                    {
-                        Log.Error($"Error de concurrencia al guardar el correo. Intentos restantes: {retries - 1}", ex);
-                        retries--;
+                PacketSender.SendChatMsg(sender, Strings.Mails.invaliditem, ChatMessageType.Error, CustomColors.Alerts.Info);
+                sender.CloseMailBox();
+                return;
+            }
+        }
 
-                        if (retries == 0)
-                        {
-                            PacketSender.SendChatMsg(sender, "Error al enviar el correo debido a un conflicto.", ChatMessageType.Error, CustomColors.Alerts.Info);
-                            return;
-                        }
+        using var context = DbInterface.CreatePlayerContext(readOnly: false);
+
+        var (_, recipient) = Player.Fetch(packet.To);
+        if (recipient == null)
+        {
+            PacketSender.SendChatMsg(sender, $"{Strings.Mails.playernotfound} ({packet.To})", ChatMessageType.Error, CustomColors.Alerts.Info);
+            sender.CloseMailBox();
+            return;
+        }
+
+        context.Attach(recipient);
+
+        var mail = new MailBox(sender, recipient, packet.Title, packet.Message, attachments);
+        recipient.MailBoxs.Add(mail);
+        context.Entry(mail).State = EntityState.Added;
+
+        var onlineRecipient = Player.FindOnline(packet.To);
+        if (onlineRecipient != null)
+        {
+            onlineRecipient.MailBoxs.Add(mail);
+            PacketSender.SendChatMsg(onlineRecipient, Strings.Mails.newmail, ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+            PacketSender.SendOpenMailBox(onlineRecipient);
+        }
+        else
+        {
+            context.StopTrackingUsersExcept(sender.User); // Previene conflicto por User duplicado
+
+            int retries = 3;
+            while (retries > 0)
+            {
+                try
+                {
+                    context.SaveChanges();
+                    break;
+                }
+                catch (DbUpdateException ex)
+                {
+                    Log.Error($"Error de concurrencia al guardar el correo. Intentos restantes: {retries - 1}", ex);
+                    retries--;
+
+                    if (retries == 0)
+                    {
+                        PacketSender.SendChatMsg(sender, "Error al enviar el correo debido a un conflicto.", ChatMessageType.Error, CustomColors.Alerts.Info);
+                        return;
                     }
                 }
             }
         }
 
-        // Confirmar al remitente
-        PacketSender.SendChatMsg(sender, "Correo enviado con éxito.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
+        PacketSender.SendChatMsg(sender, "📨 Correo enviado con éxito.", ChatMessageType.Trading, CustomColors.Alerts.Accepted);
         sender.CloseMailBox();
     }
 

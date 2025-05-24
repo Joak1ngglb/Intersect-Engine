@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Intersect.Server.Migrations.Sqlite.Player
 {
     [DbContext(typeof(SqlitePlayerContext))]
-    [Migration("20250106193945_AddMailSystem")]
-    partial class AddMailSystem
+    [Migration("20250524020628_AddMails")]
+    partial class AddMails
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -226,7 +226,19 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<byte>("BackgroundB")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("BackgroundG")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("BackgroundR")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("BankSlotsCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("Experience")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("FoundingDate")
@@ -235,8 +247,35 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<Guid>("GuildInstanceId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("GuildPoints")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("GuildUpgradesData")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LogoBackground")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LogoSymbol")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("SpentGuildPoints")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("SymbolB")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("SymbolG")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte>("SymbolR")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -382,7 +421,7 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<Guid?>("PlayerId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("SenderId")
+                    b.Property<string>("Sender")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
@@ -391,8 +430,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.HasKey("Id");
 
                     b.HasIndex("PlayerId");
-
-                    b.HasIndex("SenderId");
 
                     b.ToTable("Player_MailBox");
                 });
@@ -564,6 +601,9 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                     b.Property<int>("Dir")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long>("DonateXPGuild")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("EquipmentJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("Equipment");
@@ -580,6 +620,9 @@ namespace Intersect.Server.Migrations.Sqlite.Player
 
                     b.Property<int>("Gender")
                         .HasColumnType("INTEGER");
+
+                    b.Property<float>("GuildExpPercentage")
+                        .HasColumnType("REAL");
 
                     b.Property<DateTime>("GuildJoinDate")
                         .HasColumnType("TEXT");
@@ -845,14 +888,7 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                         .HasForeignKey("PlayerId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Intersect.Server.Entities.Player", "Sender")
-                        .WithMany()
-                        .HasForeignKey("SenderId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.Navigation("Player");
-
-                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("Intersect.Server.Database.PlayerData.Players.PlayerVariable", b =>

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Intersect.Server.Migrations.Sqlite.Player
 {
     /// <inheritdoc />
-    public partial class AddMailSystem : Migration
+    public partial class AddMails : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,8 +16,8 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Sender = table.Column<string>(type: "TEXT", nullable: true),
                     PlayerId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    SenderId = table.Column<Guid>(type: "TEXT", nullable: true),
                     Title = table.Column<string>(type: "TEXT", nullable: true),
                     Message = table.Column<string>(type: "TEXT", nullable: true),
                     Attachments = table.Column<string>(type: "TEXT", nullable: true)
@@ -31,23 +31,12 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                         principalTable: "Players",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Player_MailBox_Players_SenderId",
-                        column: x => x.SenderId,
-                        principalTable: "Players",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Player_MailBox_PlayerId",
                 table: "Player_MailBox",
                 column: "PlayerId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Player_MailBox_SenderId",
-                table: "Player_MailBox",
-                column: "SenderId");
         }
 
         /// <inheritdoc />

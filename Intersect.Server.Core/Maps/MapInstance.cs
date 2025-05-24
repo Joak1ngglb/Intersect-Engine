@@ -744,7 +744,6 @@ public partial class MapInstance : IMapInstance
         if (item == null)
         {
             Log.Warn($"Tried to spawn {amount} of a null item at ({x}, {y}) in map {Id}.");
-
             return;
         }
 
@@ -752,22 +751,17 @@ public partial class MapInstance : IMapInstance
         if (itemDescriptor == null)
         {
             Log.Warn($"No item found for {item.ItemId}.");
-
             return;
         }
 
-        // if we can stack this item or the user configured to drop items consolidated, simply spawn a single stack of it.
-        // Does not count for Equipment and bags, these are ALWAYS their own separate item spawn. We don't want to lose data on that!
         if ((itemDescriptor.ItemType != ItemType.Equipment && itemDescriptor.ItemType != ItemType.Bag) &&
             (itemDescriptor.Stackable || Options.Loot.ConsolidateMapDrops))
         {
-            // Does this item already exist on this tile? If so, get its value so we can simply consolidate the stack.
             var existingCount = 0;
             var existingItems = FindItemsAt(y * Options.MapWidth + x);
             var toRemove = new List<MapItem>();
             foreach (var exItem in existingItems)
             {
-                // If the Id and Owner matches, get its quantity and remove the item so we don't get multiple stacks.
                 if (exItem.ItemId == item.ItemId && exItem.Owner == owner)
                 {
                     existingCount += exItem.Quantity;
@@ -783,12 +777,12 @@ public partial class MapInstance : IMapInstance
                 VisibleToAll = Options.Loot.ShowUnownedItems || owner == Guid.Empty
             };
 
+          
             if (mapItem.TileIndex > Options.MapHeight * Options.MapWidth || mapItem.TileIndex < 0)
             {
                 return;
             }
 
-            // Remove existing items if we need to.
             foreach (var reItem in toRemove)
             {
                 RemoveItem(reItem);
@@ -798,7 +792,6 @@ public partial class MapInstance : IMapInstance
                 }
             }
 
-            // Drop the new item.
             AddItem(source, mapItem);
             if (sendUpdate)
             {
@@ -807,7 +800,6 @@ public partial class MapInstance : IMapInstance
         }
         else
         {
-            // Oh boy here we go! Set quantity to 1 and drop multiple!
             for (var i = 0; i < amount; i++)
             {
                 var mapItem = new MapItem(item.ItemId, amount, x, y, item.BagId, item.Bag)
@@ -818,10 +810,10 @@ public partial class MapInstance : IMapInstance
                     VisibleToAll = Options.Loot.ShowUnownedItems || owner == Guid.Empty
                 };
 
-                // If this is a piece of equipment, set up the stat buffs for it.
+         
                 if (itemDescriptor.ItemType == ItemType.Equipment)
                 {
-                    mapItem.SetupStatBuffs(item);
+                    mapItem.SetupProperties(item);
                 }
 
                 if (mapItem.TileIndex > Options.MapHeight * Options.MapWidth || mapItem.TileIndex < 0)
@@ -831,9 +823,11 @@ public partial class MapInstance : IMapInstance
 
                 AddItem(source, mapItem);
             }
+
             PacketSender.SendMapItemsToProximity(mMapController.Id, this);
         }
     }
+
 
     /// <summary>
     /// Find a Map Item on this map based on its Unique Id;

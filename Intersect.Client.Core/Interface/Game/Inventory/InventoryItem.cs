@@ -10,7 +10,6 @@ using Intersect.Client.General;
 using Intersect.Client.Interface.Game.DescriptionWindows;
 using Intersect.Client.Interface.Game.Enchanting;
 using Intersect.Client.Interface.Game.Mail;
-using Intersect.Client.Interface.Game.Market;
 using Intersect.Client.Localization;
 using Intersect.Client.Networking;
 using Intersect.Configuration;
@@ -65,7 +64,7 @@ public partial class InventoryItem
 
     public ImagePanel Pnl;
     private SendMailBoxWindow mSendMailBoxWindow;
-    private SellMarketWindow mSellMarketWindow;
+
 
    
 
@@ -78,12 +77,6 @@ public partial class InventoryItem
     public InventoryItem(SendMailBoxWindow sendMailBoxWindow, int index)
     {
        mSendMailBoxWindow = sendMailBoxWindow;
-        DisplaySlot = index;
-    }
-
-    public InventoryItem(SellMarketWindow sellMarketWindow, int index)
-    {
-        mSellMarketWindow = sellMarketWindow;
         DisplaySlot = index;
     }
 
@@ -112,11 +105,7 @@ public partial class InventoryItem
         {
             mSendMailBoxWindow.SelectItem(mSendMailBoxWindow.Items[DisplaySlot], DisplaySlot);
         }
-        if (mSellMarketWindow != null)
-        {
-            mSellMarketWindow.SelectItem(mSellMarketWindow.Items[DisplaySlot], DisplaySlot);
-            mSellMarketWindow.UpdateSuggestedPrice(mCurrentItemId);
-        }
+     
       
         else if (Globals.GameShop != null)
         {
@@ -226,32 +215,7 @@ public partial class InventoryItem
             mDescWindow.Dispose();
             mDescWindow = null;
         }
-       
-        if (mSellMarketWindow != null)
-        {
-            var inventorySlot = Globals.Me.Inventory[DisplaySlot];
-            if (inventorySlot == null || inventorySlot.ItemId == Guid.Empty)
-            {
-                return;
-            }
-
-            var itemBase = ItemBase.Get(inventorySlot.ItemId);
-            if (itemBase == null)
-            {
-                return;
-            }
-
-            mDescWindow = new ItemDescriptionWindow(
-                itemBase,
-                inventorySlot.Quantity,
-                mSellMarketWindow.X,
-                mSellMarketWindow.Y,
-                inventorySlot.ItemProperties
-            );
-
-            return;
-        }
-
+             
         // 🔍 Nueva verificación: Si el ítem pertenece a SendMailBoxWindow
         if (mSendMailBoxWindow != null)
         {

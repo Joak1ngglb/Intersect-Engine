@@ -12,7 +12,7 @@ using Intersect.Client.Interface.Game.Guilds;
 using Intersect.Client.Interface.Game.Hotbar;
 using Intersect.Client.Interface.Game.Inventory;
 using Intersect.Client.Interface.Game.Mail;
-using Intersect.Client.Interface.Game.Market;
+
 using Intersect.Client.Interface.Game.Shop;
 using Intersect.Client.Interface.Game.Trades;
 using Intersect.Client.Networking;
@@ -57,8 +57,7 @@ public partial class GameInterface : MutableInterface
 
     private SendMailBoxWindow mSendMailBoxWindow;
     private MailBoxWindow mMailBoxWindow;
-    private MarketWindow mMarketWindow;
-    private SellMarketWindow mSellMarketWindow;
+
     public EnchantItemWindow mEnchantItemWindow;
     public OrbItemWindow mOrbItemWindow;
     public BreakItemWindow mBreakItemWindow;
@@ -107,7 +106,7 @@ public partial class GameInterface : MutableInterface
     public PlayerStatusWindow PlayerStatusWindow;
     private bool mShouldHideJobWindow;
     private GuildCreationInterface mCreateGuildWindow;
-    internal SellMarketWindow mMarketSellWindow;
+    
 
     public GameInterface(Canvas canvas) : base(canvas)
     {
@@ -147,7 +146,17 @@ public partial class GameInterface : MutableInterface
         mMapItemWindow = new MapItemWindow(GameCanvas);
         mBankWindow = new BankWindow(GameCanvas);
     }
- 
+
+    public void OpenEnchantWindow()
+    {
+        if (mEnchantItemWindow == null)
+        {
+            mEnchantItemWindow = new EnchantItemWindow(GameCanvas);
+
+        }
+        mEnchantItemWindow.Show();
+
+    }
     public void OpenOrbItemWindow()
     {
         if (mOrbItemWindow == null)
@@ -667,24 +676,7 @@ public partial class GameInterface : MutableInterface
         Globals.InTrade = false;
         PacketSender.SendDeclineTrade();
     }
-    public void NotifyOpenEnchantWindow()
-    {
-        mShouldOpenEnchantWindow = true;
-    }
 
-    public void NotifyCloseEnchantWindow()
-    {
-        mShouldCloseEnchantWindow = true;
-    }
-
-    public void OpenEnchantWindow()
-    {
-        if (mEnchantItemWindow != null)
-        {
-            mEnchantItemWindow.Show();
-        }
-        mShouldOpenEnchantWindow = false;
-    }
 
     private void CloseEnchantWindow()
     {
@@ -746,49 +738,5 @@ public partial class GameInterface : MutableInterface
         CloseTrading();
         GameCanvas.Dispose();
     }
-    // Mostrar ventana de mercado
-    public void OpenMarket()
-    {
-        mMarketWindow?.Close();
-        mMarketWindow = new MarketWindow(GameCanvas);
-    }
-
-    // Mostrar ventana de venta
-    public void OpenSellMarket()
-    {
-        mSellMarketWindow?.Close();
-        mSellMarketWindow = new SellMarketWindow(GameCanvas);
-        mSellMarketWindow.Show();
-    }
-
-    public void CloseMarket()
-    {
-        mMarketWindow?.Close();
-        mMarketWindow = null;
-    }
-
-    public void CloseSellMarket()
-    {
-        mSellMarketWindow?.Close();
-        mSellMarketWindow = null;
-    }
-
-  
-    public void UpdateTransactionHistory(List<MarketTransactionPacket> transactions)
-    {
-        MarketWindow.Instance?.UpdateTransactionHistory(transactions);
-    }
-
-    public void RefreshAfterPurchase()
-    {
-        MarketWindow.Instance?.RefreshAfterPurchase();
-    }
-
-
-    public void UpdateListings(List<MarketListingPacket> listings)
-    {
-        MarketWindow.Instance?.UpdateListings(listings);
-      
-    }
-
+   
 }

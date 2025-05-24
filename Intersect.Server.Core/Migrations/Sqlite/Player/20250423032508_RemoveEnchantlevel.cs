@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,14 +11,7 @@ namespace Intersect.Server.Migrations.Sqlite.Player
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Market_Listings_Players_PlayerId",
-                table: "Market_Listings");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Market_Listings_PlayerId",
-                table: "Market_Listings");
-
+        
             migrationBuilder.DropColumn(
                 name: "EnchantmentLevel",
                 table: "Player_Items");
@@ -26,10 +19,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
             migrationBuilder.DropColumn(
                 name: "EnchantmentLevel",
                 table: "Player_Bank");
-
-            migrationBuilder.DropColumn(
-                name: "PlayerId",
-                table: "Market_Listings");
 
             migrationBuilder.DropColumn(
                 name: "SymbolPosY",
@@ -65,12 +54,7 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.AddColumn<Guid>(
-                name: "PlayerId",
-                table: "Market_Listings",
-                type: "TEXT",
-                nullable: true);
-
+    
             migrationBuilder.AddColumn<int>(
                 name: "SymbolPosY",
                 table: "Guilds",
@@ -99,17 +83,6 @@ namespace Intersect.Server.Migrations.Sqlite.Player
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Market_Listings_PlayerId",
-                table: "Market_Listings",
-                column: "PlayerId");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Market_Listings_Players_PlayerId",
-                table: "Market_Listings",
-                column: "PlayerId",
-                principalTable: "Players",
-                principalColumn: "Id");
         }
     }
 }

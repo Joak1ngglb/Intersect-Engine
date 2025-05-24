@@ -879,7 +879,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
             // Loop through this in reverse to match client/server display and pick-up order.
             for (var index = tileItems.Count - 1; index >= 0; index--)
             {
-                // Set up all information we need to draw this name.
+               
                 var itemBase = ItemBase.Get(tileItems[index].ItemId);
                 var itemTex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, itemBase.Icon);
 
@@ -894,7 +894,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                 var centerY = y + (_tileHeight / 2);
                 var textureXPosition = centerX - (mapItemWidth / 2);
                 var textureYPosition = centerY - (mapItemHeight / 2);
-
+              
                 // Draw the item texture.
                 Graphics.DrawGameTexture(
                     itemTex,
@@ -924,7 +924,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
         {
             return;
         }
-        // Get where our mouse is located and convert it to a tile based location.
+        // Obtener la posición del mouse y convertirla a coordenadas de tile.
         var mousePos = Graphics.ConvertToWorldPoint(
                 Globals.InputManager.GetMousePosition()
         );
@@ -932,22 +932,30 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
         var y = (int)(mousePos.Y - (int)Y) / _tileHeight;
         var mapId = Id;
 
-        // Is this an actual location on this map?
+        // ¿Es una ubicación válida en este mapa?
         if (Globals.Me.TryGetRealLocation(ref x, ref y, ref mapId) && mapId == Id)
         {
-            // Apparently it is! Do we have any items to render here?
+            // ¿Hay items para renderizar aquí?
             var tileItems = new List<IMapItemInstance>();
             if (MapItems.TryGetValue(y * _width + x, out tileItems))
             {
                 var baseOffset = 0;
-                // Loop through this in reverse to match client/server display and pick-up order.
+                // Recorrer en reversa para coincidir con el orden de visualización y recogida.
                 for (var index = tileItems.Count - 1; index >= 0; index--)
                 {
-                    // Set up all information we need to draw this name.
+                    // Obtener información del item.
                     var itemBase = ItemBase.Get(tileItems[index].ItemId);
                     var name = tileItems[index].Base.Name;
                     var quantity = tileItems[index].Quantity;
                     var rarity = itemBase.Rarity;
+
+                    // Agregar el enchantlevel al nombre si corresponde
+                    var enchantLevel = tileItems[index].ItemProperties.EnchantmentLevel;
+                    if (enchantLevel > 0)
+                    {
+                        name = $"{name} +{enchantLevel}";
+                    }
+
                     if (tileItems[index].Quantity > 1)
                     {
                         name = Strings.General.MapItemStackable.ToString(name, Strings.FormatQuantityAbbreviated(quantity));
@@ -960,7 +968,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                     var destX = X + (int)Math.Ceiling(((x * _tileWidth) + (_tileHalfWidth)) - (textSize.X / 2));
                     var destY = Y + (int)Math.Ceiling(((y * _tileHeight) - ((_tileHeight / 3) + textSize.Y))) - offsetY;
 
-                    // Do we need to draw a background?
+                    // Dibujar fondo si es necesario
                     if (color.Background != Color.Transparent)
                     {
                         Graphics.DrawGameTexture(
@@ -969,7 +977,7 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>, IMap
                         );
                     }
 
-                    // Finaly, draw the actual name!
+                    // Dibujar el nombre
                     Graphics.Renderer.DrawString(name, Graphics.EntityNameFont, destX, destY, 1, color.Name, true, null, color.Outline);
 
                     baseOffset++;

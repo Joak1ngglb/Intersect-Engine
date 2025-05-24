@@ -1887,17 +1887,15 @@ internal sealed partial class PacketHandler
             Options.Loot.MaximumLootWindowDistance
         );
 
-        // Is our user within range of the item they are trying to pick up?
         if (player.GetDistanceTo(playerMapController, packet.TileIndex % Options.MapWidth, (int)Math.Floor(packet.TileIndex / (float)Options.MapWidth)) > lootDistance)
         {
             return;
         }
 
         var giveItems = new Dictionary<MapController, List<MapItem>>();
-        // Are we trying to pick up everything on this location or one specific item?
+
         if (packet.UniqueId == Guid.Empty)
         {
-            // GET IT ALL! BE GREEDY!
             foreach (var (mapWithItems, value) in playerMapController.FindSurroundingTiles(new Point(player.X, player.Y), lootDistance))
             {
                 if (!mapWithItems.TryGetInstance(player.MapInstanceId, out var mapInstanceWithItems))
@@ -1916,11 +1914,9 @@ internal sealed partial class PacketHandler
         }
         else
         {
-            // One specific item.
             giveItems.Add(playerMapController, new List<MapItem> { playerMapInstance.FindItem(packet.UniqueId) });
         }
 
-        // Go through each item we're trying to give our player and see if we can do so.
         foreach (var (mapWithItems, value) in giveItems)
         {
             if (!mapWithItems.TryGetInstance(player.MapInstanceId, out var mapInstanceWithItems))
@@ -1928,26 +1924,32 @@ internal sealed partial class PacketHandler
                 continue;
             }
 
-            // Remove null or missing map items from the list
             var validMapItems = value.Where(
-                mapItem => mapItem != default && mapInstanceWithItems.FindItem(mapItem.UniqueId) != default
+                mapItem => mapItem != null && mapInstanceWithItems.FindItem(mapItem.UniqueId) != null
             );
+
             foreach (var mapItem in validMapItems)
             {
-                if (mapItem.Owner != default &&
+                if (mapItem.Owner != Guid.Empty &&
                     mapItem.Owner != player.Id &&
                     Timing.Global.Milliseconds < mapItem.OwnershipTime)
                 {
                     continue;
                 }
 
-                // Remove the item from the map now, because otherwise the overflow would just add to the existing quantity
                 mapInstanceWithItems.RemoveItem(mapItem);
 
-                // Try to give the item to our player.
-                if (!player.TryGiveItem(mapItem, ItemHandling.Overflow, false, -1, true, mapItem.X, mapItem.Y))
+                // ✅ Crear ítem con sus propiedades
+                var newItem = new Item(mapItem.ItemId, mapItem.Quantity, mapItem.BagId, mapItem.Bag)
                 {
-                    // We couldn't give the player their item, notify them.
+                    Properties = mapItem.Properties != null
+    ? new ItemProperties(mapItem.Properties)
+    : null
+
+                };
+
+                if (!player.TryGiveItem(newItem, ItemHandling.Overflow, false, -1, true, mapItem.X, mapItem.Y))
+                {
                     PacketSender.SendChatMsg(
                         player,
                         Strings.Items.NoSpaceForItem,
@@ -1957,13 +1959,21 @@ internal sealed partial class PacketHandler
                     continue;
                 }
 
-                if (ItemBase.TryGet(mapItem.ItemId, out var item))
+                if (ItemBase.TryGet(mapItem.ItemId, out var itemBase))
                 {
-                    PacketSender.SendActionMsg(player, item.Name, CustomColors.Items.Rarities[item.Rarity]);
+                    var itemName = itemBase.Name;
+                    var level = mapItem.Properties?.EnchantmentLevel ?? 0;
+                    if (level > 0)
+                    {
+                        itemName += $" +{level}";
+                    }
+
+                    PacketSender.SendActionMsg(player, itemName, CustomColors.Items.Rarities[itemBase.Rarity]);
                 }
             }
         }
     }
+
 
     //SwapInvItemsPacket
     public void HandlePacket(Client client, SwapInvItemsPacket packet)

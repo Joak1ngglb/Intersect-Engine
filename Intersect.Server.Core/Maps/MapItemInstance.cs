@@ -1,3 +1,4 @@
+using Intersect.Network.Packets.Server;
 using Intersect.Server.Database;
 using Intersect.Server.Database.PlayerData.Players;
 
@@ -63,15 +64,30 @@ public partial class MapItem : Item
     /// Sets up the Stat Buffs on this map item from a supplied item.
     /// </summary>
     /// <param name="item">The item to take the Stat Buffs from and apply them to this MapItem.</param>
-    public void SetupStatBuffs(Item item)
+
+    public void SetupProperties(Item item)
     {
+        if (item?.Properties == null)
+        {
+            return;
+        }
+
+        if (Properties == null)
+        {
+            Properties = new ItemProperties();
+        }
+
+        Properties.EnchantmentLevel = item.Properties.EnchantmentLevel;
+
         if (Properties.StatModifiers != null && item.Properties.StatModifiers != null)
         {
             for (var i = 0; i < Properties.StatModifiers.Length; ++i)
             {
                 Properties.StatModifiers[i] = item.Properties.StatModifiers.Length > i ? item.Properties.StatModifiers[i] : 0;
+                Properties.StatOrbUpgradeCounts[i] = item.Properties.StatOrbUpgradeCounts[i];
             }
         }
+        Properties.EnchantmentRolls = new Dictionary<int, int[]>(item.Properties.EnchantmentRolls);
     }
 
 }

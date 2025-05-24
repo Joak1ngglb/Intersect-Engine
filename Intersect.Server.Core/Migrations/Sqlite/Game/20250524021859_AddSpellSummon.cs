@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Intersect.Server.Migrations.Sqlite.Game
 {
     /// <inheritdoc />
-    public partial class Spellsummon : Migration
+    public partial class AddSpellSummon : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

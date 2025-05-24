@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Intersect.Server.Migrations.Sqlite.Game
 {
     [DbContext(typeof(SqliteGameContext))]
-    [Migration("20250510144728_Spellsummon")]
-    partial class Spellsummon
+    [Migration("20250524021859_AddSpellSummon")]
+    partial class AddSpellSummon
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -324,6 +324,9 @@ namespace Intersect.Server.Migrations.Sqlite.Game
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("AmountModifier")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid>("AnimationId")
                         .HasColumnType("TEXT")
                         .HasColumnName("Animation");
@@ -351,6 +354,9 @@ namespace Intersect.Server.Migrations.Sqlite.Game
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("CanBank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("CanBeEnchanted")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("CanDrop")
@@ -502,6 +508,12 @@ namespace Intersect.Server.Migrations.Sqlite.Game
                         .HasColumnType("TEXT")
                         .HasColumnName("StatsGiven");
 
+                    b.Property<string>("Subtype")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TargetStat")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long>("TimeCreated")
                         .HasColumnType("INTEGER");
 
@@ -510,6 +522,9 @@ namespace Intersect.Server.Migrations.Sqlite.Game
 
                     b.Property<bool>("TwoHanded")
                         .HasColumnType("INTEGER");
+
+                    b.Property<double>("UpgradeMaterialSuccessRate")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("VitalsJson")
                         .HasColumnType("TEXT")

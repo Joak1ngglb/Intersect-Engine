@@ -499,7 +499,7 @@ public partial class FrmItem : EditorForm
 
             var subtype = cmbSubType.SelectedItem?.ToString();
 
-            if (subtype != null && subtype.Equals("Orb", StringComparison.OrdinalIgnoreCase))
+            if (subtype != null && subtype.Equals("Orb")|| subtype != null && subtype.Equals("Rune", StringComparison.OrdinalIgnoreCase))
             {
                 grpEnchanting.Visible = true;
 
@@ -1696,7 +1696,8 @@ public partial class FrmItem : EditorForm
         if (cmbSubType.SelectedIndex >= 0)
         {
             mEditorItem.Subtype = cmbSubType.SelectedItem.ToString();
-        }            
+        }
+        RefreshExtendedData();
     }
 
     private void nudSuccesRate_ValueChanged(object sender, EventArgs e)

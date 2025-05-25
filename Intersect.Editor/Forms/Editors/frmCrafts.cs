@@ -596,4 +596,9 @@ public partial class FrmCrafts : EditorForm
     {
         mEditorItem.ExperienceAmount = (int)NudExpAmount.Value;
     }
+
+    private void lstGameObjects_AfterSelect(object sender, TreeViewEventArgs e)
+    {
+
+    }
 }

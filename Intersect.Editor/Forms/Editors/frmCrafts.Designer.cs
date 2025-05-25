@@ -1,4 +1,4 @@
-﻿using DarkUI.Controls;
+using DarkUI.Controls;
 
 namespace Intersect.Editor.Forms.Editors
 {
@@ -37,9 +37,14 @@ namespace Intersect.Editor.Forms.Editors
             grpCrafts = new DarkGroupBox();
             btnClearSearch = new DarkButton();
             txtSearch = new DarkTextBox();
-            lstGameObjects = new Controls.GameObjectList();
+            lstGameObjects = new Intersect.Editor.Forms.Controls.GameObjectList();
             pnlContainer = new Panel();
             grpGeneral = new DarkGroupBox();
+            GrpExp = new DarkGroupBox();
+            cmbJobType = new DarkComboBox();
+            label2 = new Label();
+            NudExpAmount = new DarkNumericUpDown();
+            label1 = new Label();
             btnCraftRequirements = new DarkButton();
             nudItemLossChance = new DarkNumericUpDown();
             lblItemLossChance = new Label();
@@ -57,11 +62,6 @@ namespace Intersect.Editor.Forms.Editors
             txtName = new DarkTextBox();
             lblSpeed = new Label();
             grpIngredients = new DarkGroupBox();
-            GrpExp = new DarkGroupBox();
-            cmbJobType = new DarkComboBox();
-            label2 = new Label();
-            NudExpAmount = new DarkNumericUpDown();
-            label1 = new Label();
             cmbEvent = new DarkComboBox();
             lblCommonEvent = new Label();
             nudQuantity = new DarkNumericUpDown();
@@ -86,13 +86,13 @@ namespace Intersect.Editor.Forms.Editors
             grpCrafts.SuspendLayout();
             pnlContainer.SuspendLayout();
             grpGeneral.SuspendLayout();
+            GrpExp.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)NudExpAmount).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudItemLossChance).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudFailureChance).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudCraftQuantity).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudSpeed).BeginInit();
             grpIngredients.SuspendLayout();
-            GrpExp.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)NudExpAmount).BeginInit();
             ((System.ComponentModel.ISupportInitialize)nudQuantity).BeginInit();
             toolStrip.SuspendLayout();
             SuspendLayout();
@@ -179,6 +179,7 @@ namespace Intersect.Editor.Forms.Editors
             lstGameObjects.SelectedImageIndex = 0;
             lstGameObjects.Size = new Size(223, 377);
             lstGameObjects.TabIndex = 26;
+            lstGameObjects.AfterSelect += lstGameObjects_AfterSelect;
             // 
             // pnlContainer
             // 
@@ -221,6 +222,79 @@ namespace Intersect.Editor.Forms.Editors
             grpGeneral.TabIndex = 31;
             grpGeneral.TabStop = false;
             grpGeneral.Text = "General";
+            // 
+            // GrpExp
+            // 
+            GrpExp.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
+            GrpExp.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            GrpExp.Controls.Add(cmbJobType);
+            GrpExp.Controls.Add(label2);
+            GrpExp.Controls.Add(NudExpAmount);
+            GrpExp.Controls.Add(label1);
+            GrpExp.ForeColor = System.Drawing.Color.Gainsboro;
+            GrpExp.Location = new System.Drawing.Point(10, 311);
+            GrpExp.Margin = new Padding(2);
+            GrpExp.Name = "GrpExp";
+            GrpExp.Padding = new Padding(2);
+            GrpExp.Size = new Size(296, 68);
+            GrpExp.TabIndex = 51;
+            GrpExp.TabStop = false;
+            GrpExp.Text = "Exp";
+            // 
+            // cmbJobType
+            // 
+            cmbJobType.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            cmbJobType.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
+            cmbJobType.BorderStyle = ButtonBorderStyle.Solid;
+            cmbJobType.ButtonColor = System.Drawing.Color.FromArgb(43, 43, 43);
+            cmbJobType.DrawDropdownHoverOutline = false;
+            cmbJobType.DrawFocusRectangle = false;
+            cmbJobType.DrawMode = DrawMode.OwnerDrawFixed;
+            cmbJobType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbJobType.FlatStyle = FlatStyle.Flat;
+            cmbJobType.ForeColor = System.Drawing.Color.Gainsboro;
+            cmbJobType.FormattingEnabled = true;
+            cmbJobType.Location = new System.Drawing.Point(9, 37);
+            cmbJobType.Margin = new Padding(4, 3, 4, 3);
+            cmbJobType.Name = "cmbJobType";
+            cmbJobType.Size = new Size(116, 24);
+            cmbJobType.TabIndex = 32;
+            cmbJobType.Text = null;
+            cmbJobType.TextPadding = new Padding(2);
+            cmbJobType.SelectedIndexChanged += cmbJobType_SelectedIndexChanged;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new System.Drawing.Point(155, 18);
+            label2.Margin = new Padding(4, 0, 4, 0);
+            label2.Name = "label2";
+            label2.Size = new Size(77, 15);
+            label2.TabIndex = 31;
+            label2.Text = "EXP Amount:";
+            // 
+            // NudExpAmount
+            // 
+            NudExpAmount.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
+            NudExpAmount.ForeColor = System.Drawing.Color.Gainsboro;
+            NudExpAmount.Location = new System.Drawing.Point(157, 37);
+            NudExpAmount.Margin = new Padding(4, 3, 4, 3);
+            NudExpAmount.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
+            NudExpAmount.Name = "NudExpAmount";
+            NudExpAmount.Size = new Size(114, 23);
+            NudExpAmount.TabIndex = 30;
+            NudExpAmount.Value = new decimal(new int[] { 0, 0, 0, 0 });
+            NudExpAmount.ValueChanged += NudExpAmount_ValueChanged;
+            // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new System.Drawing.Point(4, 18);
+            label1.Margin = new Padding(2, 0, 2, 0);
+            label1.Name = "label1";
+            label1.Size = new Size(25, 15);
+            label1.TabIndex = 26;
+            label1.Text = "Job";
             // 
             // btnCraftRequirements
             // 
@@ -445,79 +519,6 @@ namespace Intersect.Editor.Forms.Editors
             grpIngredients.TabIndex = 30;
             grpIngredients.TabStop = false;
             grpIngredients.Text = "Ingredients";
-            // 
-            // GrpExp
-            // 
-            GrpExp.BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
-            GrpExp.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
-            GrpExp.Controls.Add(cmbJobType);
-            GrpExp.Controls.Add(label2);
-            GrpExp.Controls.Add(NudExpAmount);
-            GrpExp.Controls.Add(label1);
-            GrpExp.ForeColor = System.Drawing.Color.Gainsboro;
-            GrpExp.Location = new System.Drawing.Point(10, 311);
-            GrpExp.Margin = new Padding(2);
-            GrpExp.Name = "GrpExp";
-            GrpExp.Padding = new Padding(2);
-            GrpExp.Size = new Size(296, 68);
-            GrpExp.TabIndex = 51;
-            GrpExp.TabStop = false;
-            GrpExp.Text = "Exp";
-            // 
-            // cmbJobType
-            // 
-            cmbJobType.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
-            cmbJobType.BorderColor = System.Drawing.Color.FromArgb(90, 90, 90);
-            cmbJobType.BorderStyle = ButtonBorderStyle.Solid;
-            cmbJobType.ButtonColor = System.Drawing.Color.FromArgb(43, 43, 43);
-            cmbJobType.DrawDropdownHoverOutline = false;
-            cmbJobType.DrawFocusRectangle = false;
-            cmbJobType.DrawMode = DrawMode.OwnerDrawFixed;
-            cmbJobType.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbJobType.FlatStyle = FlatStyle.Flat;
-            cmbJobType.ForeColor = System.Drawing.Color.Gainsboro;
-            cmbJobType.FormattingEnabled = true;
-            cmbJobType.Location = new System.Drawing.Point(9, 37);
-            cmbJobType.Margin = new Padding(4, 3, 4, 3);
-            cmbJobType.Name = "cmbJobType";
-            cmbJobType.Size = new Size(116, 24);
-            cmbJobType.TabIndex = 32;
-            cmbJobType.Text = null;
-            cmbJobType.TextPadding = new Padding(2);
-            cmbJobType.SelectedIndexChanged += cmbJobType_SelectedIndexChanged;
-            // 
-            // label2
-            // 
-            label2.AutoSize = true;
-            label2.Location = new System.Drawing.Point(155, 18);
-            label2.Margin = new Padding(4, 0, 4, 0);
-            label2.Name = "label2";
-            label2.Size = new Size(77, 15);
-            label2.TabIndex = 31;
-            label2.Text = "EXP Amount:";
-            // 
-            // NudExpAmount
-            // 
-            NudExpAmount.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
-            NudExpAmount.ForeColor = System.Drawing.Color.Gainsboro;
-            NudExpAmount.Location = new System.Drawing.Point(157, 37);
-            NudExpAmount.Margin = new Padding(4, 3, 4, 3);
-            NudExpAmount.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
-            NudExpAmount.Name = "NudExpAmount";
-            NudExpAmount.Size = new Size(114, 23);
-            NudExpAmount.TabIndex = 30;
-            NudExpAmount.Value = new decimal(new int[] { 0, 0, 0, 0 });
-            NudExpAmount.ValueChanged += NudExpAmount_ValueChanged;
-            // 
-            // label1
-            // 
-            label1.AutoSize = true;
-            label1.Location = new System.Drawing.Point(4, 18);
-            label1.Margin = new Padding(2, 0, 2, 0);
-            label1.Name = "label1";
-            label1.Size = new Size(25, 15);
-            label1.TabIndex = 26;
-            label1.Text = "Job";
             // 
             // cmbEvent
             // 
@@ -794,15 +795,15 @@ namespace Intersect.Editor.Forms.Editors
             pnlContainer.ResumeLayout(false);
             grpGeneral.ResumeLayout(false);
             grpGeneral.PerformLayout();
+            GrpExp.ResumeLayout(false);
+            GrpExp.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)NudExpAmount).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudItemLossChance).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudFailureChance).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudCraftQuantity).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudSpeed).EndInit();
             grpIngredients.ResumeLayout(false);
             grpIngredients.PerformLayout();
-            GrpExp.ResumeLayout(false);
-            GrpExp.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)NudExpAmount).EndInit();
             ((System.ComponentModel.ISupportInitialize)nudQuantity).EndInit();
             toolStrip.ResumeLayout(false);
             toolStrip.PerformLayout();

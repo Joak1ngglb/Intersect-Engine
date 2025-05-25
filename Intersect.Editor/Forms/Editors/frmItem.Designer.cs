@@ -533,7 +533,7 @@ namespace Intersect.Editor.Forms.Editors
             cmbRuneStat.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbRuneStat.FlatStyle = FlatStyle.Flat;
             cmbRuneStat.ForeColor = System.Drawing.Color.Gainsboro;
-            cmbRuneStat.Location = new System.Drawing.Point(71, 60);
+            cmbRuneStat.Location = new System.Drawing.Point(80, 61);
             cmbRuneStat.Name = "cmbRuneStat";
             cmbRuneStat.Size = new Size(96, 24);
             cmbRuneStat.TabIndex = 78;
@@ -544,7 +544,7 @@ namespace Intersect.Editor.Forms.Editors
             // label5
             // 
             label5.AutoSize = true;
-            label5.Location = new System.Drawing.Point(17, 24);
+            label5.Location = new System.Drawing.Point(6, 24);
             label5.Margin = new Padding(4, 0, 4, 0);
             label5.Name = "label5";
             label5.Size = new Size(72, 15);
@@ -554,7 +554,7 @@ namespace Intersect.Editor.Forms.Editors
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new System.Drawing.Point(158, 22);
+            label4.Location = new System.Drawing.Point(173, 24);
             label4.Margin = new Padding(2, 0, 2, 0);
             label4.Name = "label4";
             label4.Size = new Size(17, 15);
@@ -565,10 +565,10 @@ namespace Intersect.Editor.Forms.Editors
             // 
             nudSuccesRate.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
             nudSuccesRate.ForeColor = System.Drawing.Color.Gainsboro;
-            nudSuccesRate.Location = new System.Drawing.Point(96, 22);
+            nudSuccesRate.Location = new System.Drawing.Point(80, 22);
             nudSuccesRate.Margin = new Padding(4, 3, 4, 3);
             nudSuccesRate.Name = "nudSuccesRate";
-            nudSuccesRate.Size = new Size(59, 23);
+            nudSuccesRate.Size = new Size(91, 23);
             nudSuccesRate.TabIndex = 74;
             nudSuccesRate.Value = new decimal(new int[] { 0, 0, 0, 0 });
             nudSuccesRate.ValueChanged += nudSuccesRate_ValueChanged;
@@ -641,7 +641,7 @@ namespace Intersect.Editor.Forms.Editors
             // 
             nudRuneValue.BackColor = System.Drawing.Color.FromArgb(69, 73, 74);
             nudRuneValue.ForeColor = System.Drawing.Color.Gainsboro;
-            nudRuneValue.Location = new System.Drawing.Point(70, 92);
+            nudRuneValue.Location = new System.Drawing.Point(80, 91);
             nudRuneValue.Name = "nudRuneValue";
             nudRuneValue.Size = new Size(97, 23);
             nudRuneValue.TabIndex = 80;

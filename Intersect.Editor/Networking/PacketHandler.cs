@@ -679,6 +679,20 @@ internal sealed partial class PacketHandler
                 }
 
                 break;
+            case GameObjectType.Sets:
+                if (deleted)
+                {
+                    var pvar = SetBase.Get(id);
+                    pvar.Delete();
+                }
+                else
+                {
+                    var pvar = new SetBase(id);
+                    pvar.Load(json);
+                    SetBase.Lookup.Set(id, pvar);
+                }
+
+                break;
             default:
                 throw new ArgumentOutOfRangeException();
         }

@@ -416,7 +416,8 @@ public static partial class Strings
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString ItemCount = @" - {00} Items.";
-
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public readonly LocalizedString SetCount = @" - {00} Sets.";
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public readonly LocalizedString KillSuccess = @"{00} has been killed!";
 

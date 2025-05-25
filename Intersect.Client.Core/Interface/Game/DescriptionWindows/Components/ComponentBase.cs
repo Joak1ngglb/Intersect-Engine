@@ -21,6 +21,11 @@ public partial class ComponentBase : IDisposable
     {
         mContainer = new ImagePanel(mParent, mName);
     }
+    public void GenerateComponentsIn(Base customContainer)
+    {
+        mContainer = new ImagePanel(customContainer, mName);
+    }
+
 
     /// <summary>
     /// The name of this control.

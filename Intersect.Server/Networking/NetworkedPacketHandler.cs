@@ -957,7 +957,11 @@ internal sealed partial class NetworkedPacketHandler
 
                     break;
 
-                default:
+            case GameObjectType.Sets:
+                obj = SetBase.Get(id);
+
+                break;
+            default:
                     throw new ArgumentOutOfRangeException();
             }
 
@@ -1085,8 +1089,11 @@ internal sealed partial class NetworkedPacketHandler
                     obj = UserVariableBase.Get(id);
 
                     break;
+            case GameObjectType.Sets:
+                obj = SetBase.Get(id);
 
-                default:
+                break;
+            default:
                     throw new ArgumentOutOfRangeException();
             }
 

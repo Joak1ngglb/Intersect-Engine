@@ -26,6 +26,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using WeifenLuo.WinFormsUI.Docking;
+using static SharpDX.XAudio2.Fx.ReverbI3DL2Parameters;
 
 namespace Intersect.Editor.Forms;
 
@@ -72,6 +73,9 @@ public partial class FrmMain : Form
     private FrmSwitchVariable mSwitchVariableEditor;
 
     private FrmTime mTimeEditor;
+
+    private frmSets mSetEditor;
+
 
     //General Editting Variables
     bool mTMouseDown;
@@ -270,11 +274,11 @@ public partial class FrmMain : Form
 
     private void externalToolItem_Click(object sender, EventArgs e)
     {
-        if (!string.IsNullOrEmpty((string) ((ToolStripItem) sender).Tag))
+        if (!string.IsNullOrEmpty((string)((ToolStripItem)sender).Tag))
         {
-            var psi = new ProcessStartInfo(Path.GetFileName((string) ((ToolStripItem) sender).Tag))
+            var psi = new ProcessStartInfo(Path.GetFileName((string)((ToolStripItem)sender).Tag))
             {
-                WorkingDirectory = Path.GetDirectoryName((string) ((ToolStripItem) sender).Tag)
+                WorkingDirectory = Path.GetDirectoryName((string)((ToolStripItem)sender).Tag)
             };
 
             Process.Start(psi);
@@ -463,7 +467,7 @@ public partial class FrmMain : Form
     {
         if (InvokeRequired)
         {
-            Invoke((MethodInvoker) delegate { ShowDialogForm(form); });
+            Invoke((MethodInvoker)delegate { ShowDialogForm(form); });
 
             return;
         }
@@ -475,7 +479,7 @@ public partial class FrmMain : Form
     {
         if (InvokeRequired)
         {
-            Invoke((MethodInvoker) delegate { EnterMap(mapId, userEntered); });
+            Invoke((MethodInvoker)delegate { EnterMap(mapId, userEntered); });
 
             return;
         }
@@ -1143,14 +1147,14 @@ public partial class FrmMain : Form
 
     private void allLayersToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        Globals.SelectionType = (int) SelectionTypes.AllLayers;
+        Globals.SelectionType = (int)SelectionTypes.AllLayers;
         allLayersToolStripMenuItem.Checked = true;
         currentLayerOnlyToolStripMenuItem.Checked = false;
     }
 
     private void currentLayerOnlyToolStripMenuItem_Click(object sender, EventArgs e)
     {
-        Globals.SelectionType = (int) SelectionTypes.CurrentLayer;
+        Globals.SelectionType = (int)SelectionTypes.CurrentLayer;
         allLayersToolStripMenuItem.Checked = false;
         currentLayerOnlyToolStripMenuItem.Checked = true;
     }
@@ -1566,13 +1570,13 @@ public partial class FrmMain : Form
 
     private void TimeDropdownButton_Click(object sender, EventArgs e)
     {
-        if (((ToolStripDropDownButton) sender).Tag == null)
+        if (((ToolStripDropDownButton)sender).Tag == null)
         {
             Core.Graphics.LightColor = null;
         }
         else
         {
-            Core.Graphics.LightColor = (Color) ((ToolStripDropDownButton) sender).Tag;
+            Core.Graphics.LightColor = (Color)((ToolStripDropDownButton)sender).Tag;
         }
     }
 
@@ -1718,11 +1722,20 @@ public partial class FrmMain : Form
                     }
 
                     break;
+                case GameObjectType.Sets:
+                    if (mSetEditor == null || !mSetEditor.Visible)
+                    {
+                        mSetEditor = new frmSets();
+                        mSetEditor.InitEditor();
+                        mSetEditor.Show();
+                    }
+                    break;
+
                 default:
                     return;
             }
 
-            Globals.CurrentEditor = (int) type;
+            Globals.CurrentEditor = (int)type;
         }
     }
 
@@ -2085,7 +2098,7 @@ public partial class FrmMain : Form
             var editorFileNameExe = $"{editorBaseName}.exe";
             var editorFileNamePdb = $"{editorBaseName}.pdb";
             var excludeFiles = new string[] { "resources/mapcache.db", "update.json", "version.json" };
-            var clientExcludeFiles = new List<string>(){ editorFileNameExe, editorFileNamePdb, "resources/editor_strings.json" };
+            var clientExcludeFiles = new List<string>() { editorFileNameExe, editorFileNamePdb, "resources/editor_strings.json" };
             var editorExcludeFiles = new List<string>() { "resources/client_strings.json" };
             var excludeExtensions = new string[] { ".dll", ".xml", ".config", ".php" };
             var excludeDirectories = new string[] { "logs", "screenshots" };
@@ -2179,7 +2192,8 @@ public partial class FrmMain : Form
                     existingFile = existingUpdate.Files.FirstOrDefault(f => f.Path == updateFile.Path);
                 }
 
-                if (existingFile == null || existingFile.Size != updateFile.Size || existingFile.Hash != updateFile.Hash) {
+                if (existingFile == null || existingFile.Size != updateFile.Size || existingFile.Hash != updateFile.Hash)
+                {
                     var relativeFolder = Uri.UnescapeDataString(workingDir.MakeRelativeUri(new Uri(currentSourcePath + "/")).ToString().Replace('\\', '/'));
                     if (!string.IsNullOrEmpty(relativeFolder))
                     {
@@ -2199,7 +2213,7 @@ public partial class FrmMain : Form
 
             filesProcessed++;
 
-            var percentage = (float) (filesProcessed / (float) (fileCount + 1));
+            var percentage = (float)(filesProcessed / (float)(fileCount + 1));
             var outofeighty = (int)(percentage * 80f);
 
             Globals.UpdateCreationProgressForm.SetProgress(
@@ -2238,4 +2252,8 @@ public partial class FrmMain : Form
         return filesProcessed;
     }
 
+    private void setEditorToolStripMenuItem_Click(object sender, EventArgs e)
+    {
+        PacketSender.SendOpenEditor(GameObjectType.Sets);
+    }
 }

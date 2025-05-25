@@ -285,6 +285,7 @@ internal static class Bootstrapper
         Console.WriteLine(Strings.Commandoutput.MapCount.ToString(MapBase.Lookup.Count));
         Console.WriteLine(Strings.Commandoutput.EventCount.ToString(EventBase.Lookup.Count));
         Console.WriteLine(Strings.Commandoutput.ItemCount.ToString(ItemBase.Lookup.Count));
+        Console.WriteLine(Strings.Commandoutput.SetCount.ToString(SetBase.Lookup.Count));
         Console.WriteLine();
         Console.WriteLine(Strings.Commandoutput.GameTime.ToString(Time.GetTime().ToString("F")));
         Console.WriteLine();

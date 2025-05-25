@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
 using Intersect.Enums;
+
 using Intersect.GameObjects.Conditions;
 using Intersect.GameObjects.Events;
 using Intersect.GameObjects.Ranges;
@@ -442,8 +443,21 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
     }
        
     public string Subtype { get; set; } = string.Empty;
+    /// <summary>
+    /// Identificador del set al que pertenece el ítem. Solo se usa si el ítem es de tipo equipamiento.
+    /// </summary>
+    [Column("SetId")]
+    [JsonProperty("setId")]
+    public Guid SetId { get; set; } = Guid.Empty;
+    [Column("SetName")]
+    [JsonProperty("setName")]
+    public string SetName { get; set; } = "";
 
-      /// <inheritdoc />
+    [Column("SetDescription")]
+    [JsonProperty("setDescription")]
+    public string SetDescription { get; set; } = "";
+
+    /// <inheritdoc />
     public string Folder { get; set; } = "";
 
     /// <summary>
@@ -500,11 +514,19 @@ public partial class ItemBase : DatabaseObject<ItemBase>, IFolderable
         Consumable = new ConsumableData();
         Effects = new List<EffectData>();
         Color = new Color(255, 255, 255, 255);
+        if (ItemType != ItemType.Equipment && SetId != Guid.Empty)
+        {
+            SetId = Guid.Empty;
+        }
+
     }
     public Stat TargetStat { get; set; }
     public int AmountModifier { get; set; }
+    [NotMapped, JsonIgnore]
+    public SetBase? Set => SetBase.Get(SetId);
 
 }
+
 
 [Owned]
 public partial class ConsumableData

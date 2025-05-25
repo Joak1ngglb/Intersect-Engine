@@ -64,4 +64,6 @@ public enum GameObjectType
 
     [GameObjectInfo(typeof(UserVariableBase), "user_variables")]
     UserVariable,
+    [GameObjectInfo(typeof(SetBase),"sets")]
+    Sets
 }

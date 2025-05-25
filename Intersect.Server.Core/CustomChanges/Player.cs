@@ -294,8 +294,56 @@ namespace Intersect.Server.Entities
         {
             PacketSender.SendOpenBrokeItemWindow(this);
         }
-    }
+        private (int[] flatStats, int[] percentStats, long[] vitals, int[] percentVitals, List<EffectData> effects) GetSetBonuses()
+        {
+            var equippedItems = EquippedItems
+                .Select(i => ItemBase.Get(i.ItemId))
+                .Where(i => i != null && i.SetId != Guid.Empty)
+                .ToList();
 
+            var groupedBySet = equippedItems
+                .GroupBy(i => i.SetId)
+                .ToDictionary(g => g.Key, g => g.Select(i => i.Id).ToList());
+
+            var totalStats = new int[Enum.GetValues<Stat>().Length];
+            var totalPercentStats = new int[Enum.GetValues<Stat>().Length];
+            var totalVitals = new long[Enum.GetValues<Vital>().Length];
+            var totalPercentVitals = new int[Enum.GetValues<Vital>().Length];
+            var totalEffects = new List<EffectData>();
+
+            foreach (var (setId, equippedIds) in groupedBySet)
+            {
+                var set = SetBase.Get(setId);
+                if (set == null || set.ItemIds == null || set.ItemIds.Count == 0) continue;
+
+                var matchCount = equippedIds.Count(id => set.ItemIds.Contains(id));
+                if (matchCount == 0) continue;
+
+                var ratio = matchCount / (float)set.ItemIds.Count;
+
+                var (stats, percentStats, vitals, percentVitals, effects) = set.GetBonuses(ratio);
+
+                for (int i = 0; i < totalStats.Length; i++)
+                {
+                    totalStats[i] += stats[i];
+                    totalPercentStats[i] += percentStats[i];
+                }
+
+                for (int i = 0; i < totalVitals.Length; i++)
+                {
+                    totalVitals[i] += vitals[i];
+                    totalPercentVitals[i] += percentVitals[i];
+                }
+
+                totalEffects.AddRange(effects);
+            }
+
+            return (totalStats, totalPercentStats, totalVitals, totalPercentVitals, totalEffects);
+        }
+
+
+
+    }
     public enum MessageType
     {
         Warning,

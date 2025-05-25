@@ -1838,6 +1838,9 @@ public static partial class Strings
         };
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public static LocalizedString AttackSpeedComparison = @"Attack Speed: {00} ({01})";
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public static LocalizedString SetName = @"Set: {0}";
     }
 
     public partial struct Keys

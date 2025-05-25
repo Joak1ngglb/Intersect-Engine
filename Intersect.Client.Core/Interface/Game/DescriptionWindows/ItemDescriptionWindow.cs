@@ -7,6 +7,9 @@ using Intersect.GameObjects.Ranges;
 using Intersect.Logging;
 using Intersect.Network.Packets.Server;
 using Intersect.Utilities;
+using Intersect.Client.Framework.Gwen.Control;
+using Intersect.Client.Interface.Game.DescriptionWindows.Components;
+using Intersect.Client.Framework.Gwen;
 
 namespace Intersect.Client.Interface.Game.DescriptionWindows;
 
@@ -31,7 +34,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         GenerateComponents();
         SetupDescriptionWindow();
         SetPosition(x, y);
-
+   
         if (mItem.ItemType == ItemType.Spell)
         {
             mSpellDescWindow = new SpellDescriptionWindow(mItem.SpellId, x, y, mContainer);
@@ -159,7 +162,7 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
     {
         AddDivider();
         var rows = AddRowContainer();
-
+       
         if (mItem.EquipmentSlot == Options.WeaponIndex)
         {
             DisplayKeyValueRowWithDifference(GetBaseDamageDifference(), Strings.ItemDescription.BaseDamage, mItem.Damage.ToString(), rows);
@@ -257,10 +260,94 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
                 }
             }
         }
-
-
+      
         rows.SizeToChildren(true, true);
     }
+    protected void SetupSetsComponets()
+    {
+        if (mItem.ItemType != ItemType.Equipment || mItem.SetId == Guid.Empty)
+            return;
+
+        var set = SetBase.Get(mItem.SetId);
+        if (set == null || set.ItemIds.Count == 0)
+            return;
+
+        AddDivider();
+        var descComponent = AddDescription();
+        descComponent.AddText(Strings.ItemDescription.SetName.ToString(set.Name), Color.Yellow);
+    
+        // Bloque de bonus: usa filas
+            var BonusDesc = AddDescription();
+        var bonusRows = new RowContainerComponent(BonusDesc.Container, "SetBonusRows");
+
+       
+        // Conteo de equipados
+        var equippedCount = set.ItemIds.Count(id => PlayerInfo.HasItemEquipped(id));
+        var ratio = equippedCount / (float)set.ItemIds.Count;
+
+        // Muestra bonus escalados solo si hay al menos 1 equipado
+        if (equippedCount > 1)
+        {
+            bonusRows.AddKeyValueRow("Set Bonus", null, Color.White, null);
+            var (stats, percentStats, vitals, percentVitals, effects) = set.GetBonuses(ratio);
+
+            for (int i = 0; i < stats.Length; i++)
+            {
+                if (stats[i] != 0 || percentStats[i] != 0)
+                {
+                    var label = Strings.ItemDescription.StatCounts[i];
+                    var value = $"{stats[i]}";
+                    if (percentStats[i] != 0) value += $" / {percentStats[i]}%";
+                    bonusRows.AddKeyValueRow(label, value, Color.Magenta, Color.White);
+                }
+            }
+
+            for (int i = 0; i < vitals.Length; i++)
+            {
+                if (vitals[i] != 0 || percentVitals[i] != 0)
+                {
+                    var label = Strings.ItemDescription.Vitals[i];
+                    var value = $"{vitals[i]}";
+                    if (percentVitals[i] != 0) value += $" / {percentVitals[i]}%";
+                    bonusRows.AddKeyValueRow(label, value, Color.Cyan, Color.White);
+                }
+            }
+
+            foreach (var effect in effects)
+            {
+                if (effect.Percentage > 0)
+                {
+                    var label = Strings.ItemDescription.BonusEffects[(int)effect.Type];
+                    bonusRows.AddKeyValueRow(label, $"+{effect.Percentage}%", Color.Yellow, Color.White);
+                }
+            }
+        }
+
+        bonusRows.SizeToChildren(true, true);
+        descComponent.SizeToChildren(true, true);
+        AddDivider();
+        var setContainer = AddDescription();
+
+
+        // 🔷 Contenedor horizontal para íconos
+        var iconRow = new RowItemContainerComponent(setContainer.Container, "SetIconRow");
+
+        foreach (var itemId in set.ItemIds)
+        {
+            var memberItem = ItemBase.Get(itemId);
+            if (memberItem == null) continue;
+
+            var setItem = new SetItemComponent(iconRow.Container, "SetItem");
+            var tex = Globals.ContentManager.GetTexture(Framework.Content.TextureType.Item, memberItem.Icon);
+            setItem.AddItem(memberItem, PlayerInfo.HasItemEquipped(itemId));
+            iconRow.AddItemComponent(setItem);
+        }
+
+        // 🔁 Ajustes visuales
+        iconRow.SizeToChildren(true, false);
+        setContainer.SizeToChildren(true, true);
+    }
+
 
     protected void SetupVitalsAndStats(Components.RowContainerComponent rows)
     {
@@ -391,10 +478,10 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         rows.SizeToChildren(true, true);
     }
 
-
     protected void SetupExtraInfo()
     {
         var data = new List<Tuple<string, string>>();
+
         if (mItem.IsStackable && mAmount > 1)
             data.Add(new Tuple<string, string>(Strings.ItemDescription.Amount, mAmount.ToString("N0").Replace(",", Strings.Numbers.Comma)));
         if (mItem.DropChanceOnDeath > 0)
@@ -406,9 +493,13 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
         {
             AddDivider();
             var rows = AddRowContainer();
-            foreach (var item in data) rows.AddKeyValueRow(item.Item1, item.Item2);
+            foreach (var item in data)
+                rows.AddKeyValueRow(item.Item1, item.Item2);
             rows.SizeToChildren(true, true);
         }
+
+        // 🔥 Ahora llama acá tu sección de íconos del set
+      SetupSetsComponets();
     }
 
     public override void Dispose()
@@ -469,6 +560,17 @@ public partial class ItemDescriptionWindow : DescriptionWindowBase
                     CustomColors.ItemDesc.Muted;
 
         rows.AddKeyValueRow(key, $"{value}{diffText}", CustomColors.ItemDesc.Muted, color);
+    }
+
+    public static class PlayerInfo
+    {
+        public static bool HasItemEquipped(Guid itemId)
+        {
+            return Globals.Me.MyEquipment.Any(index =>
+                index > -1 &&
+                index < Options.MaxInvItems &&
+                Globals.Me.Inventory[index].ItemId == itemId);
+        }
     }
 
 }

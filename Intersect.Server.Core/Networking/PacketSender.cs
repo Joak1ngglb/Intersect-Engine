@@ -1850,6 +1850,13 @@ public static partial class PacketSender
                 }
 
                 break;
+            case GameObjectType.Sets:
+                foreach (var obj in SetBase.Lookup)
+                {
+                    SendGameObject(client, obj.Value, false, false, packetList);
+                }
+
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }

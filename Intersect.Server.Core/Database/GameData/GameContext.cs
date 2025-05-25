@@ -74,7 +74,7 @@ public abstract partial class GameContext : IntersectDbContext<GameContext>, IGa
 
     //Time
     public DbSet<TimeBase> Time { get; set; }
-
+    public DbSet<SetBase> Sets { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<EquipmentProperties>()
@@ -82,6 +82,8 @@ public abstract partial class GameContext : IntersectDbContext<GameContext>, IGa
             .WithOne(item => item.EquipmentProperties)
             .HasForeignKey<EquipmentProperties>(property => property.DescriptorId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SetBase>();
+
     }
 
     public override void OnSchemaMigrationsProcessed(string[] migrations)

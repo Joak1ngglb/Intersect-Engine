@@ -734,6 +734,10 @@ public static partial class DbInterface
                 UserVariableBase.Lookup.Clear();
 
                 break;
+            case GameObjectType.Sets:
+                SetBase.Lookup.Clear();
+
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
@@ -884,6 +888,13 @@ public static partial class DbInterface
                         }
 
                         break;
+                    case GameObjectType.Sets:
+                        foreach (var psw in context.Sets)
+                        {
+                            SetBase.Lookup.Set(psw.Id, psw);
+                        }
+
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(gameObjectType), gameObjectType, null);
                 }
@@ -990,6 +1001,10 @@ public static partial class DbInterface
 
             case GameObjectType.UserVariable:
                 dbObj = new UserVariableBase(predefinedid);
+
+                break;
+            case GameObjectType.Sets:
+                dbObj = new SetBase(predefinedid);
 
                 break;
             default:
@@ -1117,7 +1132,11 @@ public static partial class DbInterface
                         UserVariableBase.Lookup.Set(dbObj.Id, dbObj);
 
                         break;
+                    case GameObjectType.Sets:
+                        context.Sets.Add((SetBase)dbObj);
+                       SetBase.Lookup.Set(dbObj.Id, dbObj);
 
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(gameObjectType), gameObjectType, null);
                 }
@@ -1253,6 +1272,10 @@ public static partial class DbInterface
                         context.UserVariables.Remove((UserVariableBase)gameObject);
 
                         break;
+                    case GameObjectType.Sets:
+                        context.Sets.Remove((SetBase)gameObject);
+
+                        break;
                 }
 
                 if (gameObject.Type.GetLookup().Values.Contains(gameObject))
@@ -1293,34 +1316,34 @@ public static partial class DbInterface
 
                         break;
                     case GameObjectType.Item:
-                    {
-                        if (gameObject is not ItemBase itemDescriptor)
                         {
-                            throw new InvalidOperationException();
-                        }
-
-                        itemDescriptor.ValidateStatRanges();
-
-                        if (itemDescriptor.EquipmentProperties?.DescriptorId == Guid.Empty)
-                        {
-                            context.Items_EquipmentProperties.Add(itemDescriptor.EquipmentProperties);
-                        }
-                        else
-                        {
-                            EquipmentProperties? deletedEquipmentProperties =
-                                context.Items_EquipmentProperties.FirstOrDefault(
-                                    ep => ep.DescriptorId == itemDescriptor.Id
-                                );
-                            if (deletedEquipmentProperties != default)
+                            if (gameObject is not ItemBase itemDescriptor)
                             {
-                                context.Items_EquipmentProperties.Remove(deletedEquipmentProperties);
+                                throw new InvalidOperationException();
                             }
+
+                            itemDescriptor.ValidateStatRanges();
+
+                            if (itemDescriptor.EquipmentProperties?.DescriptorId == Guid.Empty)
+                            {
+                                context.Items_EquipmentProperties.Add(itemDescriptor.EquipmentProperties);
+                            }
+                            else
+                            {
+                                EquipmentProperties? deletedEquipmentProperties =
+                                    context.Items_EquipmentProperties.FirstOrDefault(
+                                        ep => ep.DescriptorId == itemDescriptor.Id
+                                    );
+                                if (deletedEquipmentProperties != default)
+                                {
+                                    context.Items_EquipmentProperties.Remove(deletedEquipmentProperties);
+                                }
+                            }
+
+                            context.Items.Update(itemDescriptor);
+
+                            break;
                         }
-
-                        context.Items.Update(itemDescriptor);
-
-                        break;
-                    }
                     case GameObjectType.Npc:
                         context.Npcs.Update((NpcBase)gameObject);
 
@@ -1400,6 +1423,11 @@ public static partial class DbInterface
                         break;
                     case GameObjectType.UserVariable:
                         context.UserVariables.Update((UserVariableBase)gameObject);
+
+                        break;
+
+                    case GameObjectType.Sets:
+                        context.Sets.Update((SetBase)gameObject);
 
                         break;
                 }

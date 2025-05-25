@@ -91,6 +91,13 @@ public partial class DescriptionWindowBase : ComponentBase
         return component;
     }
 
+    public RowItemContainerComponent AddRowItemContainer(string name = "DescriptionSetRow")
+    {
+        var component = new RowItemContainerComponent(mContainer, name);
+        mComponents.Add(component); // <--- Esto asegura que esté dentro del flujo de layout
+        return component;
+    }
+
     /// <summary>
     /// Positions a component correctly on the current window.
     /// </summary>

@@ -2270,7 +2270,7 @@ namespace Intersect.Editor.Forms.Editors
             toolStrip.Location = new System.Drawing.Point(0, 0);
             toolStrip.Name = "toolStrip";
             toolStrip.Padding = new Padding(6, 0, 1, 0);
-            toolStrip.Size = new Size(1370, 29);
+            toolStrip.Size = new Size(1420, 29);
             toolStrip.TabIndex = 51;
             toolStrip.Text = "toolStrip1";
             // 
@@ -2461,7 +2461,7 @@ namespace Intersect.Editor.Forms.Editors
             AutoScaleMode = AutoScaleMode.Font;
             AutoSize = true;
             BackColor = System.Drawing.Color.FromArgb(45, 45, 48);
-            ClientSize = new Size(1370, 735);
+            ClientSize = new Size(1420, 735);
             ControlBox = false;
             Controls.Add(toolStrip);
             Controls.Add(btnCancel);

@@ -1150,6 +1150,7 @@ public partial class Player : Entity
     {
         var classDescriptor = ClassBase.Get(this.ClassId);
         long classVital = 20;
+
         if (classDescriptor != null)
         {
             if (classDescriptor.IncreasePercentage)
@@ -1163,28 +1164,31 @@ public partial class Player : Entity
             }
         }
 
-        // Add ArmorPenetration only to Health (vital == (int)Vital.Health)
         if (vital == (int)Vital.Health)
         {
             classVital += Stat[(int)Enums.Stat.Vitality].Value();
         }
-        if (vital == (int)Vital.Mana)
+        else if (vital == (int)Vital.Mana)
         {
             classVital += Stat[(int)Enums.Stat.Wisdom].Value();
         }
 
         var baseVital = classVital;
 
-        // Loop through equipment and see if any items grant vital buffs
+        // Equipamiento normal
         foreach (var item in EquippedItems.ToArray())
         {
             if (ItemBase.TryGet(item.ItemId, out var descriptor))
             {
-                classVital += descriptor.VitalsGiven[vital] + descriptor.PercentageVitalsGiven[vital] * baseVital / 100;
+                classVital += descriptor.VitalsGiven[vital] +
+                              descriptor.PercentageVitalsGiven[vital] * baseVital / 100;
             }
         }
 
-        //Must have at least 1 hp and no less than 0 mp
+        // Bonos por SetBase
+        var (_, _, setVitals, setPercentVitals, _) = GetSetBonuses();
+        classVital += setVitals[vital] + setPercentVitals[vital] * baseVital / 100;
+
         if (vital == (int)Vital.Health)
         {
             classVital = Math.Max(classVital, 1);
@@ -1830,14 +1834,12 @@ public partial class Player : Entity
         var flatStats = 0;
         var percentageStats = 0;
 
-        //Add up player equipment values
         foreach (var equippedItem in EquippedItems)
         {
             var descriptor = equippedItem.Descriptor;
             if (descriptor != null)
             {
                 flatStats += descriptor.StatsGiven[(int)statType];
-
                 if (equippedItem.Properties.StatModifiers != null)
                 {
                     flatStats += equippedItem.Properties.StatModifiers[(int)statType];
@@ -1846,6 +1848,11 @@ public partial class Player : Entity
                 percentageStats += descriptor.PercentageStatsGiven[(int)statType];
             }
         }
+
+        // Añadir bonificaciones de set
+        var (setFlat, setPercent, _, _, _) = GetSetBonuses();
+        flatStats += setFlat[(int)statType];
+        percentageStats += setPercent[(int)statType];
 
         return new Tuple<int, int>(flatStats, percentageStats);
     }
@@ -3819,25 +3826,85 @@ public partial class Player : Entity
     {
         var value = 0;
 
+        // Efectos otorgados por ítems individuales
         foreach (var item in EquippedItems)
         {
-            if (!item.Descriptor.EffectsEnabled.Contains(effect))
+            if (item.Descriptor.EffectsEnabled.Contains(effect))
             {
-                continue;
+                value += item.Descriptor.GetEffectPercentage(effect);
             }
-            value += item.Descriptor.GetEffectPercentage(effect);
+        }
+
+        // Efectos otorgados por sets equipados proporcionalmente
+        var equippedItems = EquippedItems
+            .Select(i => ItemBase.Get(i.ItemId))
+            .Where(i => i != null && i.SetId != Guid.Empty)
+            .ToList();
+
+        var groupedBySet = equippedItems
+            .GroupBy(i => i.SetId)
+            .ToDictionary(g => g.Key, g => g.Select(i => i.Id).ToList());
+
+        foreach (var (setId, equippedIds) in groupedBySet)
+        {
+            var set = SetBase.Get(setId);
+            if (set?.ItemIds == null || set.Effects == null || set.ItemIds.Count == 0)
+                continue;
+
+            var matchCount = equippedIds.Count(id => set.ItemIds.Contains(id));
+            if (matchCount == 0)
+                continue;
+
+            var ratio = matchCount / (float)set.ItemIds.Count;
+
+            foreach (var setEffect in set.Effects)
+            {
+                if (setEffect.Type == effect)
+                {
+                    value += (int)(setEffect.Percentage * ratio);
+                }
+            }
         }
 
         return value;
     }
 
+
     public long GetEquipmentVitalRegen(Vital vital)
     {
         long regen = 0;
 
+        // Regeneración otorgada por ítems equipados
         foreach (var item in EquippedItems)
         {
-            regen += item.Descriptor.VitalsRegen[(int)vital];
+            if (item?.Descriptor?.VitalsRegen != null)
+            {
+                regen += item.Descriptor.VitalsRegen[(int)vital];
+            }
+        }
+
+        // Regeneración otorgada por sets equipados proporcionalmente
+        var equippedItems = EquippedItems
+            .Select(i => ItemBase.Get(i.ItemId))
+            .Where(i => i != null && i.SetId != Guid.Empty)
+            .ToList();
+
+        var groupedBySet = equippedItems
+            .GroupBy(i => i.SetId)
+            .ToDictionary(g => g.Key, g => g.Select(i => i.Id).ToList());
+
+        foreach (var (setId, equippedIds) in groupedBySet)
+        {
+            var set = SetBase.Get(setId);
+            if (set?.ItemIds == null || set.VitalsRegen == null || set.ItemIds.Count == 0)
+                continue;
+
+            var matchCount = equippedIds.Count(id => set.ItemIds.Contains(id));
+            if (matchCount == 0)
+                continue;
+
+            var ratio = matchCount / (float)set.ItemIds.Count;
+            regen += (long)(set.VitalsRegen[(int)vital] * ratio);
         }
 
         return regen;

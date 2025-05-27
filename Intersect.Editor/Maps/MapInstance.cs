@@ -1,4 +1,4 @@
-﻿using System.Drawing.Imaging;
+using System.Drawing.Imaging;
 using Intersect.Compression;
 using Intersect.Editor.Classes.Maps;
 using Intersect.Editor.Core;
@@ -302,14 +302,14 @@ public partial class MapInstance : MapBase, IGameObject<Guid, MapInstance>
 
     public EventBase FindEventAt(int x, int y)
     {
-        if (LocalEvents.Count <= 0)
+        if (LocalEvents == null || LocalEvents.Count == 0)
         {
             return null;
         }
 
         foreach (var t in LocalEvents.Values)
         {
-            if (t.SpawnX == x && t.SpawnY == y)
+            if (t != null && t.SpawnX == x && t.SpawnY == y)
             {
                 return t;
             }

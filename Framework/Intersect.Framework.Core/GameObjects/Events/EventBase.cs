@@ -182,9 +182,11 @@ public partial class EventBase : DatabaseObject<EventBase>, IFolderable
     {
         return ListIndex(Id);
     }
-
     public override void Load(string json, bool keepCreationTime = false)
     {
+        if (string.IsNullOrEmpty(json))
+            return;
+
         var oldTime = TimeCreated;
         JsonConvert.PopulateObject(
             json,
@@ -203,4 +205,6 @@ public partial class EventBase : DatabaseObject<EventBase>, IFolderable
             TimeCreated = oldTime;
         }
     }
+
+
 }

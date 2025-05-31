@@ -198,5 +198,27 @@ public partial class Formulas
 
         return min >= max ? min : Randomization.Next(min, max + 1);
     }
+    public static double CalculateHitChance(Entity atk, Entity def)
+    {
+        const double DEX_W = 2.0;
+        const double ATK_W = 0.25;     // Puedes subir a 0.25 para sentir más peso del ATK
+        const double DEF_W = 0.25;     // Igualmente para mobs con defensa
+        const double BASE = 10;       // Pequeño o incluso 0
+        const double EXP = 1.0;      // Prueba 1.0
+        const double MIN = 0.10, MAX = 0.98;
 
-}
+        double accBase = DEX_W * atk.Stat[(int)Stat.Speed].Value()
+                       + ATK_W * atk.Stat[(int)Stat.Attack].Value()
+                       + BASE;
+        double evaBase = DEX_W * def.Stat[(int)Stat.Speed].Value()
+                       + DEF_W * def.Stat[(int)Stat.Defense].Value()
+                       + BASE;
+
+        double accRating = Math.Pow(accBase * (1 + atk.AccRateBonusPct / 100.0), EXP);
+        double evaRating = Math.Pow(evaBase * (1 + def.EvaRateBonusPct / 100.0), EXP);
+
+        return Math.Clamp(accRating / (accRating + evaRating), MIN, MAX);
+
+
+
+    }

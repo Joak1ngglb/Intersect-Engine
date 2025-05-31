@@ -1857,6 +1857,22 @@ public partial class Player : Entity
         return new Tuple<int, int>(flatStats, percentageStats);
     }
 
+    public void RefreshAccEvaBonuses()
+    {
+ 
+        AccRateBonusPct = 0; EvaRateBonusPct = 0;
+
+        foreach (var itm in EquippedItems)
+        {
+            var desc = itm.Descriptor;
+   
+            AccRateBonusPct += desc.GetEffectPercentage(ItemEffect.PercentAccBonus);
+            EvaRateBonusPct += desc.GetEffectPercentage(ItemEffect.PercentEvaBonus);
+        }
+
+        // Extiende algo similar en Buff.cs / Status.cs para añadir también los buff/debuff
+    }
+
     public void RecalculateStatsAndPoints()
     {
         var playerClass = ClassBase.Get(ClassId);
@@ -5933,7 +5949,6 @@ public partial class Player : Entity
         {
             return;
         }
-
         ProcessEquipmentUpdated(sendUpdate);
     }
 
@@ -5956,6 +5971,7 @@ public partial class Player : Entity
     public void ProcessEquipmentUpdated(bool sendPackets, bool ignoreEvents = false)
     {
         FixVitals();
+        RefreshAccEvaBonuses();
         if (!ignoreEvents)
         {
             StartCommonEventsWithTrigger(CommonEventTrigger.EquipChange);

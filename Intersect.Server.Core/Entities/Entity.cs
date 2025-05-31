@@ -1572,7 +1572,7 @@ public abstract partial class Entity : IEntity
         {
             return;
         }
-
+      
         if (parentSpell != null)
         {
             TryAttack(target, parentSpell);
@@ -1606,6 +1606,7 @@ public abstract partial class Entity : IEntity
 
         if (parentSpell == null)
         {
+            if (!TryHit(target)) return;
             Attack(
                 target, parentItem.Damage, 0, (DamageType)parentItem.DamageType, (Stat)parentItem.ScalingStat,
                 parentItem.Scaling, parentItem.CritChance, parentItem.CritMultiplier, null, null, true
@@ -2004,7 +2005,7 @@ public abstract partial class Entity : IEntity
                 }
             }
         }
-
+        if (!TryHit(target)) return;
         Attack(
             target, baseDamage, 0, damageType, scalingStat, scaling, critChance, critMultiplier, deadAnimations,
             aliveAnimations, true
@@ -3392,6 +3393,35 @@ public abstract partial class Entity : IEntity
     }
 
     [NotMapped] public ConcurrentDictionary<Guid, long> SpellCooldowns = new ConcurrentDictionary<Guid, long>();
+
+    [NotMapped] public int AccRateBonusPct { get; set; }
+    [NotMapped] public int EvaRateBonusPct { get; set; }
+
+    public bool TryHit(Entity target)
+    {
+        // 1) Calculamos la chance real de impactar (0.10-0.98)
+        double hitChance = Formulas.CalculateHitChance(this, target);
+
+        // 2) Tiramos el dado
+        if (Randomization.NextDouble() > hitChance)   // → falló
+        {
+            // Texto “Miss” al atacante (o al objetivo, como prefieras)
+            PacketSender.SendActionMsg(this, Strings.Combat.Miss, CustomColors.Combat.Missed);
+
+            // Si es un NPC, resetea delay de movimiento para que no se quede pegado
+            if (this is Npc npc)
+            {
+                npc.MoveTimer = Timing.Global.Milliseconds + (long)GetMovementTime();
+            }
+
+            // Mandamos la animación de ataque fallido
+            PacketSender.SendEntityAttack(this, CalculateAttackTime());
+
+            return false;   // ✗ golpe fallado
+        }
+
+        return true;        // ✓ golpe conectó
+    }
 
     #endregion
 

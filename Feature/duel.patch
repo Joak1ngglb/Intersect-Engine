@@ -1,0 +1,512 @@
+diff --git a/Framework/Intersect.Framework.Core/Network/Packets/Client/DuelInvitePacket.cs b/Framework/Intersect.Framework.Core/Network/Packets/Client/DuelInvitePacket.cs
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/Framework/Intersect.Framework.Core/Network/Packets/Client/DuelInvitePacket.cs
+@@ -0,0 +1,26 @@
++using MessagePack;
++
++namespace Intersect.Network.Packets.Client;
++
++[MessagePackObject]
++public partial class DuelInvitePacket : IntersectPacket
++{
++    public DuelInvitePacket()
++    {
++    }
++
++    public DuelInvitePacket(Guid targetId)
++    {
++        TargetId = targetId;
++    }
++
++    [Key(0)]
++    public Guid TargetId { get; set; }
++}
+diff --git a/Framework/Intersect.Framework.Core/Network/Packets/Client/DuelInviteResponsePacket.cs b/Framework/Intersect.Framework.Core/Network/Packets/Client/DuelInviteResponsePacket.cs
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/Framework/Intersect.Framework.Core/Network/Packets/Client/DuelInviteResponsePacket.cs
+@@ -0,0 +1,30 @@
++using MessagePack;
++
++namespace Intersect.Network.Packets.Client;
++
++[MessagePackObject]
++public partial class DuelInviteResponsePacket : IntersectPacket
++{
++    public DuelInviteResponsePacket()
++    {
++    }
++
++    public DuelInviteResponsePacket(Guid inviterId, bool accepting)
++    {
++        InviterId = inviterId;
++        Accepting = accepting;
++    }
++
++    [Key(0)]
++    public Guid InviterId { get; set; }
++
++    [Key(1)]
++    public bool Accepting { get; set; }
++}
+diff --git a/Framework/Intersect.Framework.Core/Network/Packets/Server/DuelInvitePacket.cs b/Framework/Intersect.Framework.Core/Network/Packets/Server/DuelInvitePacket.cs
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/Framework/Intersect.Framework.Core/Network/Packets/Server/DuelInvitePacket.cs
+@@ -0,0 +1,28 @@
++using MessagePack;
++
++namespace Intersect.Network.Packets.Server;
++
++[MessagePackObject]
++public partial class DuelInvitePacket : IntersectPacket
++{
++    public DuelInvitePacket()
++    {
++    }
++
++    public DuelInvitePacket(string inviterName, Guid inviterId)
++    {
++        InviterName = inviterName;
++        InviterId = inviterId;
++    }
++
++    [Key(0)]
++    public string InviterName { get; set; }
++
++    [Key(1)]
++    public Guid InviterId { get; set; }
++}
+diff --git a/Framework/Intersect.Framework.Core/Network/Packets/Server/DuelStatePacket.cs b/Framework/Intersect.Framework.Core/Network/Packets/Server/DuelStatePacket.cs
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/Framework/Intersect.Framework.Core/Network/Packets/Server/DuelStatePacket.cs
+@@ -0,0 +1,44 @@
++using MessagePack;
++
++namespace Intersect.Network.Packets.Server;
++
++[MessagePackObject]
++public partial class DuelStatePacket : IntersectPacket
++{
++    public DuelStatePacket()
++    {
++    }
++
++    public DuelStatePacket(Guid duelId, Guid playerAId, string playerAName, int playerAKills, Guid playerBId, string playerBName, int playerBKills, bool finished = false, Guid winnerId = default)
++    {
++        DuelId = duelId;
++        PlayerAId = playerAId;
++        PlayerAName = playerAName;
++        PlayerAKills = playerAKills;
++        PlayerBId = playerBId;
++        PlayerBName = playerBName;
++        PlayerBKills = playerBKills;
++        Finished = finished;
++        WinnerId = winnerId;
++    }
++
++    [Key(0)] public Guid DuelId { get; set; }
++    [Key(1)] public Guid PlayerAId { get; set; }
++    [Key(2)] public string PlayerAName { get; set; }
++    [Key(3)] public int PlayerAKills { get; set; }
++    [Key(4)] public Guid PlayerBId { get; set; }
++    [Key(5)] public string PlayerBName { get; set; }
++    [Key(6)] public int PlayerBKills { get; set; }
++    [Key(7)] public bool Finished { get; set; }
++    [Key(8)] public Guid WinnerId { get; set; }
++}
+diff --git a/Intersect.Client.Core/Localization/Strings.cs b/Intersect.Client.Core/Localization/Strings.cs
+index eeeeeee..ffffff0 100644
+--- a/Intersect.Client.Core/Localization/Strings.cs
++++ b/Intersect.Client.Core/Localization/Strings.cs
+@@ -1,2000 +1,2009 @@
+@@
++// --- Duels localization (cliente) ---
++public partial struct Duels
++{
++    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
++    public static LocalizedString InvitePrompt = @"{00} te ha invitado a un duelo. ¿Aceptar?";
++
++    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
++    public static LocalizedString Declined = @"{00} ha rechazado la invitación a duelo.";
++
++    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
++    public static LocalizedString Busy = @"{00} está ocupado.";
++
++    [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
++    public static LocalizedString OutOfRange = @"Jugador fuera de rango.";
++}
++
+diff --git a/Intersect.Client.Core/Networking/PacketSender.cs b/Intersect.Client.Core/Networking/PacketSender.cs
+index 1111111..2222222 100644
+--- a/Intersect.Client.Core/Networking/PacketSender.cs
++++ b/Intersect.Client.Core/Networking/PacketSender.cs
+@@ -1,220 +1,268 @@
+  public static partial class PacketSender
+  {
+@@
+     public static void SendEventInputVariableCancel(object? sender, EventArgs e)
+     {
+         if (sender is not InputBox { UserData: Guid eventId } inputBox)
+         {
+             return;
+         }
+ 
+         Network.SendPacket(new EventInputVariablePacket(eventId, default, default, default, true));
+     }
++
++    // --- PvP Duel client methods ---
++    public static void SendDuelInvite(Guid targetId)
++    {
++        Network.SendPacket(new Intersect.Network.Packets.Client.DuelInvitePacket(targetId));
++    }
++
++    public static void SendDuelInviteAccept(object? sender, EventArgs e)
++    {
++        if (sender is InputBox inputBox && inputBox.UserData is Guid inviterId)
++        {
++            Network.SendPacket(new Intersect.Network.Packets.Client.DuelInviteResponsePacket(inviterId, true));
++        }
++    }
++
++    public static void SendDuelInviteDecline(object? sender, EventArgs e)
++    {
++        if (sender is InputBox inputBox && inputBox.UserData is Guid inviterId)
++        {
++            Network.SendPacket(new Intersect.Network.Packets.Client.DuelInviteResponsePacket(inviterId, false));
++        }
++    }
+  }
+diff --git a/Intersect.Client.Core/Interface/Game/TargetContextMenu.cs b/Intersect.Client.Core/Interface/Game/TargetContextMenu.cs
+index 3333333..4444444 100644
+--- a/Intersect.Client.Core/Interface/Game/TargetContextMenu.cs
++++ b/Intersect.Client.Core/Interface/Game/TargetContextMenu.cs
+@@ -1,259 +1,287 @@
+  public sealed partial class TargetContextMenu : ContextMenu
+  {
+@@
+     private readonly MenuItem _privateMessageMenuItem;
+     private readonly Player? _me;
+     private IEntity? _entity;
++    private readonly MenuItem _duelMenuItem;
+@@
+         _friendMenuItem = AddItem(Strings.EntityContextMenu.AddFriend);
+         _friendMenuItem.Clicked += friendRequest_Clicked;
+ 
++        _duelMenuItem = AddItem("PvP");
++        _duelMenuItem.Clicked += duelRequest_Clicked;
++
+         _guildMenuItem = AddItem(Strings.EntityContextMenu.InviteToGuild);
+         _guildMenuItem.Clicked += guildRequest_Clicked;
+ 
+@@
+         if (shouldShowTargetName)
+         {
+             AddChild(_targetNameMenuItem);
+             _targetNameMenuItem.SetText(_entity?.Name ?? string.Empty);
+             _targetNameMenuItem.MouseInputEnabled = false;
+             AddChild(_nameDivider);
+         }
+ 
+         AddChild(_tradeMenuItem);
+         AddChild(_partyMenuItem);
+         AddChild(_friendMenuItem);
++        AddChild(_duelMenuItem);
+ 
+         if (_entity is Player player)
+         {
+@@
+     }
+ 
++    void duelRequest_Clicked(Base sender, MouseButtonState arguments)
++    {
++        if (_me == null || _entity is not Player || _entity == _me)
++        {
++            return;
++        }
++
++        if (_me.CombatTimer < Timing.Global.Milliseconds)
++        {
++            PacketSender.SendDuelInvite(_entity.Id);
++        }
++        else
++        {
++            PacketSender.SendChatMsg(Strings.Friends.InFight.ToString(), 4);
++        }
++    }
++
+     void invite_Clicked(Base sender, MouseButtonState arguments)
+     {
+         if (_me == null || _entity is not Player || _entity == _me)
+         {
+             return;
+         }
+ 
+@@
+     void privateMessageRequest_Clicked(Base sender, MouseButtonState arguments)
+     {
+         if (_me == null || _entity is not Player || _entity == _me)
+         {
+             return;
+         }
+ 
+         Interface.GameUi.SetChatboxText($"/pm {_entity.Name} ");
+     }
+ }
+diff --git a/Intersect.Client.Core/Networking/PacketHandler.cs b/Intersect.Client.Core/Networking/PacketHandler.cs
+index 5555555..6666666 100644
+--- a/Intersect.Client.Core/Networking/PacketHandler.cs
++++ b/Intersect.Client.Core/Networking/PacketHandler.cs
+@@ -1,1960 +1,1977 @@
+     public void HandlePacket(IPacketSender packetSender, PartyPacket packet)
+     {
+@@
+     }
+ 
++    // DuelInvitePacket (servidor -> cliente)
++    public void HandlePacket(IPacketSender packetSender, Intersect.Network.Packets.Server.DuelInvitePacket packet)
++    {
++        _ = new InputBox(
++            title: "PvP",
++            prompt: Intersect.Client.Localization.Strings.Duels.InvitePrompt.ToString(packet.InviterName),
++            inputType: Intersect.Client.Interface.Shared.InputType.YesNo,
++            userData: packet.InviterId,
++            onSubmit: PacketSender.SendDuelInviteAccept,
++            onCancel: PacketSender.SendDuelInviteDecline
++        );
++    }
++
++    // DuelStatePacket (servidor -> cliente)
++    public void HandlePacket(IPacketSender packetSender, Intersect.Network.Packets.Server.DuelStatePacket packet)
++    {
++        var gi = Interface.Game as Intersect.Client.Interface.Game.GameInterface;
++        if (gi != null)
++        {
++            gi.DuelWindow?.SetState(packet);
++        }
++    }
++
+     //ChatBubblePacket
+     public void HandlePacket(IPacketSender packetSender, ChatBubblePacket packet)
+     {
+@@
+     }
+ 
+diff --git a/Intersect.Client.Core/Interface/Game/DuelWindow.cs b/Intersect.Client.Core/Interface/Game/DuelWindow.cs
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/Intersect.Client.Core/Interface/Game/DuelWindow.cs
+@@ -0,0 +1,116 @@
++using Intersect.Client.Framework.Gwen.Control;
++using Intersect.Client.Framework.Gwen;
++using Intersect.Client.Networking;
++using Intersect.Network.Packets.Server;
++
++namespace Intersect.Client.Interface.Game;
++
++public partial class DuelWindow : Window
++{
++    private readonly RichLabel _titleLabel;
++    private readonly RichLabel _scoreLabel;
++
++    public DuelWindow(Canvas canvas) : base(canvas, name: nameof(DuelWindow))
++    {
++        IsHidden = true;
++        DeleteOnClose = false;
++
++        Width = 360;
++        Height = 72;
++
++        _titleLabel = new RichLabel(this)
++        {
++            Dock = Pos.Top,
++            Text = string.Empty,
++            FontSize = 14,
++            AutoSizeToContents = false,
++            Alignment = [Alignments.Center]
++        };
++
++        _scoreLabel = new RichLabel(this)
++        {
++            Dock = Pos.Fill,
++            Text = string.Empty,
++            FontSize = 12,
++            AutoSizeToContents = false,
++            Alignment = [Alignments.Center]
++        };
++
++        X = (Canvas.Width - OuterWidth) / 2;
++        Y = 20;
++    }
++
++    public void SetState(Intersect.Network.Packets.Server.DuelStatePacket state)
++    {
++        if (state == null)
++        {
++            IsHidden = true;
++            return;
++        }
++
++        _titleLabel.Text = $"PvP: {state.PlayerAName} vs {state.PlayerBName}";
++        _scoreLabel.Text = $"{state.PlayerAName}: {state.PlayerAKills}  —  {state.PlayerBName}: {state.PlayerBKills}";
++
++        IsHidden = false;
++
++        if (state.Finished)
++        {
++            var winnerName = state.WinnerId == state.PlayerAId ? state.PlayerAName : state.PlayerBName;
++            PacketSender.SendChatMsg($@"{winnerName} ha ganado el duelo.", 0);
++            Timer.SetTimeout(() => IsHidden = true, 5000);
++        }
++    }
++}
+diff --git a/Intersect.Client.Core/Interface/Game/GameInterface.cs b/Intersect.Client.Core/Interface/Game/GameInterface.cs
+index 7777777..8888888 100644
+--- a/Intersect.Client.Core/Interface/Game/GameInterface.cs
++++ b/Intersect.Client.Core/Interface/Game/GameInterface.cs
+@@ -1,260 +1,268 @@
+ public partial class GameInterface : MutableInterface
+ {
+@@
+     private QuestOfferWindow mQuestOfferWindow;
+     private MapItemWindow mMapItemWindow;
++    private DuelWindow? _duelWindow;
+@@
+     public MapItemWindow MapItemWindow => _mapItemWindow ??= new MapItemWindow(GameCanvas);
+     }
+ 
++    public DuelWindow DuelWindow => _duelWindow ??= new DuelWindow(GameCanvas) { IsHidden = true };
++
+     //Chatbox
+     public void SetChatboxText(string msg)
+     {
+         mChatBox.SetChatboxText(msg);
+     }
+ 
+diff --git a/Intersect.Server.Core/Localization/Duels.cs b/Intersect.Server.Core/Localization/Duels.cs
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/Intersect.Server.Core/Localization/Duels.cs
+@@ -0,0 +1,18 @@
++namespace Intersect.Server.Core.Localization;
++
++public static partial class Duels
++{
++    public static string InvitePrompt = @"{0} te ha invitado a un duelo.";
++    public static string Declined = @"{0} rechazó la invitación de duelo.";
++    public static string Busy = @"{0} está ocupado.";
++    public static string OutOfRange = @"Jugador fuera de rango.";
++}
+diff --git a/Intersect.Server.Core/Networking/PacketSender.cs b/Intersect.Server.Core/Networking/PacketSender.cs
+index 9999999..aaaaaaa 100644
+--- a/Intersect.Server.Core/Networking/PacketSender.cs
++++ b/Intersect.Server.Core/Networking/PacketSender.cs
+@@ -2000,6 +2000,28 @@
+     public static void SendParty(Player player, Player leader)
+     {
+         player.SendPacket(new PartyInvitePacket(leader.Name, leader.Id));
+     }
+ 
++    // Duel packets
++    public static void SendDuelInvite(Player player, Player inviter)
++    {
++        player.SendPacket(new Intersect.Network.Packets.Server.DuelInvitePacket(inviter.Name, inviter.Id));
++    }
++
++    public static void SendDuelState(Player player, Guid duelId, Player playerA, int playerAKills, Player playerB, int playerBKills, bool finished = false, Guid winnerId = default)
++    {
++        player.SendPacket(new Intersect.Network.Packets.Server.DuelStatePacket(
++            duelId,
++            playerA.Id, playerA.Name, playerAKills,
++            playerB.Id, playerB.Name, playerBKills,
++            finished,
++            winnerId
++        ));
++    }
++
+     //ChatBubblePacket
+     public static void SendChatBubble(Guid entityId, Guid mapInstanceId, EntityType type, string text, Guid mapId)
+     {
+         SendDataToProximityOnMapInstance(mapId, mapInstanceId, new ChatBubblePacket(entityId, type, mapId, text), null, TransmissionMode.Any);
+     }
+diff --git a/Intersect.Server.Core/Networking/PacketHandler.cs b/Intersect.Server.Core/Networking/PacketHandler.cs
+index bbbbbbb..ccccccc 100644
+--- a/Intersect.Server.Core/Networking/PacketHandler.cs
++++ b/Intersect.Server.Core/Networking/PacketHandler.cs
+@@ -1,2230 +1,2268 @@
+     //PartyInvitePacket
+     public void HandlePacket(Client client, PartyInvitePacket packet)
+     {
+@@
+     }
+ 
++    // DuelInvitePacket (cliente -> servidor)
++    public void HandlePacket(Client client, Intersect.Network.Packets.Client.DuelInvitePacket packet)
++    {
++        var player = client?.Entity;
++        if (player == null)
++        {
++            return;
++        }
++
++        var target = Player.FindOnline(packet.TargetId);
++        if (target != null && target.Id != player.Id && player.InRangeOf(target, Options.Instance.Player.TradeRange))
++        {
++            target.InviteToDuel(player);
++            return;
++        }
++
++        PacketSender.SendChatMsg(player, Strings.Duels.OutOfRange, ChatMessageType.Combat, CustomColors.Combat.NoTarget);
++    }
++
++    // DuelInviteResponsePacket (cliente -> servidor)
++    public void HandlePacket(Client client, Intersect.Network.Packets.Client.DuelInviteResponsePacket packet)
++    {
++        var player = client?.Entity;
++        if (player == null)
++        {
++            return;
++        }
++
++        var inviter = Player.FindOnline(packet.InviterId);
++        if (inviter == null)
++        {
++            return;
++        }
++
++        if (player.DuelRequester != null && player.DuelRequester.Id == inviter.Id)
++        {
++            if (packet.Accepting)
++            {
++                Player.StartDuel(inviter, player);
++            }
++            else
++            {
++                PacketSender.SendChatMsg(inviter, string.Format(Strings.Duels.Declined, player.Name), ChatMessageType.Party, CustomColors.Alerts.Declined);
++            }
++
++            player.DuelRequester = null;
++        }
++    }
++
+     //PartyKickPacket
+     public void HandlePacket(Client client, PartyKickPacket packet)
+     {
+         var player = client?.Entity;
+         if (player == null)
+         {
+             return;
+         }
+ 
+@@
+     //TradeRequestResponsePacket
+     public void HandlePacket(Client client, TradeRequestResponsePacket packet)
+     {
